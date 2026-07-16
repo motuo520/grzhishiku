@@ -1,0 +1,33 @@
+# 个人第二大脑 — 内测部署
+# 用法：
+#   1. 在服务器上放好 backend/.env（从本地复制，按需改 ALLOWED_ORIGINS）
+#   2. docker compose up -d --build
+#   3. 访问 http://服务器IP/  （前端 80 端口，/api 由 nginx 代理到 backend:8000）
+# 数据持久化在 ./server-data/（SQLite 库 + graphify 图谱数据），直接打包该目录即备份。
+
+name: psb
+
+services:
+  backend:
+    build: ./backend
+    env_file: ./backend/.env
+    environment:
+      # 数据统一放 /data（挂载 ./server-data），覆盖 .env 里的相对路径
+      DATABASE_URL: sqlite:////data/psb.db
+      GRAPHIFY_DATA_DIR: /data/graphify_data
+      # 浏览器直连 API 的允许来源，上线改成服务器域名/IP，逗号分隔
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost}
+    volumes:
+      - ./server-data:/data
+    restart: unless-stopped
+    # 不直接对外暴露，全部走前端 nginx 代理；调试时取消注释：
+    # ports:
+    #   - "8000:8000"
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    restart: unless-stopped

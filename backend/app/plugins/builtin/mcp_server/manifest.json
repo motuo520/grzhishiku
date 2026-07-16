@@ -1,0 +1,24 @@
+{
+  "id": "mcp-server",
+  "name": "MCP Server",
+  "version": "1.0.0",
+  "description": "把个人第二大脑暴露为 Model Context Protocol Server，让外部 AI Agent 通过 SSE 读写知识库。",
+  "type": "builtin",
+  "entrypoint": "plugin:McpServerPlugin",
+  "enabled_default": true,
+  "config_schema": {
+    "type": "object",
+    "properties": {
+      "expose_tools": {
+        "type": "array",
+        "items": { "type": "string" },
+        "description": "允许暴露的工具列表，留空表示全部"
+      },
+      "require_user_id": {
+        "type": "boolean",
+        "default": true,
+        "description": "是否要求调用方传入 user_id"
+      }
+    }
+  }
+}

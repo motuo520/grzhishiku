@@ -1,0 +1,14 @@
+/* PSB Content Script Styles */
+
+#psb-quick-note-dialog {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', sans-serif;
+}
+
+#psb-quick-note-dialog textarea:focus {
+  outline: none;
+  border-color: #58a6ff !important;
+}
+
+#psb-quick-note-dialog button:hover {
+  opacity: 0.9;
+}

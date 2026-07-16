@@ -1,0 +1,51 @@
+{
+  "id": "notion-import",
+  "name": "Notion 导入",
+  "version": "1.0.0",
+  "description": "通过 Notion Integration Token 搜索并导入页面为知识单元。",
+  "type": "builtin",
+  "entrypoint": "plugin:NotionImportPlugin",
+  "enabled_default": false,
+  "config_schema": {
+    "type": "object",
+    "required": ["integration_token"],
+    "properties": {
+      "integration_token": {
+        "type": "string",
+        "title": "Notion Integration Token"
+      },
+      "brain_side": {
+        "type": "string",
+        "enum": ["personal", "network"],
+        "default": "network",
+        "title": "默认脑侧"
+      },
+      "auto_sync": {
+        "type": "object",
+        "title": "自动同步",
+        "description": "按设定间隔自动从 Notion 导入新页面",
+        "properties": {
+          "enabled": {
+            "type": "boolean",
+            "default": false,
+            "title": "启用自动同步"
+          },
+          "interval_minutes": {
+            "type": "integer",
+            "enum": [30, 60, 360, 1440],
+            "default": 60,
+            "title": "同步间隔"
+          },
+          "last_sync_at": {
+            "type": "string",
+            "title": "上次同步时间"
+          },
+          "last_sync_error": {
+            "type": "string",
+            "title": "上次同步错误"
+          }
+        }
+      }
+    }
+  }
+}

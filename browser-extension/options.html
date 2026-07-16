@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PSB 设置</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', sans-serif;
+      background: #0d1117;
+      color: #c9d1d9;
+      padding: 24px;
+      max-width: 600px;
+      margin: 0 auto;
+    }
+    h1 { font-size: 24px; margin-bottom: 24px; }
+    .section { margin-bottom: 24px; }
+    .section-title { font-size: 14px; font-weight: 600; color: #8b949e; margin-bottom: 12px; }
+    .form-group { margin-bottom: 16px; }
+    label { display: block; font-size: 13px; margin-bottom: 6px; }
+    input[type="text"], input[type="url"], input[type="password"] {
+      width: 100%;
+      padding: 10px 12px;
+      background: #21262d;
+      border: 1px solid #30363d;
+      border-radius: 6px;
+      color: #c9d1d9;
+      font-size: 14px;
+    }
+    input:focus { outline: none; border-color: #58a6ff; }
+    .btn {
+      padding: 10px 20px;
+      background: #58a6ff;
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      font-size: 14px;
+      cursor: pointer;
+    }
+    .btn:hover { opacity: 0.9; }
+    .status { font-size: 12px; color: #8b949e; margin-top: 8px; }
+  </style>
+</head>
+<body>
+  <h1>Personal Second Brain 设置</h1>
+  
+  <div class="section">
+    <div class="section-title">服务器配置</div>
+    <div class="form-group">
+      <label>API 地址</label>
+      <input type="url" id="api-url" value="http://localhost:8002" placeholder="http://localhost:8002">
+    </div>
+    <div class="form-group">
+      <label>API Token</label>
+      <input type="password" id="api-token" placeholder="输入你的 API Token">
+    </div>
+    <button class="btn" id="save-settings">保存设置</button>
+    <div class="status" id="save-status"></div>
+  </div>
+  
+  <div class="section">
+    <div class="section-title">同步配置</div>
+    <div class="form-group">
+      <label>同步间隔（分钟）</label>
+      <input type="text" id="sync-interval" value="5" placeholder="5">
+    </div>
+  </div>
+  
+  <script>
+    document.getElementById('save-settings').addEventListener('click', () => {
+      const apiUrl = document.getElementById('api-url').value;
+      const apiToken = document.getElementById('api-token').value;
+      const syncInterval = document.getElementById('sync-interval').value;
+      
+      chrome.storage.local.set({
+        api_url: apiUrl,
+        api_token: apiToken,
+        sync_interval: parseInt(syncInterval) || 5,
+      }, () => {
+        document.getElementById('save-status').textContent = '设置已保存';
+        setTimeout(() => {
+          document.getElementById('save-status').textContent = '';
+        }, 3000);
+      });
+    });
+    
+    // Load saved settings
+    chrome.storage.local.get(['api_url', 'api_token', 'sync_interval'], (result) => {
+      if (result.api_url) document.getElementById('api-url').value = result.api_url;
+      if (result.api_token) document.getElementById('api-token').value = result.api_token;
+      if (result.sync_interval) document.getElementById('sync-interval').value = result.sync_interval;
+    });
+  </script>
+</body>
+</html>

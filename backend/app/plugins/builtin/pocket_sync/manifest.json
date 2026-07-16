@@ -1,0 +1,50 @@
+{
+  "id": "pocket-sync",
+  "name": "Pocket 同步",
+  "version": "1.0.0",
+  "description": "同步 Pocket 稍后读列表到系统。需要先在 Pocket 申请 Consumer Key 和 Access Token。",
+  "type": "builtin",
+  "entrypoint": "plugin:PocketSyncPlugin",
+  "enabled_default": false,
+  "config_schema": {
+    "type": "object",
+    "required": ["consumer_key", "access_token"],
+    "properties": {
+      "consumer_key": {
+        "type": "string",
+        "title": "Pocket Consumer Key"
+      },
+      "access_token": {
+        "type": "string",
+        "title": "Pocket Access Token"
+      },
+      "last_sync_at": {
+        "type": "string",
+        "title": "上次同步时间",
+        "description": "Unix 时间戳，由系统自动更新"
+      },
+      "auto_sync": {
+        "type": "object",
+        "title": "自动同步",
+        "description": "按设定间隔自动同步 Pocket 稍后读",
+        "properties": {
+          "enabled": {
+            "type": "boolean",
+            "default": false,
+            "title": "启用自动同步"
+          },
+          "interval_minutes": {
+            "type": "integer",
+            "enum": [30, 60, 360, 1440],
+            "default": 60,
+            "title": "同步间隔"
+          },
+          "last_sync_error": {
+            "type": "string",
+            "title": "上次同步错误"
+          }
+        }
+      }
+    }
+  }
+}

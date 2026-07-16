@@ -1,0 +1,16 @@
+{
+  "name": "psb-browser-extension",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "build:chrome": "vite build --mode chrome",
+    "build:firefox": "vite build --mode firefox"
+  },
+  "devDependencies": {
+    "vite": "^5.0.0",
+    "@mozilla/readability": "^0.5.0"
+  }
+}

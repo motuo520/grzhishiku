@@ -1,0 +1,187 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* 深色主题（默认）— 暖黑底 + 琥珀强调，安静工具风 */
+    --bg-primary: 15 14 13;
+    --bg-secondary: 23 21 20;
+    --bg-tertiary: 32 29 27;
+    --bg-hover: 42 39 36;
+    --bg-active: 36 33 30;
+    --text-primary: 232 228 224;
+    --text-secondary: 158 152 145;
+    --text-muted: 105 100 94;
+    --border-color: 42 38 35;
+    --border-light: 32 29 27;
+    --glass-bg: #171513;
+    --glass-border: rgba(255, 255, 255, 0.06);
+    --glass-strong-bg: #1c1917;
+    --glass-strong-border: rgba(255, 255, 255, 0.08);
+    --input-bg: rgba(255, 255, 255, 0.03);
+    --input-border: rgba(255, 255, 255, 0.08);
+    --accent: #c8956c;
+    --accent-link: #d4a574;
+  }
+
+  :root.light,
+  .light {
+    /* 浅色主题 — 暖白纸面 */
+    --bg-primary: 247 244 240;
+    --bg-secondary: 255 254 252;
+    --bg-tertiary: 241 237 231;
+    --bg-hover: 235 230 223;
+    --bg-active: 228 221 212;
+    --text-primary: 41 37 33;
+    --text-secondary: 99 92 84;
+    --text-muted: 148 140 130;
+    --border-color: 224 217 208;
+    --border-light: 234 228 220;
+    --glass-bg: #fffefb;
+    --glass-border: rgba(0, 0, 0, 0.06);
+    --glass-strong-bg: #fffefb;
+    --glass-strong-border: rgba(0, 0, 0, 0.08);
+    --input-bg: rgba(255, 255, 255, 0.9);
+    --input-border: rgba(0, 0, 0, 0.1);
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-bg-primary text-text-primary;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Helvetica Neue', Arial, sans-serif;
+    background-color: rgb(var(--bg-primary));
+    color: rgb(var(--text-primary));
+  }
+
+  /* 中性滚动条 */
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.12);
+    border-radius: 5px;
+    border: 2px solid transparent;
+    background-clip: padding-box;
+    min-height: 40px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.22);
+    background-clip: padding-box;
+  }
+
+  ::-webkit-scrollbar-corner {
+    background: transparent;
+  }
+}
+
+@layer components {
+  /* 平面卡片 — 无模糊、无发光，细边框分隔 */
+  .glass-card {
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    border-radius: 0.75rem;
+    overflow: hidden;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
+  }
+
+  .glass-card:hover {
+    border-color: rgba(200, 149, 108, 0.30);
+  }
+
+  .glass {
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+  }
+
+  .glass-strong {
+    background: var(--glass-strong-bg);
+    border: 1px solid var(--glass-strong-border);
+  }
+
+  /* 弹窗：实色背景，保证可读性 */
+  .glass-popup {
+    background: #141210;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+  }
+
+  .light .glass-popup {
+    background: #fffefb;
+    border-color: rgba(0, 0, 0, 0.08);
+  }
+
+  /* 原液体玻璃（顶栏/侧栏/登录卡片）— 改为平面实色 */
+  .liquid-glass {
+    background: var(--glass-strong-bg);
+    border: 1px solid var(--glass-border);
+  }
+
+  .liquid-glass-strong {
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    border-radius: 1rem;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
+  }
+
+  /* 旧版类兼容 */
+  .card {
+    @apply glass-card p-5;
+  }
+
+  .btn-primary {
+    @apply px-5 py-2.5 text-[#1c1714] rounded-lg font-medium transition-colors duration-200 active:opacity-90;
+    background: #c8956c;
+  }
+
+  .btn-primary:hover {
+    background: #b5834f;
+  }
+
+  .btn-secondary {
+    @apply px-5 py-2.5 bg-white/[0.04] text-text-primary border border-white/[0.08] rounded-lg font-medium transition-colors duration-200 hover:bg-white/[0.08] active:opacity-90;
+  }
+
+  .btn-danger {
+    @apply px-5 py-2.5 text-white rounded-lg font-medium transition-colors duration-200 active:opacity-90;
+    background: #c94a42;
+  }
+
+  .btn-danger:hover {
+    background: #b23e37;
+  }
+
+  .input {
+    @apply w-full px-4 py-2.5 rounded-lg text-text-primary placeholder-text-muted focus:outline-none transition-colors duration-200;
+    background: var(--input-bg);
+    border: 1px solid var(--input-border);
+  }
+
+  .input:focus {
+    border-color: rgba(200, 149, 108, 0.5);
+  }
+
+  .badge-personal {
+    @apply inline-flex items-center px-2.5 py-1 text-xs font-medium rounded-full bg-personal-primary/10 text-personal-primary border border-personal-primary/20;
+  }
+
+  .badge-network {
+    @apply inline-flex items-center px-2.5 py-1 text-xs font-medium rounded-full bg-network-primary/10 text-network-primary border border-network-primary/20;
+  }
+
+  .badge-fusion {
+    @apply inline-flex items-center px-2.5 py-1 text-xs font-medium rounded-full bg-fusion-primary/10 text-fusion-primary border border-fusion-primary/20;
+  }
+}
+
+@layer utilities {
+}

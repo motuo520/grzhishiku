@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<style>
+body { background: #1a1a1a; margin: 0; display: flex; justify-content: center; align-items: center; height: 100vh; gap: 40px; }
+.mascot-box { text-align: center; }
+.mascot-box p { color: #888; font-family: sans-serif; font-size: 12px; margin-top: 10px; }
+</style>
+</head>
+<body>
+<div class="mascot-box">
+  <div id="mascot"></div>
+  <p>新吉祥物：神经元大脑</p>
+</div>
+<script type="module">
+  import React from 'react';
+  import ReactDOM from 'react-dom/client';
+  
+  const BrainMascotSvg = () => React.createElement('svg', {
+    viewBox: '0 0 120 120', width: 120, height: 120,
+    xmlns: 'http://www.w3.org/2000/svg'
+  }, [
+    React.createElement('defs', { key: 'defs' }, [
+      React.createElement('radialGradient', { key: 'cg', id: 'coreGlow', cx: '50%', cy: '50%', r: '50%' }, [
+        React.createElement('stop', { key: 's1', offset: '0%', stopColor: '#58a6ff', stopOpacity: '1' }),
+        React.createElement('stop', { key: 's2', offset: '40%', stopColor: '#3d7bd8', stopOpacity: '0.8' }),
+        React.createElement('stop', { key: 's3', offset: '100%', stopColor: '#1a3a6e', stopOpacity: '0.4' }),
+      ]),
+      React.createElement('linearGradient', { key: 'pg', id: 'pulseGrad', x1: '0%', y1: '0%', x2: '100%', y2: '100%' }, [
+        React.createElement('stop', { key: 's1', offset: '0%', stopColor: '#58a6ff', stopOpacity: '0.9' }),
+        React.createElement('stop', { key: 's2', offset: '50%', stopColor: '#a371f7', stopOpacity: '0.7' }),
+        React.createElement('stop', { key: 's3', offset: '100%', stopColor: '#58a6ff', stopOpacity: '0.5' }),
+      ]),
+      React.createElement('filter', { key: 'glow', id: 'glow', x: '-50%', y: '-50%', width: '200%', height: '200%' }, [
+        React.createElement('feGaussianBlur', { key: 'blur', stdDeviation: '3', result: 'blur' }),
+        React.createElement('feMerge', { key: 'merge' }, [
+          React.createElement('feMergeNode', { key: 'm1', in: 'blur' }),
+          React.createElement('feMergeNode', { key: 'm2', in: 'blur' }),
+          React.createElement('feMergeNode', { key: 'm3', in: 'SourceGraphic' }),
+        ]),
+      ]),
+      React.createElement('filter', { key: 'sg', id: 'softGlow', x: '-30%', y: '-30%', width: '160%', height: '160%' }, [
+        React.createElement('feGaussianBlur', { key: 'blur', stdDeviation: '1.5', result: 'blur' }),
+        React.createElement('feMerge', { key: 'merge' }, [
+          React.createElement('feMergeNode', { key: 'm1', in: 'blur' }),
+          React.createElement('feMergeNode', { key: 'm2', in: 'SourceGraphic' }),
+        ]),
+      ]),
+    ]),
+    React.createElement('circle', { key: 'bg1', cx: 60, cy: 60, r: 56, fill: '#0d1117' }),
+    React.createElement('circle', { key: 'bg2', cx: 60, cy: 60, r: 52, fill: '#161b22', stroke: '#30363d', strokeWidth: 0.5 }),
+    React.createElement('g', { key: 'orbits', stroke: '#30363d', strokeWidth: 0.3, fill: 'none', opacity: 0.6 }, [
+      React.createElement('ellipse', { key: 'o1', cx: 60, cy: 60, rx: 48, ry: 48 }),
+      React.createElement('ellipse', { key: 'o2', cx: 60, cy: 60, rx: 44, ry: 44, strokeDasharray: '2 4' }),
+    ]),
+    React.createElement('g', { key: 'leftBrain', stroke: '#58a6ff', strokeWidth: 0.8, fill: 'none', filter: 'url(#softGlow)' }, [
+      React.createElement('path', { key: 'l1', d: 'M36 48 C34 36 40 24 52 20 C58 18 64 20 68 26 C72 32 70 40 66 46 C62 52 56 54 50 52 C44 50 38 52 36 48', strokeWidth: 1 }),
+      React.createElement('path', { key: 'l2', d: 'M42 28 C44 32 48 34 52 32', strokeWidth: 0.5 }),
+      React.createElement('path', { key: 'l3', d: 'M38 36 C42 38 46 36 50 34', strokeWidth: 0.5 }),
+      React.createElement('path', { key: 'l4', d: 'M44 42 C48 44 52 42 56 40', strokeWidth: 0.5 }),
+      React.createElement('path', { key: 'l5', d: 'M50 48 C54 50 58 48 62 46', strokeWidth: 0.5 }),
+      React.createElement('path', { key: 'l6', d: 'M56 28 C58 32 60 36 58 40', strokeWidth: 0.5 }),
+      React.createElement('path', { key: 'l7', d: 'M62 32 C64 36 66 40 64 44', strokeWidth: 0.5 }),
+    ]),
+    React.createElement('g', { key: 'rightBrain', stroke: '#a371f7', strokeWidth: 0.8, fill: 'none', filter: 'url(#softGlow)' }, [
+      React.createElement('path', { key: 'r1', d: 'M84 48 C86 36 80 24 68 20 C62 18 56 20 52 26 C48 32 50 40 54 46 C58 52 64 54 70 52 C76 50 82 52 84 48', strokeWidth: 1 }),
+      React.createElement('path', { key: 'r2', d: 'M78 28 C76 32 72 34 68 32', strokeWidth: 0.5 }),
+      React.createElement('path', { key: 'r3', d: 'M82 36 C78 38 74 36 70 34', strokeWidth: 0.5 }),
+      React.createElement('path', { key: 'r4', d: 'M76 42 C72 44 68 42 64 40', strokeWidth: 0.5 }),
+      React.createElement('path', { key: 'r5', d: 'M70 48 C66 50 62 48 58 46', strokeWidth: 0.5 }),
+      React.createElement('path', { key: 'r6', d: 'M64 28 C62 32 60 36 62 40', strokeWidth: 0.5 }),
+      React.createElement('path', { key: 'r7', d: 'M58 32 C56 36 54 40 56 44', strokeWidth: 0.5 }),
+    ]),
+    React.createElement('g', { key: 'connect', stroke: '#58a6ff', strokeWidth: 0.6, fill: 'none', opacity: 0.8 }, [
+      React.createElement('path', { key: 'c1', d: 'M52 30 C54 32 56 34 58 32' }),
+      React.createElement('path', { key: 'c2', d: 'M50 36 C52 38 54 40 56 38' }),
+      React.createElement('path', { key: 'c3', d: 'M48 42 C50 44 52 46 54 44' }),
+      React.createElement('path', { key: 'c4', d: 'M52 48 C54 50 56 52 58 50' }),
+      React.createElement('path', { key: 'c5', d: 'M60 34 C62 36 64 38 66 36' }),
+      React.createElement('path', { key: 'c6', d: 'M62 40 C64 42 66 44 68 42' }),
+    ]),
+    React.createElement('g', { key: 'nodes', filter: 'url(#glow)' }, [
+      React.createElement('circle', { key: 'n1', cx: 60, cy: 38, r: 4, fill: 'url(#coreGlow)', stroke: 'none' }),
+      React.createElement('circle', { key: 'n2', cx: 60, cy: 38, r: 2, fill: '#ffffff', stroke: 'none', opacity: 0.8 }),
+      React.createElement('circle', { key: 'n3', cx: 44, cy: 32, r: 2.5, fill: '#58a6ff', stroke: 'none' }),
+      React.createElement('circle', { key: 'n4', cx: 44, cy: 32, r: 1, fill: '#ffffff', stroke: 'none', opacity: 0.6 }),
+      React.createElement('circle', { key: 'n5', cx: 48, cy: 44, r: 2, fill: '#58a6ff', stroke: 'none', opacity: 0.8 }),
+      React.createElement('circle', { key: 'n6', cx: 56, cy: 50, r: 1.5, fill: '#58a6ff', stroke: 'none', opacity: 0.7 }),
+      React.createElement('circle', { key: 'n7', cx: 76, cy: 32, r: 2.5, fill: '#a371f7', stroke: 'none' }),
+      React.createElement('circle', { key: 'n8', cx: 76, cy: 32, r: 1, fill: '#ffffff', stroke: 'none', opacity: 0.6 }),
+      React.createElement('circle', { key: 'n9', cx: 72, cy: 44, r: 2, fill: '#a371f7', stroke: 'none', opacity: 0.8 }),
+      React.createElement('circle', { key: 'n10', cx: 64, cy: 50, r: 1.5, fill: '#a371f7', stroke: 'none', opacity: 0.7 }),
+      React.createElement('circle', { key: 'n11', cx: 36, cy: 40, r: 1.5, fill: '#58a6ff', stroke: 'none', opacity: 0.5 }),
+      React.createElement('circle', { key: 'n12', cx: 84, cy: 40, r: 1.5, fill: '#a371f7', stroke: 'none', opacity: 0.5 }),
+      React.createElement('circle', { key: 'n13', cx: 40, cy: 52, r: 1, fill: '#58a6ff', stroke: 'none', opacity: 0.4 }),
+      React.createElement('circle', { key: 'n14', cx: 80, cy: 52, r: 1, fill: '#a371f7', stroke: 'none', opacity: 0.4 }),
+    ]),
+    React.createElement('g', { key: 'synapses', stroke: 'url(#pulseGrad)', strokeWidth: 0.4, fill: 'none', opacity: 0.7 }, [
+      React.createElement('path', { key: 's1', d: 'M56 38 C52 36 48 34 44 32' }),
+      React.createElement('path', { key: 's2', d: 'M58 40 C54 42 50 44 48 44' }),
+      React.createElement('path', { key: 's3', d: 'M56 42 C54 46 54 48 56 50' }),
+      React.createElement('path', { key: 's4', d: 'M64 38 C68 36 72 34 76 32' }),
+      React.createElement('path', { key: 's5', d: 'M62 40 C66 42 70 44 72 44' }),
+      React.createElement('path', { key: 's6', d: 'M64 42 C66 46 66 48 64 50' }),
+      React.createElement('path', { key: 's7', d: 'M44 32 C48 30 52 30 56 32', strokeDasharray: '1 2' }),
+      React.createElement('path', { key: 's8', d: 'M76 32 C72 30 68 30 64 32', strokeDasharray: '1 2' }),
+      React.createElement('path', { key: 's9', d: 'M48 44 C52 42 56 42 60 44', strokeDasharray: '2 3' }),
+      React.createElement('path', { key: 's10', d: 'M72 44 C68 42 64 42 60 44', strokeDasharray: '2 3' }),
+      React.createElement('path', { key: 's11', d: 'M44 32 C40 34 38 38 36 40', strokeWidth: 0.3, strokeOpacity: 0.5 }),
+      React.createElement('path', { key: 's12', d: 'M76 32 C80 34 82 38 84 40', strokeWidth: 0.3, strokeOpacity: 0.5 }),
+      React.createElement('path', { key: 's13', d: 'M48 44 C44 46 42 50 40 52', strokeWidth: 0.3, strokeOpacity: 0.4 }),
+      React.createElement('path', { key: 's14', d: 'M72 44 C76 46 78 50 80 52', strokeWidth: 0.3, strokeOpacity: 0.4 }),
+    ]),
+    React.createElement('g', { key: 'roots', stroke: '#3fb950', strokeWidth: 0.5, fill: 'none', opacity: 0.6, filter: 'url(#softGlow)' }, [
+      React.createElement('path', { key: 'rt1', d: 'M60 56 C60 64 58 72 56 80' }),
+      React.createElement('path', { key: 'rt2', d: 'M60 56 C62 64 64 72 66 80' }),
+      React.createElement('path', { key: 'rt3', d: 'M58 68 C54 72 50 76 46 80' }),
+      React.createElement('path', { key: 'rt4', d: 'M56 74 C52 78 48 82 44 86' }),
+      React.createElement('path', { key: 'rt5', d: 'M57 66 C54 68 50 70 48 72' }),
+      React.createElement('path', { key: 'rt6', d: 'M62 68 C66 72 70 76 74 80' }),
+      React.createElement('path', { key: 'rt7', d: 'M64 74 C68 78 72 82 76 86' }),
+      React.createElement('path', { key: 'rt8', d: 'M63 66 C66 68 70 70 72 72' }),
+      React.createElement('circle', { key: 'rtn1', cx: 46, cy: 80, r: 1.5, fill: '#3fb950', stroke: 'none' }),
+      React.createElement('circle', { key: 'rtn2', cx: 44, cy: 86, r: 1, fill: '#3fb950', stroke: 'none', opacity: 0.7 }),
+      React.createElement('circle', { key: 'rtn3', cx: 74, cy: 80, r: 1.5, fill: '#3fb950', stroke: 'none' }),
+      React.createElement('circle', { key: 'rtn4', cx: 76, cy: 86, r: 1, fill: '#3fb950', stroke: 'none', opacity: 0.7 }),
+      React.createElement('circle', { key: 'rtn5', cx: 56, cy: 80, r: 1.2, fill: '#3fb950', stroke: 'none' }),
+      React.createElement('circle', { key: 'rtn6', cx: 66, cy: 80, r: 1.2, fill: '#3fb950', stroke: 'none' }),
+    ]),
+    React.createElement('ellipse', { key: 'glow1', cx: 60, cy: 88, rx: 20, ry: 4, fill: 'none', stroke: '#3fb950', strokeWidth: 0.3, opacity: 0.3 }),
+    React.createElement('ellipse', { key: 'glow2', cx: 60, cy: 88, rx: 14, ry: 2.5, fill: 'none', stroke: '#3fb950', strokeWidth: 0.2, opacity: 0.2 }),
+    React.createElement('g', { key: 'p1', fill: '#58a6ff', opacity: 0.5 }, [
+      React.createElement('circle', { key: 'p1a', cx: 28, cy: 28, r: 1 }),
+      React.createElement('circle', { key: 'p1b', cx: 92, cy: 24, r: 0.8 }),
+      React.createElement('circle', { key: 'p1c', cx: 24, cy: 72, r: 0.6 }),
+      React.createElement('circle', { key: 'p1d', cx: 96, cy: 68, r: 0.9 }),
+      React.createElement('circle', { key: 'p1e', cx: 32, cy: 92, r: 0.7 }),
+      React.createElement('circle', { key: 'p1f', cx: 88, cy: 96, r: 0.5 }),
+    ]),
+    React.createElement('g', { key: 'p2', fill: '#a371f7', opacity: 0.4 }, [
+      React.createElement('circle', { key: 'p2a', cx: 20, cy: 48, r: 0.7 }),
+      React.createElement('circle', { key: 'p2b', cx: 100, cy: 52, r: 0.6 }),
+      React.createElement('circle', { key: 'p2c', cx: 36, cy: 96, r: 0.5 }),
+      React.createElement('circle', { key: 'p2d', cx: 84, cy: 100, r: 0.8 }),
+    ]),
+    React.createElement('g', { key: 'p3', fill: '#ffffff', opacity: 0.8 }, [
+      React.createElement('circle', { key: 'p3a', cx: 60, cy: 12, r: 1 }),
+      React.createElement('circle', { key: 'p3b', cx: 56, cy: 14, r: 0.5 }),
+      React.createElement('circle', { key: 'p3c', cx: 64, cy: 14, r: 0.5 }),
+    ]),
+  ]);
+  
+  ReactDOM.createRoot(document.getElementById('mascot')).render(
+    React.createElement('div', { style: { width: 120, height: 120, borderRadius: '50%', overflow: 'hidden', border: '2px solid #30363d', boxShadow: '0 0 20px rgba(88,166,255,0.3)' } },
+      React.createElement(BrainMascotSvg)
+    )
+  );
+</script>
+</body>
+</html>
