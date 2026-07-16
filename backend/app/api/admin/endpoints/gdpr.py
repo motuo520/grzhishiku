@@ -42,9 +42,9 @@ async def gdpr_delete_user(
         action="GDPR_DELETE_USER",
         resource_type="user",
         resource_id=data.user_id,
-        details=f"Reason: {data.reason}. IP: {request.client.host}",
+        details=f"Reason: {data.reason}. IP: {request.client.host if request.client else 'unknown'}",
         risk_level="high",
-        ip_address=request.client.host,
+        ip_address=request.client.host if request.client else "unknown",
     )
     db.add(log)
     

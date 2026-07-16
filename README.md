@@ -169,15 +169,22 @@ npm run build
 ├── frontend/             # React 前端
 │   ├── src/
 │   ├── public/
+│   ├── scripts/debug/    # 调试截图与检查脚本
 │   ├── Dockerfile
 │   └── nginx.conf
 ├── browser-extension/    # 浏览器扩展
 ├── docs/                 # 文档
-│   ├── DEPLOYMENT.md
+│   ├── design/           # 架构设计文档
+│   ├── plans/            # 迭代计划
+│   ├── DEPLOYMENT.md     # 通用部署指南
+│   ├── DEPLOYMENT.prod.md# 生产部署文档
 │   ├── OPERATIONS.md
 │   └── USER_GUIDE.md
-├── docker-compose.yml
-├── prometheus.yml
+├── monitoring/           # Prometheus + Grafana 配置
+├── nginx/                # 反向代理与 SSL 配置
+├── scripts/              # 本地工具脚本（Ollama 等）
+├── docker-compose.yml    # 内测部署
+├── docker-compose.prod.yml
 └── README.md
 ```
 

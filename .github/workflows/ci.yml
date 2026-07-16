@@ -28,10 +28,18 @@ jobs:
         cd backend
         pip install -r requirements.txt
 
-    - name: Run backend tests
+    - name: Run backend tests with coverage
       run: |
         cd backend
-        pytest tests/ -v --tb=short
+        pytest tests/ -v --tb=short --cov=app --cov-report=term-missing --cov-report=xml
+      # TODO: 覆盖率稳定后增加 --cov-fail-under=80 硬门槛
+
+    - name: Upload coverage report
+      uses: actions/upload-artifact@v4
+      with:
+        name: coverage-report
+        path: backend/coverage.xml
+        if-no-files-found: ignore
 
     - name: Check backend import
       run: |

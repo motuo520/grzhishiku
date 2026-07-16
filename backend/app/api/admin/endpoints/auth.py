@@ -81,7 +81,7 @@ async def admin_login(login_data: AdminLogin, request: Request, db: Session = De
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
     admin.last_login_at = datetime.utcnow()
-    admin.last_login_ip = request.client.host
+    admin.last_login_ip = request.client.host if request.client else "unknown"
     db.commit()
 
     access_token = create_access_token(
