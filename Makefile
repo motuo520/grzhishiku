@@ -59,15 +59,18 @@ docker-build:
 # Testing
 test:
 	cd backend && pytest
-	cd frontend && npm run test
+	cd frontend && npm run typecheck
+
+# 前端端到端测试（需先启动前后端服务）
+test-e2e:
+	cd frontend && npm run test:e2e
 
 # Code quality
 lint:
 	cd frontend && npm run lint
-	cd backend && flake8 app
+	cd backend && ruff check app
 
 format:
-	cd frontend && npm run format
 	cd backend && black app
 
 # Clean

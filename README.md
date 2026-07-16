@@ -229,8 +229,8 @@ npm run build
 
 ### 代码规范
 
-- 后端：PEP 8，使用 `black` 和 `ruff` 格式化
-- 前端：ESLint + Prettier，TypeScript 严格模式
+- 后端：PEP 8，使用 `black` 和 `ruff` 格式化与检查（`make format` / `make lint`）
+- 前端：ESLint，TypeScript 严格模式（`npm run lint` / `npm run typecheck`）
 - 所有新功能需附带单元测试（覆盖率 ≥ 80%）
 
 ---
