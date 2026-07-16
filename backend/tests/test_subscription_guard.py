@@ -4,91 +4,50 @@ from fastapi import HTTPException
 from app.core.subscription_guard import SubscriptionGuard
 from app.services.billing_service import BillingService
 
-
-@pytest.fixture
-def free_plan(db_session):
-    from app.models.billing import Plan
-    plan = Plan(
-        id="plan_free",
-        name="Free",
-        slug="free",
-        price_monthly=0,
-        price_yearly=0,
-        currency="CNY",
-        is_active=True,
-    )
-    db_session.add(plan)
-    db_session.commit()
-    db_session.refresh(plan)
-    return plan
+# The product now has two subscription tiers: free / storage.
+# The free and storage plans are seeded by conftest.seed_default_plans.
 
 
 @pytest.fixture
-def pro_plan(db_session):
-    from app.models.billing import Plan
-    plan = Plan(
-        id="plan_pro",
-        name="Pro",
-        slug="pro",
-        price_monthly=2900,
-        price_yearly=29000,
-        currency="CNY",
-        is_active=True,
-    )
-    db_session.add(plan)
-    db_session.commit()
-    db_session.refresh(plan)
-    return plan
+def storage_plan(db_session):
+    return BillingService(db_session).get_plan_by_slug("storage")
 
 
 class TestSubscriptionGuard:
     @pytest.mark.asyncio
-    async def test_free_user_blocked_from_pro(self, db_session, test_user, pro_plan):
-        guard = SubscriptionGuard("pro")
+    async def test_free_user_blocked_from_storage(self, db_session, test_user):
+        guard = SubscriptionGuard("storage")
         with pytest.raises(HTTPException) as exc_info:
             await guard(test_user, db_session)
         assert exc_info.value.status_code == 403
-        assert "Requires pro subscription" in exc_info.value.detail
+        assert "Requires storage subscription" in exc_info.value.detail
 
     @pytest.mark.asyncio
-    async def test_pro_user_allowed(self, db_session, test_user, pro_plan, free_plan):
+    async def test_storage_user_allowed(self, db_session, test_user, storage_plan):
         billing = BillingService(db_session)
-        billing.create_subscription(test_user.id, pro_plan.id, "monthly")
+        billing.create_subscription(test_user.id, storage_plan.id, "monthly")
 
-        guard = SubscriptionGuard("pro")
+        guard = SubscriptionGuard("storage")
         result = await guard(test_user, db_session)
         assert result.id == test_user.id
 
     @pytest.mark.asyncio
-    async def test_team_user_allowed_for_pro(self, db_session, test_user, pro_plan, free_plan):
-        from app.models.billing import Plan
-        team_plan = Plan(
-            id="plan_team",
-            name="Team",
-            slug="team",
-            price_monthly=9900,
-            price_yearly=99000,
-            currency="CNY",
-            is_active=True,
-        )
-        db_session.add(team_plan)
-        db_session.commit()
-        db_session.refresh(team_plan)
-
+    async def test_storage_user_allowed_for_free(self, db_session, test_user, storage_plan):
         billing = BillingService(db_session)
-        billing.create_subscription(test_user.id, team_plan.id, "monthly")
+        billing.create_subscription(test_user.id, storage_plan.id, "monthly")
 
-        guard = SubscriptionGuard("pro")
+        guard = SubscriptionGuard("free")
         result = await guard(test_user, db_session)
         assert result.id == test_user.id
 
     @pytest.mark.asyncio
-    async def test_pro_user_blocked_from_team(self, db_session, test_user, pro_plan, free_plan):
+    async def test_cancelled_subscription_blocked_from_storage(self, db_session, test_user, storage_plan):
         billing = BillingService(db_session)
-        billing.create_subscription(test_user.id, pro_plan.id, "monthly")
+        billing.create_subscription(test_user.id, storage_plan.id, "monthly")
+        billing.cancel_subscription(test_user.id)
 
-        guard = SubscriptionGuard("team")
+        guard = SubscriptionGuard("storage")
         with pytest.raises(HTTPException) as exc_info:
             await guard(test_user, db_session)
         assert exc_info.value.status_code == 403
-        assert "Requires team subscription" in exc_info.value.detail
+        assert "Requires storage subscription" in exc_info.value.detail

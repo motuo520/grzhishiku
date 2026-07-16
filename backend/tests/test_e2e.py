@@ -73,15 +73,32 @@ app.dependency_overrides[get_db] = override_get_db
 
 client = TestClient(app)
 
+
+def _get_verification_code(email: str) -> str:
+    """Request a real verification code via the API and read it from the
+    in-memory verification store (dev mode)."""
+    from app.services import verification_service
+    resp = client.post("/api/v1/auth/send-verification-code", json={"email": email})
+    assert resp.status_code == 200
+    record = verification_service._store.get(email.strip().lower())
+    assert record, f"no verification code stored for {email}"
+    return record["code"]
+
+
+def _register(email: str, password: str):
+    """Register through the real verification-code flow."""
+    return client.post("/api/v1/auth/register", json={
+        "email": email,
+        "password": password,
+        "verification_code": _get_verification_code(email),
+    })
+
+
 class TestAuthFlow:
     """End-to-end test: Registration -> Login -> Access protected routes"""
-    
+
     def test_register(self):
-        response = client.post("/api/v1/auth/register", json={
-            "email": "test@example.com",
-            "password": "Password123",
-            "name": "Test User"
-        })
+        response = _register("test@example.com", "Password123")
         assert response.status_code == 200
         data = response.json()
         assert "access_token" in data
@@ -105,18 +122,15 @@ class TestAuthFlow:
         assert response.status_code == 200
         data = response.json()
         assert data["email"] == "test@example.com"
-        assert data["name"] == "Test User"
+        # Registration derives the display name from the email prefix
+        assert data["name"] == "test"
 
 class TestCapsuleFlow:
     """End-to-end test: Create capsule -> List -> Unlock -> Dialogue"""
     
     @pytest.fixture
     def auth_token(self):
-        client.post("/api/v1/auth/register", json={
-            "email": "capsule@example.com",
-            "password": "Password123",
-            "name": "Capsule User"
-        })
+        _register("capsule@example.com", "Password123")
         response = client.post("/api/v1/auth/login", json={
             "email": "capsule@example.com",
             "password": "Password123"
@@ -157,11 +171,7 @@ class TestKnowledgeFlow:
     
     @pytest.fixture
     def auth_token(self):
-        client.post("/api/v1/auth/register", json={
-            "email": "knowledge@example.com",
-            "password": "Password123",
-            "name": "Knowledge User"
-        })
+        _register("knowledge@example.com", "Password123")
         response = client.post("/api/v1/auth/login", json={
             "email": "knowledge@example.com",
             "password": "Password123"
@@ -202,11 +212,7 @@ class TestAttentionFlow:
     
     @pytest.fixture
     def auth_token(self):
-        client.post("/api/v1/auth/register", json={
-            "email": "attention@example.com",
-            "password": "Password123",
-            "name": "Attention User"
-        })
+        _register("attention@example.com", "Password123")
         response = client.post("/api/v1/auth/login", json={
             "email": "attention@example.com",
             "password": "Password123"

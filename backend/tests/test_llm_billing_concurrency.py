@@ -3,20 +3,9 @@ import pytest
 from decimal import Decimal
 
 from app.services.llm_billing_service import LLMBillingService, ConcurrentModificationError
-from app.models.llm_billing import LLMModel, UserBalance
+from app.models.llm_billing import UserBalance
 
-
-@pytest.fixture
-def model(db_session):
-    m = LLMModel(
-        id="deepseek-v4-pro",
-        name="DeepSeek V4 Pro",
-        provider="deepseek",
-        provider_model_id="deepseek-v4-pro",
-    )
-    db_session.add(m)
-    db_session.commit()
-    return m
+# deepseek-v4-pro is seeded by conftest.seed_system_models
 
 
 def _simulate_stale_balance_read(db_session, svc, user_id):
@@ -36,7 +25,7 @@ def _simulate_stale_balance_read(db_session, svc, user_id):
     return balance
 
 
-def test_complete_detects_version_conflict(db_session, test_user, model):
+def test_complete_detects_version_conflict(db_session, test_user):
     """complete() raises ConcurrentModificationError when the balance row changed."""
     svc = LLMBillingService(db_session)
     svc.give_trial_credit(test_user.id)
@@ -63,7 +52,7 @@ def test_complete_detects_version_conflict(db_session, test_user, model):
         )
 
 
-def test_fail_detects_version_conflict(db_session, test_user, model):
+def test_fail_detects_version_conflict(db_session, test_user):
     """fail() raises ConcurrentModificationError when the balance row changed."""
     svc = LLMBillingService(db_session)
     svc.give_trial_credit(test_user.id)
@@ -100,7 +89,7 @@ def test_deposit_balance_detects_version_conflict(db_session, test_user):
         )
 
 
-def test_freeze_and_complete_happy_path_balance_correct(db_session, test_user, model):
+def test_freeze_and_complete_happy_path_balance_correct(db_session, test_user):
     """Ensure normal freeze/complete still works after optimistic-lock changes."""
     svc = LLMBillingService(db_session)
     svc.give_trial_credit(test_user.id)
@@ -116,7 +105,8 @@ def test_freeze_and_complete_happy_path_balance_correct(db_session, test_user, m
     db_session.commit()
 
     balance = svc.get_balance(test_user.id)
-    assert balance.balance == Decimal("4.00")
+    # Trial credit is 1.00 CNY: 1.00 - 1.00 frozen
+    assert balance.balance == Decimal("0.00")
     assert balance.frozen == Decimal("1.00")
     # give_trial_credit -> v1, freeze -> v2
     assert balance.version == 2
@@ -131,8 +121,8 @@ def test_freeze_and_complete_happy_path_balance_correct(db_session, test_user, m
     db_session.commit()
 
     balance = svc.get_balance(test_user.id)
-    # 5.0 - 0.5 = 4.5
-    assert balance.balance == Decimal("4.50")
+    # 1.0 - 0.5 = 0.5
+    assert balance.balance == Decimal("0.50")
     assert balance.frozen == Decimal("0")
     assert balance.total_used == Decimal("0.50")
     assert balance.version == 3

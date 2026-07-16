@@ -127,6 +127,108 @@ def seed_system_models(db_session):
             db_session.add(model)
     db_session.commit()
 
+@pytest.fixture(autouse=True)
+def seed_default_plans(db_session):
+    """Seed the default free/storage subscription plans like app startup does,
+    so plan-based feature checks behave the same as in production."""
+    from app.models.billing import Plan
+    import json as _json
+
+    defaults = [
+        {
+            "slug": "free",
+            "name": "免费版",
+            "features": {"ai_summary": True, "web_clipper": True, "public_sharing": False, "cloud_backup": False},
+            "limits": {"notes": 100, "clips_per_month": 50, "knowledge_units": 200, "documents": 20,
+                       "storage_bytes": 1073741824, "llm_calls_per_day": 50},
+        },
+        {
+            "slug": "storage",
+            "name": "存储会员",
+            "features": {"cloud_backup": True, "priority_support": True, "ai_summary": True,
+                         "web_clipper": True, "public_sharing": True},
+            "limits": {"notes": -1, "clips_per_month": -1, "knowledge_units": -1, "documents": -1,
+                       "storage_bytes": 10737418240, "llm_calls_per_day": -1},
+        },
+    ]
+    existing = {p.slug for p in db_session.query(Plan.slug).filter(Plan.slug.in_(["free", "storage"])).all()}
+    for spec in defaults:
+        if spec["slug"] in existing:
+            continue
+        db_session.add(Plan(
+            id=f"plan_{spec['slug']}",
+            name=spec["name"],
+            slug=spec["slug"],
+            price_monthly=0 if spec["slug"] == "free" else 990,
+            price_yearly=0 if spec["slug"] == "free" else 9900,
+            currency="CNY",
+            billing_cycle="monthly",
+            is_active=True,
+            sort_order=0 if spec["slug"] == "free" else 1,
+            features=_json.dumps(spec["features"], ensure_ascii=False),
+            limits=_json.dumps(spec["limits"], ensure_ascii=False),
+        ))
+    db_session.commit()
+
+
+@pytest.fixture(autouse=True)
+def seed_system_configs(db_session):
+    """Seed production-parity system configs (app startup seeds these into the
+    real DB; tests run against an empty in-memory DB)."""
+    from app.models.base import SystemConfig
+    from app.core.config_loader import invalidate_system_config_cache
+
+    defaults = {"enable_signup_bonus": "true"}
+    existing = {c.key for c in db_session.query(SystemConfig.key).filter(SystemConfig.key.in_(list(defaults))).all()}
+    for key, val in defaults.items():
+        if key not in existing:
+            db_session.add(SystemConfig(id=str(uuid.uuid4()), key=key, value_json=val))
+    db_session.commit()
+    invalidate_system_config_cache()
+
+
+@pytest.fixture(autouse=True)
+def reset_verification_store():
+    """Clear the in-memory email-verification store before each test.
+
+    The store enforces a 60s resend cooldown per email; without a reset,
+    tests that re-register the same email would hit 429s from shared state."""
+    from app.services import verification_service
+
+    with verification_service._lock:
+        verification_service._store.clear()
+    yield
+
+
+@pytest.fixture
+def get_verification_code(client):
+    """Return a factory that requests a real email verification code through the
+    API and reads it back from the in-memory verification store."""
+    from app.services import verification_service
+
+    def _get_code(email: str) -> str:
+        resp = client.post("/api/v1/auth/send-verification-code", json={"email": email})
+        assert resp.status_code == 200
+        record = verification_service._store.get(email.strip().lower())
+        assert record, f"no verification code stored for {email}"
+        return record["code"]
+
+    return _get_code
+
+
+@pytest.fixture
+def register_user(client, get_verification_code):
+    """Register a user through the real verification-code flow; returns the response."""
+    def _register(email: str, password: str = "TestPass123"):
+        return client.post("/api/v1/auth/register", json={
+            "email": email,
+            "password": password,
+            "verification_code": get_verification_code(email),
+        })
+
+    return _register
+
+
 @pytest.fixture
 def db_session() -> Session:
     connection = engine.connect()

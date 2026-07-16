@@ -8,9 +8,14 @@ from app.models.billing import Plan, Payment
 
 
 @pytest.fixture(autouse=True)
-def init_payment_factory_fixture():
-    """Initialize the payment factory for order tests."""
-    init_payment_factory({"alipay": {}, "wechat": {}, "stripe": {}})
+def init_payment_factory_fixture(client):
+    """Initialize the payment factory for order tests.
+
+    Must run after the app lifespan (which re-initializes the factory from the
+    real DB at TestClient startup), hence the dependency on `client`.
+    Alipay is marked enabled with a partial credential set so it is listed as
+    available while the provider itself stays in mock mode (no private key)."""
+    init_payment_factory({"alipay": {"enabled": True, "app_id": "test-app-id"}, "wechat": {}, "stripe": {}})
 
 
 @pytest.fixture

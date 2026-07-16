@@ -31,37 +31,9 @@ def test_get_nodes_brain_side_filter(client, auth_headers, test_note, test_clip)
     assert test_clip.id not in ids
 
 
-def test_get_network(client, auth_headers, test_note, test_clip, db_session):
-    edge = GraphEdge(
-        id="edge-test-1",
-        user_id=test_note.user_id,
-        source_id=test_note.id,
-        target_id=test_clip.id,
-        source_brain_side="personal",
-        target_brain_side="network",
-        edge_type="reference",
-        strength=0.8,
-        cross_brain=True,
-    )
-    db_session.add(edge)
-    db_session.commit()
-
-    response = client.get("/api/v1/graph/network", headers=auth_headers)
-    assert response.status_code == 200
-    data = response.json()
-    assert "personal_nodes" in data
-    assert "network_nodes" in data
-    assert "cross_brain_edges" in data
-    assert any(e["id"] == edge.id for e in data["cross_brain_edges"])
-
-
-def test_get_brain_stats(client, auth_headers, test_note, test_clip):
-    response = client.get("/api/v1/graph/brain-stats", headers=auth_headers)
-    assert response.status_code == 200
-    data = response.json()
-    assert data["personal"]["node_count"] >= 1
-    assert data["network"]["node_count"] >= 1
-    assert "fusion_score" in data
+# NOTE: GET /api/v1/graph/network and /api/v1/graph/brain-stats were removed from
+# the product API. Their coverage lives on in test_get_nodes / test_get_bridges
+# (this file) and tests/test_brain.py::test_brain_stats (GET /api/v1/brain/stats).
 
 
 def test_get_bridges(client, auth_headers, test_note, test_clip, db_session):

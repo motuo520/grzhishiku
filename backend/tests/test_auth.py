@@ -3,30 +3,28 @@ from fastapi.testclient import TestClient
 
 
 class TestAuth:
-    def test_register_success(self, client: TestClient):
-        resp = client.post("/api/v1/auth/register", json={
-            "email": "newuser@example.com",
-            "password": "NewPass123",
-            "name": "New User",
-        })
+    def test_register_success(self, client: TestClient, register_user):
+        resp = register_user("newuser@example.com", "NewPass123")
         assert resp.status_code == 200
         data = resp.json()
         assert "access_token" in data
         assert data["token_type"] == "bearer"
 
-    def test_register_weak_password(self, client: TestClient):
+    def test_register_weak_password(self, client: TestClient, get_verification_code):
         resp = client.post("/api/v1/auth/register", json={
             "email": "weak@example.com",
             "password": "weak",
             "name": "Weak",
+            "verification_code": get_verification_code("weak@example.com"),
         })
         assert resp.status_code == 422
 
-    def test_register_missing_uppercase(self, client: TestClient):
+    def test_register_missing_uppercase(self, client: TestClient, get_verification_code):
         resp = client.post("/api/v1/auth/register", json={
             "email": "weak2@example.com",
             "password": "weakpass123",
             "name": "Weak",
+            "verification_code": get_verification_code("weak2@example.com"),
         })
         assert resp.status_code == 422
 

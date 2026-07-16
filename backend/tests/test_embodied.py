@@ -20,7 +20,7 @@ def test_depth_check_success(mock_llm, client, auth_headers, db_session):
     mock_llm.return_value = '{"depth_score": 0.8, "is_passed": true, "feedback": "有深度", "suggestions": ["继续保持"]}'
     response = client.post(
         "/api/v1/embodied/depth-check",
-        json={"content": "这是一段经过认真思考的内容。", "content_type": "note"},
+        json={"content": "这是一段经过认真思考的内容。", "content_type": "note", "use_ai": True},
         headers=auth_headers,
     )
     assert response.status_code == 200
@@ -43,7 +43,7 @@ def test_depth_check_success_with_chinese_preamble(mock_llm, client, auth_header
     )
     response = client.post(
         "/api/v1/embodied/depth-check",
-        json={"content": "这是测试内容。", "content_type": "note"},
+        json={"content": "这是测试内容。", "content_type": "note", "use_ai": True},
         headers=auth_headers,
     )
     assert response.status_code == 200
@@ -59,7 +59,7 @@ def test_depth_check_error_on_failure(mock_llm, client, auth_headers):
     mock_llm.side_effect = Exception("LLM failed")
     response = client.post(
         "/api/v1/embodied/depth-check",
-        json={"content": "测试内容。"},
+        json={"content": "测试内容。", "use_ai": True},
         headers=auth_headers,
     )
     assert response.status_code == 500

@@ -4,29 +4,30 @@ from decimal import Decimal
 
 from app.services.llm_billing_service import LLMBillingService
 from app.services.payment_providers.factory import init_payment_factory
-from app.models.billing import Payment
-from app.models.llm_billing import LLMModel
 
 
 @pytest.fixture(autouse=True)
-def init_payment_factory_fixture():
-    """Initialize the payment factory for top-up tests."""
-    init_payment_factory({"alipay": {}, "wechat": {}, "stripe": {}})
+def init_payment_factory_fixture(client):
+    """Initialize the payment factory for top-up tests.
+
+    Must run after the app lifespan (which re-initializes the factory from the
+    real DB at TestClient startup), hence the dependency on `client`.
+    Alipay is marked enabled with a partial credential set so it is listed as
+    available while the provider itself stays in mock mode (no private key)."""
+    init_payment_factory({"alipay": {"enabled": True, "app_id": "test-app-id"}, "wechat": {}, "stripe": {}})
 
 
-def test_register_gives_trial_credit(client, db_session):
-    res = client.post(
-        "/api/v1/auth/register",
-        json={"email": "billing@example.com", "password": "TestPass123", "name": "Billing"},
-    )
+def test_register_gives_trial_credit(client, db_session, register_user):
+    res = register_user("billing@example.com", "TestPass123")
     assert res.status_code == 200
     token = res.json()["access_token"]
 
     balance_res = client.get("/api/v1/billing/balance", headers={"Authorization": f"Bearer {token}"})
     assert balance_res.status_code == 200
     data = balance_res.json()
-    assert data["balance"] == 5.0
-    assert data["total_deposited"] == 5.0
+    # Trial credit amount is TRIAL_CREDIT_CNY = 1.00 CNY (reduced from 5 CNY in Jul 2026)
+    assert data["balance"] == 1.0
+    assert data["total_deposited"] == 1.0
 
 
 def test_balance_endpoint_requires_auth(client):
@@ -64,17 +65,7 @@ def test_topup_order_and_webhook(client, test_user_token):
 
 
 def test_llm_billing_service_freeze_and_complete(db_session, test_user):
-    # Seed the model referenced by the usage record FK
-    db_session.add(
-        LLMModel(
-            id="deepseek-v4-pro",
-            name="DeepSeek V4 Pro",
-            provider="deepseek",
-            provider_model_id="deepseek-v4-pro",
-        )
-    )
-    db_session.commit()
-
+    # deepseek-v4-pro is seeded by conftest.seed_system_models
     svc = LLMBillingService(db_session)
     svc.give_trial_credit(test_user.id)
 
@@ -90,7 +81,8 @@ def test_llm_billing_service_freeze_and_complete(db_session, test_user):
 
     balance = svc.get_balance(test_user.id)
     assert balance.frozen == Decimal("0.01")
-    assert balance.balance == Decimal("4.99")
+    # Trial credit is 1.00 CNY: 1.0 - 0.01 frozen
+    assert balance.balance == Decimal("0.99")
 
     svc.complete(
         record_id=record_id,
@@ -103,5 +95,5 @@ def test_llm_billing_service_freeze_and_complete(db_session, test_user):
 
     balance = svc.get_balance(test_user.id)
     assert balance.frozen == Decimal("0")
-    # 5.0 - 0.006 = 4.994
-    assert balance.balance == Decimal("4.994")
+    # 1.0 - 0.006 = 0.994
+    assert balance.balance == Decimal("0.994")

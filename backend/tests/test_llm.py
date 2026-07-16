@@ -58,6 +58,7 @@ class TestLLM:
         with patch.object(llm_service, "embed", new=AsyncMock(return_value=[0.1] * 768)):
             resp = client.post("/api/v1/llm/embed", headers=auth_headers, json={
                 "text": "Embedding billing test",
+                "model": "ollama-nomic",
             })
             assert resp.status_code == 200
             data = resp.json()
@@ -75,6 +76,7 @@ class TestLLM:
         with patch.object(llm_service, "batch_embed", new=AsyncMock(return_value=[[0.1] * 768, [0.2] * 768])):
             resp = client.post("/api/v1/llm/embed-batch", headers=auth_headers, json={
                 "texts": ["first", "second"],
+                "model": "ollama-nomic",
             })
             assert resp.status_code == 200
             data = resp.json()
