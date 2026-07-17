@@ -126,6 +126,26 @@ npm run build
 # Chrome 扩展管理页加载 dist/ 目录
 ```
 
+**桌面端（Electron）**
+```bash
+cd desktop
+npm install
+
+# 开发模式：加载 vite 开发服务器（需先启动前端）
+set PSB_WEB_URL=http://127.0.0.1:3000
+npm run dev
+
+# 生产模式：先用绝对 API 地址构建前端，再启动
+cd ../frontend
+set VITE_API_URL=http://127.0.0.1:8002
+npm run build
+cd ../desktop
+npm run dev        # 加载 ../frontend/dist
+
+# 打包 Windows 便携版（输出在 desktop/release/）
+npm run dist
+```
+
 ---
 
 ## 测试账号
@@ -173,6 +193,7 @@ npm run build
 │   ├── Dockerfile
 │   └── nginx.conf
 ├── browser-extension/    # 浏览器扩展
+├── desktop/              # 桌面端（Electron 壳，复用 frontend 构建产物）
 ├── docs/                 # 文档
 │   ├── design/           # 架构设计文档
 │   ├── plans/            # 迭代计划

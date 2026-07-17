@@ -1,0 +1,41 @@
+{
+  "name": "psb-desktop",
+  "version": "0.1.0",
+  "private": true,
+  "description": "个人第二大脑桌面端（Electron 壳，复用 frontend 构建产物）",
+  "main": "main.js",
+  "author": "Personal Second Brain Contributors",
+  "license": "MIT",
+  "scripts": {
+    "dev": "electron .",
+    "smoke": "electron . --smoke",
+    "pack": "electron-builder --dir",
+    "dist": "electron-builder --win portable"
+  },
+  "devDependencies": {
+    "electron": "^33.4.0",
+    "electron-builder": "^25.1.8"
+  },
+  "build": {
+    "appId": "com.psb.desktop",
+    "productName": "个人第二大脑",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "main.js",
+      "preload.js"
+    ],
+    "extraFiles": [
+      {
+        "from": "../frontend/dist",
+        "to": "frontend/dist"
+      }
+    ],
+    "win": {
+      "target": [
+        "portable"
+      ]
+    }
+  }
+}

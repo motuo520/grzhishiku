@@ -39,6 +39,16 @@ extension-build:
 extension-build-all:
 	cd browser-extension && npm run build:chrome && npm run build:firefox
 
+# Desktop commands
+desktop:
+	cd desktop && npm run dev
+
+desktop-smoke:
+	cd desktop && npm run smoke
+
+desktop-dist:
+	cd desktop && npm run dist
+
 # Database
 db-migrate:
 	cd backend && alembic upgrade head
