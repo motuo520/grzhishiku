@@ -209,6 +209,25 @@ async def lifespan(app: FastAPI):
                 VALUES (:id, '存储会员', 'storage', '云端备份、更大额度与优先支持，为认真沉淀知识的你而设。', 990, 9900, 'CNY', 'monthly', 1, 1, :features, :limits, :now, :now)
             """), {"id": str(uuid.uuid4()), "features": storage_features, "limits": storage_limits, "now": now})
 
+    # Seed default embedding model into the billing catalog if missing.
+    # /llm/embed 的默认计费模型；不在 catalog 时调用会被放行但不产生用量记录。
+    # 本地模型价格为 0：正常记录用量，不计费用。
+    from app.models.llm_billing import LLMModel
+    with engine.begin() as conn:
+        embed_model_exists = conn.execute(
+            sa_select(LLMModel).where(LLMModel.id == 'ollama-qwen2.5-0.5b')
+        ).first()
+        if not embed_model_exists:
+            conn.execute(text("""
+                INSERT INTO llm_models (id, name, provider, provider_model_id, description,
+                    is_active, is_system, supports_streaming, context_length, sort_order,
+                    cost_input_per_1k, cost_output_per_1k, price_input_per_1k, price_output_per_1k,
+                    currency, created_at, updated_at)
+                VALUES ('ollama-qwen2.5-0.5b', '本地 / Qwen 2.5 0.5B', 'ollama', 'qwen2.5:0.5b',
+                    '本地嵌入模型，记录用量但免计费，适合个人知识库与检索场景',
+                    1, 0, 0, 32768, 1, 0, 0, 0, 0, 'CNY', datetime('now'), datetime('now'))
+            """))
+
     # Load and initialize plugins, then mount the MCP SSE server
     from app.mcp.server import mcp, mount_mcp
     from app.plugins.manager import plugin_manager

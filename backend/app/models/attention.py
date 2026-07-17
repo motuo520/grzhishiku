@@ -32,6 +32,7 @@ class AttentionActivity(Base):
     focus_recovery = Column(Float)
     focus_switching = Column(Float)
     created_at = Column(DateTime, server_default=func.now())
+    tenant_id = Column(String)
 
     __table_args__ = (
         Index('ix_attention_user_created', 'user_id', 'created_at'),
@@ -54,6 +55,7 @@ class AttentionCategory(Base):
     notify_at = Column(Float)
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
+    tenant_id = Column(String)
 
 class AttentionGuardianRule(Base):
     __tablename__ = "attention_guardian_rules"
@@ -106,3 +108,4 @@ class DeepWorkSession(Base):
     blocked_attempts = Column(Integer, default=0)
     completion_status = Column(String)
     end_reason = Column(String)
+    tenant_id = Column(String)

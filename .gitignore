@@ -28,6 +28,8 @@ frontend/node_modules/
 frontend/dist/
 browser-extension/node_modules/
 browser-extension/dist/
+desktop/node_modules/
+desktop/release/
 
 # 备份与临时文件
 *.bak
