@@ -20,6 +20,9 @@ from app.models.base import (
 from app.models.billing import Subscription, Payment
 from app.core.security import get_password_hash
 
+# 开发/测试环境管理员密码。生产环境请勿使用默认测试账号。
+DEV_ADMIN_PASSWORD = os.environ.get("PSB_DEV_ADMIN_PASSWORD", "dev-admin-password")
+
 try:
     from faker import Faker
     FAKER_AVAILABLE = True
@@ -320,7 +323,7 @@ def generate_admin_user(db):
             id=str(uuid4()),
             email='admin@test.com',
             name='Admin',
-            password_hash=get_password_hash('REPLACE_DEV_ADMIN_PASSWORD'),
+            password_hash=get_password_hash(DEV_ADMIN_PASSWORD),
             role='super_admin',
             status='active',
             created_at=datetime.utcnow(),
@@ -339,7 +342,7 @@ def ensure_base_users(db):
             name='Admin User',
             username='admin',
             display_name='Admin',
-            password_hash=get_password_hash('REPLACE_DEV_ADMIN_PASSWORD'),
+            password_hash=get_password_hash(DEV_ADMIN_PASSWORD),
             status='active',
             subscription_tier='enterprise',
             created_at=datetime.utcnow() - timedelta(days=30),

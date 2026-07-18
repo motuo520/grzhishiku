@@ -1,6 +1,7 @@
 import { FC, useState, useRef, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Sparkles, X } from 'lucide-react';
+import { Sparkles, X, BookOpen } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { useNavigation } from '@/store/navigation';
 import { useSettings } from '@/store/settings';
 import { apiClient } from '@/api/client';
@@ -14,6 +15,7 @@ interface ChatMessage {
   model?: string;
   timestamp: Date;
   isStreaming?: boolean;
+  sources?: Array<{ id: string; title: string; preview: string; source_type: string; content_type?: string }>;
 }
 
 interface ChatPanelProps {
@@ -22,6 +24,7 @@ interface ChatPanelProps {
 }
 
 const ChatPanel: FC<ChatPanelProps> = ({ isOpen, onClose }) => {
+  const navigate = useNavigate();
   const { brainSide } = useNavigation();
   const { defaultLLM, ollamaModel } = useSettings();
   const [message, setMessage] = useState('');
@@ -118,6 +121,13 @@ const ChatPanel: FC<ChatPanelProps> = ({ isOpen, onClose }) => {
                   setMessages((prev) =>
                     prev.map((m) =>
                       m.id === aiMsgId ? { ...m, content: fullContent, isStreaming: true } : m
+                    )
+                  );
+                }
+                if (data.type === 'sources' && Array.isArray(data.sources)) {
+                  setMessages((prev) =>
+                    prev.map((m) =>
+                      m.id === aiMsgId ? { ...m, sources: data.sources } : m
                     )
                   );
                 }
@@ -235,6 +245,35 @@ const ChatPanel: FC<ChatPanelProps> = ({ isOpen, onClose }) => {
                     <div className="whitespace-pre-wrap break-words">{msg.content}</div>
                     {msg.isStreaming && (
                       <span className="inline-block w-1.5 h-3 bg-info animate-pulse ml-1" />
+                    )}
+                    {msg.role === 'ai' && msg.sources && msg.sources.length > 0 && (
+                      <div className="mt-3 pt-2 border-t border-border-color/60">
+                        <div className="text-[10px] text-text-muted mb-1.5 flex items-center gap-1">
+                          <BookOpen className="w-3 h-3" />
+                          引用来源
+                        </div>
+                        <div className="space-y-1.5">
+                          {msg.sources.map((src, idx) => (
+                            <button
+                              key={src.id}
+                              onClick={() => navigate(`/knowledge/${src.id}`)}
+                              type="button"
+                              className="w-full text-left px-2 py-1.5 rounded-[2px] bg-bg-primary/60 hover:bg-bg-primary border border-border-color/40 hover:border-accent/40 transition-colors group"
+                            >
+                              <div className="flex items-center gap-1.5">
+                                <span className="text-[10px] font-medium text-accent min-w-[16px]">[{idx + 1}]</span>
+                                <span className="text-xs font-medium text-text-primary truncate flex-1">{src.title}</span>
+                                {src.content_type && (
+                                  <span className="text-[10px] text-text-muted shrink-0">{src.content_type}</span>
+                                )}
+                              </div>
+                              <div className="text-[10px] text-text-secondary line-clamp-1 mt-0.5 pl-[22px]">
+                                {src.preview}
+                              </div>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
                     )}
                     <div
                       className={`flex items-center gap-1.5 text-[10px] mt-1 ${

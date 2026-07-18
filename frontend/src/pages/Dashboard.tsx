@@ -1,6 +1,7 @@
-import { FC } from 'react';
-import { Brain, TrendingUp, Clock, BookOpen, Target } from 'lucide-react';
-import { useQuery } from '@tanstack/react-query';
+import { FC, useState } from 'react';
+import { Brain, TrendingUp, Clock, BookOpen, Target, Sparkles, ArrowRight, Download, Search, MessageCircle, Loader2 } from 'lucide-react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useNavigate } from 'react-router-dom';
 import { useNavigation } from '@/store/navigation';
 import { brainApi } from '@/api/brain';
 import { attentionApi } from '@/api/attention';
@@ -8,7 +9,11 @@ import { knowledgeApi } from '@/api/knowledge';
 import { capsulesApi } from '@/api/capsules';
 
 const Dashboard: FC = () => {
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { brainSide } = useNavigation();
+  const [seedMessage, setSeedMessage] = useState<string | null>(null);
+
   const { data: brainStatus } = useQuery({
     queryKey: ['brain', 'status'],
     queryFn: async () => {
@@ -47,6 +52,19 @@ const Dashboard: FC = () => {
     },
     staleTime: 30 * 1000,
     refetchOnWindowFocus: false,
+  });
+
+  const seedMutation = useMutation({
+    mutationFn: () => knowledgeApi.seedDemo(),
+    onSuccess: (response) => {
+      setSeedMessage(response.data.message);
+      queryClient.invalidateQueries({ queryKey: ['knowledge'] });
+      queryClient.invalidateQueries({ queryKey: ['tags'] });
+      queryClient.invalidateQueries({ queryKey: ['brain', 'status'] });
+    },
+    onError: (error: any) => {
+      setSeedMessage(error?.response?.data?.detail || '导入失败，请稍后重试');
+    },
   });
 
   const personalCount = brainStatus?.personal_count ?? 0;
@@ -89,6 +107,8 @@ const Dashboard: FC = () => {
     weekday: 'long',
   });
 
+  const isEmpty = (knowledgeStats?.both?.total ?? 0) === 0;
+
   return (
     <div className="p-6 max-w-7xl mx-auto space-y-6">
       <div className="border-b border-border-light pb-5">
@@ -115,11 +135,89 @@ const Dashboard: FC = () => {
         ))}
       </div>
 
+      {isEmpty && (
+        <div className="card border border-accent/30 bg-accent/[0.03]">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-5">
+            <div className="flex-1">
+              <div className="flex items-center gap-2 mb-2">
+                <Sparkles className="w-4 h-4 text-accent" />
+                <span className="text-sm font-semibold text-accent">首次使用</span>
+              </div>
+              <h3 className="text-xl font-bold text-text-primary mb-2">导入示例大脑，30 秒内问出第一个问题</h3>
+              <p className="text-sm text-text-secondary leading-relaxed">
+                我们准备了 200 条预置笔记：读书笔记、菜谱、工作记录。导入后，你就可以直接向 AI 提问，比如"番茄炒蛋怎么做"或"原子习惯的核心观点"。
+              </p>
+              {seedMessage && (
+                <p className="text-sm text-accent mt-3">{seedMessage}</p>
+              )}
+            </div>
+            <button
+              onClick={() => seedMutation.mutate()}
+              disabled={seedMutation.isPending}
+              className="shrink-0 inline-flex items-center gap-2 px-5 py-2.5 rounded-[2px] bg-accent hover:bg-[var(--accent-hover)] text-[var(--accent-ink)] text-sm font-medium transition-colors disabled:opacity-60"
+            >
+              {seedMutation.isPending ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Download className="w-4 h-4" />
+              )}
+              {seedMutation.isPending ? '导入中…' : '导入示例大脑'}
+            </button>
+          </div>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="card">
-          <h3 className="text-lg font-semibold text-text-primary mb-4 pb-3 border-b border-border-light">最近活动</h3>
-          <div className="flex items-center justify-center h-48 text-text-secondary">
-            <p>暂无最近活动</p>
+          <h3 className="text-lg font-semibold text-text-primary mb-4 pb-3 border-b border-border-light">新手三步</h3>
+          <div className="space-y-4">
+            {[
+              {
+                step: '1',
+                icon: Download,
+                title: isEmpty ? '导入示例大脑（或自己存一条）' : '继续存资料',
+                desc: isEmpty ? '点击上方按钮，体验 200 条预置笔记。' : '用剪藏、笔记、导入继续丰富知识库。',
+                action: isEmpty ? () => seedMutation.mutate() : () => navigate('/ingest'),
+                actionLabel: isEmpty ? '导入' : '去存资料',
+              },
+              {
+                step: '2',
+                icon: MessageCircle,
+                title: '问一句话',
+                desc: '打开右下角 AI 助手，提问并选择本地或云端模型。',
+                action: () => window.dispatchEvent(new CustomEvent('psb:chat:open')),
+                actionLabel: '打开 AI 助手',
+              },
+              {
+                step: '3',
+                icon: Search,
+                title: '看到引用出处',
+                desc: '每个回答都会标注来自哪条笔记，点击即可跳回原文。',
+                action: () => navigate('/knowledge'),
+                actionLabel: '查看知识库',
+              },
+            ].map((item) => (
+              <div key={item.step} className="flex gap-4">
+                <div className="w-8 h-8 rounded-[2px] bg-bg-tertiary border border-border-color flex items-center justify-center shrink-0 text-sm font-bold text-accent">
+                  {item.step}
+                </div>
+                <div className="flex-1">
+                  <h4 className="text-base font-bold text-text-primary mb-1 flex items-center gap-2">
+                    <item.icon className="w-4 h-4 text-text-secondary" />
+                    {item.title}
+                  </h4>
+                  <p className="text-sm text-text-secondary mb-2">{item.desc}</p>
+                  <button
+                    onClick={item.action}
+                    disabled={seedMutation.isPending && item.step === '1' && isEmpty}
+                    className="inline-flex items-center gap-1 text-xs text-accent hover:text-[var(--accent-link)] transition-colors disabled:opacity-60"
+                  >
+                    {item.actionLabel}
+                    <ArrowRight className="w-3 h-3" />
+                  </button>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
 
@@ -145,6 +243,13 @@ const Dashboard: FC = () => {
               <span className="text-sm text-text-secondary">个人 {personalPercent}%</span>
             </div>
           </div>
+        </div>
+      </div>
+
+      <div className="card">
+        <h3 className="text-lg font-semibold text-text-primary mb-4 pb-3 border-b border-border-light">最近活动</h3>
+        <div className="flex items-center justify-center h-48 text-text-secondary">
+          <p>暂无最近活动</p>
         </div>
       </div>
     </div>

@@ -1,6 +1,8 @@
 from pydantic_settings import BaseSettings
 from pydantic import model_validator
 from functools import lru_cache
+import secrets
+import warnings
 
 class Settings(BaseSettings):
     APP_NAME: str = "Personal Second Brain"
@@ -11,16 +13,18 @@ class Settings(BaseSettings):
     
     # Database
     DATABASE_URL: str = "sqlite:///./psb.db"
-    DATABASE_ENCRYPT_KEY: str = "REPLACE_DATABASE_ENCRYPT_KEY"
+    # 生产环境必须设置强密钥；开发环境若为空则跳过数据库加密层。
+    DATABASE_ENCRYPT_KEY: str = ""
     
     # Security
-    SECRET_KEY: str = "REPLACE_SECRET_KEY"
+    # 生产环境必须设置强随机密钥；开发环境为空时使用临时密钥并发出警告。
+    SECRET_KEY: str = ""
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24  # 24 hours
     REFRESH_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 7  # 7 days
     ALGORITHM: str = "HS256"
     
     # Admin
-    ADMIN_SECRET_KEY: str = "admin-REPLACE_SECRET_KEY"
+    ADMIN_SECRET_KEY: str = ""
     ADMIN_ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 8  # 8 hours
     
     # Redis
@@ -111,11 +115,11 @@ class Settings(BaseSettings):
     @model_validator(mode='after')
     def validate_production(self):
         if self.ENV == "production":
-            if self.SECRET_KEY in ("REPLACE_SECRET_KEY", "REPLACE_SECRET_KEY", "changeme"):
-                raise ValueError("SECRET_KEY must be changed in production")
-            if self.ADMIN_SECRET_KEY in ("admin-REPLACE_SECRET_KEY", "REPLACE_ADMIN_SECRET_KEY", "adminchangeme"):
-                raise ValueError("ADMIN_SECRET_KEY must be changed in production")
-            if not self.DATABASE_ENCRYPT_KEY or self.DATABASE_ENCRYPT_KEY == "REPLACE_DATABASE_ENCRYPT_KEY":
+            if not self.SECRET_KEY:
+                raise ValueError("SECRET_KEY must be set in production")
+            if not self.ADMIN_SECRET_KEY:
+                raise ValueError("ADMIN_SECRET_KEY must be set in production")
+            if not self.DATABASE_ENCRYPT_KEY:
                 raise ValueError("DATABASE_ENCRYPT_KEY must be set in production")
         return self
 
@@ -124,3 +128,30 @@ def get_settings() -> Settings:
     return Settings()
 
 settings = get_settings()
+
+# Development safety net: if secrets are left empty, generate ephemeral keys and
+# warn loudly. Production must set real keys before startup.
+if settings.ENV != "production":
+    if not settings.SECRET_KEY:
+        warnings.warn(
+            "SECRET_KEY is empty in development; using an ephemeral key. "
+            "Set a strong SECRET_KEY before deploying to production.",
+            RuntimeWarning,
+            stacklevel=2,
+        )
+        settings.SECRET_KEY = secrets.token_urlsafe(32)
+    if not settings.ADMIN_SECRET_KEY:
+        warnings.warn(
+            "ADMIN_SECRET_KEY is empty in development; using an ephemeral key. "
+            "Set a strong ADMIN_SECRET_KEY before deploying to production.",
+            RuntimeWarning,
+            stacklevel=2,
+        )
+        settings.ADMIN_SECRET_KEY = secrets.token_urlsafe(32)
+    if not settings.DATABASE_ENCRYPT_KEY:
+        warnings.warn(
+            "DATABASE_ENCRYPT_KEY is empty; database encryption is disabled. "
+            "Set a strong key before deploying to production.",
+            RuntimeWarning,
+            stacklevel=2,
+        )

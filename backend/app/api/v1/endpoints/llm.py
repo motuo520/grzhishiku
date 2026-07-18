@@ -13,7 +13,7 @@ from app.services.llm_billing_service import (
 from app.services.llm_cost_service import LLMCostService
 from app.core.security import get_current_user, get_current_user_optional
 from app.core.feature_guard import FeatureGuard
-from app.models.base import User
+from app.models.base import User, KnowledgeUnit
 from app.core.database import get_db
 from app.schemas.llm import (
     ChatRequest, SummarizeRequest, SummarizeResponse, ExtractTagsRequest, ExtractTagsResponse,
@@ -97,6 +97,102 @@ async def list_ollama_models(current_user: User = Depends(get_current_user)):
     return {"models": models}
 
 
+def _retrieve_knowledge_sources(
+    db: Session,
+    user_id: str,
+    message: str,
+    brain_side: str = "both",
+    top_k: int = 5,
+) -> List[dict]:
+    """Minimal keyword-based retrieval over user's knowledge units.
+
+    Returns list of dicts with id, title, preview, source_type.
+    For the demo brain (<=200 notes) simple LIKE matching is sufficient;
+    production should use vector similarity via embedding_service.
+    """
+    from sqlalchemy import or_
+
+    query = db.query(KnowledgeUnit).filter(KnowledgeUnit.user_id == user_id)
+    if brain_side != "both":
+        query = query.filter(KnowledgeUnit.brain_side == brain_side)
+
+    # Extract short keywords / 2-grams from the message.
+    # For Chinese we use 2-grams because whole phrases rarely match verbatim.
+    # Drop common stopwords so questions like "怎么做" don't flood results.
+    import re
+    STOPWORDS = {
+        "怎么", "什么", "为什么", "如何", "多少", "哪里", "哪些", "是不是",
+        "有没有", "可以", "应该", "需要", "这样", "那样",
+    }
+    keywords = []
+    for token in re.findall(r"[\u4e00-\u9fa5]+", message):
+        # Use 2-grams, 3-grams and 4-grams so multi-char concepts like "500 条" are captured.
+        for n in (2, 3, 4):
+            for i in range(len(token) - n + 1):
+                gram = token[i:i + n]
+                if not any(g in STOPWORDS for g in (gram[:2], gram[1:3]) if len(g) == 2):
+                    keywords.append(gram)
+    for token in re.findall(r"[a-zA-Z0-9]{2,}", message):
+        keywords.append(token.lower())
+    # Deduplicate while preserving order.
+    seen = set()
+    keywords = [k for k in keywords if not (k in seen or seen.add(k))]
+    if not keywords:
+        keywords = [message.strip()[:10]]
+
+    filters = []
+    for kw in keywords[:6]:
+        like = f"%{kw}%"
+        filters.append(KnowledgeUnit.content_raw.ilike(like))
+        filters.append(KnowledgeUnit.source_title.ilike(like))
+        filters.append(KnowledgeUnit.content_type.ilike(like))
+
+    if filters:
+        query = query.filter(or_(*filters))
+
+    # Score by number of matched keywords; title matches weighted 3x.
+    units = query.order_by(KnowledgeUnit.invoke_count.desc()).limit(top_k * 5).all()
+    scored = []
+    for unit in units:
+        content_text = (unit.content_raw or "") + " " + (unit.content_type or "")
+        title_text = unit.source_title or ""
+        content_score = sum(1 for kw in keywords if kw.lower() in content_text.lower())
+        title_score = sum(3 for kw in keywords if kw.lower() in title_text.lower())
+        score = content_score + title_score
+        if score > 0:
+            scored.append((score, unit))
+
+    scored.sort(key=lambda x: x[0], reverse=True)
+    results = []
+    for _, unit in scored[:top_k]:
+        raw = (unit.content_raw or "").replace("\n", " ")
+        # Try to build a snippet around the first matched keyword.
+        snippet = raw
+        lower_raw = raw.lower()
+        for kw in keywords:
+            pos = lower_raw.find(kw.lower())
+            if pos != -1:
+                start = max(0, pos - 80)
+                end = min(len(raw), pos + 280)
+                snippet = raw[start:end]
+                if start > 0:
+                    snippet = "..." + snippet
+                if end < len(raw):
+                    snippet = snippet + "..."
+                break
+        if len(snippet) > 400:
+            snippet = snippet[:397] + "..."
+        results.append({
+            "id": unit.id,
+            "title": unit.source_title or unit.content_type or "未命名笔记",
+            "preview": snippet,
+            "source_type": unit.source_type or "note",
+            "content_type": unit.content_type,
+            "content_raw": raw,  # included for eval / prompt context
+        })
+    return results
+
+
 @router.post("/chat", summary="LLM Chat", description="Stream chat response from the routed LLM. Returns SSE stream.")
 async def chat(
     request: ChatRequest,
@@ -104,6 +200,32 @@ async def chat(
     db: Session = Depends(get_db),
 ):
     user_settings = json.loads(current_user.settings or '{}')
+
+    # Retrieve relevant knowledge units as citations / RAG context.
+    sources = _retrieve_knowledge_sources(
+        db=db,
+        user_id=current_user.id,
+        message=request.message,
+        brain_side=request.brain_side,
+        top_k=5,
+    )
+
+    # Build RAG system prompt.
+    rag_system_prompt = None
+    if sources:
+        context_blocks = []
+        for idx, src in enumerate(sources, 1):
+            context_blocks.append(f"[{idx}] {src['title']}\n{src['preview']}")
+        context_text = "\n\n".join(context_blocks)
+        rag_system_prompt = (
+            "你是用户的本地知识库助手。回答问题时，请优先基于下面提供的笔记内容。"
+            "如果笔记中没有相关信息，请明确说明。"
+            "回答中需要引用笔记时，使用 [1], [2] 这样的脚注格式标注来源编号。\n\n"
+            f"--- 参考资料 ---\n\n{context_text}\n\n--- 参考资料结束 ---"
+        )
+
+    # User-supplied system prompt takes precedence if provided.
+    final_system_prompt = request.system_prompt or rag_system_prompt
 
     route = llm_service.resolve_route(
         message=request.message,
@@ -114,8 +236,8 @@ async def chat(
     model_id = route.get("model_name") or route.get("model_id") or request.preferred_model or "ollama-qwen2.5-0.5b"
 
     input_messages = []
-    if request.system_prompt:
-        input_messages.append({"role": "system", "content": request.system_prompt})
+    if final_system_prompt:
+        input_messages.append({"role": "system", "content": final_system_prompt})
     if request.history:
         input_messages.extend(request.history)
     input_messages.append({"role": "user", "content": request.message})
@@ -138,7 +260,7 @@ async def chat(
                         sensitivity=request.sensitivity,
                         task_type=request.task_type,
                         preferred_model=request.preferred_model,
-                        system_prompt=request.system_prompt,
+                        system_prompt=final_system_prompt,
                         user_settings=user_settings,
                         db=db,
                     )
@@ -148,6 +270,10 @@ async def chat(
             yield "data: " + json.dumps({"type": "error", "message": str(e)}) + "\n\n"
         except Exception as e:
             yield "data: " + json.dumps({"type": "error", "message": str(e)}) + "\n\n"
+
+        # Send sources at the end so the UI can render citations.
+        if sources:
+            yield "data: " + json.dumps({"type": "sources", "sources": sources}) + "\n\n"
         yield "data: " + '{"type": "end"}' + "\n\n"
 
     return StreamingResponse(

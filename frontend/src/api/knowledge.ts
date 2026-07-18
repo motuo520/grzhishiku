@@ -103,6 +103,30 @@ export const knowledgeApi = {
   counterEvidence: (id: string, data: { evidence_text: string; evidence_url?: string }) =>
     api.post(`/api/v1/knowledge/${id}/counter-evidence`, data),
   stats: () => api.get<KnowledgeStatsResponse>('/api/v1/knowledge/stats'),
+  seedDemo: (overwrite?: boolean) =>
+    api.post<{ seeded: number; total: number; skipped: boolean; message: string }>(
+      '/api/v1/knowledge/seed-demo',
+      { overwrite }
+    ),
+  ragEval: () =>
+    api.post<{
+      total: number;
+      passed: number;
+      failed: number;
+      score: number;
+      threshold: number;
+      release_ready: boolean;
+      results: Array<{
+        id: string;
+        category: string;
+        question: string;
+        passed: boolean;
+        source_found: boolean;
+        keyword_score: number;
+        matched_source_title: string | null;
+        retrieved_count: number;
+      }>;
+    }>('/api/v1/knowledge/rag-eval'),
   counterEvidenceList: (brain_side?: string) =>
     api.get<KnowledgeUnit[]>('/api/v1/knowledge/counter-evidence', { params: brain_side ? { brain_side } : undefined }),
   timelinessList: (brain_side?: string) =>

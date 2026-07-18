@@ -119,11 +119,6 @@ const ModuleLayout: FC<ModuleLayoutProps> = ({ menuId, showOverview = true }) =>
             );
           })}
         </div>
-        {(menuId === 'social-brain' || menuId === 'embodied-cognition') && (
-          <div className="flex-shrink-0">
-            <BrainSideToggle value={brainSide} onChange={setBrainSide} />
-          </div>
-        )}
       </div>
       </div>
 

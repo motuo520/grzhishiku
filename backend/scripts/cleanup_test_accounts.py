@@ -11,6 +11,9 @@ from app.models.base import User, AdminUser
 from app.core.security import get_password_hash
 from sqlalchemy import text
 
+# 开发/测试环境管理员密码，需与 generate_test_data.py 保持一致。
+DEV_ADMIN_PASSWORD = os.environ.get("PSB_DEV_ADMIN_PASSWORD", "dev-admin-password")
+
 
 def main():
     db = SessionLocal()
@@ -29,12 +32,12 @@ def main():
         # 3) 重置管理员密码
         admin_user = db.query(User).filter(User.email == 'admin@test.com').first()
         if admin_user:
-            admin_user.password_hash = get_password_hash('REPLACE_DEV_ADMIN_PASSWORD')
+            admin_user.password_hash = get_password_hash(DEV_ADMIN_PASSWORD)
             print("已重置 User 表 admin@test.com 密码")
 
         admin_record = db.query(AdminUser).filter(AdminUser.email == 'admin@test.com').first()
         if admin_record:
-            admin_record.password_hash = get_password_hash('REPLACE_DEV_ADMIN_PASSWORD')
+            admin_record.password_hash = get_password_hash(DEV_ADMIN_PASSWORD)
             print("已重置 AdminUser 表 admin@test.com 密码")
 
         db.commit()

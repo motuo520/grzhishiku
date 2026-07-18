@@ -39,15 +39,8 @@ const ICON_MAP: Record<string, React.ElementType> = {
 
 const MENU_MODULE_MAP: Record<MenuId, string | null> = {
   ingest: null,
-  graph: null,
-  cognitive: null,
-  emergence: null,
-  attention: null,
-  capsules: null,
-  knowledge: null,
   pipeline: 'pipeline',
-  'social-brain': 'social_brain',
-  'embodied-cognition': 'embodied_cognition',
+  ask: null,
   community: null,
   settings: null,
 };

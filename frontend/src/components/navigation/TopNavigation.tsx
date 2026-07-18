@@ -24,15 +24,8 @@ const ICON_MAP: Record<string, React.ElementType> = {
 
 const MENU_MODULE_MAP: Record<MenuId, string | null> = {
   ingest: null,
-  graph: null,
-  cognitive: null,
-  emergence: null,
-  attention: null,
-  capsules: null,
-  knowledge: null,
   pipeline: 'pipeline',
-  'social-brain': 'social_brain',
-  'embodied-cognition': 'embodied_cognition',
+  ask: null,
   community: null,
   settings: null,
 };
@@ -83,10 +76,10 @@ const TopNavigation: FC<TopNavigationProps> = ({ onLoginClick }) => {
     }
   }, [activeMenu, setActiveMenu, toggleSubMenu]);
 
-  // Keyboard shortcuts: Ctrl+1~4 for top 4 buckets
+  // Keyboard shortcuts: Ctrl+1~3 for top 3 buckets
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.ctrlKey && e.key >= '1' && e.key <= '4') {
+      if (e.ctrlKey && e.key >= '1' && e.key <= '3') {
         const index = parseInt(e.key, 10) - 1;
         const bucket = TOP_NAV_BUCKETS[index];
         if (bucket) {
@@ -105,7 +98,7 @@ const TopNavigation: FC<TopNavigationProps> = ({ onLoginClick }) => {
           {/* Logo */}
           <BrandLogo size={32} />
 
-          {/* Main Menu: 4 buckets */}
+          {/* Main Menu: 3 buckets */}
           <div className="flex items-center gap-1">
             {TOP_NAV_BUCKETS.map((bucket, index) => {
               const Icon = ICON_MAP[bucket.icon] || Brain;

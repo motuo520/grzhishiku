@@ -102,6 +102,12 @@ const ChatInputBar: FC<ChatInputBarProps> = ({ sidebarOpen = true, onLoginClick 
     }
   }, [isCollapsed]);
 
+  useEffect(() => {
+    const handleOpenChat = () => setShowChatPanel(true);
+    window.addEventListener('psb:chat:open', handleOpenChat);
+    return () => window.removeEventListener('psb:chat:open', handleOpenChat);
+  }, []);
+
 
 
   const showToast = (message: string, type: 'success' | 'error') => {
