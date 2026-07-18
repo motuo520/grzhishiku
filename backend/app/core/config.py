@@ -100,6 +100,15 @@ class Settings(BaseSettings):
     XUNHUPAY_APP_ID: str = ""
     XUNHUPAY_APP_SECRET: str = ""
     
+    # Object storage (S3-compatible, e.g. MinIO)
+    S3_ENDPOINT: str = "http://localhost:9000"
+    S3_ACCESS_KEY: str = "psbminio"
+    S3_SECRET_KEY: str = "psbminio-secret"
+    S3_BUCKET: str = "psb-sync"
+    S3_REGION: str = "us-east-1"
+    S3_USE_SSL: bool = False
+    S3_PATH_STYLE: bool = True
+
     # CORS
     ALLOWED_ORIGINS: str = "http://localhost:3000,http://127.0.0.1:3000"
 

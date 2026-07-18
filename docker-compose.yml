@@ -17,9 +17,20 @@ services:
       GRAPHIFY_DATA_DIR: /data/graphify_data
       # 浏览器直连 API 的允许来源，上线改成服务器域名/IP，逗号分隔
       ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost}
+      # 对象存储（MinIO）配置
+      S3_ENDPOINT: http://minio:9000
+      S3_ACCESS_KEY: ${MINIO_ROOT_USER:-psbminio}
+      S3_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-psbminio-secret}
+      S3_BUCKET: psb-sync
+      S3_REGION: us-east-1
+      S3_USE_SSL: "false"
+      S3_PATH_STYLE: "true"
     volumes:
       - ./server-data:/data
     restart: unless-stopped
+    depends_on:
+      minio:
+        condition: service_healthy
     # 不直接对外暴露，全部走前端 nginx 代理；调试时取消注释：
     # ports:
     #   - "8000:8000"
@@ -31,3 +42,41 @@ services:
     depends_on:
       - backend
     restart: unless-stopped
+
+  minio:
+    image: minio/minio:latest
+    container_name: psb-minio
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-psbminio}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-psbminio-secret}
+    volumes:
+      - minio-data:/data
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    command: server /data --console-address ":9001"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  minio-init:
+    image: minio/mc:latest
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: >
+      /bin/sh -c "
+      /usr/bin/mc alias set local http://minio:9000 $${MINIO_ROOT_USER} $${MINIO_ROOT_PASSWORD};
+      /usr/bin/mc mb local/psb-sync --ignore-existing;
+      /usr/bin/mc anonymous set private local/psb-sync;
+      exit 0;
+      "
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-psbminio}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-psbminio-secret}
+
+volumes:
+  minio-data:

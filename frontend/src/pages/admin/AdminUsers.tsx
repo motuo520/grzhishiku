@@ -21,6 +21,8 @@ interface UserItem {
   last_login_at: string | null;
   notes_count?: number;
   capsules_count?: number;
+  sync_devices_count?: number;
+  last_sync_at?: string | null;
 }
 
 interface UsersResponse {
@@ -313,7 +315,8 @@ export default function AdminUsers() {
                 <th className="px-4 py-3 text-left font-medium text-text-secondary">套餐</th>
                 <th className="px-4 py-3 text-left font-medium text-text-secondary">余额</th>
                 <th className="px-4 py-3 text-left font-medium text-text-secondary">注册时间</th>
-                <th className="px-4 py-3 text-left font-medium text-text-secondary">最后登录</th>
+                <th className="px-4 py-3 text-left font-medium text-text-secondary">同步设备</th>
+                <th className="px-4 py-3 text-left font-medium text-text-secondary">最后同步</th>
                 <th className="px-4 py-3 text-left font-medium text-text-secondary">操作</th>
               </tr>
             </thead>
@@ -362,6 +365,8 @@ export default function AdminUsers() {
                       </div>
                     </td>
                     <td className="px-4 py-3 text-text-secondary">{formatDate(user.last_login_at)}</td>
+                    <td className="px-4 py-3 text-text-secondary">{user.sync_devices_count ?? 0}</td>
+                    <td className="px-4 py-3 text-text-secondary">{formatDate(user.last_sync_at ?? null)}</td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-1.5">
                         <button
@@ -519,6 +524,14 @@ export default function AdminUsers() {
                   <div>
                     <div className="text-xs text-text-secondary mb-1">胶囊数</div>
                     <div className="text-sm text-text-primary">{detailUser.capsules_count ?? '—'}</div>
+                  </div>
+                  <div>
+                    <div className="text-xs text-text-secondary mb-1">同步设备数</div>
+                    <div className="text-sm text-text-primary">{detailUser.sync_devices_count ?? 0}</div>
+                  </div>
+                  <div>
+                    <div className="text-xs text-text-secondary mb-1">最后同步</div>
+                    <div className="text-sm text-text-primary">{formatDate(detailUser.last_sync_at ?? null)}</div>
                   </div>
                 </div>
 

@@ -14,6 +14,7 @@ from app.core.admin_permissions import Permission, require_permission
 from app.models.base import User, Note, Capsule, AdminAuditLog, AdminUser
 from app.models.llm_billing import UserBalance, BalanceTransaction, LLMUsageRecord
 from app.models.billing import Subscription, Plan
+from app.models.sync import SyncDevice, SyncSnapshot
 from app.api.admin.endpoints.auth import get_current_admin
 from app.core.security import get_password_hash, validate_password_complexity
 from app.services.billing_service import BillingService
@@ -35,6 +36,8 @@ class UserListItem(BaseModel):
     total_used: float = 0.0
     notes_count: int = 0
     capsules_count: int = 0
+    sync_devices_count: int = 0
+    last_sync_at: Optional[datetime] = None
     created_at: Optional[datetime] = None
     last_login_at: Optional[datetime] = None
 
@@ -57,6 +60,8 @@ class UserDetailResponse(BaseModel):
     total_used: float = 0.0
     notes_count: int = 0
     capsules_count: int = 0
+    sync_devices_count: int = 0
+    last_sync_at: Optional[datetime] = None
     created_at: Optional[datetime] = None
     last_login_at: Optional[datetime] = None
 
@@ -90,10 +95,25 @@ def _get_user_balance(db: Session, user_id: str) -> UserBalance:
     return balance
 
 
+def _get_sync_stats(db: Session, user_id: str):
+    devices_count = (
+        db.query(func.count(SyncDevice.id)).filter(SyncDevice.user_id == user_id).scalar() or 0
+    )
+    latest_snapshot = (
+        db.query(SyncSnapshot)
+        .filter(SyncSnapshot.user_id == user_id)
+        .order_by(SyncSnapshot.created_at.desc())
+        .first()
+    )
+    last_sync_at = latest_snapshot.created_at if latest_snapshot else None
+    return devices_count, last_sync_at
+
+
 def _user_list_item(db: Session, user: User) -> UserListItem:
     notes_count = db.query(func.count(Note.id)).filter(Note.user_id == user.id).scalar() or 0
     capsules_count = db.query(func.count(Capsule.id)).filter(Capsule.user_id == user.id).scalar() or 0
     balance = _get_user_balance(db, user.id)
+    sync_devices_count, last_sync_at = _get_sync_stats(db, user.id)
     return UserListItem(
         id=user.id,
         email=user.email,
@@ -106,6 +126,8 @@ def _user_list_item(db: Session, user: User) -> UserListItem:
         total_used=float(balance.total_used or 0),
         notes_count=notes_count,
         capsules_count=capsules_count,
+        sync_devices_count=sync_devices_count,
+        last_sync_at=last_sync_at,
         created_at=user.created_at,
         last_login_at=user.last_login_at,
     )
@@ -162,6 +184,7 @@ async def get_user(
     notes_count = db.query(func.count(Note.id)).filter(Note.user_id == user.id).scalar() or 0
     capsules_count = db.query(func.count(Capsule.id)).filter(Capsule.user_id == user.id).scalar() or 0
     balance = _get_user_balance(db, user.id)
+    sync_devices_count, last_sync_at = _get_sync_stats(db, user.id)
 
     return UserDetailResponse(
         id=user.id,
@@ -181,6 +204,8 @@ async def get_user(
         total_used=float(balance.total_used or 0),
         notes_count=notes_count,
         capsules_count=capsules_count,
+        sync_devices_count=sync_devices_count,
+        last_sync_at=last_sync_at,
         created_at=user.created_at,
         last_login_at=user.last_login_at,
     )

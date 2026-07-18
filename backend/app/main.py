@@ -155,6 +155,7 @@ async def lifespan(app: FastAPI):
             "web_clipper": True,
             "public_sharing": False,
             "cloud_backup": False,
+            "cloud_sync": False,
         })
         free_limits = json.dumps({
             "notes": 100,
@@ -181,6 +182,7 @@ async def lifespan(app: FastAPI):
 
         storage_features = json.dumps({
             "cloud_backup": True,
+            "cloud_sync": True,
             "priority_support": True,
             "ai_summary": True,
             "web_clipper": True,

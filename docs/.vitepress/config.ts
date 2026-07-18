@@ -21,6 +21,7 @@ export default defineConfig({
             { text: '快速开始', link: '/guide/getting-started' },
             { text: '自托管部署', link: '/guide/self-host' },
             { text: '模型配置', link: '/guide/model-setup' },
+            { text: '云同步', link: '/guide/sync' },
           ],
         },
       ],

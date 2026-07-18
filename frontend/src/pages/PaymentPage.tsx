@@ -301,7 +301,7 @@ const PaymentPage: FC = () => {
             ) : '按月订阅，随时取消'}
           </div>
           <div className="space-y-2">
-            {['提供云端存储接口（百度/阿里云盘直传）', '多端同步', '时间胶囊云端封存', '优先客服支持', '不影响模型调用计费'].map(f => (
+            {['端到端加密云同步（服务器只看密文）', '多端同步', '时间胶囊云端封存', '优先客服支持', '不影响模型调用计费'].map(f => (
               <div key={f} className="flex items-center gap-2 text-xs text-text-secondary">
                 <CheckCircle className="w-3.5 h-3.5 text-warning" />
                 {f}

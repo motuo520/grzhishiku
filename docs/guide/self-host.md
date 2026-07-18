@@ -26,8 +26,16 @@ python -c "import secrets; print(secrets.token_urlsafe(32))"
 ## Docker Compose
 
 ```bash
-docker compose -f docker-compose.prod.yml up -d
+docker compose up -d
 ```
+
+生产环境叠加：
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+```
+
+默认会启动：前端（80）、后端（经 nginx 代理）、MinIO（9000/9001）。云同步依赖 MinIO，无需额外配置。
 
 ## 反向代理与 SSL
 

@@ -7,6 +7,7 @@ from app.core.database import Base, get_db
 from app.main import app
 from app.models.base import User, Note, BrowserClip, KnowledgeUnit, Capsule
 from app.models.llm_billing import LLMModel, ModelProviderAccount, UserBalance, BalanceTransaction, LLMUsageRecord
+from app.models.billing import Subscription, Plan
 from app.core.security import get_password_hash, create_access_token
 import uuid
 from datetime import datetime, timedelta, timezone
@@ -138,14 +139,14 @@ def seed_default_plans(db_session):
         {
             "slug": "free",
             "name": "免费版",
-            "features": {"ai_summary": True, "web_clipper": True, "public_sharing": False, "cloud_backup": False},
+            "features": {"ai_summary": True, "web_clipper": True, "public_sharing": False, "cloud_backup": False, "cloud_sync": False},
             "limits": {"notes": 100, "clips_per_month": 50, "knowledge_units": 200, "documents": 20,
                        "storage_bytes": 1073741824, "llm_calls_per_day": 50},
         },
         {
             "slug": "storage",
             "name": "存储会员",
-            "features": {"cloud_backup": True, "priority_support": True, "ai_summary": True,
+            "features": {"cloud_backup": True, "cloud_sync": True, "priority_support": True, "ai_summary": True,
                          "web_clipper": True, "public_sharing": True},
             "limits": {"notes": -1, "clips_per_month": -1, "knowledge_units": -1, "documents": -1,
                        "storage_bytes": 10737418240, "llm_calls_per_day": -1},
@@ -381,3 +382,52 @@ def admin_user(db_session):
     db_session.commit()
     db_session.refresh(admin)
     return admin
+
+
+@pytest.fixture
+def test_storage_user(db_session):
+    user = User(
+        id=str(uuid.uuid4()),
+        email="storage@example.com",
+        name="Storage User",
+        password_hash=get_password_hash("TestPass123"),
+        status="active",
+        subscription_tier="storage",
+        subscription_status="active",
+        created_at=datetime.now(timezone.utc),
+    )
+    db_session.add(user)
+    db_session.commit()
+    db_session.refresh(user)
+
+    plan = db_session.query(Plan).filter(Plan.slug == "storage").first()
+    if plan:
+        sub = Subscription(
+            id=str(uuid.uuid4()),
+            user_id=user.id,
+            plan_id=plan.id,
+            status="active",
+            billing_cycle="monthly",
+            started_at=datetime.now(timezone.utc),
+            current_period_start=datetime.now(timezone.utc),
+            current_period_end=datetime.now(timezone.utc) + timedelta(days=30),
+            auto_renew=True,
+        )
+        db_session.add(sub)
+        db_session.commit()
+
+    return user
+
+
+@pytest.fixture
+def test_storage_user_token(test_storage_user):
+    token = create_access_token(
+        data={"sub": test_storage_user.id, "email": test_storage_user.email},
+        expires_delta=timedelta(days=1)
+    )
+    return token
+
+
+@pytest.fixture
+def storage_auth_headers(test_storage_user_token):
+    return {"Authorization": f"Bearer {test_storage_user_token}"}

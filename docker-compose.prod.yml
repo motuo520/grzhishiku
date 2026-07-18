@@ -12,6 +12,11 @@ services:
       - ENV=production
       - DATABASE_URL=${DATABASE_URL:-postgresql://psb:changeme@postgres:5432/psb}
       - DEBUG=False
+      # 对象存储复用 base compose 中的 MinIO
+      - S3_ENDPOINT=http://minio:9000
+      - S3_BUCKET=psb-sync
+      - S3_USE_SSL=false
+      - S3_PATH_STYLE=true
     deploy:
       resources:
         limits:
@@ -20,6 +25,15 @@ services:
         reservations:
           cpus: '0.5'
           memory: 512M
+
+  minio:
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+        reservations:
+          memory: 256M
 
   postgres:
     image: postgres:16-alpine
@@ -96,6 +110,7 @@ services:
     restart: unless-stopped
 
 volumes:
+  minio-data:
   postgres-data:
   grafana-data:
   alertmanager-data:

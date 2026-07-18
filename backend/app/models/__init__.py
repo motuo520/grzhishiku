@@ -8,6 +8,8 @@ from app.models.billing import Plan, Subscription, Payment, Invoice
 from app.models.llm_billing import LLMModel, ModelProviderAccount, UserBalance, BalanceTransaction, LLMUsageRecord
 from app.models.community import CommunityPost
 from app.models.sticky_note import StickyNote, Reminder
+from app.models.sync import SyncDevice, SyncOperation, SyncSnapshot
+from app.models.storage import DataPackage, UserCloudDrive
 
 __all__ = [
     "User", "Note", "Capsule", "CapsuleDialogue", "BrowserClip",
@@ -17,4 +19,6 @@ __all__ = [
     "Plan", "Subscription", "Payment", "Invoice",
     "LLMModel", "ModelProviderAccount", "UserBalance", "BalanceTransaction", "LLMUsageRecord",
     "CommunityPost", "StickyNote", "Reminder",
+    "SyncDevice", "SyncOperation", "SyncSnapshot",
+    "DataPackage", "UserCloudDrive",
 ]

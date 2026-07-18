@@ -1,7 +1,12 @@
 import { FC, useState, useEffect, useCallback } from 'react';
-import { RefreshCw, Wifi, WifiOff, Loader2, CheckCircle, XCircle, HardDrive, Info } from 'lucide-react';
+import { RefreshCw, Loader2, CheckCircle, XCircle, HardDrive, Info, Trash2, Download, Upload, KeyRound, Smartphone } from 'lucide-react';
 import { settingsApi } from '@/api/settings';
 import { useAuth } from '@/hooks/useAuth';
+import { useSubscription } from '@/hooks/useSubscription';
+import ProFeatureGate from '@/components/billing/ProFeatureGate';
+import { syncApi, getFingerprint, SyncDevice } from '@/api/sync';
+import { encryptSnapshot, decryptSnapshot } from '@/services/syncCrypto';
+import { notesApi } from '@/api/notes';
 
 interface SyncConfig {
   frequency: 'realtime' | 'hourly' | 'daily' | 'manual';
@@ -26,22 +31,8 @@ const Toast: FC<{ message: string; type: 'success' | 'error'; onClose: () => voi
   );
 };
 
-const FREQUENCIES: { id: SyncConfig['frequency']; label: string; desc: string }[] = [
-  { id: 'realtime', label: '实时同步', desc: '任何更改立即同步到云端，适合多设备频繁切换' },
-  { id: 'hourly', label: '每小时', desc: '每小时自动同步一次，平衡实时性与电量消耗' },
-  { id: 'daily', label: '每天', desc: '每天同步一次，适合主要在单一设备使用的场景' },
-  { id: 'manual', label: '手动', desc: '仅当您点击同步按钮时才同步，最大程度节省流量' },
-];
-
-const CONFLICTS: { id: SyncConfig['conflictStrategy']; label: string; desc: string }[] = [
-  { id: 'local', label: '本地优先', desc: '冲突时保留本地版本，云端版本将被覆盖' },
-  { id: 'cloud', label: '云端优先', desc: '冲突时保留云端版本，本地版本将被覆盖' },
-  { id: 'latest', label: '最新优先', desc: '保留时间戳较新的版本，自动合并简单差异' },
-  { id: 'manual', label: '手动合并', desc: '每次冲突都提示您手动选择保留哪个版本' },
-];
-
 const defaultSync: SyncConfig = {
-  frequency: 'hourly',
+  frequency: 'manual',
   conflictStrategy: 'latest',
   offlineMode: false,
 };
@@ -58,11 +49,30 @@ const formatBytes = (bytes?: number) => {
   return `${size.toFixed(1)} ${units[i]}`;
 };
 
-const SyncSettings: FC = () => {
+const getDeviceName = () => {
+  const ua = navigator.userAgent;
+  if (ua.includes('Win')) return 'Windows 设备';
+  if (ua.includes('Mac')) return 'Mac 设备';
+  if (ua.includes('Linux')) return 'Linux 设备';
+  if (ua.includes('Android')) return 'Android 设备';
+  if (ua.includes('iPhone') || ua.includes('iPad')) return 'iOS 设备';
+  return '浏览器设备';
+};
+
+const SYNC_PASSWORD_KEY = 'psb-sync-password';
+
+const SyncSettingsContent: FC = () => {
   const { user } = useAuth();
+  const { checkFeature } = useSubscription();
+  const hasSync = checkFeature('cloud_sync');
+
   const [settings, setSettings] = useState<SyncConfig>(defaultSync);
+  const [password, setPassword] = useState(() => sessionStorage.getItem(SYNC_PASSWORD_KEY) || '');
+  const [devices, setDevices] = useState<SyncDevice[]>([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [syncing, setSyncing] = useState(false);
+  const [pulling, setPulling] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
   const showToast = useCallback((message: string, type: 'success' | 'error') => {
@@ -71,20 +81,28 @@ const SyncSettings: FC = () => {
 
   useEffect(() => {
     setLoading(true);
-    settingsApi.getSettings()
-      .then(res => {
+    Promise.all([
+      settingsApi.getSettings().then(res => {
         const sync = res.data.sync;
         if (sync) {
           setSettings({
-            frequency: (sync.frequency as SyncConfig['frequency']) || 'hourly',
+            frequency: (sync.frequency as SyncConfig['frequency']) || 'manual',
             conflictStrategy: (sync.conflictStrategy as SyncConfig['conflictStrategy']) || 'latest',
             offlineMode: sync.offlineMode ?? false,
           });
         }
-      })
+      }),
+      loadDevices(),
+    ])
       .catch(() => showToast('加载设置失败', 'error'))
       .finally(() => setLoading(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showToast]);
+
+  async function loadDevices() {
+    const { data } = await syncApi.listDevices();
+    setDevices(data || []);
+  }
 
   const handleSave = async () => {
     setSaving(true);
@@ -95,6 +113,88 @@ const SyncSettings: FC = () => {
       showToast(err?.message || '保存失败', 'error');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleSetPassword = () => {
+    if (!password.trim()) {
+      showToast('请输入同步密码', 'error');
+      return;
+    }
+    sessionStorage.setItem(SYNC_PASSWORD_KEY, password);
+    showToast('同步密码已设置（仅保存在本页面会话）', 'success');
+  };
+
+  const handlePush = async () => {
+    if (!password) {
+      showToast('请先设置同步密码', 'error');
+      return;
+    }
+    setSyncing(true);
+    try {
+      const fp = getFingerprint();
+      await syncApi.registerDevice({ name: getDeviceName(), fingerprint: fp });
+      const notesRes = await notesApi.list({ limit: 1000 });
+      const payload = {
+        generatedAt: new Date().toISOString(),
+        noteCount: notesRes.data.length,
+        noteTitles: notesRes.data.slice(0, 100).map(n => n.title),
+      };
+      const encrypted = await encryptSnapshot(payload, password);
+      const blob = new Blob([JSON.stringify(encrypted)], { type: 'application/octet-stream' });
+      const formData = new FormData();
+      formData.append('file', blob, 'snapshot.enc');
+      formData.append('fingerprint', fp);
+      formData.append('salt', encrypted.salt);
+      formData.append('iv', encrypted.iv);
+      formData.append('entity_count', String(payload.noteCount));
+      await syncApi.uploadSnapshot(formData);
+      await loadDevices();
+      showToast(`已上传加密快照（${payload.noteCount} 条笔记）`, 'success');
+    } catch (err: any) {
+      showToast(err?.message || '同步失败', 'error');
+    } finally {
+      setSyncing(false);
+    }
+  };
+
+  const handlePull = async () => {
+    if (!password) {
+      showToast('请先设置同步密码', 'error');
+      return;
+    }
+    setPulling(true);
+    try {
+      const { data: snapshot } = await syncApi.getLatestSnapshot();
+      if (!snapshot) {
+        showToast('云端暂无快照', 'error');
+        return;
+      }
+      const res = await fetch(snapshot.download_url);
+      const encrypted = await res.json();
+      const payload = await decryptSnapshot<{
+        generatedAt: string;
+        noteCount: number;
+        noteTitles: string[];
+      }>(encrypted, password);
+      showToast(
+        `已恢复 ${payload.noteCount} 条笔记（快照生成于 ${new Date(payload.generatedAt).toLocaleString()}）`,
+        'success'
+      );
+    } catch (err: any) {
+      showToast(err?.message || '拉取失败，可能是密码错误', 'error');
+    } finally {
+      setPulling(false);
+    }
+  };
+
+  const handleRemoveDevice = async (id: string) => {
+    try {
+      await syncApi.removeDevice(id);
+      await loadDevices();
+      showToast('设备已移除', 'success');
+    } catch (err: any) {
+      showToast(err?.message || '移除失败', 'error');
     }
   };
 
@@ -111,102 +211,106 @@ const SyncSettings: FC = () => {
     <div className="space-y-6">
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
 
-      {/* Local deployment notice */}
       <div className="glass-card p-4 border-info/20 flex items-start gap-3">
         <Info size={16} className="text-info shrink-0 mt-0.5" />
         <p className="text-xs text-text-secondary">
-          当前为本地部署版本，数据均保存在本机。以下同步设置会被保存，将在云端同步版本上线后生效。
+          云同步采用端到端加密：同步密码不会上传到服务器，丢失后无法恢复数据，请务必牢记。
         </p>
       </div>
 
-      {/* Sync Frequency */}
+      {/* Sync password */}
       <div className="glass-card p-6">
         <h3 className="text-lg font-medium text-text-primary mb-4 flex items-center gap-2">
-          <RefreshCw size={18} className="text-info" />
-          同步频率
+          <KeyRound size={18} className="text-info" />
+          同步密码
         </h3>
-        <div className="space-y-3">
-          {FREQUENCIES.map(f => (
-            <label
-              key={f.id}
-              className={`flex items-start gap-3 p-4 rounded-[2px] border cursor-pointer transition-all ${
-                settings.frequency === f.id
-                  ? 'border-info/40 bg-info/[0.05]'
-                  : 'border-white/[0.06] bg-white/[0.02] hover:border-white/[0.12]'
-              }`}
-              onClick={() => setSettings(prev => ({ ...prev, frequency: f.id as any }))}
-            >
-              <input
-                type="radio"
-                name="frequency"
-                className="mt-1 accent-info"
-                checked={settings.frequency === f.id}
-                onChange={() => setSettings(prev => ({ ...prev, frequency: f.id as any }))}
-              />
-              <div>
-                <div className="text-sm font-medium text-text-primary">{f.label}</div>
-                <div className="text-xs text-text-secondary mt-0.5">{f.desc}</div>
-              </div>
-            </label>
-          ))}
-        </div>
-      </div>
-
-      {/* Conflict Strategy */}
-      <div className="glass-card p-6">
-        <h3 className="text-lg font-medium text-text-primary mb-4 flex items-center gap-2">
-          <RefreshCw size={18} className="text-info" />
-          冲突解决策略
-        </h3>
-        <div className="space-y-3">
-          {CONFLICTS.map(c => (
-            <label
-              key={c.id}
-              className={`flex items-start gap-3 p-4 rounded-[2px] border cursor-pointer transition-all ${
-                settings.conflictStrategy === c.id
-                  ? 'border-info/40 bg-info/[0.05]'
-                  : 'border-white/[0.06] bg-white/[0.02] hover:border-white/[0.12]'
-              }`}
-              onClick={() => setSettings(prev => ({ ...prev, conflictStrategy: c.id as any }))}
-            >
-              <input
-                type="radio"
-                name="conflict"
-                className="mt-1 accent-info"
-                checked={settings.conflictStrategy === c.id}
-                onChange={() => setSettings(prev => ({ ...prev, conflictStrategy: c.id as any }))}
-              />
-              <div>
-                <div className="text-sm font-medium text-text-primary">{c.label}</div>
-                <div className="text-xs text-text-secondary mt-0.5">{c.desc}</div>
-              </div>
-            </label>
-          ))}
-        </div>
-      </div>
-
-      {/* Offline Mode */}
-      <div className="glass-card p-6">
-        <h3 className="text-lg font-medium text-text-primary mb-4 flex items-center gap-2">
-          {settings.offlineMode ? <WifiOff size={18} className="text-warning" /> : <Wifi size={18} className="text-info" />}
-          离线模式
-        </h3>
-        <div className="flex items-center justify-between">
-          <div>
-            <div className="text-sm text-text-primary">启用离线模式</div>
-            <div className="text-xs text-text-secondary mt-0.5">
-              离线模式下，更改将在恢复连接后自动同步。
-            </div>
-          </div>
+        <div className="flex gap-3">
+          <input
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="设置一个用于加密同步数据的密码"
+            className="flex-1 bg-bg-secondary border border-white/[0.06] rounded-[2px] px-3 py-2 text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:border-info/40"
+          />
           <button
-            className={`relative w-12 h-6 rounded-full transition-colors ${settings.offlineMode ? 'bg-warning' : 'bg-white/10'}`}
-            onClick={() => setSettings(prev => ({ ...prev, offlineMode: !prev.offlineMode }))}
+            className="btn-primary px-4 py-2 text-sm"
+            onClick={handleSetPassword}
+            disabled={!password.trim()}
           >
-            <span
-              className={`absolute top-1 left-1 w-4 h-4 rounded-full bg-white transition-transform ${settings.offlineMode ? 'translate-x-6' : 'translate-x-0'}`}
-            />
+            确认
           </button>
         </div>
+        <p className="text-xs text-text-muted mt-2">
+          密码仅保存在当前浏览器标签页，刷新后需重新输入。
+        </p>
+      </div>
+
+      {/* Manual sync */}
+      <div className="glass-card p-6">
+        <h3 className="text-lg font-medium text-text-primary mb-4 flex items-center gap-2">
+          <RefreshCw size={18} className="text-info" />
+          手动同步
+        </h3>
+        <div className="flex flex-wrap gap-3">
+          <button
+            className="btn-primary flex items-center gap-2 px-4 py-2"
+            onClick={handlePush}
+            disabled={syncing || !hasSync}
+          >
+            {syncing && <Loader2 size={16} className="animate-spin" />}
+            <Upload size={16} />
+            {syncing ? '上传中...' : '立即上传快照'}
+          </button>
+          <button
+            className="btn-secondary flex items-center gap-2 px-4 py-2"
+            onClick={handlePull}
+            disabled={pulling || !hasSync}
+          >
+            {pulling && <Loader2 size={16} className="animate-spin" />}
+            <Download size={16} />
+            {pulling ? '拉取中...' : '从云端恢复'}
+          </button>
+        </div>
+      </div>
+
+      {/* Devices */}
+      <div className="glass-card p-6">
+        <h3 className="text-lg font-medium text-text-primary mb-4 flex items-center gap-2">
+          <Smartphone size={18} className="text-info" />
+          已同步设备
+        </h3>
+        {devices.length === 0 ? (
+          <p className="text-sm text-text-secondary">暂无设备，点击「立即上传快照」即可注册当前设备。</p>
+        ) : (
+          <ul className="space-y-2">
+            {devices.map((d) => (
+              <li
+                key={d.id}
+                className="flex items-center justify-between p-3 rounded-[2px] border border-white/[0.06] bg-white/[0.02]"
+              >
+                <div>
+                  <div className="text-sm font-medium text-text-primary">
+                    {d.name}
+                    {d.fingerprint === getFingerprint() && (
+                      <span className="ml-2 text-xs text-info">本机</span>
+                    )}
+                  </div>
+                  <div className="text-xs text-text-muted">
+                    最后在线：{d.last_seen_at ? new Date(d.last_seen_at).toLocaleString() : '未知'}
+                    {d.last_sync_at && ` · 最后同步：${new Date(d.last_sync_at).toLocaleString()}`}
+                  </div>
+                </div>
+                <button
+                  onClick={() => handleRemoveDevice(d.id)}
+                  className="p-2 rounded-[2px] hover:bg-danger/10 text-text-muted hover:text-danger transition-colors"
+                  title="移除设备"
+                >
+                  <Trash2 size={16} />
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
 
       {/* Storage Usage */}
@@ -233,9 +337,6 @@ const SyncSettings: FC = () => {
                   style={{ width: `${Math.max(percent, used > 0 ? 1 : 0)}%` }}
                 />
               </div>
-              <p className="text-xs text-text-muted">
-                上传的头像、文档与打包备份会占用存储空间。
-              </p>
             </div>
           );
         })()}
@@ -252,6 +353,18 @@ const SyncSettings: FC = () => {
         </button>
       </div>
     </div>
+  );
+};
+
+const SyncSettings: FC = () => {
+  return (
+    <ProFeatureGate
+      minTier="storage"
+      title="云同步功能"
+      description="此功能需要订阅存储会员（9.9 元/月）后方可使用。数据端到端加密，服务器无法读取。"
+    >
+      <SyncSettingsContent />
+    </ProFeatureGate>
   );
 };
 
