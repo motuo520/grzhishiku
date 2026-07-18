@@ -17,11 +17,11 @@ interface LinkData {
 }
 
 const CATEGORIES = [
-  { key: 'cognitive', label: '认知增强', color: '#58a6ff' },
-  { key: 'knowledge', label: '知识网络', color: '#a371f7' },
-  { key: 'attention', label: '注意力管理', color: '#3fb950' },
-  { key: 'embodied', label: '具身认知', color: '#f778ba' },
-  { key: 'social', label: '社会大脑', color: '#d29922' },
+  { key: 'cognitive', label: '认知增强', color: '#5b7c99' },
+  { key: 'knowledge', label: '知识网络', color: '#bd4a2e' },
+  { key: 'attention', label: '注意力管理', color: '#7d8f6a' },
+  { key: 'embodied', label: '具身认知', color: '#b08a3e' },
+  { key: 'social', label: '社会大脑', color: '#d4694a' },
 ];
 
 const NODE_LABELS = [
@@ -88,11 +88,11 @@ export default function WelcomeNetwork3D() {
     const ambientLight = new THREE.AmbientLight(0xffffff, 0.35);
     scene.add(ambientLight);
 
-    const p1 = new THREE.PointLight(0x58a6ff, 1.1, 100);
+    const p1 = new THREE.PointLight(0x5b7c99, 1.1, 100);
     p1.position.set(20, 20, 20);
     scene.add(p1);
 
-    const p2 = new THREE.PointLight(0xa371f7, 0.7, 100);
+    const p2 = new THREE.PointLight(0xbd4a2e, 0.7, 100);
     p2.position.set(-20, -10, -10);
     scene.add(p2);
 
@@ -129,7 +129,7 @@ export default function WelcomeNetwork3D() {
 
     const linkLines: LinkData[] = [];
     const lineMat = new THREE.LineBasicMaterial({
-      color: 0x58a6ff,
+      color: 0x5b7c99,
       transparent: true,
       opacity: 0.15,
     });

@@ -94,13 +94,13 @@ const FusionSearch: FC<FusionSearchProps> = ({ isOpen, onClose }) => {
           className="fixed inset-0 z-50 flex items-start justify-center pt-[15vh]"
           onClick={onClose}
         >
-          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+          <div className="absolute inset-0 bg-black/60" />
           
           <motion.div
             initial={{ opacity: 0, y: -20, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -20, scale: 0.95 }}
-            className="relative w-full max-w-2xl mx-4 glass-strong border border-border-color rounded-xl shadow-2xl overflow-hidden"
+            className="relative w-full max-w-2xl mx-4 glass-strong border border-border-color rounded-[2px] overflow-hidden"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Search Input */}
@@ -153,7 +153,7 @@ const FusionSearch: FC<FusionSearchProps> = ({ isOpen, onClose }) => {
                             onClick={() => { navigate(result.path); onClose(); }}
                             className={`w-full flex items-center gap-3 px-4 py-2.5 text-left hover:bg-bg-hover transition-all ${getBrainBorder(result.brainSide)}`}
                           >
-                            <div className="w-8 h-8 rounded-lg bg-personal-primary/10 flex items-center justify-center text-personal-primary">
+                            <div className="w-8 h-8 rounded-[2px] bg-personal-primary/10 flex items-center justify-center text-personal-primary">
                               <Icon className="w-4 h-4" />
                             </div>
                             <div className="flex-1 min-w-0">
@@ -184,7 +184,7 @@ const FusionSearch: FC<FusionSearchProps> = ({ isOpen, onClose }) => {
                             onClick={() => { navigate(result.path); onClose(); }}
                             className={`w-full flex items-center gap-3 px-4 py-2.5 text-left hover:bg-bg-hover transition-all ${getBrainBorder(result.brainSide)}`}
                           >
-                            <div className="w-8 h-8 rounded-lg bg-network-primary/10 flex items-center justify-center text-network-primary">
+                            <div className="w-8 h-8 rounded-[2px] bg-network-primary/10 flex items-center justify-center text-network-primary">
                               <Icon className="w-4 h-4" />
                             </div>
                             <div className="flex-1 min-w-0">
@@ -215,7 +215,7 @@ const FusionSearch: FC<FusionSearchProps> = ({ isOpen, onClose }) => {
                             onClick={() => { navigate(result.path); onClose(); }}
                             className={`w-full flex items-center gap-3 px-4 py-2.5 text-left hover:bg-bg-hover transition-all ${getBrainBorder(result.brainSide)}`}
                           >
-                            <div className="w-8 h-8 rounded-lg bg-fusion-primary/10 flex items-center justify-center text-fusion-primary">
+                            <div className="w-8 h-8 rounded-[2px] bg-fusion-primary/10 flex items-center justify-center text-fusion-primary">
                               <Icon className="w-4 h-4" />
                             </div>
                             <div className="flex-1 min-w-0">

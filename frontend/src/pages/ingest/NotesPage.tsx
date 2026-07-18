@@ -248,7 +248,7 @@ const NotesPage: FC = () => {
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
-            className="flex items-center gap-2 px-4 py-3 rounded-xl bg-danger/10 border border-danger/30 text-danger text-sm"
+            className="flex items-center gap-2 px-4 py-3 rounded-[2px] bg-danger/10 border border-danger/30 text-danger text-sm"
           >
             <AlertCircle className="w-4 h-4" />
             {error}
@@ -268,7 +268,7 @@ const NotesPage: FC = () => {
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="搜索笔记标题、内容..."
-            className="w-full bg-bg-secondary border border-border-color rounded-xl pl-10 pr-4 py-2.5 text-sm text-text-primary placeholder-text-secondary focus:outline-none focus:border-info/50 transition-colors"
+            className="w-full bg-bg-secondary border border-border-color rounded-[2px] pl-10 pr-4 py-2.5 text-sm text-text-primary placeholder-text-secondary focus:outline-none focus:border-info/50 transition-colors"
           />
         </div>
         <div className="flex items-center gap-2">
@@ -282,14 +282,14 @@ const NotesPage: FC = () => {
               <span className="px-1.5 py-0.5 rounded-full bg-info/20 text-info text-[10px]">{selectedTagIds.length}</span>
             )}
           </button>
-          <div className="flex items-center gap-1 bg-bg-secondary border border-border-color rounded-xl p-1">
+          <div className="flex items-center gap-1 bg-bg-secondary border border-border-color rounded-[2px] p-1">
             {VIEW_MODES.map((m) => {
               const Icon = m.icon;
               return (
                 <button
                   key={m.key}
                   onClick={() => setViewMode(m.key as 'grid' | 'list')}
-                  className={`p-2 rounded-lg transition-colors ${viewMode === m.key ? 'bg-white/[0.05] text-info' : 'text-text-muted hover:text-text-primary'}`}
+                  className={`p-2 rounded-[2px] transition-colors ${viewMode === m.key ? 'bg-white/[0.05] text-info' : 'text-text-muted hover:text-text-primary'}`}
                   title={m.label}
                 >
                   <Icon className="w-4 h-4" />
@@ -309,7 +309,7 @@ const NotesPage: FC = () => {
             exit={{ opacity: 0, height: 0 }}
             className="overflow-hidden"
           >
-            <div className="flex items-center gap-2 flex-wrap bg-bg-secondary border border-border-color rounded-xl p-3">
+            <div className="flex items-center gap-2 flex-wrap bg-bg-secondary border border-border-color rounded-[2px] p-3">
               {allTags.map((tag) => {
                 const isSelected = selectedTagIds.includes(tag.id);
                 return (
@@ -368,7 +368,7 @@ const NotesPage: FC = () => {
 
       {/* Batch Toolbar */}
       {filteredNotes.length > 0 && (
-        <div className="flex items-center justify-between bg-bg-secondary border border-border-color rounded-xl px-4 py-2.5">
+        <div className="flex items-center justify-between bg-bg-secondary border border-border-color rounded-[2px] px-4 py-2.5">
           <div className="flex items-center gap-3">
             <button
               onClick={toggleSelectAll}
@@ -405,7 +405,7 @@ const NotesPage: FC = () => {
               <button
                 onClick={handleBatchDelete}
                 disabled={isBatchDeleting}
-                className="px-3 py-1.5 bg-danger/10 text-danger border border-danger/30 rounded-lg text-xs font-medium transition-all hover:bg-danger/20 flex items-center gap-1.5 disabled:opacity-60"
+                className="px-3 py-1.5 bg-danger/10 text-danger border border-danger/30 rounded-[2px] text-xs font-medium transition-all hover:bg-danger/20 flex items-center gap-1.5 disabled:opacity-60"
               >
                 {isBatchDeleting && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
                 <Trash2 className="w-3.5 h-3.5" />
@@ -418,7 +418,7 @@ const NotesPage: FC = () => {
 
       {/* Display cap notice */}
       {hiddenCount > 0 && (
-        <div className="px-4 py-2.5 rounded-xl bg-warning/10 border border-warning/30 text-warning text-xs flex items-center gap-2">
+        <div className="px-4 py-2.5 rounded-[2px] bg-warning/10 border border-warning/30 text-warning text-xs flex items-center gap-2">
           <AlertCircle className="w-4 h-4" />
           还有 {hiddenCount} 条笔记未显示，请使用搜索或标签筛选缩小范围。
         </div>
@@ -502,7 +502,7 @@ const NotesPage: FC = () => {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
             onClick={closeEditor}
           >
             <motion.div
@@ -510,13 +510,13 @@ const NotesPage: FC = () => {
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
               onClick={(e) => e.stopPropagation()}
-              className="w-full max-w-2xl bg-bg-secondary border border-border-color rounded-2xl shadow-2xl overflow-hidden"
+              className="w-full max-w-2xl bg-bg-secondary border border-border-color rounded-[2px] overflow-hidden"
             >
               <div className="flex items-center justify-between px-5 py-4 border-b border-border-color">
                 <h3 className="text-sm font-medium text-text-primary">
                   {editingNote ? '快速编辑' : '快速新建'}
                 </h3>
-                <button onClick={closeEditor} className="p-1 rounded-lg hover:bg-white/[0.05] text-text-muted">
+                <button onClick={closeEditor} className="p-1 rounded-[2px] hover:bg-white/[0.05] text-text-muted">
                   <X className="w-4 h-4" />
                 </button>
               </div>
@@ -528,7 +528,7 @@ const NotesPage: FC = () => {
                     value={formTitle}
                     onChange={(e) => setFormTitle(e.target.value)}
                     placeholder="输入笔记标题..."
-                    className="w-full bg-bg-primary border border-border-color rounded-xl px-4 py-2.5 text-sm text-text-primary placeholder-text-secondary focus:outline-none focus:border-info/50 transition-colors"
+                    className="w-full bg-bg-primary border border-border-color rounded-[2px] px-4 py-2.5 text-sm text-text-primary placeholder-text-secondary focus:outline-none focus:border-info/50 transition-colors"
                   />
                 </div>
                 <div>
@@ -548,7 +548,7 @@ const NotesPage: FC = () => {
                     onChange={(e) => setFormContent(e.target.value)}
                     placeholder="在这里输入笔记内容..."
                     rows={10}
-                    className="w-full bg-bg-primary border border-border-color rounded-xl px-4 py-3 text-sm text-text-primary placeholder-text-secondary focus:outline-none focus:border-info/50 transition-colors resize-none"
+                    className="w-full bg-bg-primary border border-border-color rounded-[2px] px-4 py-3 text-sm text-text-primary placeholder-text-secondary focus:outline-none focus:border-info/50 transition-colors resize-none"
                   />
                 </div>
               </div>
@@ -642,7 +642,7 @@ const NoteGridContent: FC<{
       <div className="flex items-center gap-1">
         <button
           onClick={() => openQuickEditor(note)}
-          className="p-1.5 rounded-lg hover:bg-white/[0.05] text-text-muted hover:text-info transition-colors"
+          className="p-1.5 rounded-[2px] hover:bg-white/[0.05] text-text-muted hover:text-info transition-colors"
           title="快速编辑"
         >
           <Edit3 className="w-4 h-4" />
@@ -650,7 +650,7 @@ const NoteGridContent: FC<{
         <button
           onClick={() => handleDelete(note.id)}
           disabled={isDeleting}
-          className="p-1.5 rounded-lg hover:bg-white/[0.05] text-text-muted hover:text-danger transition-colors disabled:opacity-50"
+          className="p-1.5 rounded-[2px] hover:bg-white/[0.05] text-text-muted hover:text-danger transition-colors disabled:opacity-50"
           title="删除"
         >
           <Trash2 className="w-4 h-4" />
@@ -705,7 +705,7 @@ const NoteListContent: FC<{
     <div className="flex items-center gap-1">
       <button
         onClick={() => openQuickEditor(note)}
-        className="p-1.5 rounded-lg hover:bg-white/[0.05] text-text-muted hover:text-info transition-colors"
+        className="p-1.5 rounded-[2px] hover:bg-white/[0.05] text-text-muted hover:text-info transition-colors"
         title="快速编辑"
       >
         <Edit3 className="w-4 h-4" />
@@ -713,7 +713,7 @@ const NoteListContent: FC<{
       <button
         onClick={() => handleDelete(note.id)}
         disabled={isDeleting}
-        className="p-1.5 rounded-lg hover:bg-white/[0.05] text-text-muted hover:text-danger transition-colors disabled:opacity-50"
+        className="p-1.5 rounded-[2px] hover:bg-white/[0.05] text-text-muted hover:text-danger transition-colors disabled:opacity-50"
         title="删除"
       >
         <Trash2 className="w-4 h-4" />

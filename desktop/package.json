@@ -2,15 +2,19 @@
   "name": "psb-desktop",
   "version": "0.1.0",
   "private": true,
-  "description": "个人第二大脑桌面端（Electron 壳，复用 frontend 构建产物）",
+  "description": "个人第二大脑桌面端（Electron + 内嵌后端 sidecar）",
   "main": "main.js",
   "author": "Personal Second Brain Contributors",
   "license": "MIT",
   "scripts": {
     "dev": "electron .",
+    "dev:embedded": "set PSB_DEV=1&& electron .",
     "smoke": "electron . --smoke",
+    "icon": "node scripts/make-icon.mjs",
+    "build:frontend": "cd ../frontend && npm run build",
+    "build:backend": "..\\backend\\.venv\\Scripts\\python.exe -m PyInstaller psb-backend.spec --distpath backend-dist --workpath backend-build --noconfirm",
     "pack": "electron-builder --dir",
-    "dist": "electron-builder --win portable"
+    "dist": "npm run build:frontend && npm run build:backend && electron-builder --win portable"
   },
   "devDependencies": {
     "electron": "^33.4.0",
@@ -24,18 +28,33 @@
     },
     "files": [
       "main.js",
-      "preload.js"
+      "preload.js",
+      "icon.png"
     ],
-    "extraFiles": [
+    "extraResources": [
       {
         "from": "../frontend/dist",
         "to": "frontend/dist"
+      },
+      {
+        "from": "backend-dist/psb-backend",
+        "to": "psb-backend"
       }
     ],
     "win": {
+      "icon": "icon.png",
       "target": [
+        "nsis",
         "portable"
       ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "个人第二大脑"
     }
   }
 }

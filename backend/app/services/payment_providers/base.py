@@ -8,6 +8,7 @@ class PaymentProviderType(str, Enum):
     WECHAT = "wechat"
     STRIPE = "stripe"
     XORPAY = "xorpay"
+    XUNHUPAY = "xunhupay"
 
 class PaymentStatus(str, Enum):
     PENDING = "pending"

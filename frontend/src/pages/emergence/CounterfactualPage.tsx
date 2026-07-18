@@ -81,9 +81,9 @@ const CounterfactualPage: FC = () => {
   }, [result, premise]);
 
   const probabilityColor = (prob: number) => {
-    if (prob <= 0.3) return '#f85149';
-    if (prob <= 0.6) return '#d29922';
-    return '#3fb950';
+    if (prob <= 0.3) return '#b03a2e';
+    if (prob <= 0.6) return '#b08a3e';
+    return '#7d8f6a';
   };
 
   return (
@@ -143,7 +143,7 @@ const CounterfactualPage: FC = () => {
                 max={5}
                 value={timelineDepth}
                 onChange={(e) => setTimelineDepth(Number(e.target.value))}
-                className="w-full h-2 bg-bg-tertiary rounded-lg appearance-none cursor-pointer accent-info"
+                className="w-full h-2 bg-bg-tertiary rounded-[2px] appearance-none cursor-pointer accent-info"
               />
               <div className="flex justify-between text-xs text-text-muted mt-1">
                 <span>浅层</span>
@@ -215,7 +215,7 @@ const CounterfactualPage: FC = () => {
                       <div className="flex items-center gap-2">
                         <h3 className="text-lg font-bold text-text-primary">{branch.stage}</h3>
                         <span
-                          className="px-2 py-0.5 text-xs font-bold rounded-full"
+                          className="px-2 py-0.5 text-xs font-bold rounded-[2px]"
                           style={{
                             backgroundColor: `${probabilityColor(branch.probability || 0)}22`,
                             color: probabilityColor(branch.probability || 0),
@@ -233,7 +233,7 @@ const CounterfactualPage: FC = () => {
                         {branch.key_nodes?.map((node, ni) => (
                           <div
                             key={ni}
-                            className="p-3 rounded-lg bg-white/[0.02] border border-white/[0.05]"
+                            className="p-3 rounded-[2px] bg-white/[0.02] border border-white/[0.05]"
                           >
                             <div className="flex items-center gap-2 mb-1">
                               <span className="text-xs font-bold text-info">{node.time}</span>
@@ -260,7 +260,7 @@ const CounterfactualPage: FC = () => {
                       </div>
 
                       {/* Reality comparison */}
-                      <div className="p-3 rounded-lg bg-white/[0.02] border border-white/[0.05]">
+                      <div className="p-3 rounded-[2px] bg-white/[0.02] border border-white/[0.05]">
                         <div className="flex items-center gap-2 mb-1">
                           <BarChart3 className="w-3 h-3 text-text-muted" />
                           <span className="text-xs font-bold text-text-muted">现实对比</span>
@@ -293,7 +293,7 @@ const CounterfactualPage: FC = () => {
                   <div
                     key={item.id}
                     onClick={() => handleLoadHistory(item)}
-                    className="p-3 rounded-lg bg-white/[0.02] border border-white/[0.05] hover:border-success/30 cursor-pointer transition-colors"
+                    className="p-3 rounded-[2px] bg-white/[0.02] border border-white/[0.05] hover:border-success/30 cursor-pointer transition-colors"
                   >
                     <div className="flex items-center justify-between mb-1">
                       <span className="text-xs text-text-muted">

@@ -103,13 +103,13 @@ const EvolutionTrackPage: FC = () => {
   return (
     <div className="p-6 max-w-5xl mx-auto">
       <h1 className="text-xl font-semibold text-text-primary flex items-center gap-2 mb-2">
-        <TrendingUp className="w-5 h-5 text-purple-400" />
+        <TrendingUp className="w-5 h-5 text-fusion-primary" />
         进化轨迹
       </h1>
       <p className="text-sm text-text-secondary mb-6">追踪知识单元与笔记从收集到内化的完整历程。</p>
 
       {(knowledgeError || notesLoadFailed) && (
-        <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/30 text-sm text-red-400 mb-4">
+        <div className="p-3 rounded-[2px] bg-danger/10 border border-danger/30 text-sm text-danger mb-4">
           {knowledgeError ? (knowledgeError as any)?.message || '知识单元加载失败，请稍后重试' : '笔记加载失败，请稍后重试'}
         </div>
       )}
@@ -122,7 +122,7 @@ const EvolutionTrackPage: FC = () => {
       )}
 
       {!isLoading && total === 0 && (
-        <div className="p-8 rounded-xl border border-white/[0.06] bg-bg-secondary text-center text-text-secondary">
+        <div className="p-8 rounded-[2px] border border-white/[0.06] bg-bg-secondary text-center text-text-secondary">
           暂无可追踪的知识单元或笔记，先在管线中沉淀内容吧。
         </div>
       )}
@@ -138,12 +138,12 @@ const EvolutionTrackPage: FC = () => {
           const collapsedItems = focusIndex >= 20 ? stageItems.slice(0, focusIndex + 1) : stageItems.slice(0, 20);
           const visibleItems = showAll ? stageItems : collapsedItems;
           return (
-            <div key={stage.id} className="rounded-xl border border-white/[0.06] bg-bg-secondary overflow-hidden">
+            <div key={stage.id} className="rounded-[2px] border border-white/[0.06] bg-bg-secondary overflow-hidden">
               <button
                 onClick={() => toggleStage(stage.id)}
                 className="w-full flex items-center gap-4 p-4 text-left hover:bg-white/[0.02] transition-colors"
               >
-                <div className={`w-10 h-10 rounded-lg ${stage.bg} ${stage.color} flex items-center justify-center text-sm font-semibold shrink-0`}>
+                <div className={`w-10 h-10 rounded-[2px] ${stage.bg} ${stage.color} flex items-center justify-center text-sm font-semibold shrink-0`}>
                   {count}
                 </div>
                 <div className="flex-1 min-w-0">
@@ -171,9 +171,9 @@ const EvolutionTrackPage: FC = () => {
                       key={`${item.type}-${item.id}`}
                       id={`evolution-item-${item.id}`}
                       to={item.link}
-                      className={`flex items-center gap-2 p-2 rounded-lg hover:bg-white/[0.03] transition-colors group ${item.id === focusId ? 'ring-1 ring-purple-400/60 bg-purple-400/10' : ''}`}
+                      className={`flex items-center gap-2 p-2 rounded-[2px] hover:bg-white/[0.03] transition-colors group ${item.id === focusId ? 'ring-1 ring-fusion-primary/60 bg-fusion-primary/10' : ''}`}
                     >
-                      <span className={`text-xs px-1.5 py-0.5 rounded border ${item.type === 'knowledge_unit' ? 'text-info border-info/30 bg-info/10' : 'text-amber-400 border-amber-400/30 bg-amber-400/10'}`}>
+                      <span className={`text-xs px-1.5 py-0.5 rounded border ${item.type === 'knowledge_unit' ? 'text-info border-info/30 bg-info/10' : 'text-warning border-warning/30 bg-warning/10'}`}>
                         {item.type === 'knowledge_unit' ? '知识' : '笔记'}
                       </span>
                       <span className="text-sm text-text-secondary group-hover:text-text-primary truncate">{item.title}</span>

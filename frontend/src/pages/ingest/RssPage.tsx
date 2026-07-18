@@ -201,7 +201,7 @@ const RssPage: FC = () => {
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
-            className="flex items-center gap-2 px-4 py-3 rounded-xl bg-danger/10 border border-danger/30 text-danger text-sm"
+            className="flex items-center gap-2 px-4 py-3 rounded-[2px] bg-danger/10 border border-danger/30 text-danger text-sm"
           >
             <AlertCircle className="w-4 h-4" />
             {error}
@@ -215,7 +215,7 @@ const RssPage: FC = () => {
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
-            className="flex items-center gap-2 px-4 py-3 rounded-xl bg-success/10 border border-success/30 text-success text-sm"
+            className="flex items-center gap-2 px-4 py-3 rounded-[2px] bg-success/10 border border-success/30 text-success text-sm"
           >
             <Check className="w-4 h-4" />
             {success}
@@ -235,13 +235,13 @@ const RssPage: FC = () => {
               value={newTitle}
               onChange={e => setNewTitle(e.target.value)}
               placeholder="源名称（可选）"
-              className="w-full bg-bg-tertiary border border-white/[0.08] rounded-xl px-3 py-2 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:border-info/50"
+              className="w-full bg-bg-tertiary border border-white/[0.08] rounded-[2px] px-3 py-2 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:border-info/50"
             />
             <input
               value={newUrl}
               onChange={e => setNewUrl(e.target.value)}
               placeholder="https://example.com/feed.xml"
-              className="w-full bg-bg-tertiary border border-white/[0.08] rounded-xl px-3 py-2 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:border-info/50"
+              className="w-full bg-bg-tertiary border border-white/[0.08] rounded-[2px] px-3 py-2 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:border-info/50"
             />
             <button
               onClick={handleAddFeed}
@@ -271,7 +271,7 @@ const RssPage: FC = () => {
                   role="button"
                   tabIndex={0}
                   onClick={() => setSelectedFeedId(feed.id)}
-                  className={`group w-full text-left p-3 rounded-xl transition-all cursor-pointer ${
+                  className={`group w-full text-left p-3 rounded-[2px] transition-all cursor-pointer ${
                     selectedFeedId === feed.id
                       ? 'bg-info/10 border border-info/20'
                       : 'hover:bg-white/[0.03] border border-transparent'
@@ -319,7 +319,7 @@ const RssPage: FC = () => {
                             exit={{ opacity: 0, height: 0 }}
                             className="overflow-hidden"
                           >
-                            <div className="mt-2 text-xs text-danger bg-danger/5 border border-danger/20 rounded-lg p-2 break-words">
+                            <div className="mt-2 text-xs text-danger bg-danger/5 border border-danger/20 rounded-[2px] p-2 break-words">
                               {feed.fetch_error || '未知错误'}
                             </div>
                           </motion.div>
@@ -335,7 +335,7 @@ const RssPage: FC = () => {
                         }}
                         disabled={isFetching}
                         title="拉取"
-                        className="p-1.5 rounded-lg text-text-muted hover:text-info hover:bg-white/[0.05] transition-colors"
+                        className="p-1.5 rounded-[2px] text-text-muted hover:text-info hover:bg-white/[0.05] transition-colors"
                       >
                         {isFetching ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
                       </button>
@@ -347,7 +347,7 @@ const RssPage: FC = () => {
                         }}
                         disabled={isDeleting}
                         title="删除"
-                        className="p-1.5 rounded-lg text-text-muted hover:text-danger hover:bg-danger/10 transition-colors"
+                        className="p-1.5 rounded-[2px] text-text-muted hover:text-danger hover:bg-danger/10 transition-colors"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>
@@ -417,7 +417,7 @@ const RssPage: FC = () => {
                       <button
                         onClick={() => handleDelete(selectedFeed.id)}
                         disabled={isDeleting}
-                        className="p-2 rounded-xl bg-danger/10 text-danger hover:bg-danger/20 transition-colors"
+                        className="p-2 rounded-[2px] bg-danger/10 text-danger hover:bg-danger/20 transition-colors"
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
@@ -427,7 +427,7 @@ const RssPage: FC = () => {
               </div>
 
               {selectedFeed.fetch_status === 'error' && (
-                <div className="flex items-start gap-3 px-4 py-3 rounded-xl bg-danger/10 border border-danger/30 text-danger text-sm">
+                <div className="flex items-start gap-3 px-4 py-3 rounded-[2px] bg-danger/10 border border-danger/30 text-danger text-sm">
                   <Info className="w-4 h-4 mt-0.5 shrink-0" />
                   <div className="min-w-0">
                     <p className="font-medium">该 RSS 源拉取失败</p>
@@ -496,7 +496,7 @@ const RssPage: FC = () => {
                             {!entry.is_read && (
                               <button
                                 onClick={() => markRead(entry.id)}
-                                className="p-1.5 rounded-lg hover:bg-white/[0.05] text-text-muted hover:text-success transition-colors"
+                                className="p-1.5 rounded-[2px] hover:bg-white/[0.05] text-text-muted hover:text-success transition-colors"
                                 title="标记已读"
                               >
                                 <Check className="w-4 h-4" />
@@ -505,7 +505,7 @@ const RssPage: FC = () => {
                             <button
                               onClick={() => saveEntry(entry.id)}
                               disabled={entry.is_saved}
-                              className={`p-1.5 rounded-lg transition-colors ${
+                              className={`p-1.5 rounded-[2px] transition-colors ${
                                 entry.is_saved
                                   ? 'text-success'
                                   : 'text-text-muted hover:text-info hover:bg-white/[0.05]'
@@ -517,7 +517,7 @@ const RssPage: FC = () => {
                             <button
                               onClick={() => handleSummarize(entry)}
                               disabled={summarizingId === entry.id}
-                              className="p-1.5 rounded-lg text-text-muted hover:text-warning hover:bg-white/[0.05] transition-colors disabled:opacity-50"
+                              className="p-1.5 rounded-[2px] text-text-muted hover:text-warning hover:bg-white/[0.05] transition-colors disabled:opacity-50"
                               title="AI 摘要"
                             >
                               {summarizingId === entry.id ? (

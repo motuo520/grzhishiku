@@ -75,6 +75,7 @@ const ChatInputBar: FC<ChatInputBarProps> = ({ sidebarOpen = true, onLoginClick 
   });
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
+  const recognitionRef = useRef<any>(null);
 
   const effectiveBrain = activeBrain || brainSide || 'both';
   const brainLabel = effectiveBrain === 'personal' ? '个人脑' : effectiveBrain === 'network' ? '网络脑' : '双脑融合';
@@ -232,7 +233,58 @@ const ChatInputBar: FC<ChatInputBarProps> = ({ sidebarOpen = true, onLoginClick 
     }
   };
 
-  const handleVoiceToggle = () => setIsRecording(!isRecording);
+  // 语音输入：Web Speech API 语音识别（中文），不支持的环境明确降级提示
+  const handleVoiceToggle = () => {
+    if (isRecording) {
+      recognitionRef.current?.stop();
+      setIsRecording(false);
+      return;
+    }
+
+    const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SR) {
+      showToast('当前环境不支持语音输入，请使用 Chrome 或桌面端', 'error');
+      return;
+    }
+
+    const rec = new SR();
+    rec.lang = 'zh-CN';
+    rec.continuous = true;
+    rec.interimResults = true;
+
+    rec.onresult = (e: any) => {
+      let finalText = '';
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        if (e.results[i].isFinal) finalText += e.results[i][0].transcript;
+      }
+      if (finalText) {
+        setMessage((prev) => (prev ? prev.trimEnd() + ' ' : '') + finalText.trim());
+      }
+    };
+    rec.onerror = (e: any) => {
+      setIsRecording(false);
+      if (e.error === 'not-allowed' || e.error === 'service-not-allowed') {
+        showToast('麦克风权限被拒绝，请在系统/浏览器中授权', 'error');
+      } else if (e.error !== 'aborted') {
+        showToast(`语音识别失败：${e.error}`, 'error');
+      }
+    };
+    rec.onend = () => setIsRecording(false);
+
+    recognitionRef.current = rec;
+    try {
+      rec.start();
+      setIsRecording(true);
+    } catch {
+      setIsRecording(false);
+      showToast('无法启动语音识别', 'error');
+    }
+  };
+
+  // 卸载时停止识别
+  useEffect(() => {
+    return () => recognitionRef.current?.stop();
+  }, []);
 
   const handleAttachment = (type: string) => {
     setAttachments((prev) => [...prev, type]);
@@ -348,10 +400,10 @@ const ChatInputBar: FC<ChatInputBarProps> = ({ sidebarOpen = true, onLoginClick 
       <div className="relative shrink-0">
         <button
           onClick={() => setShowBrainSwitcher(!showBrainSwitcher)}
-          className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-medium border transition-all hover:bg-bg-hover ${
-            effectiveBrain === 'personal' ? 'bg-amber-400/10 text-amber-400 border-amber-400/30 hover:border-amber-400/50' :
-            effectiveBrain === 'network' ? 'bg-blue-400/10 text-blue-400 border-blue-400/30 hover:border-blue-400/50' :
-            'bg-purple-400/10 text-purple-400 border-purple-400/30 hover:border-purple-400/50'
+          className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-[2px] text-xs font-medium border transition-all hover:bg-bg-hover ${
+            effectiveBrain === 'personal' ? 'bg-personal-primary/10 text-personal-primary border-personal-primary/30 hover:border-personal-primary/50' :
+            effectiveBrain === 'network' ? 'bg-network-primary/10 text-network-primary border-network-primary/30 hover:border-network-primary/50' :
+            'bg-fusion-primary/10 text-fusion-primary border-fusion-primary/30 hover:border-fusion-primary/50'
           }`}
           title={`当前: ${brainLabel} (点击切换)`}
         >
@@ -365,12 +417,12 @@ const ChatInputBar: FC<ChatInputBarProps> = ({ sidebarOpen = true, onLoginClick 
               initial={{ opacity: 0, y: 5, scale: 0.95 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 5, scale: 0.95 }}
-              className="absolute bottom-full left-0 mb-2 w-40 glass rounded-xl border border-border-color shadow-2xl py-1 z-50"
+              className="absolute bottom-full left-0 mb-2 w-40 glass rounded-[2px] border border-border-color py-1 z-50"
             >
               {[
-                { id: 'personal', label: '个人脑', icon: Home, color: 'text-amber-400', bg: 'hover:bg-amber-400/10' },
-                { id: 'network', label: '网络脑', icon: Globe, color: 'text-blue-400', bg: 'hover:bg-blue-400/10' },
-                { id: 'both', label: '双脑融合', icon: Brain, color: 'text-purple-400', bg: 'hover:bg-purple-400/10' },
+                { id: 'personal', label: '个人脑', icon: Home, color: 'text-personal-primary', bg: 'hover:bg-personal-primary/10' },
+                { id: 'network', label: '网络脑', icon: Globe, color: 'text-network-primary', bg: 'hover:bg-network-primary/10' },
+                { id: 'both', label: '双脑融合', icon: Brain, color: 'text-fusion-primary', bg: 'hover:bg-fusion-primary/10' },
               ].map((b) => {
                 const Icon = b.icon;
                 const isActive = effectiveBrain === b.id;
@@ -397,13 +449,13 @@ const ChatInputBar: FC<ChatInputBarProps> = ({ sidebarOpen = true, onLoginClick 
       </div>
 
       {/* Voice */}
-      <button onClick={handleVoiceToggle} className={`shrink-0 p-2.5 rounded-xl transition-all ${isRecording ? 'bg-danger/10 text-danger animate-pulse' : 'hover:bg-bg-hover text-text-secondary hover:text-danger'}`}>
+      <button onClick={handleVoiceToggle} className={`shrink-0 p-2.5 rounded-[2px] transition-all ${isRecording ? 'bg-danger/10 text-danger animate-pulse' : 'hover:bg-bg-hover text-text-secondary hover:text-danger'}`}>
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
       </button>
 
       <AnimatePresence>
         {isRecording && (
-          <motion.div initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.8 }} className="absolute left-10 bottom-full mb-2 px-3 py-1.5 bg-danger/10 border border-danger/30 rounded-lg text-xs text-danger">
+          <motion.div initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.8 }} className="absolute left-10 bottom-full mb-2 px-3 py-1.5 bg-danger/10 border border-danger/30 rounded-[2px] text-xs text-danger">
             正在录音... <span className="animate-pulse">●</span>
           </motion.div>
         )}
@@ -418,13 +470,13 @@ const ChatInputBar: FC<ChatInputBarProps> = ({ sidebarOpen = true, onLoginClick 
             onChange={(e) => setMessage(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder={`与 ${effectiveBrain === 'personal' ? '个人脑' : effectiveBrain === 'network' ? '网络脑' : '双脑'} 对话...`}
-            className="w-full bg-bg-secondary border border-border-color rounded-xl px-4 py-2.5 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:border-info/60 focus:bg-bg-secondary transition-all shadow-inner"
+            className="w-full bg-bg-secondary border border-border-color rounded-[2px] px-4 py-2.5 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:border-info/60 focus:bg-bg-secondary transition-all shadow-inner"
             disabled={isStreaming}
           />
         ) : (
           <button
             onClick={() => onLoginClick ? onLoginClick() : navigate('/welcome')}
-            className="w-full bg-bg-secondary border border-border-color rounded-xl px-4 py-2.5 text-sm text-text-secondary text-left hover:border-info/30 hover:text-text-primary transition-colors flex items-center gap-2"
+            className="w-full bg-bg-secondary border border-border-color rounded-[2px] px-4 py-2.5 text-sm text-text-secondary text-left hover:border-info/30 hover:text-text-primary transition-colors flex items-center gap-2"
           >
             <LogIn className="w-4 h-4" />
             请登录后使用 AI 对话
@@ -434,12 +486,12 @@ const ChatInputBar: FC<ChatInputBarProps> = ({ sidebarOpen = true, onLoginClick 
 
       {/* Attachment */}
       <div className="relative shrink-0">
-        <button onClick={() => setShowAttachmentMenu(!showAttachmentMenu)} className="p-2.5 rounded-xl hover:bg-bg-tertiary text-text-secondary transition-colors">
+        <button onClick={() => setShowAttachmentMenu(!showAttachmentMenu)} className="p-2.5 rounded-[2px] hover:bg-bg-tertiary text-text-secondary transition-colors">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
         </button>
         <AnimatePresence>
           {showAttachmentMenu && (
-            <motion.div initial={{ opacity: 0, y: 5, scale: 0.95 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 5, scale: 0.95 }} className="absolute bottom-full right-0 mb-2 w-48 glass rounded-xl border border-border-color shadow-2xl py-2 z-50">
+            <motion.div initial={{ opacity: 0, y: 5, scale: 0.95 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 5, scale: 0.95 }} className="absolute bottom-full right-0 mb-2 w-48 glass rounded-[2px] border border-border-color py-2 z-50">
               {['文件', '图片', '链接', '笔记'].map((label) => (
                 <button key={label} onClick={() => handleAttachment(label)} className="w-full text-left px-4 py-2.5 text-sm text-text-secondary hover:bg-bg-hover hover:text-text-primary transition-colors">{label}</button>
               ))}
@@ -452,10 +504,10 @@ const ChatInputBar: FC<ChatInputBarProps> = ({ sidebarOpen = true, onLoginClick 
       <button
         onClick={isStreaming ? () => { abortControllerRef.current?.abort(); setIsStreaming(false); } : handleSend}
         disabled={!isLoggedIn || (!isStreaming && !message.trim() && attachments.length === 0)}
-        className={`shrink-0 p-2.5 rounded-xl transition-all shadow-sm ${
+        className={`shrink-0 p-2.5 rounded-[2px] transition-all shadow-sm ${
           isStreaming ? 'bg-danger hover:bg-danger/80 text-white shadow-danger/20' :
           !isLoggedIn ? 'bg-bg-tertiary text-text-secondary cursor-not-allowed' :
-          message.trim() || attachments.length > 0 ? 'bg-info hover:bg-network-secondary text-white shadow-info/20' : 'bg-bg-tertiary text-text-secondary cursor-not-allowed'
+          message.trim() || attachments.length > 0 ? 'bg-accent hover:bg-[var(--accent-hover)] text-white shadow-info/20' : 'bg-bg-tertiary text-text-secondary cursor-not-allowed'
         }`}
       >
         {isStreaming ? (
@@ -473,7 +525,7 @@ const ChatInputBar: FC<ChatInputBarProps> = ({ sidebarOpen = true, onLoginClick 
       className={`relative flex-shrink-0 z-[45] transition-all duration-200 ${
         showChatPanel
           ? 'bg-transparent border-transparent shadow-none'
-          : 'bg-bg-secondary/80 backdrop-blur-xl border-t border-border-color rounded-t-2xl shadow-[0_-4px_24px_rgba(0,0,0,0.35)]'
+          : 'bg-bg-secondary/80 border-t border-border-color rounded-t-[2px]'
       }`}
     >
       {/* Toast */}
@@ -483,10 +535,10 @@ const ChatInputBar: FC<ChatInputBarProps> = ({ sidebarOpen = true, onLoginClick 
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
-            className={`fixed top-4 right-4 z-[60] px-4 py-3 rounded-xl border backdrop-blur-xl shadow-lg ${
+            className={`fixed top-4 right-4 z-[60] px-4 py-3 rounded-[2px] border ${
               toast.type === 'success'
-                ? 'bg-emerald-500/20 border-emerald-500/30 text-emerald-400'
-                : 'bg-red-500/20 border-red-500/30 text-red-400'
+                ? 'bg-success/20 border-success/30 text-success'
+                : 'bg-danger/20 border-danger/30 text-danger'
             }`}
           >
             <div className="flex items-center gap-2">
@@ -524,7 +576,7 @@ const ChatInputBar: FC<ChatInputBarProps> = ({ sidebarOpen = true, onLoginClick 
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.95, y: 20 }}
                 transition={{ duration: 0.2, ease: 'easeOut' }}
-                className="w-11/12 sm:w-2/3 max-w-5xl h-auto max-h-[70vh] glass-strong border border-border-color rounded-xl shadow-2xl overflow-hidden flex flex-col pointer-events-auto"
+                className="w-11/12 sm:w-2/3 max-w-5xl h-auto max-h-[70vh] glass-strong border border-border-color rounded-[2px] overflow-hidden flex flex-col pointer-events-auto"
               >
               {/* Panel Header */}
               <div className="flex items-center justify-between px-4 py-2.5 border-b border-border-color bg-black/30 shrink-0">
@@ -543,12 +595,12 @@ const ChatInputBar: FC<ChatInputBarProps> = ({ sidebarOpen = true, onLoginClick 
                   {/* Export */}
                   <div className="relative group">
                     <button
-                      className="p-1.5 rounded-lg hover:bg-bg-tertiary text-text-secondary hover:text-text-primary transition-colors"
+                      className="p-1.5 rounded-[2px] hover:bg-bg-tertiary text-text-secondary hover:text-text-primary transition-colors"
                       title="导出对话"
                     >
                       <Download size={14} />
                     </button>
-                    <div className="absolute right-0 top-full mt-1 hidden group-hover:flex flex-col gap-1 glass rounded-lg border border-border-color shadow-xl p-1 z-50 min-w-[120px]">
+                    <div className="absolute right-0 top-full mt-1 hidden group-hover:flex flex-col gap-1 glass rounded-[2px] border border-border-color p-1 z-50 min-w-[120px]">
                       <button
                         onClick={() => handleExport('json')}
                         className="flex items-center gap-2 px-3 py-1.5 text-xs text-text-primary hover:bg-bg-hover rounded transition-colors"
@@ -567,21 +619,21 @@ const ChatInputBar: FC<ChatInputBarProps> = ({ sidebarOpen = true, onLoginClick 
                   </div>
                   <button
                     onClick={() => setMessages([])}
-                    className="p-1.5 rounded-lg hover:bg-bg-tertiary text-text-secondary hover:text-red-400 transition-colors"
+                    className="p-1.5 rounded-[2px] hover:bg-bg-tertiary text-text-secondary hover:text-danger transition-colors"
                     title="清空对话"
                   >
                     <Trash2 size={14} />
                   </button>
                   <button
                     onClick={() => setShowChatPanel(false)}
-                    className="p-1.5 rounded-lg hover:bg-bg-tertiary text-text-secondary hover:text-text-primary transition-colors"
+                    className="p-1.5 rounded-[2px] hover:bg-bg-tertiary text-text-secondary hover:text-text-primary transition-colors"
                     title="收起"
                   >
                     <ChevronDown size={16} />
                   </button>
                   <button
                     onClick={() => setShowChatPanel(false)}
-                    className="p-1.5 rounded-lg hover:bg-bg-tertiary text-text-secondary hover:text-text-primary transition-colors"
+                    className="p-1.5 rounded-[2px] hover:bg-bg-tertiary text-text-secondary hover:text-text-primary transition-colors"
                     title="关闭"
                   >
                     <X size={14} />
@@ -594,9 +646,9 @@ const ChatInputBar: FC<ChatInputBarProps> = ({ sidebarOpen = true, onLoginClick 
                 {messages.map((msg) => (
                   <div key={msg.id} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                     <div
-                      className={`max-w-[92%] sm:max-w-[85%] min-w-0 px-4 py-2.5 rounded-2xl text-sm leading-relaxed ${
+                      className={`max-w-[92%] sm:max-w-[85%] min-w-0 px-4 py-2.5 rounded-[2px] text-sm leading-relaxed ${
                         msg.role === 'user'
-                          ? 'bg-gradient-to-br from-info to-network-secondary text-white rounded-br-md shadow-lg shadow-info/20'
+                          ? 'bg-accent text-white rounded-br-md'
                           : 'bg-bg-secondary border border-border-color text-text-primary rounded-bl-md shadow-sm'
                       }`}
                     >
@@ -626,9 +678,9 @@ const ChatInputBar: FC<ChatInputBarProps> = ({ sidebarOpen = true, onLoginClick 
                     className="flex gap-2 px-4 py-2 overflow-hidden shrink-0"
                   >
                     {attachments.map((att, i) => (
-                      <div key={i} className="flex items-center gap-1.5 px-2.5 py-1 bg-bg-secondary border border-border-color rounded-lg text-xs text-text-primary">
+                      <div key={i} className="flex items-center gap-1.5 px-2.5 py-1 bg-bg-secondary border border-border-color rounded-[2px] text-xs text-text-primary">
                         <span>{att}</span>
-                        <button onClick={() => setAttachments((prev) => prev.filter((_, idx) => idx !== i))} className="text-text-secondary hover:text-red-400 leading-none">×</button>
+                        <button onClick={() => setAttachments((prev) => prev.filter((_, idx) => idx !== i))} className="text-text-secondary hover:text-danger leading-none">×</button>
                       </div>
                     ))}
                   </motion.div>
@@ -650,7 +702,7 @@ const ChatInputBar: FC<ChatInputBarProps> = ({ sidebarOpen = true, onLoginClick 
           <div className="absolute left-1/2 -top-5 -translate-x-1/2 z-50">
             <button
               onClick={() => setIsCollapsed((prev) => !prev)}
-              className="flex items-center justify-center w-10 h-10 rounded-full glass border border-border-color text-text-secondary hover:text-text-primary hover:border-border-color hover:bg-bg-tertiary shadow-[0_-4px_16px_rgba(0,0,0,0.4)] transition-all"
+              className="flex items-center justify-center w-10 h-10 rounded-full glass border border-border-color text-text-secondary hover:text-text-primary hover:border-border-color hover:bg-bg-tertiary transition-all"
               title={isCollapsed ? '展开输入栏' : '收起输入栏'}
             >
               <motion.div
@@ -689,9 +741,9 @@ const ChatInputBar: FC<ChatInputBarProps> = ({ sidebarOpen = true, onLoginClick 
                   className="flex gap-2 px-4 pt-2 overflow-hidden max-w-4xl mx-auto"
                 >
                   {attachments.map((att, i) => (
-                    <div key={i} className="flex items-center gap-1.5 px-2.5 py-1 bg-bg-secondary border border-border-color rounded-lg text-xs text-text-primary">
+                    <div key={i} className="flex items-center gap-1.5 px-2.5 py-1 bg-bg-secondary border border-border-color rounded-[2px] text-xs text-text-primary">
                       <span>{att}</span>
-                      <button onClick={() => setAttachments((prev) => prev.filter((_, idx) => idx !== i))} className="text-text-secondary hover:text-red-400 leading-none">×</button>
+                      <button onClick={() => setAttachments((prev) => prev.filter((_, idx) => idx !== i))} className="text-text-secondary hover:text-danger leading-none">×</button>
                     </div>
                   ))}
                 </motion.div>
@@ -703,7 +755,7 @@ const ChatInputBar: FC<ChatInputBarProps> = ({ sidebarOpen = true, onLoginClick 
               messages.length > 0 ? (
                 <button
                   onClick={() => setShowChatPanel(true)}
-                  className="p-2 rounded-xl hover:bg-bg-hover text-text-secondary hover:text-info transition-colors"
+                  className="p-2 rounded-[2px] hover:bg-bg-hover text-text-secondary hover:text-info transition-colors"
                   title="展开对话"
                 >
                   <ChevronUp size={18} />

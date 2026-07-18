@@ -135,7 +135,7 @@ const ExperimenterMindsetPage: FC = () => {
       <div className="flex items-start justify-between flex-wrap gap-4 mb-6">
         <div>
           <h1 className="text-xl font-semibold text-text-primary flex items-center gap-2">
-            <FlaskConical className="w-5 h-5 text-emerald-400" />
+            <FlaskConical className="w-5 h-5 text-success" />
             实验者心态
           </h1>
           <p className="text-sm text-text-secondary mt-1">

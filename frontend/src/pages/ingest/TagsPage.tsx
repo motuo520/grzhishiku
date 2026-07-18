@@ -212,7 +212,7 @@ const TagsPage: FC = () => {
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
-            className="flex items-center gap-2 px-4 py-3 rounded-xl bg-danger/10 border border-danger/30 text-danger text-sm"
+            className="flex items-center gap-2 px-4 py-3 rounded-[2px] bg-danger/10 border border-danger/30 text-danger text-sm"
           >
             <AlertCircle className="w-4 h-4" />
             {error}
@@ -232,19 +232,19 @@ const TagsPage: FC = () => {
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="搜索标签..."
-            className="w-full bg-bg-secondary border border-border-color rounded-xl pl-10 pr-4 py-2.5 text-sm text-text-primary placeholder-text-secondary focus:outline-none focus:border-info/50 transition-colors"
+            className="w-full bg-bg-secondary border border-border-color rounded-[2px] pl-10 pr-4 py-2.5 text-sm text-text-primary placeholder-text-secondary focus:outline-none focus:border-info/50 transition-colors"
           />
         </div>
-        <div className="flex items-center gap-1 bg-bg-secondary border border-border-color rounded-xl p-1">
+        <div className="flex items-center gap-1 bg-bg-secondary border border-border-color rounded-[2px] p-1">
           <button
             onClick={() => setViewMode('list')}
-            className={`p-2 rounded-lg transition-colors ${viewMode === 'list' ? 'bg-bg-hover text-info' : 'text-text-muted hover:text-text-primary'}`}
+            className={`p-2 rounded-[2px] transition-colors ${viewMode === 'list' ? 'bg-bg-hover text-info' : 'text-text-muted hover:text-text-primary'}`}
           >
             <LayoutList className="w-4 h-4" />
           </button>
           <button
             onClick={() => setViewMode('cloud')}
-            className={`p-2 rounded-lg transition-colors ${viewMode === 'cloud' ? 'bg-bg-hover text-info' : 'text-text-muted hover:text-text-primary'}`}
+            className={`p-2 rounded-[2px] transition-colors ${viewMode === 'cloud' ? 'bg-bg-hover text-info' : 'text-text-muted hover:text-text-primary'}`}
           >
             <Cloud className="w-4 h-4" />
           </button>
@@ -316,28 +316,28 @@ const TagsPage: FC = () => {
                   <div className="flex items-center gap-1">
                     <button
                       onClick={() => setAssociationsTag(tag)}
-                      className="p-1.5 rounded-lg hover:bg-bg-hover text-text-muted hover:text-info transition-colors"
+                      className="p-1.5 rounded-[2px] hover:bg-bg-hover text-text-muted hover:text-info transition-colors"
                       title="查看关联"
                     >
                       <Eye className="w-4 h-4" />
                     </button>
                     <button
                       onClick={() => { setMergeSourceTag(tag); setMergeTargetId(''); setError(null); }}
-                      className="p-1.5 rounded-lg hover:bg-bg-hover text-text-muted hover:text-success transition-colors"
+                      className="p-1.5 rounded-[2px] hover:bg-bg-hover text-text-muted hover:text-success transition-colors"
                       title="合并"
                     >
                       <Merge className="w-4 h-4" />
                     </button>
                     <button
                       onClick={() => openEdit(tag)}
-                      className="p-1.5 rounded-lg hover:bg-bg-hover text-text-muted hover:text-info transition-colors"
+                      className="p-1.5 rounded-[2px] hover:bg-bg-hover text-text-muted hover:text-info transition-colors"
                       title="编辑"
                     >
                       <Edit3 className="w-4 h-4" />
                     </button>
                     <button
                       onClick={() => setDeleteConfirmTag(tag)}
-                      className="p-1.5 rounded-lg hover:bg-bg-hover text-text-muted hover:text-danger transition-colors"
+                      className="p-1.5 rounded-[2px] hover:bg-bg-hover text-text-muted hover:text-danger transition-colors"
                       title="删除"
                     >
                       <Trash2 className="w-4 h-4" />
@@ -365,7 +365,7 @@ const TagsPage: FC = () => {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-bg-primary/60 backdrop-blur-sm p-4"
+            className="fixed inset-0 z-50 flex items-center justify-center bg-bg-primary/60 p-4"
             onClick={closeEditor}
           >
             <motion.div
@@ -373,13 +373,13 @@ const TagsPage: FC = () => {
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
               onClick={(e) => e.stopPropagation()}
-              className="w-full max-w-lg bg-bg-secondary border border-border-color rounded-2xl shadow-2xl overflow-hidden"
+              className="w-full max-w-lg bg-bg-secondary border border-border-color rounded-[2px] overflow-hidden"
             >
               <div className="flex items-center justify-between px-5 py-4 border-b border-border-color">
                 <h3 className="text-sm font-medium text-text-primary">
                   {editingTag ? '编辑标签' : '新建标签'}
                 </h3>
-                <button onClick={closeEditor} className="p-1 rounded-lg hover:bg-bg-hover text-text-muted">
+                <button onClick={closeEditor} className="p-1 rounded-[2px] hover:bg-bg-hover text-text-muted">
                   <X className="w-4 h-4" />
                 </button>
               </div>
@@ -391,7 +391,7 @@ const TagsPage: FC = () => {
                     value={formName}
                     onChange={(e) => setFormName(e.target.value)}
                     placeholder="输入标签名称..."
-                    className="w-full bg-bg-primary border border-border-color rounded-xl px-4 py-2.5 text-sm text-text-primary placeholder-text-secondary focus:outline-none focus:border-info/50 transition-colors"
+                    className="w-full bg-bg-primary border border-border-color rounded-[2px] px-4 py-2.5 text-sm text-text-primary placeholder-text-secondary focus:outline-none focus:border-info/50 transition-colors"
                   />
                 </div>
                 <div>
@@ -401,7 +401,7 @@ const TagsPage: FC = () => {
                       <button
                         key={c.key}
                         onClick={() => setFormColor(c.value)}
-                        className={`w-8 h-8 rounded-lg border-2 transition-transform hover:scale-110 ${formColor === c.value ? 'border-text-primary scale-110' : 'border-transparent'}`}
+                        className={`w-8 h-8 rounded-[2px] border-2 transition-transform hover:scale-110 ${formColor === c.value ? 'border-text-primary scale-110' : 'border-transparent'}`}
                         style={{ backgroundColor: c.value }}
                         title={c.key}
                       />
@@ -410,7 +410,7 @@ const TagsPage: FC = () => {
                       type="color"
                       value={formColor}
                       onChange={(e) => setFormColor(e.target.value)}
-                      className="w-8 h-8 rounded-lg cursor-pointer border-0 p-0 bg-transparent"
+                      className="w-8 h-8 rounded-[2px] cursor-pointer border-0 p-0 bg-transparent"
                     />
                   </div>
                 </div>
@@ -421,7 +421,7 @@ const TagsPage: FC = () => {
                     value={formDesc}
                     onChange={(e) => setFormDesc(e.target.value)}
                     placeholder="输入标签描述..."
-                    className="w-full bg-bg-primary border border-border-color rounded-xl px-4 py-2.5 text-sm text-text-primary placeholder-text-secondary focus:outline-none focus:border-info/50 transition-colors"
+                    className="w-full bg-bg-primary border border-border-color rounded-[2px] px-4 py-2.5 text-sm text-text-primary placeholder-text-secondary focus:outline-none focus:border-info/50 transition-colors"
                   />
                 </div>
               </div>
@@ -454,7 +454,7 @@ const TagsPage: FC = () => {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-bg-primary/60 backdrop-blur-sm p-4"
+            className="fixed inset-0 z-50 flex items-center justify-center bg-bg-primary/60 p-4"
             onClick={() => setDeleteConfirmTag(null)}
           >
             <motion.div
@@ -462,7 +462,7 @@ const TagsPage: FC = () => {
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
               onClick={(e) => e.stopPropagation()}
-              className="w-full max-w-sm bg-bg-secondary border border-border-color rounded-2xl shadow-2xl p-5"
+              className="w-full max-w-sm bg-bg-secondary border border-border-color rounded-[2px] p-5"
             >
               <h3 className="text-sm font-medium text-text-primary mb-2">确认删除标签</h3>
               <p className="text-xs text-text-secondary mb-4">
@@ -493,7 +493,7 @@ const TagsPage: FC = () => {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-bg-primary/60 backdrop-blur-sm p-4"
+            className="fixed inset-0 z-50 flex items-center justify-center bg-bg-primary/60 p-4"
             onClick={() => setMergeSourceTag(null)}
           >
             <motion.div
@@ -501,7 +501,7 @@ const TagsPage: FC = () => {
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
               onClick={(e) => e.stopPropagation()}
-              className="w-full max-w-sm bg-bg-secondary border border-border-color rounded-2xl shadow-2xl p-5"
+              className="w-full max-w-sm bg-bg-secondary border border-border-color rounded-[2px] p-5"
             >
               <h3 className="text-sm font-medium text-text-primary mb-2">合并标签</h3>
               <p className="text-xs text-text-secondary mb-4">
@@ -510,7 +510,7 @@ const TagsPage: FC = () => {
               <select
                 value={mergeTargetId}
                 onChange={(e) => setMergeTargetId(e.target.value)}
-                className="w-full bg-bg-primary border border-border-color rounded-xl px-3 py-2.5 text-sm text-text-primary focus:outline-none focus:border-info/50"
+                className="w-full bg-bg-primary border border-border-color rounded-[2px] px-3 py-2.5 text-sm text-text-primary focus:outline-none focus:border-info/50"
               >
                 <option value="">选择目标标签</option>
                 {(tags || [])
@@ -544,7 +544,7 @@ const TagsPage: FC = () => {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-bg-primary/60 backdrop-blur-sm p-4"
+            className="fixed inset-0 z-50 flex items-center justify-center bg-bg-primary/60 p-4"
             onClick={() => setAssociationsTag(null)}
           >
             <motion.div
@@ -552,13 +552,13 @@ const TagsPage: FC = () => {
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
               onClick={(e) => e.stopPropagation()}
-              className="w-full max-w-lg bg-bg-secondary border border-border-color rounded-2xl shadow-2xl overflow-hidden"
+              className="w-full max-w-lg bg-bg-secondary border border-border-color rounded-[2px] overflow-hidden"
             >
               <div className="flex items-center justify-between px-5 py-4 border-b border-border-color">
                 <h3 className="text-sm font-medium text-text-primary">
                   「{associationsTag.name}」关联内容
                 </h3>
-                <button onClick={() => setAssociationsTag(null)} className="p-1 rounded-lg hover:bg-bg-hover text-text-muted">
+                <button onClick={() => setAssociationsTag(null)} className="p-1 rounded-[2px] hover:bg-bg-hover text-text-muted">
                   <X className="w-4 h-4" />
                 </button>
               </div>

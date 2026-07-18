@@ -2,7 +2,6 @@ import { FC, useState, useEffect, useCallback } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { settingsApi, UserSettings } from '@/api/settings';
 import { testProvider, getLLMStatus, getOllamaModels, getModelCatalog, LLMModelCatalogItem } from '@/api/llm';
-import { getModelIdByProviderModel } from '@/config/llmModels';
 import {
   Brain, Eye, EyeOff, Loader2, Check, AlertTriangle, Wifi, WifiOff,
   Server, KeyRound, Sparkles, Globe, Zap,
@@ -90,10 +89,18 @@ const AISettings: FC = () => {
 
   useEffect(() => {
     if (settings?.ai) {
-      const derivedModel = settings.ai.active_provider && settings.ai.active_model
-        ? getModelIdByProviderModel(settings.ai.active_provider, settings.ai.active_model)
-        : settings.ai.model;
-      setSelectedModel(derivedModel || 'ollama');
+      const ai = settings.ai;
+      // 以 ai.active_provider/active_model 为准（模型控制台/聊天栏选择的落点），
+      // 在 catalog 里按 provider + provider_model_id 匹配，保证各处显示一致
+      const activeCat = ai.active_provider && ai.active_model
+        ? catalog?.models.find(
+            (m) =>
+              m.provider === ai.active_provider &&
+              m.provider_model_id === ai.active_model
+          )
+        : undefined;
+      const derivedModel = activeCat?.id || ai.model || 'ollama-qwen2.5-0.5b';
+      setSelectedModel(derivedModel);
       setTemperature(settings.ai.temperature ?? 0.7);
       setMaxTokens(settings.ai.max_tokens ?? 2048);
       setLocalEnabled(settings.ai.local_enabled ?? true);
@@ -106,7 +113,7 @@ const AISettings: FC = () => {
         opencode: settings.ai.opencode_api_key || '',
       });
     }
-  }, [settings]);
+  }, [settings, catalog]);
 
   const selectedConfig = catalog?.models.find((m) => m.id === selectedModel);
 
@@ -255,10 +262,10 @@ const AISettings: FC = () => {
   return (
     <div className="space-y-6">
       {toast && (
-        <div className={`fixed top-4 right-4 z-50 px-4 py-3 rounded-xl border backdrop-blur-xl shadow-lg ${
+        <div className={`fixed top-4 right-4 z-50 px-4 py-3 rounded-[2px] border ${
           toast.type === 'success'
-            ? 'bg-emerald-500/20 border-emerald-500/30 text-emerald-400'
-            : 'bg-red-500/20 border-red-500/30 text-red-400'
+            ? 'bg-success/20 border-success/30 text-success'
+            : 'bg-danger/20 border-danger/30 text-danger'
         }`}>
           <div className="flex items-center gap-2">
             {toast.type === 'success' ? <Check size={16} /> : <AlertTriangle size={16} />}
@@ -280,7 +287,7 @@ const AISettings: FC = () => {
             return (
               <label
                 key={m.id}
-                className={`flex items-start gap-3 p-4 rounded-xl border cursor-pointer transition-all ${
+                className={`flex items-start gap-3 p-4 rounded-[2px] border cursor-pointer transition-all ${
                   isSelected
                     ? 'border-fusion-primary/40 bg-fusion-primary/5'
                     : 'border-white/[0.08] hover:border-white/[0.15]'
@@ -332,12 +339,12 @@ const AISettings: FC = () => {
             value={previewText}
             onChange={(e) => setPreviewText(e.target.value)}
             placeholder="输入示例文本..."
-            className="flex-1 bg-bg-tertiary border border-border-color rounded-lg px-3 py-2 text-sm text-text-primary placeholder-text-secondary focus:outline-none focus:border-info"
+            className="flex-1 bg-bg-tertiary border border-border-color rounded-[2px] px-3 py-2 text-sm text-text-primary placeholder-text-secondary focus:outline-none focus:border-info"
           />
           <button
             onClick={runRoutePreview}
             disabled={previewLoading || !previewText.trim()}
-            className="px-3 py-2 rounded-lg bg-info/10 border border-info/30 text-info hover:bg-info/20 transition-colors disabled:opacity-50 flex items-center gap-1.5"
+            className="px-3 py-2 rounded-[2px] bg-info/10 border border-info/30 text-info hover:bg-info/20 transition-colors disabled:opacity-50 flex items-center gap-1.5"
           >
             {previewLoading ? <Loader2 size={14} className="animate-spin" /> : <TestTube size={14} />}
             <span className="text-sm">测试</span>
@@ -351,7 +358,7 @@ const AISettings: FC = () => {
             : (route || '未知');
           const routeProvider = route && typeof route === 'object' ? route.provider : null;
           return (
-            <div className="bg-bg-primary border border-border-color rounded-lg p-4 space-y-2">
+            <div className="bg-bg-primary border border-border-color rounded-[2px] p-4 space-y-2">
               <div className="flex items-center gap-2">
                 <span className="text-xs text-text-secondary">推荐模型:</span>
                 <span className="text-sm font-medium text-fusion-primary">
@@ -377,7 +384,7 @@ const AISettings: FC = () => {
       {/* Local Model Configuration */}
       <section className="glass-card p-6">
         <h2 className="text-lg font-semibold text-text-primary mb-4 flex items-center gap-2">
-          <Server size={18} className="text-emerald-400" />
+          <Server size={18} className="text-success" />
           本地模型配置
         </h2>
         <div className="space-y-4">
@@ -388,7 +395,7 @@ const AISettings: FC = () => {
               value={ollamaUrl}
               onChange={(e) => setOllamaUrl(e.target.value)}
               placeholder="http://localhost:11434"
-              className="w-full bg-bg-tertiary border border-border-color rounded-lg px-3 py-2 text-sm text-text-primary placeholder-text-secondary focus:outline-none focus:border-info"
+              className="w-full bg-bg-tertiary border border-border-color rounded-[2px] px-3 py-2 text-sm text-text-primary placeholder-text-secondary focus:outline-none focus:border-info"
             />
             <p className="text-xs text-text-secondary mt-1">本地 Ollama 服务地址，默认 http://localhost:11434</p>
           </div>
@@ -397,7 +404,7 @@ const AISettings: FC = () => {
             <select
               value={ollamaModel}
               onChange={(e) => setOllamaModel(e.target.value)}
-              className="w-full bg-bg-tertiary border border-border-color rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-info"
+              className="w-full bg-bg-tertiary border border-border-color rounded-[2px] px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-info"
             >
               {ollamaModels.map((m) => (
                 <option key={m} value={m} className="bg-bg-tertiary text-text-primary">
@@ -415,7 +422,7 @@ const AISettings: FC = () => {
       {/* API Key Configuration */}
       <section className="glass-card p-6">
         <h2 className="text-lg font-semibold text-text-primary mb-4 flex items-center gap-2">
-          <KeyRound size={18} className="text-amber-400" />
+          <KeyRound size={18} className="text-warning" />
           API Key 配置
         </h2>
         <p className="text-xs text-text-secondary mb-4">
@@ -430,7 +437,7 @@ const AISettings: FC = () => {
             const isVisible = showKeyMap[p.slug] || false;
 
             return (
-              <div key={p.slug} className="border border-border-color rounded-lg p-4 bg-bg-primary/50">
+              <div key={p.slug} className="border border-border-color rounded-[2px] p-4 bg-bg-primary/50">
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-2">
                     <Icon size={16} className="text-text-secondary" />
@@ -444,9 +451,9 @@ const AISettings: FC = () => {
                     {testResult?.status === 'loading' ? (
                       <Loader2 size={12} className="animate-spin" />
                     ) : testResult?.status === 'success' ? (
-                      <Wifi size={12} className="text-emerald-400" />
+                      <Wifi size={12} className="text-success" />
                     ) : testResult?.status === 'error' ? (
-                      <WifiOff size={12} className="text-red-400" />
+                      <WifiOff size={12} className="text-danger" />
                     ) : (
                       <TestTube size={12} />
                     )}
@@ -457,8 +464,8 @@ const AISettings: FC = () => {
                 {testResult?.message && (
                   <div className={`text-xs mb-2 px-2 py-1 rounded ${
                     testResult.status === 'success'
-                      ? 'bg-emerald-500/10 text-emerald-400'
-                      : 'bg-red-500/10 text-red-400'
+                      ? 'bg-success/10 text-success'
+                      : 'bg-danger/10 text-danger'
                   }`}>
                     {testResult.message}
                   </div>
@@ -467,7 +474,7 @@ const AISettings: FC = () => {
                 <div className="relative max-w-md">
                   <input
                     type={isVisible ? 'text' : 'password'}
-                    className="w-full bg-bg-tertiary border border-border-color rounded-lg px-3 py-2 pr-10 text-sm text-text-primary placeholder-text-secondary focus:outline-none focus:border-info"
+                    className="w-full bg-bg-tertiary border border-border-color rounded-[2px] px-3 py-2 pr-10 text-sm text-text-primary placeholder-text-secondary focus:outline-none focus:border-info"
                     value={keyValue}
                     onChange={(e) => updateApiKey(p.slug, e.target.value)}
                     placeholder={p.keyLabel}
@@ -512,7 +519,7 @@ const AISettings: FC = () => {
             step={0.1}
             value={temperature}
             onChange={e => setTemperature(parseFloat(e.target.value))}
-            className="w-full h-2 bg-bg-tertiary rounded-lg appearance-none cursor-pointer accent-fusion-primary"
+            className="w-full h-2 bg-bg-tertiary rounded-[2px] appearance-none cursor-pointer accent-fusion-primary"
           />
           <div className="flex justify-between text-xs text-text-secondary mt-1">
             <span>保守（0.0）</span>
@@ -536,7 +543,7 @@ const AISettings: FC = () => {
             step={256}
             value={maxTokens}
             onChange={e => setMaxTokens(parseInt(e.target.value))}
-            className="w-full h-2 bg-bg-tertiary rounded-lg appearance-none cursor-pointer accent-fusion-primary"
+            className="w-full h-2 bg-bg-tertiary rounded-[2px] appearance-none cursor-pointer accent-fusion-primary"
           />
           <div className="flex justify-between text-xs text-text-secondary mt-1">
             <span>256</span>

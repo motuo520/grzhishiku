@@ -45,7 +45,7 @@ export const LLMCostBadge: FC<LLMCostBadgeProps> = ({
         <div className="flex items-center gap-1.5 text-text-muted">
           <Wallet className="w-3 h-3" />
           <span>余额</span>
-          <span className={`font-medium ${insufficient ? 'text-danger' : 'text-emerald-400'}`}>
+          <span className={`font-medium ${insufficient ? 'text-danger' : 'text-success'}`}>
             {formatCost(balanceAmount, estimate.currency)}
           </span>
         </div>

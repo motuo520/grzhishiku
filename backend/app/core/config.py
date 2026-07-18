@@ -91,9 +91,18 @@ class Settings(BaseSettings):
     ALIYUN_NETDISK_CLIENT_ID: str = ""
     ALIYUN_NETDISK_CLIENT_SECRET: str = ""
     ALIYUN_NETDISK_REDIRECT_URI: str = ""
+
+    # 迅虎支付（虎皮椒）
+    XUNHUPAY_APP_ID: str = ""
+    XUNHUPAY_APP_SECRET: str = ""
     
     # CORS
     ALLOWED_ORIGINS: str = "http://localhost:3000,http://127.0.0.1:3000"
+
+    # Desktop mode: directory of the built frontend (Vite dist). When set and
+    # the directory exists, the API server also serves the SPA at "/" with
+    # index.html fallback — the desktop app then loads everything same-origin.
+    SERVE_FRONTEND_DIR: str = ""
     
     class Config:
         env_file = ".env"

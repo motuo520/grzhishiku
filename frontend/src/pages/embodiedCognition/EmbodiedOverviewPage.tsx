@@ -32,8 +32,8 @@ const MODULES = [
     desc: '记忆不只是文字，还有当时的情绪、位置、身体状态。聚合胶囊中的具身信息。',
     icon: MapPin,
     path: '/embodied-cognition/mood-location',
-    color: 'text-purple-400',
-    bg: 'bg-purple-400/10',
+    color: 'text-fusion-primary',
+    bg: 'bg-fusion-primary/10',
   },
 ];
 
@@ -71,7 +71,7 @@ const EmbodiedOverviewPage: FC = () => {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-        <div className="rounded-xl border border-white/[0.06] bg-bg-secondary p-4">
+        <div className="rounded-[2px] border border-white/[0.06] bg-bg-secondary p-4">
           <div className="flex items-center gap-2 mb-2">
             <ShieldAlert className="w-4 h-4 text-info" />
             <span className="text-sm text-text-secondary">深度检查拦截次数</span>
@@ -81,7 +81,7 @@ const EmbodiedOverviewPage: FC = () => {
           </p>
           <p className="text-xs text-text-muted">总检查 {depthLogs.length} 次</p>
         </div>
-        <div className="rounded-xl border border-white/[0.06] bg-bg-secondary p-4">
+        <div className="rounded-[2px] border border-white/[0.06] bg-bg-secondary p-4">
           <div className="flex items-center gap-2 mb-2">
             <TrendingUp className="w-4 h-4 text-warning" />
             <span className="text-sm text-text-secondary">真进化比例</span>
@@ -91,9 +91,9 @@ const EmbodiedOverviewPage: FC = () => {
           </p>
           <p className="text-xs text-text-muted">共 {evolutionReflections.length} 条反思</p>
         </div>
-        <div className="rounded-xl border border-white/[0.06] bg-bg-secondary p-4">
+        <div className="rounded-[2px] border border-white/[0.06] bg-bg-secondary p-4">
           <div className="flex items-center gap-2 mb-2">
-            <MapPin className="w-4 h-4 text-purple-400" />
+            <MapPin className="w-4 h-4 text-fusion-primary" />
             <span className="text-sm text-text-secondary">具身记录</span>
           </div>
           <p className="text-2xl font-bold text-text-primary">
@@ -113,10 +113,10 @@ const EmbodiedOverviewPage: FC = () => {
             <button
               key={m.id}
               onClick={() => navigate(m.path)}
-              className="text-left p-4 rounded-xl border border-white/[0.06] bg-bg-secondary hover:bg-white/[0.03] transition-all group"
+              className="text-left p-4 rounded-[2px] border border-white/[0.06] bg-bg-secondary hover:bg-white/[0.03] transition-all group"
             >
               <div className="flex items-start gap-4">
-                <div className={`w-10 h-10 rounded-lg ${m.bg} flex items-center justify-center shrink-0`}>
+                <div className={`w-10 h-10 rounded-[2px] ${m.bg} flex items-center justify-center shrink-0`}>
                   <Icon className={`w-5 h-5 ${m.color}`} />
                 </div>
                 <div className="flex-1 min-w-0">
@@ -134,7 +134,7 @@ const EmbodiedOverviewPage: FC = () => {
         })}
       </div>
 
-      <div className="mt-6 p-4 rounded-xl border border-white/[0.06] bg-bg-secondary">
+      <div className="mt-6 p-4 rounded-[2px] border border-white/[0.06] bg-bg-secondary">
         <h3 className="text-sm font-medium text-text-primary mb-2 flex items-center gap-2">
           <Heart className="w-4 h-4 text-danger" />
           模块关联
@@ -149,7 +149,7 @@ const EmbodiedOverviewPage: FC = () => {
             <span><strong>真进化 vs 伪成熟</strong>可关联到笔记、知识单元或实验记录，让成长有迹可循。</span>
           </li>
           <li className="flex items-start gap-2">
-            <MapPin className="w-3.5 h-3.5 text-purple-400 mt-0.5 shrink-0" />
+            <MapPin className="w-3.5 h-3.5 text-fusion-primary mt-0.5 shrink-0" />
             <span><strong>情绪与环境</strong>自动聚合时间胶囊中的 mood、location、能量等级，点击记录可进入胶囊详情。</span>
           </li>
         </ul>

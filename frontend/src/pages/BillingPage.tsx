@@ -106,10 +106,10 @@ const BillingPage: FC = () => {
   }, [usage]);
 
   const statCards = [
-    { label: '当前余额', value: formatMoney(balance?.balance), icon: Wallet, color: 'text-emerald-400' },
+    { label: '当前余额', value: formatMoney(balance?.balance), icon: Wallet, color: 'text-success' },
     { label: '累计充值', value: formatMoney(balance?.total_deposited), icon: Receipt, color: 'text-info' },
-    { label: '累计消耗', value: formatMoney(balance?.total_used), icon: TrendingDown, color: 'text-amber-400' },
-    { label: '调用次数', value: `${usage.length}`, icon: Activity, color: 'text-violet-400' },
+    { label: '累计消耗', value: formatMoney(balance?.total_used), icon: TrendingDown, color: 'text-warning' },
+    { label: '调用次数', value: `${usage.length}`, icon: Activity, color: 'text-fusion-primary' },
   ];
 
   return (
@@ -117,7 +117,7 @@ const BillingPage: FC = () => {
       <div className="flex items-center gap-3 mb-6">
         <button
           onClick={() => navigate('/settings/account')}
-          className="p-2 rounded-xl hover:bg-white/[0.05] text-text-secondary transition-colors"
+          className="p-2 rounded-[2px] hover:bg-white/[0.05] text-text-secondary transition-colors"
         >
           <ArrowLeft className="w-5 h-5" />
         </button>
@@ -128,7 +128,7 @@ const BillingPage: FC = () => {
       </div>
 
       {error && (
-        <div className="mb-4 px-4 py-3 rounded-xl bg-danger/10 border border-danger/20 text-danger text-sm flex items-center gap-2">
+        <div className="mb-4 px-4 py-3 rounded-[2px] bg-danger/10 border border-danger/20 text-danger text-sm flex items-center gap-2">
           <AlertCircle className="w-4 h-4" />
           {error}
         </div>
@@ -164,7 +164,7 @@ const BillingPage: FC = () => {
           <div className="flex justify-end">
             <button
               onClick={() => navigate('/topup')}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/30 transition-colors text-sm"
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-[2px] bg-success/20 text-success border border-success/30 hover:bg-success/30 transition-colors text-sm"
             >
               <Plus className="w-4 h-4" />
               充值余额
@@ -213,13 +213,13 @@ const BillingPage: FC = () => {
                   onClick={() => setActiveTab(tab.key as typeof activeTab)}
                   className={`pb-2 text-sm font-medium transition-colors relative ${
                     activeTab === tab.key
-                      ? 'text-emerald-400'
+                      ? 'text-success'
                       : 'text-text-secondary hover:text-text-primary'
                   }`}
                 >
                   {tab.label}
                   {activeTab === tab.key && (
-                    <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-emerald-400 rounded-full" />
+                    <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-success rounded-full" />
                   )}
                 </button>
               ))}
@@ -251,12 +251,12 @@ const BillingPage: FC = () => {
                             <td className="py-3 text-right text-text-secondary">
                               {u.input_tokens + u.output_tokens}
                             </td>
-                            <td className="py-3 text-right text-amber-400">{formatMoney(u.cost)}</td>
+                            <td className="py-3 text-right text-warning">{formatMoney(u.cost)}</td>
                             <td className="py-3">
-                              <span className={`inline-flex px-2 py-0.5 rounded-full text-xs ${
-                                u.status === 'success' ? 'bg-emerald-500/10 text-emerald-400' :
-                                u.status === 'failed' ? 'bg-red-500/10 text-red-400' :
-                                'bg-blue-500/10 text-blue-400'
+                              <span className={`inline-flex px-2 py-0.5 rounded-[2px] text-xs ${
+                                u.status === 'success' ? 'bg-success/10 text-success' :
+                                u.status === 'failed' ? 'bg-danger/10 text-danger' :
+                                'bg-network-primary/10 text-network-primary'
                               }`}>
                                 {u.status}
                               </span>
@@ -293,10 +293,10 @@ const BillingPage: FC = () => {
                             <td className="py-3 text-text-secondary">{p.description || '-'}</td>
                             <td className="py-3 text-right text-text-primary">{formatMoney(p.amount / 100)}</td>
                             <td className="py-3">
-                              <span className={`inline-flex px-2 py-0.5 rounded-full text-xs ${
-                                p.status === 'success' ? 'bg-emerald-500/10 text-emerald-400' :
-                                p.status === 'refunded' ? 'bg-amber-500/10 text-amber-400' :
-                                'bg-blue-500/10 text-blue-400'
+                              <span className={`inline-flex px-2 py-0.5 rounded-[2px] text-xs ${
+                                p.status === 'success' ? 'bg-success/10 text-success' :
+                                p.status === 'refunded' ? 'bg-warning/10 text-warning' :
+                                'bg-network-primary/10 text-network-primary'
                               }`}>
                                 {p.status}
                               </span>
@@ -333,7 +333,7 @@ const BillingPage: FC = () => {
                             <td className="py-3 text-text-muted text-xs">{formatDate(t.created_at)}</td>
                             <td className="py-3 text-text-secondary">{t.transaction_type}</td>
                             <td className={`py-3 text-right font-medium ${
-                              t.amount >= 0 ? 'text-emerald-400' : 'text-amber-400'
+                              t.amount >= 0 ? 'text-success' : 'text-warning'
                             }`}>
                               {t.amount >= 0 ? '+' : ''}{formatMoney(t.amount)}
                             </td>

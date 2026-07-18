@@ -19,7 +19,7 @@ export const ErrorState: FC<ErrorStateProps> = ({
     {onRetry && (
       <button
         onClick={onRetry}
-        className="mt-4 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/[0.05] text-text-secondary hover:text-info hover:bg-white/[0.08] transition-colors text-xs border border-white/[0.08]"
+        className="mt-4 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[2px] bg-white/[0.05] text-text-secondary hover:text-info hover:bg-white/[0.08] transition-colors text-xs border border-white/[0.08]"
       >
         <RefreshCw className="w-3.5 h-3.5" /> 重试
       </button>

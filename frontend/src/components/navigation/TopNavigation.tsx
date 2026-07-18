@@ -116,9 +116,9 @@ const TopNavigation: FC<TopNavigationProps> = ({ onLoginClick }) => {
                   key={bucket.id}
                   onClick={() => handleBucketClick(bucket.id)}
                   className={`
-                    relative flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium transition-all duration-300
+                    relative flex items-center gap-2 px-3 py-2 rounded-[2px] text-sm font-medium transition-colors duration-200
                     ${isActive
-                      ? 'text-text-primary bg-bg-secondary border border-border-color shadow-[0_0_20px_rgba(200,149,108,0.12)]'
+                      ? 'text-text-primary bg-bg-tertiary border border-border-color'
                       : 'text-text-secondary hover:text-text-primary hover:bg-bg-hover border border-transparent'
                     }
                   `}
@@ -129,7 +129,7 @@ const TopNavigation: FC<TopNavigationProps> = ({ onLoginClick }) => {
                   {isActive && subMenuOpen && (
                     <motion.div
                       layoutId="activeMenuIndicator"
-                      className="absolute -bottom-0.5 left-1/2 -translate-x-1/2 w-8 h-0.5 bg-gradient-to-r from-info to-fusion-primary rounded-full"
+                      className="absolute -bottom-0.5 left-1/2 -translate-x-1/2 w-8 h-0.5 bg-accent"
                     />
                   )}
                 </button>
@@ -141,7 +141,7 @@ const TopNavigation: FC<TopNavigationProps> = ({ onLoginClick }) => {
           <div className="flex items-center gap-1.5">
             <button
               onClick={() => navigate('/search')}
-              className="p-2 rounded-xl hover:bg-bg-tertiary text-text-secondary hover:text-info transition-all duration-300 hover:shadow-[0_0_15px_rgba(200,149,108,0.15)]"
+              className="p-2 rounded-[2px] hover:bg-bg-tertiary text-text-secondary hover:text-accent transition-colors duration-200"
               title="全局搜索 /search"
             >
               <Search className="w-4 h-4" />
@@ -149,7 +149,7 @@ const TopNavigation: FC<TopNavigationProps> = ({ onLoginClick }) => {
 
             <button
               onClick={cycleTheme}
-              className="p-2 rounded-xl hover:bg-bg-tertiary text-text-secondary hover:text-warning transition-all duration-300"
+              className="p-2 rounded-[2px] hover:bg-bg-tertiary text-text-secondary hover:text-accent transition-colors duration-200"
               title={`主题：${theme === 'light' ? '浅色' : theme === 'dark' ? '深色' : '跟随系统'} (点击切换)`}
             >
               <ThemeIcon className="w-4 h-4" />
@@ -159,9 +159,9 @@ const TopNavigation: FC<TopNavigationProps> = ({ onLoginClick }) => {
               <div className="relative">
                 <button
                   onClick={() => setUserMenuOpen(!userMenuOpen)}
-                  className="flex items-center gap-2 pl-1 pr-2 py-1 rounded-xl hover:bg-bg-hover transition-all"
+                  className="flex items-center gap-2 pl-1 pr-2 py-1 rounded-[2px] hover:bg-bg-hover transition-colors"
                 >
-                  <div className="w-7 h-7 rounded-full bg-gradient-to-br from-info to-network-secondary flex items-center justify-center text-white text-xs font-bold">
+                  <div className="w-7 h-7 rounded-[2px] bg-accent text-[#f6ece6] flex items-center justify-center text-xs font-bold">
                     {user.name?.charAt(0).toUpperCase() || user.email?.charAt(0).toUpperCase() || 'U'}
                   </div>
                   <span className="text-sm text-text-secondary hidden sm:inline">{user.name || user.email}</span>
@@ -182,7 +182,7 @@ const TopNavigation: FC<TopNavigationProps> = ({ onLoginClick }) => {
                       animate={{ opacity: 1, y: 0, scale: 1 }}
                       exit={{ opacity: 0, y: -5, scale: 0.95 }}
                       transition={{ duration: 0.15 }}
-                      className="absolute right-0 top-full mt-2 w-48 glass-popup rounded-xl border border-border-color shadow-2xl py-1 z-50"
+                      className="absolute right-0 top-full mt-2 w-48 glass-popup rounded-[2px] border border-border-color py-1 z-50"
                     >
                       <button
                         onClick={() => { navigate('/settings/account'); setUserMenuOpen(false); }}
@@ -217,7 +217,7 @@ const TopNavigation: FC<TopNavigationProps> = ({ onLoginClick }) => {
             ) : (
               <button
                 onClick={() => onLoginClick ? onLoginClick() : navigate('/welcome')}
-                className="px-3 py-1.5 rounded-lg bg-info/15 hover:bg-info/25 text-info text-xs font-medium transition-colors"
+                className="px-3 py-1.5 rounded-[2px] border border-accent/40 text-accent hover:bg-accent/10 text-xs font-medium transition-colors"
               >
                 登录 / 注册
               </button>

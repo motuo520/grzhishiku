@@ -109,7 +109,7 @@ class ErrorBoundary extends Component<Props, State> {
       return (
         <div className="min-h-screen flex items-center justify-center bg-bg-primary p-6">
           <div className="max-w-2xl w-full glass-card p-8 text-center">
-            <div className="w-16 h-16 rounded-2xl bg-danger/10 flex items-center justify-center mx-auto mb-5">
+            <div className="w-16 h-16 rounded-[2px] bg-danger/10 flex items-center justify-center mx-auto mb-5">
               <AlertTriangle className="w-8 h-8 text-danger" />
             </div>
             <h1 className="text-xl font-bold text-text-primary mb-2">页面出现错误</h1>
@@ -117,7 +117,7 @@ class ErrorBoundary extends Component<Props, State> {
               抱歉，页面渲染时发生了意外错误。请尝试返回或刷新页面。如果问题持续，请复制下方错误信息联系支持。
             </p>
             {error && (
-              <div className="mb-4 p-3 rounded-xl bg-danger/5 border border-danger/10 text-left">
+              <div className="mb-4 p-3 rounded-[2px] bg-danger/5 border border-danger/10 text-left">
                 <div className="text-xs text-danger font-medium mb-1">错误信息：</div>
                 <div className="text-xs text-text-secondary break-words whitespace-pre-wrap">
                   {error.message || 'Unknown error'}
@@ -145,7 +145,7 @@ class ErrorBoundary extends Component<Props, State> {
                     {copied ? '已复制' : '复制错误信息'}
                   </button>
                 </div>
-                <div className="p-3 rounded-xl bg-bg-tertiary border border-white/[0.08] max-h-64 overflow-auto">
+                <div className="p-3 rounded-[2px] bg-bg-tertiary border border-white/[0.08] max-h-64 overflow-auto">
                   <pre className="text-[10px] text-text-secondary whitespace-pre-wrap break-words font-mono">
 {`URL: ${window.location.href}
 

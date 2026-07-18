@@ -9,9 +9,9 @@ const BrainSwitcher: FC = () => {
   const [isOpen, setIsOpen] = useState(false);
 
   const brains: { id: BrainSide; label: string; icon: typeof Home; color: string; accentColor: string; bg: string; desc: string }[] = [
-    { id: 'personal', label: '个人脑', icon: Home, color: 'text-amber-400', accentColor: '#d29922', bg: 'bg-amber-400/10', desc: '你的想法与记忆' },
-    { id: 'network', label: '网络脑', icon: Globe, color: 'text-blue-400', accentColor: '#58a6ff', bg: 'bg-blue-400/10', desc: '外部知识与信息' },
-    { id: 'both', label: '双脑融合', icon: Brain, color: 'text-purple-400', accentColor: '#a371f7', bg: 'bg-purple-400/10', desc: '跨脑协作与关联' },
+    { id: 'personal', label: '个人脑', icon: Home, color: 'text-personal-primary', accentColor: '#bd4a2e', bg: 'bg-personal-primary/10', desc: '你的想法与记忆' },
+    { id: 'network', label: '网络脑', icon: Globe, color: 'text-network-primary', accentColor: '#5b7c99', bg: 'bg-network-primary/10', desc: '外部知识与信息' },
+    { id: 'both', label: '双脑融合', icon: Brain, color: 'text-fusion-primary', accentColor: '#7d8f6a', bg: 'bg-fusion-primary/10', desc: '跨脑协作与关联' },
   ];
 
   const currentIndex = brains.findIndex((b) => b.id === activeBrain);
@@ -46,7 +46,7 @@ const BrainSwitcher: FC = () => {
       <button
         onClick={() => setIsOpen(!isOpen)}
         disabled={isSwitching}
-        className={`flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium transition-all duration-300 glass ${current.color} border-white/[0.08] hover:border-current/30 hover:shadow-[0_0_20px_rgba(88,166,255,0.15)]`}
+        className={`flex items-center gap-2 px-3 py-2 rounded-[2px] text-sm font-medium transition-colors duration-200 glass ${current.color} hover:border-current/30`}
         title="切换大脑 (Ctrl+B)"
       >
         {isSwitching ? (
@@ -64,8 +64,7 @@ const BrainSwitcher: FC = () => {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -10, scale: 0.95 }}
             transition={{ duration: 0.15 }}
-            className="absolute right-0 top-full mt-2 w-72 glass rounded-2xl shadow-2xl p-3 z-50 overflow-hidden"
-            style={{ boxShadow: '0 20px 50px rgba(0, 0, 0, 0.5), 0 0 30px rgba(88, 166, 255, 0.1)' }}
+            className="absolute right-0 top-full mt-2 w-72 glass rounded-[2px] p-3 z-50 overflow-hidden"
           >
             <div className="text-xs font-semibold text-text-muted uppercase tracking-wider mb-2 px-1">
               选择大脑
@@ -79,13 +78,13 @@ const BrainSwitcher: FC = () => {
                   <button
                     key={brain.id}
                     onClick={() => handleSwitch(brain.id)}
-                    className={`w-full flex items-center gap-3 p-2.5 rounded-xl text-left transition-all duration-200 ${
+                    className={`w-full flex items-center gap-3 p-2.5 rounded-[2px] text-left transition-colors duration-200 ${
                       isActive
                         ? `${brain.bg} ${brain.color} border border-current/20`
-                        : 'hover:bg-white/[0.05] text-text-secondary'
+                        : 'hover:bg-bg-hover text-text-secondary'
                     }`}
                   >
-                    <div className={`w-9 h-9 rounded-lg ${brain.bg} flex items-center justify-center flex-shrink-0`}>
+                    <div className={`w-9 h-9 rounded-[2px] ${brain.bg} flex items-center justify-center flex-shrink-0`}>
                       <brain.icon className={`w-4 h-4 ${brain.color}`} />
                     </div>
                     <div className="flex-1 min-w-0">
@@ -106,15 +105,15 @@ const BrainSwitcher: FC = () => {
             {status && (
               <div className="grid grid-cols-3 gap-2 px-1">
                 <div className="text-center">
-                  <div className="text-xs text-amber-400 font-medium">{status.personal_count}</div>
+                  <div className="text-xs text-personal-primary font-medium">{status.personal_count}</div>
                   <div className="text-[10px] text-text-muted">个人</div>
                 </div>
                 <div className="text-center">
-                  <div className="text-xs text-purple-400 font-medium">{status.both_count}</div>
+                  <div className="text-xs text-fusion-primary font-medium">{status.both_count}</div>
                   <div className="text-[10px] text-text-muted">关联</div>
                 </div>
                 <div className="text-center">
-                  <div className="text-xs text-blue-400 font-medium">{status.network_count}</div>
+                  <div className="text-xs text-network-primary font-medium">{status.network_count}</div>
                   <div className="text-[10px] text-text-muted">网络</div>
                 </div>
               </div>

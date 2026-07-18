@@ -30,6 +30,10 @@ browser-extension/node_modules/
 browser-extension/dist/
 desktop/node_modules/
 desktop/release/
+desktop/backend-build/
+desktop/backend-dist/
+frontend/shots-before/
+frontend/shots-after/
 
 # 备份与临时文件
 *.bak

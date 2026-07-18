@@ -97,10 +97,10 @@ const typeLabels: Record<string, string> = {
 };
 
 const typeColors: Record<string, string> = {
-  associate: 'text-blue-400',
-  collision: 'text-orange-400',
-  hybrid: 'text-purple-400',
-  counterfactual: 'text-emerald-400',
+  associate: 'text-network-primary',
+  collision: 'text-warning',
+  hybrid: 'text-fusion-primary',
+  counterfactual: 'text-success',
 };
 
 const EmergencePage: FC = () => {
@@ -127,7 +127,7 @@ const EmergencePage: FC = () => {
     <div className="p-6 max-w-6xl mx-auto space-y-8">
       {/* Header */}
       <div className="text-center space-y-3">
-        <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full glass-card border-fusion-primary/30">
+        <div className="inline-flex items-center gap-2 px-4 py-2 rounded-[2px] glass-card border-fusion-primary/30">
           <Sparkles className="w-5 h-5 text-fusion-primary" />
           <span className="text-sm font-medium text-fusion-primary">涌现工作室</span>
         </div>
@@ -169,7 +169,7 @@ const EmergencePage: FC = () => {
 
               <div className="relative z-10 flex flex-col flex-1">
                 <div className="flex items-start justify-between mb-4">
-                  <div className={`p-3 rounded-xl ${tool.bgColor} ${tool.borderColor} border`}>
+                  <div className={`p-3 rounded-[2px] ${tool.bgColor} ${tool.borderColor} border`}>
                     <Icon className={`w-6 h-6 ${tool.color}`} />
                   </div>
                   <ArrowRight
@@ -228,7 +228,7 @@ const EmergencePage: FC = () => {
 
               <div className="relative z-10 flex flex-col flex-1">
                 <div className="flex items-start justify-between mb-4">
-                  <div className={`p-3 rounded-xl ${entry.bgColor} ${entry.borderColor} border`}>
+                  <div className={`p-3 rounded-[2px] ${entry.bgColor} ${entry.borderColor} border`}>
                     <Icon className={`w-6 h-6 ${entry.color}`} />
                   </div>
                   <ArrowRight
@@ -273,7 +273,7 @@ const EmergencePage: FC = () => {
               {historyData.items.map((item) => (
                 <div
                   key={item.id}
-                  className="p-3 rounded-lg bg-white/[0.02] border border-white/[0.05]"
+                  className="p-3 rounded-[2px] bg-white/[0.02] border border-white/[0.05]"
                 >
                   <div className="flex items-center justify-between mb-1">
                     <span className={`text-xs font-medium ${typeColors[item.type] || 'text-text-muted'}`}>
@@ -314,7 +314,7 @@ const EmergencePage: FC = () => {
                 <div
                   key={idea.id}
                   onClick={() => navigate('/emergence/library')}
-                  className="p-3 rounded-lg bg-white/[0.02] border border-white/[0.05] hover:border-fusion-primary/30 cursor-pointer transition-colors"
+                  className="p-3 rounded-[2px] bg-white/[0.02] border border-white/[0.05] hover:border-fusion-primary/30 cursor-pointer transition-colors"
                 >
                   <div className="flex items-center justify-between mb-1">
                     <span className="text-sm text-text-primary font-medium line-clamp-1">{idea.title}</span>
@@ -352,10 +352,10 @@ export default EmergencePage;
 // ─────────────────────────── Shared Components for Sub-pages ───────────────────────────
 
 export const getScoreColor = (score: number): string => {
-  if (score <= 3) return '#3fb950';
-  if (score <= 6) return '#d29922';
-  if (score <= 8) return '#f85149';
-  return '#a371f7';
+  if (score <= 3) return '#7d8f6a';
+  if (score <= 6) return '#b08a3e';
+  if (score <= 8) return '#b03a2e';
+  return '#7d8f6a';
 };
 
 export const getScoreLabel = (score: number): string => {
@@ -403,7 +403,7 @@ export const HistoryPanel: FC<HistoryPanelProps> = ({ currentType, onLoadHistory
     <>
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="fixed right-4 top-24 z-40 p-3 rounded-xl bg-bg-secondary/80 backdrop-blur border border-white/[0.08] hover:border-white/[0.15] transition-all shadow-lg group"
+        className="fixed right-4 top-24 z-40 p-3 rounded-[2px] bg-bg-secondary border border-white/[0.08] hover:border-white/[0.15] transition-all group"
         title="历史记录"
       >
         <Clock className="w-5 h-5 text-text-secondary group-hover:text-text-primary transition-colors" />
@@ -420,7 +420,7 @@ export const HistoryPanel: FC<HistoryPanelProps> = ({ currentType, onLoadHistory
           animate={{ x: 0, opacity: 1 }}
           exit={{ x: 320, opacity: 0 }}
           transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
-          className="fixed right-0 top-16 bottom-0 w-80 z-50 bg-bg-secondary/95 backdrop-blur-xl border-l border-white/[0.08] shadow-2xl flex flex-col"
+          className="fixed right-0 top-16 bottom-0 w-80 z-50 bg-bg-secondary border-l border-white/[0.08] flex flex-col"
         >
           <div className="flex items-center justify-between p-4 border-b border-white/[0.06]">
             <h3 className="text-sm font-semibold text-text-primary flex items-center gap-2">
@@ -429,7 +429,7 @@ export const HistoryPanel: FC<HistoryPanelProps> = ({ currentType, onLoadHistory
             </h3>
             <button
               onClick={() => setIsOpen(false)}
-              className="p-1.5 rounded-lg hover:bg-white/[0.08] text-text-secondary transition-colors"
+              className="p-1.5 rounded-[2px] hover:bg-white/[0.08] text-text-secondary transition-colors"
             >
               <X className="w-4 h-4" />
             </button>
@@ -446,7 +446,7 @@ export const HistoryPanel: FC<HistoryPanelProps> = ({ currentType, onLoadHistory
               data?.items.map((item) => (
                 <div
                   key={item.id}
-                  className="group p-3 rounded-xl bg-white/[0.03] border border-white/[0.06] hover:border-white/[0.12] transition-all cursor-pointer"
+                  className="group p-3 rounded-[2px] bg-white/[0.03] border border-white/[0.06] hover:border-white/[0.12] transition-all cursor-pointer"
                   onClick={() => onLoadHistory?.(item)}
                 >
                   <div className="flex items-center justify-between mb-1">
@@ -496,11 +496,11 @@ export const EmergenceSubLayout: FC<{ title: string; icon: React.ElementType; ch
         <div className="flex items-center gap-3 mb-6">
           <button
             onClick={() => navigate('/emergence')}
-            className="p-2 rounded-lg hover:bg-white/[0.06] text-text-secondary hover:text-text-primary transition-colors"
+            className="p-2 rounded-[2px] hover:bg-white/[0.06] text-text-secondary hover:text-text-primary transition-colors"
           >
             <ArrowLeft className="w-5 h-5" />
           </button>
-          <div className="w-8 h-8 rounded-lg bg-white/[0.05] flex items-center justify-center">
+          <div className="w-8 h-8 rounded-[2px] bg-white/[0.05] flex items-center justify-center">
             <Icon className="w-4 h-4 text-fusion-primary" />
           </div>
           <h1 className="text-xl font-bold text-text-primary">{title}</h1>

@@ -64,7 +64,7 @@ export const useSettings = create<SettingsState>()(
       apiKeys: {},
       modelList: [],
       activeProvider: 'ollama',
-      activeModel: 'qwen2.5',
+      activeModel: 'qwen2.5:0.5b',
       autoSync: true,
       syncInterval: 5,
       encryptNotes: false,

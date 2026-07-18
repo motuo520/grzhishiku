@@ -169,10 +169,10 @@ const TrueEvolutionPage: FC = () => {
   return (
     <div className="p-6 max-w-6xl mx-auto h-full overflow-auto">
       {toast && createPortal(
-        <div className={`fixed top-4 right-4 z-[100] px-4 py-3 rounded-xl border backdrop-blur-xl shadow-lg ${
+        <div className={`fixed top-4 right-4 z-[100] px-4 py-3 rounded-[2px] border ${
           toast.type === 'success'
-            ? 'bg-success/20 border-success/30 text-green-400'
-            : 'bg-danger/20 border-danger/30 text-red-400'
+            ? 'bg-success/20 border-success/30 text-success'
+            : 'bg-danger/20 border-danger/30 text-danger'
         }`}>
           <div className="flex items-center gap-2">
             {toast.type === 'success' ? <CheckCircle2 size={16} /> : <AlertTriangle size={16} />}

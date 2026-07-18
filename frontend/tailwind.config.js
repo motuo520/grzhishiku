@@ -5,6 +5,11 @@ export default {
     './src/**/*.{js,ts,jsx,tsx}',
   ],
   darkMode: 'class',
+  /* 动态拼接（replace('text-','bg-')）的类名需要 safelist 保底 */
+  safelist: [
+    'bg-personal-primary', 'bg-network-primary', 'bg-fusion-primary',
+    'text-personal-primary', 'text-network-primary', 'text-fusion-primary',
+  ],
   theme: {
     extend: {
       colors: {
@@ -18,16 +23,17 @@ export default {
         'text-muted': 'rgb(var(--text-muted) / <alpha-value>)',
         'border-color': 'rgb(var(--border-color) / <alpha-value>)',
         'border-light': 'rgb(var(--border-light) / <alpha-value>)',
-        'personal-primary': '#d29922',
-        'personal-secondary': '#e3b341',
-        'network-primary': '#58a6ff',
-        'network-secondary': '#79b8ff',
-        'fusion-primary': '#a371f7',
-        'fusion-secondary': '#bc8cff',
-        'success': '#238636',
-        'warning': '#d29922',
-        'danger': '#f85149',
-        'info': '#c8956c',
+        /* 编辑杂志风语义色：朱砂 / 靛蓝 / 松绿 */
+        'personal-primary': '#bd4a2e',
+        'personal-secondary': '#d4694a',
+        'network-primary': '#5b7c99',
+        'network-secondary': '#7a97ad',
+        'fusion-primary': '#7d8f6a',
+        'fusion-secondary': '#98a983',
+        'success': '#7d8f6a',
+        'warning': '#b08a3e',
+        'danger': '#b03a2e',
+        'info': '#bd4a2e',
         'admin-bg': '#000000',
         'admin-sidebar': '#000000',
         'admin-border': 'rgba(255,255,255,0.08)',
@@ -35,9 +41,18 @@ export default {
         'admin-muted': '#999999',
         'admin-hover': 'rgba(255,255,255,0.05)',
         'admin-primary': '#58a6ff',
-        'accent': '#c8956c',
+        'accent': '#bd4a2e',
       },
       fontFamily: {
+        serif: [
+          'Noto Serif SC',
+          'Source Han Serif SC',
+          'Songti SC',
+          'STSong',
+          'STZhongsong',
+          'SimSun',
+          'serif',
+        ],
         sans: [
           '-apple-system',
           'BlinkMacSystemFont',

@@ -1,8 +1,9 @@
 import { FC, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Brain, Mail, Lock, Eye, EyeOff, Loader2, ArrowRight } from 'lucide-react';
+import { X, Mail, Lock, Eye, EyeOff, Loader2, ArrowRight } from 'lucide-react';
 import { setToken } from '@/api/auth';
 import { useAuth } from '@/hooks/useAuth';
+import { SealMark } from '@/components/common/BrandLogo';
 
 type Tab = 'login' | 'register';
 
@@ -130,7 +131,7 @@ const LoginModal: FC<LoginModalProps> = ({ isOpen, onClose }) => {
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center">
-      <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={onClose} />
+      <div className="absolute inset-0 bg-black/80" onClick={onClose} />
       <motion.div
         initial={{ opacity: 0, scale: 0.96, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -141,25 +142,25 @@ const LoginModal: FC<LoginModalProps> = ({ isOpen, onClose }) => {
         <div className="glass-card p-8">
           <button
             onClick={onClose}
-            className="absolute right-4 top-4 p-1.5 rounded-lg text-text-muted hover:text-text-primary hover:bg-bg-hover transition-colors"
+            className="absolute right-4 top-4 p-1.5 rounded-[2px] text-text-muted hover:text-text-primary hover:bg-bg-hover transition-colors"
           >
             <X className="w-4 h-4" />
           </button>
 
           {/* Brand */}
           <div className="relative z-10 flex flex-col items-center mb-8">
-            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-info to-fusion-primary flex items-center justify-center mb-3">
-              <Brain className="w-7 h-7 text-white" />
+            <div className="mb-3">
+              <SealMark size={44} />
             </div>
             <h1 className="text-xl font-bold text-text-primary tracking-tight">第二大脑</h1>
             <p className="text-sm text-text-secondary mt-1">登录以开始使用</p>
           </div>
 
           {/* Tabs */}
-          <div className="relative z-10 flex gap-1 p-1 bg-bg-secondary rounded-xl border border-border-color mb-6">
+          <div className="relative z-10 flex gap-1 p-1 bg-bg-secondary rounded-[2px] border border-border-color mb-6">
             <button
               onClick={() => switchTab('login')}
-              className={`flex-1 py-2 text-sm font-medium rounded-lg transition-all ${
+              className={`flex-1 py-2 text-sm font-medium rounded-[2px] transition-all ${
                 tab === 'login'
                   ? 'bg-bg-tertiary text-text-primary border border-border-color'
                   : 'text-text-secondary hover:text-text-primary hover:bg-bg-hover'
@@ -169,7 +170,7 @@ const LoginModal: FC<LoginModalProps> = ({ isOpen, onClose }) => {
             </button>
             <button
               onClick={() => switchTab('register')}
-              className={`flex-1 py-2 text-sm font-medium rounded-lg transition-all ${
+              className={`flex-1 py-2 text-sm font-medium rounded-[2px] transition-all ${
                 tab === 'register'
                   ? 'bg-bg-tertiary text-text-primary border border-border-color'
                   : 'text-text-secondary hover:text-text-primary hover:bg-bg-hover'
@@ -186,7 +187,7 @@ const LoginModal: FC<LoginModalProps> = ({ isOpen, onClose }) => {
                 initial={{ opacity: 0, height: 0 }}
                 animate={{ opacity: 1, height: 'auto' }}
                 exit={{ opacity: 0, height: 0 }}
-                className="relative z-10 mb-4 bg-red-500/10 border border-red-500/20 text-red-300 rounded-xl px-4 py-3 text-sm"
+                className="relative z-10 mb-4 bg-danger/10 border border-danger/20 text-danger rounded-[2px] px-4 py-3 text-sm"
               >
                 {errorMessage}
               </motion.div>
@@ -214,7 +215,7 @@ const LoginModal: FC<LoginModalProps> = ({ isOpen, onClose }) => {
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       placeholder="your@email.com"
-                      className="w-full pl-10 pr-4 py-2.5 bg-bg-secondary border border-border-color rounded-xl text-text-primary placeholder-text-muted focus:border-info/40 focus:shadow-[0_0_0_2px_rgba(200,149,108,0.1)] outline-none transition-all text-sm"
+                      className="w-full pl-10 pr-4 py-2.5 bg-bg-secondary border border-border-color rounded-[2px] text-text-primary placeholder-text-muted focus:border-info/40 outline-none transition-all text-sm"
                       disabled={isLoading}
                     />
                   </div>
@@ -229,7 +230,7 @@ const LoginModal: FC<LoginModalProps> = ({ isOpen, onClose }) => {
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       placeholder="输入密码"
-                      className="w-full pl-10 pr-10 py-2.5 bg-bg-secondary border border-border-color rounded-xl text-text-primary placeholder-text-muted focus:border-info/40 focus:shadow-[0_0_0_2px_rgba(200,149,108,0.1)] outline-none transition-all text-sm"
+                      className="w-full pl-10 pr-10 py-2.5 bg-bg-secondary border border-border-color rounded-[2px] text-text-primary placeholder-text-muted focus:border-info/40 outline-none transition-all text-sm"
                       disabled={isLoading}
                     />
                     <button
@@ -246,7 +247,7 @@ const LoginModal: FC<LoginModalProps> = ({ isOpen, onClose }) => {
                 <button
                   type="submit"
                   disabled={isLoading}
-                  className="w-full bg-gradient-to-r from-info to-info/80 hover:from-info/90 hover:to-info/70 text-white px-5 py-2.5 rounded-xl font-medium transition-all flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
+                  className="w-full bg-accent hover:bg-[var(--accent-hover)] text-white px-5 py-2.5 rounded-[2px] font-medium transition-all flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
                 >
                   {isLoggingIn ? (
                     <>
@@ -283,7 +284,7 @@ const LoginModal: FC<LoginModalProps> = ({ isOpen, onClose }) => {
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       placeholder="your@email.com"
-                      className="w-full pl-10 pr-4 py-2.5 bg-bg-secondary border border-border-color rounded-xl text-text-primary placeholder-text-muted focus:border-info/40 focus:shadow-[0_0_0_2px_rgba(200,149,108,0.1)] outline-none transition-all text-sm"
+                      className="w-full pl-10 pr-4 py-2.5 bg-bg-secondary border border-border-color rounded-[2px] text-text-primary placeholder-text-muted focus:border-info/40 outline-none transition-all text-sm"
                       disabled={isLoading}
                     />
                   </div>
@@ -300,7 +301,7 @@ const LoginModal: FC<LoginModalProps> = ({ isOpen, onClose }) => {
                         value={verificationCode}
                         onChange={(e) => setVerificationCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
                         placeholder="6 位验证码"
-                        className="w-full pl-10 pr-4 py-2.5 bg-bg-secondary border border-border-color rounded-xl text-text-primary placeholder-text-muted focus:border-info/40 focus:shadow-[0_0_0_2px_rgba(200,149,108,0.1)] outline-none transition-all text-sm"
+                        className="w-full pl-10 pr-4 py-2.5 bg-bg-secondary border border-border-color rounded-[2px] text-text-primary placeholder-text-muted focus:border-info/40 outline-none transition-all text-sm"
                         disabled={isLoading}
                       />
                     </div>
@@ -308,7 +309,7 @@ const LoginModal: FC<LoginModalProps> = ({ isOpen, onClose }) => {
                       type="button"
                       onClick={handleSendCode}
                       disabled={isSendingCode || countdown > 0 || !email.trim()}
-                      className="shrink-0 px-3 py-2.5 bg-bg-tertiary hover:bg-bg-hover border border-border-color rounded-xl text-xs text-text-secondary transition-all disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+                      className="shrink-0 px-3 py-2.5 bg-bg-tertiary hover:bg-bg-hover border border-border-color rounded-[2px] text-xs text-text-secondary transition-all disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
                     >
                       {isSendingCode ? '发送中...' : countdown > 0 ? `${countdown}s` : '获取验证码'}
                     </button>
@@ -325,7 +326,7 @@ const LoginModal: FC<LoginModalProps> = ({ isOpen, onClose }) => {
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       placeholder="至少 8 位"
-                      className="w-full pl-10 pr-10 py-2.5 bg-bg-secondary border border-border-color rounded-xl text-text-primary placeholder-text-muted focus:border-info/40 focus:shadow-[0_0_0_2px_rgba(200,149,108,0.1)] outline-none transition-all text-sm"
+                      className="w-full pl-10 pr-10 py-2.5 bg-bg-secondary border border-border-color rounded-[2px] text-text-primary placeholder-text-muted focus:border-info/40 outline-none transition-all text-sm"
                       disabled={isLoading}
                     />
                     <button
@@ -342,7 +343,7 @@ const LoginModal: FC<LoginModalProps> = ({ isOpen, onClose }) => {
                 <button
                   type="submit"
                   disabled={isLoading}
-                  className="w-full bg-gradient-to-r from-info to-info/80 hover:from-info/90 hover:to-info/70 text-white px-5 py-2.5 rounded-xl font-medium transition-all flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
+                  className="w-full bg-accent hover:bg-[var(--accent-hover)] text-white px-5 py-2.5 rounded-[2px] font-medium transition-all flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
                 >
                   {isRegistering ? (
                     <>

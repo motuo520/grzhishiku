@@ -227,6 +227,19 @@ async def lifespan(app: FastAPI):
                     '本地嵌入模型，记录用量但免计费，适合个人知识库与检索场景',
                     1, 0, 0, 32768, 1, 0, 0, 0, 0, 'CNY', datetime('now'), datetime('now'))
             """))
+        smollm2_exists = conn.execute(
+            sa_select(LLMModel).where(LLMModel.id == 'ollama-smollm2')
+        ).first()
+        if not smollm2_exists:
+            conn.execute(text("""
+                INSERT INTO llm_models (id, name, provider, provider_model_id, description,
+                    is_active, is_system, supports_streaming, context_length, sort_order,
+                    cost_input_per_1k, cost_output_per_1k, price_input_per_1k, price_output_per_1k,
+                    currency, created_at, updated_at)
+                VALUES ('ollama-smollm2', '本地 / SmolLM2 135M', 'ollama', 'smollm2:135m',
+                    '本地玩具级小模型，免计费，适合离线体验与调试',
+                    1, 0, 1, 8192, 2, 0, 0, 0, 0, 'CNY', datetime('now'), datetime('now'))
+            """))
 
     # Load and initialize plugins, then mount the MCP SSE server
     from app.mcp.server import mcp, mount_mcp
@@ -246,7 +259,7 @@ async def lifespan(app: FastAPI):
     # 初始化支付工厂（从 system_configs 读取，支持后台动态配置）
     from app.core.config_loader import get_system_config
     from app.core.database import SessionLocal
-    payment_config = {"alipay": {}, "wechat": {}, "stripe": {}, "xorpay": {}}
+    payment_config = {"alipay": {}, "wechat": {}, "stripe": {}, "xorpay": {}, "xunhupay": {}}
     try:
         with SessionLocal() as db:
             sys_cfg = get_system_config(db)
@@ -274,11 +287,25 @@ async def lifespan(app: FastAPI):
             "notify_url": f"{api_base}/api/v1/billing/webhook/xorpay",
             "return_url": f"{frontend_base}/payment/success",
         },
+        "xunhupay": {
+            "notify_url": f"{api_base}/api/v1/billing/webhook/xunhupay",
+            "return_url": f"{frontend_base}/payment/success",
+        },
     }
     for provider in payment_config:
         if provider in defaults:
             for key, val in defaults[provider].items():
                 payment_config[provider].setdefault(key, val)
+
+    # 迅虎支付（虎皮椒）：DB 未配置时回落到环境变量凭证
+    if settings.XUNHUPAY_APP_ID and settings.XUNHUPAY_APP_SECRET:
+        xh = payment_config.setdefault("xunhupay", {})
+        if not xh.get("appid"):
+            xh["appid"] = settings.XUNHUPAY_APP_ID
+            xh["app_secret"] = settings.XUNHUPAY_APP_SECRET
+            for key, val in defaults["xunhupay"].items():
+                xh.setdefault(key, val)
+            xh.setdefault("enabled", True)
 
     init_payment_factory(payment_config)
     yield
@@ -297,6 +324,15 @@ app = FastAPI(
 )
 
 register_exception_handlers(app)
+
+# Desktop mode: when SERVE_FRONTEND_DIR points to an existing Vite dist, the API
+# server also hosts the SPA at "/" (mounted last, after API routes) and the
+# JSON root route is skipped so "/" serves index.html.
+_serve_frontend_dir = (
+    settings.SERVE_FRONTEND_DIR
+    if settings.SERVE_FRONTEND_DIR and os.path.isdir(settings.SERVE_FRONTEND_DIR)
+    else None
+)
 
 # Logging configuration: file rotation in production only to avoid Windows file locks during dev
 log_handlers: list[logging.Handler] = [logging.StreamHandler()]
@@ -335,6 +371,14 @@ if settings.ENV == "production":
     _api_host = settings.API_BASE_URL.replace("https://", "").replace("http://", "").split(":")[0]
     if _api_host and _api_host not in _allowed_hosts:
         _allowed_hosts.append(_api_host)
+    # 同时允许前端域名和 CORS 来源域名（支持反向代理/多域名访问）
+    _frontend_host = settings.FRONTEND_URL.replace("https://", "").replace("http://", "").split(":")[0]
+    if _frontend_host and _frontend_host not in _allowed_hosts:
+        _allowed_hosts.append(_frontend_host)
+    for origin in settings.ALLOWED_ORIGINS.split(","):
+        host = origin.replace("https://", "").replace("http://", "").split(":")[0]
+        if host and host not in _allowed_hosts:
+            _allowed_hosts.append(host)
     app.add_middleware(TrustedHostMiddleware, allowed_hosts=_allowed_hosts)
 
 # CORS configuration: strict in production, permissive in development
@@ -395,9 +439,10 @@ async def receive_client_error(report: ClientErrorReport):
     return {"received": True}
 
 
-@app.get("/", tags=["Health"])
-async def root():
-    return {"message": "Personal Second Brain API", "version": "0.1.0"}
+if not _serve_frontend_dir:
+    @app.get("/", tags=["Health"])
+    async def root():
+        return {"message": "Personal Second Brain API", "version": "0.1.0"}
 
 @app.get("/health", tags=["Health"])
 async def health_check():
@@ -406,3 +451,23 @@ async def health_check():
 @app.get("/metrics", tags=["Monitoring"], include_in_schema=False)
 async def metrics():
     return get_metrics()
+
+
+class SPAStaticFiles(StaticFiles):
+    """StaticFiles with index.html fallback for SPA client-side routing."""
+
+    async def get_response(self, path: str, scope):
+        from starlette.exceptions import HTTPException as StarletteHTTPException
+
+        try:
+            return await super().get_response(path, scope)
+        except StarletteHTTPException as exc:
+            if exc.status_code == 404:
+                return await super().get_response("index.html", scope)
+            raise
+
+
+# Desktop mode: serve the built SPA from "/". Mounted last so API routes,
+# /uploads and /health always win.
+if _serve_frontend_dir:
+    app.mount("/", SPAStaticFiles(directory=_serve_frontend_dir, html=True), name="spa")

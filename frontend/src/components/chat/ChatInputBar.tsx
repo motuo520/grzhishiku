@@ -75,7 +75,7 @@ const ChatInputBar: FC<ChatInputBarProps> = ({
       )}
 
       <div className="flex items-center gap-2 sm:gap-3">
-        <div className="shrink-0 px-2.5 py-1.5 rounded-xl text-xs font-medium border border-purple-400/30 bg-purple-400/10 text-purple-400">
+        <div className="shrink-0 px-2.5 py-1.5 rounded-[2px] text-xs font-medium border border-fusion-primary/30 bg-fusion-primary/10 text-fusion-primary">
           {brainLabel}
         </div>
 
@@ -86,17 +86,17 @@ const ChatInputBar: FC<ChatInputBarProps> = ({
           onKeyDown={handleKeyDown}
           placeholder="输入消息..."
           disabled={disabled}
-          className="flex-1 bg-bg-secondary border border-border-color rounded-xl px-4 py-2.5 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:border-info/60 focus:bg-bg-secondary transition-all shadow-inner"
+          className="flex-1 bg-bg-secondary border border-border-color rounded-[2px] px-4 py-2.5 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:border-info/60 focus:bg-bg-secondary transition-all shadow-inner"
         />
 
         <button
           onClick={isStreaming ? onStop : onSend}
           disabled={disabled || (!isStreaming && !message.trim())}
-          className={`shrink-0 p-2.5 rounded-xl transition-all shadow-sm ${
+          className={`shrink-0 p-2.5 rounded-[2px] transition-all shadow-sm ${
             isStreaming
               ? 'bg-danger hover:bg-danger/80 text-white shadow-danger/20'
               : message.trim()
-                ? 'bg-info hover:bg-network-secondary text-white shadow-info/20'
+                ? 'bg-accent hover:bg-[var(--accent-hover)] text-white shadow-info/20'
                 : 'bg-bg-tertiary text-text-secondary cursor-not-allowed'
           }`}
         >

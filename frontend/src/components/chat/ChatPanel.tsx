@@ -193,12 +193,12 @@ const ChatPanel: FC<ChatPanelProps> = ({ isOpen, onClose }) => {
             animate={{ x: 0, opacity: 1 }}
             exit={{ x: '100%', opacity: 0.8 }}
             transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
-            className={`fixed right-0 top-0 bottom-0 w-[520px] max-w-[95vw] bg-bg-secondary border-l ${brainColor} border-l-2 shadow-2xl z-50 flex flex-col`}
+            className={`fixed right-0 top-0 bottom-0 w-[520px] max-w-[95vw] bg-bg-secondary border-l ${brainColor} border-l-2 z-50 flex flex-col`}
           >
             {/* Header */}
             <div className="flex items-center justify-between px-4 py-3 border-b border-border-color">
               <div className="flex items-center gap-2">
-                <div className={`w-7 h-7 rounded-lg ${brainColor.replace('border-', 'bg-')}/10 flex items-center justify-center`}>
+                <div className={`w-7 h-7 rounded-[2px] ${brainColor.replace('border-', 'bg-')}/10 flex items-center justify-center`}>
                   <Sparkles className="w-4 h-4 text-text-primary" />
                 </div>
                 <div>
@@ -208,7 +208,7 @@ const ChatPanel: FC<ChatPanelProps> = ({ isOpen, onClose }) => {
               </div>
               <button
                 onClick={onClose}
-                className="p-1.5 rounded-lg hover:bg-bg-tertiary text-text-secondary transition-colors"
+                className="p-1.5 rounded-[2px] hover:bg-bg-tertiary text-text-secondary transition-colors"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -226,7 +226,7 @@ const ChatPanel: FC<ChatPanelProps> = ({ isOpen, onClose }) => {
               {messages.map((msg) => (
                 <div key={msg.id} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                   <div
-                    className={`max-w-[85%] px-3.5 py-2.5 rounded-2xl text-sm ${
+                    className={`max-w-[85%] px-3.5 py-2.5 rounded-[2px] text-sm ${
                       msg.role === 'user'
                         ? 'bg-info text-white rounded-br-md'
                         : 'bg-bg-tertiary text-text-primary rounded-bl-md border border-border-color'

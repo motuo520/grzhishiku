@@ -451,7 +451,7 @@ const ClipperPage: FC = () => {
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
-            className="flex items-center gap-2 px-4 py-3 rounded-xl bg-danger/10 border border-danger/30 text-danger text-sm"
+            className="flex items-center gap-2 px-4 py-3 rounded-[2px] bg-danger/10 border border-danger/30 text-danger text-sm"
           >
             <AlertCircle className="w-4 h-4" />
             {error}
@@ -465,7 +465,7 @@ const ClipperPage: FC = () => {
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
-            className="flex items-center gap-2 px-4 py-3 rounded-xl bg-success/10 border border-success/30 text-success text-sm"
+            className="flex items-center gap-2 px-4 py-3 rounded-[2px] bg-success/10 border border-success/30 text-success text-sm"
           >
             <Check className="w-4 h-4" />
             {success}
@@ -482,7 +482,7 @@ const ClipperPage: FC = () => {
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="搜索剪藏标题、摘要或域名..."
-            className="w-full bg-bg-secondary border border-border-color rounded-xl pl-10 pr-4 py-2.5 text-sm text-text-primary placeholder-text-secondary focus:outline-none focus:border-info/50 transition-colors"
+            className="w-full bg-bg-secondary border border-border-color rounded-[2px] pl-10 pr-4 py-2.5 text-sm text-text-primary placeholder-text-secondary focus:outline-none focus:border-info/50 transition-colors"
           />
         </div>
         <div className="relative">
@@ -499,7 +499,7 @@ const ClipperPage: FC = () => {
             )}
           </button>
           {isTagFilterOpen && (
-            <div className="absolute right-0 top-full mt-2 w-64 bg-bg-secondary border border-border-color rounded-xl shadow-xl p-3 z-20">
+            <div className="absolute right-0 top-full mt-2 w-64 bg-bg-secondary border border-border-color rounded-[2px] p-3 z-20">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-xs text-text-muted">按标签筛选</span>
                 {selectedTagIds.length > 0 && (
@@ -599,7 +599,7 @@ const ClipperPage: FC = () => {
                       className="mt-1 w-4 h-4 accent-info shrink-0"
                     />
                   )}
-                  <div className="mt-0.5 p-1.5 rounded-lg bg-bg-tertiary text-text-secondary shrink-0">
+                  <div className="mt-0.5 p-1.5 rounded-[2px] bg-bg-tertiary text-text-secondary shrink-0">
                     <Globe className="w-4 h-4" />
                   </div>
                   <div className="flex-1 min-w-0">
@@ -672,14 +672,14 @@ const ClipperPage: FC = () => {
                     <div className="flex items-center gap-1 shrink-0">
                       <button
                         onClick={() => handleCopyUrl(clip.url)}
-                        className="p-1.5 rounded-lg hover:bg-white/[0.05] text-text-muted hover:text-info transition-colors"
+                        className="p-1.5 rounded-[2px] hover:bg-white/[0.05] text-text-muted hover:text-info transition-colors"
                         title="复制链接"
                       >
                         <Copy className="w-4 h-4" />
                       </button>
                       <button
                         onClick={() => openEdit(clip)}
-                        className="p-1.5 rounded-lg hover:bg-white/[0.05] text-text-muted hover:text-yellow-400 transition-colors"
+                        className="p-1.5 rounded-[2px] hover:bg-white/[0.05] text-text-muted hover:text-warning transition-colors"
                         title="编辑"
                       >
                         <Pencil className="w-4 h-4" />
@@ -687,7 +687,7 @@ const ClipperPage: FC = () => {
                       <button
                         onClick={() => handleSaveToKnowledge(clip)}
                         disabled={isSavingToKnowledge}
-                        className="p-1.5 rounded-lg hover:bg-white/[0.05] text-text-muted hover:text-success transition-colors disabled:opacity-50"
+                        className="p-1.5 rounded-[2px] hover:bg-white/[0.05] text-text-muted hover:text-success transition-colors disabled:opacity-50"
                         title="保存到知识库"
                       >
                         {isSavingToKnowledge ? <Loader2 className="w-4 h-4 animate-spin" /> : <BookOpen className="w-4 h-4" />}
@@ -695,7 +695,7 @@ const ClipperPage: FC = () => {
                       <button
                         onClick={() => handleAISummary(clip)}
                         disabled={aiLoadingId === clip.id}
-                        className="p-1.5 rounded-lg hover:bg-white/[0.05] text-text-muted hover:text-warning transition-colors disabled:opacity-50"
+                        className="p-1.5 rounded-[2px] hover:bg-white/[0.05] text-text-muted hover:text-warning transition-colors disabled:opacity-50"
                         title="AI 生成摘要"
                       >
                         {aiLoadingId === clip.id && aiLoadingAction === 'summary' ? (
@@ -707,7 +707,7 @@ const ClipperPage: FC = () => {
                       <button
                         onClick={() => handleAIExtractTags(clip)}
                         disabled={aiLoadingId === clip.id}
-                        className="p-1.5 rounded-lg hover:bg-white/[0.05] text-text-muted hover:text-info transition-colors disabled:opacity-50"
+                        className="p-1.5 rounded-[2px] hover:bg-white/[0.05] text-text-muted hover:text-info transition-colors disabled:opacity-50"
                         title="AI 提取标签"
                       >
                         {aiLoadingId === clip.id && aiLoadingAction === 'tags' ? (
@@ -718,7 +718,7 @@ const ClipperPage: FC = () => {
                       </button>
                       <button
                         onClick={() => setExpandedClip(expandedClip === clip.id ? null : clip.id)}
-                        className="p-1.5 rounded-lg hover:bg-white/[0.05] text-text-muted hover:text-info transition-colors"
+                        className="p-1.5 rounded-[2px] hover:bg-white/[0.05] text-text-muted hover:text-info transition-colors"
                         title={expandedClip === clip.id ? '收起' : '展开详情'}
                       >
                         {expandedClip === clip.id ? (
@@ -730,7 +730,7 @@ const ClipperPage: FC = () => {
                       <button
                         onClick={() => handleDelete(clip.id)}
                         disabled={isDeleting}
-                        className="p-1.5 rounded-lg hover:bg-white/[0.05] text-text-muted hover:text-danger transition-colors disabled:opacity-50"
+                        className="p-1.5 rounded-[2px] hover:bg-white/[0.05] text-text-muted hover:text-danger transition-colors disabled:opacity-50"
                         title="删除"
                       >
                         <Trash2 className="w-4 h-4" />
@@ -771,7 +771,7 @@ const ClipperPage: FC = () => {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
             onClick={closeEditor}
           >
             <motion.div
@@ -779,11 +779,11 @@ const ClipperPage: FC = () => {
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
               onClick={(e) => e.stopPropagation()}
-              className="w-full max-w-2xl bg-bg-secondary border border-border-color rounded-2xl shadow-2xl overflow-hidden"
+              className="w-full max-w-2xl bg-bg-secondary border border-border-color rounded-[2px] overflow-hidden"
             >
               <div className="flex items-center justify-between px-5 py-4 border-b border-border-color">
                 <h3 className="text-sm font-medium text-text-primary">{editingClip ? '编辑剪藏' : '新建剪藏'}</h3>
-                <button onClick={closeEditor} className="p-1 rounded-lg hover:bg-white/[0.05] text-text-muted">
+                <button onClick={closeEditor} className="p-1 rounded-[2px] hover:bg-white/[0.05] text-text-muted">
                   <X className="w-4 h-4" />
                 </button>
               </div>
@@ -795,7 +795,7 @@ const ClipperPage: FC = () => {
                     value={formTitle}
                     onChange={(e) => setFormTitle(e.target.value)}
                     placeholder="网页标题..."
-                    className="w-full bg-bg-primary border border-border-color rounded-xl px-4 py-2.5 text-sm text-text-primary placeholder-text-secondary focus:outline-none focus:border-info/50 transition-colors"
+                    className="w-full bg-bg-primary border border-border-color rounded-[2px] px-4 py-2.5 text-sm text-text-primary placeholder-text-secondary focus:outline-none focus:border-info/50 transition-colors"
                   />
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -811,7 +811,7 @@ const ClipperPage: FC = () => {
                         }
                       }}
                       placeholder="https://..."
-                      className="w-full bg-bg-primary border border-border-color rounded-xl px-4 py-2.5 text-sm text-text-primary placeholder-text-secondary focus:outline-none focus:border-info/50 transition-colors"
+                      className="w-full bg-bg-primary border border-border-color rounded-[2px] px-4 py-2.5 text-sm text-text-primary placeholder-text-secondary focus:outline-none focus:border-info/50 transition-colors"
                     />
                   </div>
                   <div>
@@ -821,7 +821,7 @@ const ClipperPage: FC = () => {
                       value={formDomain}
                       onChange={(e) => setFormDomain(e.target.value)}
                       placeholder="example.com"
-                      className="w-full bg-bg-primary border border-border-color rounded-xl px-4 py-2.5 text-sm text-text-primary placeholder-text-secondary focus:outline-none focus:border-info/50 transition-colors"
+                      className="w-full bg-bg-primary border border-border-color rounded-[2px] px-4 py-2.5 text-sm text-text-primary placeholder-text-secondary focus:outline-none focus:border-info/50 transition-colors"
                     />
                   </div>
                 </div>
@@ -842,7 +842,7 @@ const ClipperPage: FC = () => {
                     onChange={(e) => setFormExcerpt(e.target.value)}
                     placeholder="简短摘要..."
                     rows={3}
-                    className="w-full bg-bg-primary border border-border-color rounded-xl px-4 py-3 text-sm text-text-primary placeholder-text-secondary focus:outline-none focus:border-info/50 transition-colors resize-none"
+                    className="w-full bg-bg-primary border border-border-color rounded-[2px] px-4 py-3 text-sm text-text-primary placeholder-text-secondary focus:outline-none focus:border-info/50 transition-colors resize-none"
                   />
                 </div>
                 <div>
@@ -852,7 +852,7 @@ const ClipperPage: FC = () => {
                     onChange={(e) => setFormFullText(e.target.value)}
                     placeholder="网页全文内容..."
                     rows={6}
-                    className="w-full bg-bg-primary border border-border-color rounded-xl px-4 py-3 text-sm text-text-primary placeholder-text-secondary focus:outline-none focus:border-info/50 transition-colors resize-none"
+                    className="w-full bg-bg-primary border border-border-color rounded-[2px] px-4 py-3 text-sm text-text-primary placeholder-text-secondary focus:outline-none focus:border-info/50 transition-colors resize-none"
                   />
                 </div>
               </div>
@@ -885,7 +885,7 @@ const ClipperPage: FC = () => {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
             onClick={() => setIsBatchTagOpen(false)}
           >
             <motion.div
@@ -893,7 +893,7 @@ const ClipperPage: FC = () => {
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
               onClick={(e) => e.stopPropagation()}
-              className="w-full max-w-lg bg-bg-secondary border border-border-color rounded-2xl shadow-2xl p-5"
+              className="w-full max-w-lg bg-bg-secondary border border-border-color rounded-[2px] p-5"
             >
               <h3 className="text-sm font-medium text-text-primary mb-2">
                 批量打标签 ({selectedIds.size} 条剪藏)

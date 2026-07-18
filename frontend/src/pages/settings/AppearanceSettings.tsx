@@ -94,10 +94,10 @@ const AppearanceSettings: FC = () => {
   return (
     <div className="space-y-6">
       {toast && (
-        <div className={`fixed top-4 right-4 z-50 px-4 py-3 rounded-xl border backdrop-blur-xl shadow-lg ${
+        <div className={`fixed top-4 right-4 z-50 px-4 py-3 rounded-[2px] border ${
           toast.type === 'success'
-            ? 'bg-success/20 border-success/30 text-green-400'
-            : 'bg-danger/20 border-danger/30 text-red-400'
+            ? 'bg-success/20 border-success/30 text-success'
+            : 'bg-danger/20 border-danger/30 text-danger'
         }`}>
           <div className="flex items-center gap-2">
             {toast.type === 'success' ? <Check size={16} /> : <AlertTriangle size={16} />}
@@ -124,7 +124,7 @@ const AppearanceSettings: FC = () => {
               <button
                 key={opt.value}
                 onClick={() => handleThemeChange(opt.value)}
-                className={`flex items-center gap-3 p-4 rounded-xl border text-left transition-all ${
+                className={`flex items-center gap-3 p-4 rounded-[2px] border text-left transition-all ${
                   selected
                     ? 'border-info/40 bg-info/10 text-info'
                     : 'border-white/[0.08] hover:border-white/[0.15] text-text-secondary'
@@ -155,7 +155,7 @@ const AppearanceSettings: FC = () => {
             return (
               <label
                 key={opt.value}
-                className={`flex items-center gap-4 p-3 rounded-xl border cursor-pointer transition-all ${
+                className={`flex items-center gap-4 p-3 rounded-[2px] border cursor-pointer transition-all ${
                   selected
                     ? 'border-personal-primary/40 bg-personal-primary/5'
                     : 'border-white/[0.08] hover:border-white/[0.15]'

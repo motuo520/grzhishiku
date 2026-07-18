@@ -126,7 +126,7 @@ const IdeaLibraryPage: FC = () => {
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
-            className="flex items-center gap-2 px-4 py-3 rounded-xl bg-danger/10 border border-danger/30 text-danger text-sm"
+            className="flex items-center gap-2 px-4 py-3 rounded-[2px] bg-danger/10 border border-danger/30 text-danger text-sm"
           >
             <AlertCircle className="w-4 h-4" />
             {error}
@@ -139,7 +139,7 @@ const IdeaLibraryPage: FC = () => {
 
       {/* Filters */}
       <div className="flex flex-col md:flex-row md:items-center gap-3">
-        <div className="flex items-center gap-1 bg-bg-tertiary rounded-lg p-1">
+        <div className="flex items-center gap-1 bg-bg-tertiary rounded-[2px] p-1">
           {(['all', 'draft', 'converted', 'archived'] as const).map((s) => (
             <button
               key={s}
@@ -155,7 +155,7 @@ const IdeaLibraryPage: FC = () => {
           ))}
         </div>
 
-        <div className="flex items-center gap-1 bg-bg-tertiary rounded-lg p-1">
+        <div className="flex items-center gap-1 bg-bg-tertiary rounded-[2px] p-1">
           {(['all', 'personal', 'network', 'both'] as const).map((b) => (
             <button
               key={b}
@@ -194,7 +194,7 @@ const IdeaLibraryPage: FC = () => {
                 <button
                   key={tool.path}
                   onClick={() => navigate(tool.path)}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/[0.03] border border-white/[0.08] hover:border-fusion-primary/30 hover:bg-fusion-primary/5 text-text-secondary hover:text-text-primary text-xs transition-colors"
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-[2px] bg-white/[0.03] border border-white/[0.08] hover:border-fusion-primary/30 hover:bg-fusion-primary/5 text-text-secondary hover:text-text-primary text-xs transition-colors"
                 >
                   <Icon className="w-3.5 h-3.5" />
                   {tool.label}
@@ -220,7 +220,7 @@ const IdeaLibraryPage: FC = () => {
                     <button
                       onClick={() => handleDelete(idea.id)}
                       disabled={deleteMutation.isPending}
-                      className="p-1.5 rounded-lg hover:bg-danger/10 text-text-muted hover:text-danger transition-colors disabled:opacity-50"
+                      className="p-1.5 rounded-[2px] hover:bg-danger/10 text-text-muted hover:text-danger transition-colors disabled:opacity-50"
                       title="删除"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
@@ -233,14 +233,14 @@ const IdeaLibraryPage: FC = () => {
 
                   <div className="flex items-center gap-2 flex-wrap mb-3">
                     <span
-                      className={`inline-flex items-center px-2 py-0.5 text-[10px] rounded-full border ${
+                      className={`inline-flex items-center px-2 py-0.5 text-[10px] rounded-[2px] border ${
                         BRAIN_SIDE_CLASS[idea.brain_side] || BRAIN_SIDE_CLASS.unknown
                       }`}
                     >
                       {BRAIN_SIDE_LABEL[idea.brain_side] || BRAIN_SIDE_LABEL.unknown}
                     </span>
                     <span
-                      className={`inline-flex items-center px-2 py-0.5 text-[10px] rounded-full border ${
+                      className={`inline-flex items-center px-2 py-0.5 text-[10px] rounded-[2px] border ${
                         STATUS_CLASS[idea.status] || STATUS_CLASS.draft
                       }`}
                     >
@@ -291,7 +291,7 @@ const IdeaLibraryPage: FC = () => {
                                 key={opt.key}
                                 onClick={() => handlePromote(idea.id, opt.key)}
                                 disabled={promoteMutation.isPending}
-                                className="flex items-center gap-1 px-2 py-1 rounded-lg bg-white/[0.05] hover:bg-info/10 text-text-secondary hover:text-info border border-white/[0.08] text-[10px] transition-colors disabled:opacity-60"
+                                className="flex items-center gap-1 px-2 py-1 rounded-[2px] bg-white/[0.05] hover:bg-info/10 text-text-secondary hover:text-info border border-white/[0.08] text-[10px] transition-colors disabled:opacity-60"
                               >
                                 <Icon className="w-3 h-3" />
                                 {opt.label}
@@ -300,7 +300,7 @@ const IdeaLibraryPage: FC = () => {
                           })}
                           <button
                             onClick={() => setPromotingId(null)}
-                            className="p-1 rounded-lg hover:bg-white/[0.05] text-text-muted"
+                            className="p-1 rounded-[2px] hover:bg-white/[0.05] text-text-muted"
                           >
                             ×
                           </button>

@@ -11,10 +11,10 @@ const Toast: FC<{ message: string; type: 'success' | 'error'; onClose: () => voi
     return () => clearTimeout(timer);
   }, [onClose]);
   return (
-    <div className={`fixed top-5 right-5 z-50 flex items-center gap-2 px-4 py-3 rounded-xl border backdrop-blur ${
+    <div className={`fixed top-5 right-5 z-50 flex items-center gap-2 px-4 py-3 rounded-[2px] border ${
       type === 'success'
-        ? 'bg-green-500/10 border-green-500/30 text-green-400'
-        : 'bg-red-500/10 border-red-500/30 text-red-400'
+        ? 'bg-success/10 border-success/30 text-success'
+        : 'bg-danger/10 border-danger/30 text-danger'
     }`}>
       {type === 'success' ? <CheckCircle size={18} /> : <XCircle size={18} />}
       <span className="text-sm">{message}</span>
@@ -81,13 +81,13 @@ const BillingHistory: FC = () => {
   const statusClass = (status: string) => {
     switch (status) {
       case 'success':
-        return 'bg-emerald-500/10 text-emerald-400';
+        return 'bg-success/10 text-success';
       case 'refunded':
-        return 'bg-amber-500/10 text-amber-400';
+        return 'bg-warning/10 text-warning';
       case 'pending':
-        return 'bg-blue-500/10 text-blue-400';
+        return 'bg-network-primary/10 text-network-primary';
       case 'failed':
-        return 'bg-red-500/10 text-red-400';
+        return 'bg-danger/10 text-danger';
       default:
         return 'bg-white/5 text-text-muted';
     }
@@ -145,7 +145,7 @@ const BillingHistory: FC = () => {
                       <button
                         onClick={() => handleRefund(p.id)}
                         disabled={refundingId === p.id}
-                        className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-white/[0.06] border border-white/[0.1] text-text-secondary hover:text-white hover:bg-white/[0.1] transition-colors disabled:opacity-50 text-xs"
+                        className="inline-flex items-center gap-1 px-2 py-1 rounded-[2px] bg-white/[0.06] border border-white/[0.1] text-text-secondary hover:text-white hover:bg-white/[0.1] transition-colors disabled:opacity-50 text-xs"
                       >
                         {refundingId === p.id && <Loader2 size={12} className="animate-spin" />}
                         <RefreshCcw size={12} />
@@ -299,7 +299,7 @@ const AccountSettings: FC = () => {
         </h3>
         <div className="flex items-start gap-6">
           <div className="relative group cursor-pointer" onClick={handleAvatarClick}>
-            <div className="w-20 h-20 rounded-2xl bg-white/[0.05] border border-white/[0.08] flex items-center justify-center overflow-hidden">
+            <div className="w-20 h-20 rounded-[2px] bg-white/[0.05] border border-white/[0.08] flex items-center justify-center overflow-hidden">
               {avatarPreview ? (
                 <img
                   src={avatarPreview}
@@ -312,11 +312,11 @@ const AccountSettings: FC = () => {
                 <User size={32} className="text-text-muted" />
               )}
             </div>
-            <div className="absolute inset-0 rounded-2xl bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+            <div className="absolute inset-0 rounded-[2px] bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
               <Camera size={20} className="text-white" />
             </div>
             {uploadingAvatar && (
-              <div className="absolute inset-0 rounded-2xl bg-black/60 flex items-center justify-center">
+              <div className="absolute inset-0 rounded-[2px] bg-black/60 flex items-center justify-center">
                 <Loader2 size={20} className="text-white animate-spin" />
               </div>
             )}

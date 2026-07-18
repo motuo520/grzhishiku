@@ -64,9 +64,9 @@ const features = [
     title: '认知挑战',
     description: '每日一道思维训练题，在偏差识别、反事实思考与反思练习中提升认知弹性。',
     icon: Gamepad2,
-    color: 'text-purple-400',
-    bgColor: 'bg-purple-400/10',
-    borderColor: 'border-purple-400/20',
+    color: 'text-fusion-primary',
+    bgColor: 'bg-fusion-primary/10',
+    borderColor: 'border-fusion-primary/20',
     path: '/cognitive/challenge',
   },
   {
@@ -74,9 +74,9 @@ const features = [
     title: '认知周报',
     description: '每周一次，回顾你的输入、反思、决策与偏差觉察，量化认知健康状态。',
     icon: FileText,
-    color: 'text-orange-400',
-    bgColor: 'bg-orange-400/10',
-    borderColor: 'border-orange-400/20',
+    color: 'text-warning',
+    bgColor: 'bg-warning/10',
+    borderColor: 'border-warning/20',
     path: '/cognitive/weekly-report',
   },
 ];
@@ -128,7 +128,7 @@ const CognitivePage: FC = () => {
 
               <div className="relative z-10">
                 <div className="flex items-start justify-between mb-4">
-                  <div className={`p-3 rounded-xl ${feature.bgColor} ${feature.borderColor} border`}>
+                  <div className={`p-3 rounded-[2px] ${feature.bgColor} ${feature.borderColor} border`}>
                     <Icon className={`w-6 h-6 ${feature.color}`} />
                   </div>
                   <ChevronRight
@@ -167,7 +167,7 @@ const CognitivePage: FC = () => {
           {stats.map((stat, i) => {
             const StatIcon = stat.icon;
             return (
-              <div key={i} className="text-center p-4 rounded-xl bg-white/[0.02] border border-white/[0.05]">
+              <div key={i} className="text-center p-4 rounded-[2px] bg-white/[0.02] border border-white/[0.05]">
                 <StatIcon className={`w-5 h-5 ${stat.color} mx-auto mb-2`} />
                 <div className="text-2xl font-bold text-text-primary">{stat.value}</div>
                 <div className="text-xs text-text-secondary mt-1">{stat.label}</div>

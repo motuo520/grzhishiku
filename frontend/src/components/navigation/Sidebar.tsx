@@ -55,15 +55,15 @@ const Sidebar: FC = () => {
   };
 
   const brainOptions = [
-    { id: 'personal', label: '个人脑', sublabel: 'Personal Brain', icon: Home, color: 'text-amber-400', bg: 'bg-amber-400/10', border: 'border-amber-400/20' },
-    { id: 'network', label: '网络脑', sublabel: 'Network Brain', icon: Globe, color: 'text-blue-400', bg: 'bg-blue-400/10', border: 'border-blue-400/20' },
-    { id: 'both', label: '整合脑', sublabel: 'Both Brains', icon: Brain, color: 'text-purple-400', bg: 'bg-purple-400/10', border: 'border-purple-400/20' },
+    { id: 'personal', label: '个人脑', sublabel: 'Personal Brain', icon: Home, color: 'text-personal-primary', bg: 'bg-personal-primary/10', border: 'border-personal-primary/25' },
+    { id: 'network', label: '网络脑', sublabel: 'Network Brain', icon: Globe, color: 'text-network-primary', bg: 'bg-network-primary/10', border: 'border-network-primary/25' },
+    { id: 'both', label: '整合脑', sublabel: 'Both Brains', icon: Brain, color: 'text-fusion-primary', bg: 'bg-fusion-primary/10', border: 'border-fusion-primary/25' },
   ];
 
-  const brainColor = effectiveBrain === 'personal' ? 'text-amber-400' :
-                     effectiveBrain === 'network' ? 'text-blue-400' : 'text-purple-400';
-  const brainBg = effectiveBrain === 'personal' ? 'bg-amber-400/10' :
-                  effectiveBrain === 'network' ? 'bg-blue-400/10' : 'bg-purple-400/10';
+  const brainColor = effectiveBrain === 'personal' ? 'text-personal-primary' :
+                     effectiveBrain === 'network' ? 'text-network-primary' : 'text-fusion-primary';
+  const brainBg = effectiveBrain === 'personal' ? 'bg-personal-primary/10' :
+                  effectiveBrain === 'network' ? 'bg-network-primary/10' : 'bg-fusion-primary/10';
   const BrainIcon = effectiveBrain === 'personal' ? Home :
                     effectiveBrain === 'network' ? Globe : Brain;
 
@@ -74,7 +74,7 @@ const Sidebar: FC = () => {
         <button
           onClick={() => setBrainMenuOpen(!brainMenuOpen)}
           disabled={isSwitching}
-          className={`w-full flex items-center gap-2 px-3 py-2.5 rounded-xl border border-border-color transition-all duration-300 ${brainBg} hover:border-current/30 disabled:opacity-50 disabled:cursor-not-allowed`}
+          className={`w-full flex items-center gap-2 px-3 py-2.5 rounded-[2px] border border-border-color transition-colors duration-200 ${brainBg} hover:border-current/30 disabled:opacity-50 disabled:cursor-not-allowed`}
         >
           {isSwitching ? (
             <div className="w-5 h-5 border-2 border-current border-t-transparent rounded-full animate-spin" />
@@ -109,7 +109,7 @@ const Sidebar: FC = () => {
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: -10, scale: 0.95 }}
               transition={{ duration: 0.15 }}
-              className="absolute top-full left-0 right-0 mt-2 glass rounded-xl border border-border-color shadow-2xl p-2 z-50"
+              className="absolute top-full left-0 right-0 mt-2 glass rounded-[2px] border border-border-color p-2 z-50"
             >
               {brainOptions.map((opt) => {
                 const Icon = opt.icon;
@@ -118,13 +118,13 @@ const Sidebar: FC = () => {
                   <button
                     key={opt.id}
                     onClick={() => handleBrainSwitch(opt.id as BrainSide)}
-                    className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-all ${
+                    className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-[2px] text-sm transition-colors ${
                       isActive
                         ? `${opt.bg} ${opt.color} border ${opt.border}`
                         : 'text-text-secondary hover:bg-bg-hover hover:text-text-primary'
                     }`}
                   >
-                    <div className={`w-8 h-8 rounded-lg ${opt.bg} flex items-center justify-center`}>
+                    <div className={`w-8 h-8 rounded-[2px] ${opt.bg} flex items-center justify-center`}>
                       <Icon className={`w-4 h-4 ${opt.color}`} />
                     </div>
                     <div className="flex-1 text-left">
@@ -156,7 +156,7 @@ const Sidebar: FC = () => {
               <button
                 key={action.id}
                 onClick={() => navigate(action.path)}
-                className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-text-secondary hover:bg-bg-hover hover:text-text-primary transition-all group"
+                className="w-full flex items-center gap-2 px-3 py-2 rounded-[2px] text-sm text-text-secondary hover:bg-bg-hover hover:text-text-primary transition-colors group"
               >
                 <Icon className="w-4 h-4" />
                 <span className="flex-1 text-left">{action.label}</span>
@@ -172,7 +172,7 @@ const Sidebar: FC = () => {
         <div className="text-xs font-semibold text-text-muted uppercase tracking-wider mb-2 px-1">
           最近内容
         </div>
-        <div className="flex items-center justify-center h-24 text-xs text-text-muted rounded-xl border border-dashed border-border-color">
+        <div className="flex items-center justify-center h-24 text-xs text-text-muted rounded-[2px] border border-dashed border-border-color">
           暂无最近内容
         </div>
       </div>
@@ -182,9 +182,9 @@ const Sidebar: FC = () => {
         <div className="relative">
           <button
             onClick={() => setMenuOpen(!menuOpen)}
-            className={`w-full flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium transition-all duration-300 ${
+            className={`w-full flex items-center gap-2 px-3 py-2 rounded-[2px] text-sm font-medium transition-colors duration-200 ${
               menuOpen
-                ? 'bg-info/10 text-info border border-info/20 shadow-[0_0_12px_rgba(200,149,108,0.2)]'
+                ? 'bg-accent/10 text-accent border border-accent/25'
                 : 'hover:bg-bg-hover text-text-secondary hover:text-text-primary border border-transparent'
             }`}
           >
@@ -206,19 +206,18 @@ const Sidebar: FC = () => {
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 exit={{ opacity: 0, y: 10, scale: 0.95 }}
                 transition={{ duration: 0.2 }}
-                className="absolute bottom-full left-0 right-0 mb-2 glass-popup rounded-xl border border-border-color shadow-2xl p-2 z-50"
-                style={{ boxShadow: '0 -20px 40px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.05)' }}
+                className="absolute bottom-full left-0 right-0 mb-2 glass-popup rounded-[2px] border border-border-color p-2 z-50"
               >
                 {/* Settings Option */}
                 <button
                   onClick={() => setSettingsOpen(!settingsOpen)}
-                  className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm transition-all ${
+                  className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-[2px] text-sm transition-colors ${
                     settingsOpen
-                      ? 'bg-info/10 text-info'
+                      ? 'bg-accent/10 text-accent'
                       : 'text-text-secondary hover:bg-bg-hover hover:text-text-primary'
                   }`}
                 >
-                  <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-info/10 to-fusion-primary/10 flex items-center justify-center text-info">
+                  <div className="w-7 h-7 rounded-[2px] bg-accent/10 flex items-center justify-center text-accent">
                     <Settings className="w-3.5 h-3.5" />
                   </div>
                   <span className="flex-1 text-left">设置</span>
@@ -251,7 +250,7 @@ const Sidebar: FC = () => {
                                 setSettingsOpen(false);
                                 setMenuOpen(false);
                               }}
-                              className="w-full flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs text-text-secondary hover:bg-bg-hover hover:text-text-primary transition-all"
+                              className="w-full flex items-center gap-2 px-3 py-1.5 rounded-[2px] text-xs text-text-secondary hover:bg-bg-hover hover:text-text-primary transition-colors"
                             >
                               <Icon className="w-3 h-3 text-text-muted" />
                               <span>{item.label}</span>
@@ -271,10 +270,10 @@ const Sidebar: FC = () => {
                     navigate('/payment');
                     setMenuOpen(false);
                   }}
-                  className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm text-text-secondary hover:bg-bg-hover hover:text-text-primary transition-all"
+                  className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-[2px] text-sm text-text-secondary hover:bg-bg-hover hover:text-text-primary transition-colors"
                 >
-                  <div className={`w-7 h-7 rounded-lg flex items-center justify-center ${
-                    tier === 'storage' ? 'bg-amber-400/10 text-amber-400' : 'bg-emerald-400/10 text-emerald-400'
+                  <div className={`w-7 h-7 rounded-[2px] flex items-center justify-center ${
+                    tier === 'storage' ? 'bg-warning/10 text-warning' : 'bg-fusion-primary/10 text-fusion-primary'
                   }`}>
                     <Crown className="w-3.5 h-3.5" />
                   </div>
@@ -293,7 +292,7 @@ const Sidebar: FC = () => {
                     </div>
                     <div className="h-1 rounded-full bg-bg-tertiary overflow-hidden">
                       <div
-                        className="h-full rounded-full bg-gradient-to-r from-info to-fusion-primary"
+                        className="h-full rounded-full bg-accent"
                         style={{ width: `${Math.min(100, ((user.storage_used || 0) / (user.storage_limit || 1)) * 100)}%` }}
                       />
                     </div>

@@ -181,7 +181,7 @@ const EmailPage: FC = () => {
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
-            className="flex items-center gap-2 px-4 py-3 rounded-xl bg-danger/10 border border-danger/30 text-danger text-sm"
+            className="flex items-center gap-2 px-4 py-3 rounded-[2px] bg-danger/10 border border-danger/30 text-danger text-sm"
           >
             <AlertCircle className="w-4 h-4" />
             {error}
@@ -195,7 +195,7 @@ const EmailPage: FC = () => {
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
-            className="flex items-center gap-2 px-4 py-3 rounded-xl bg-success/10 border border-success/30 text-success text-sm"
+            className="flex items-center gap-2 px-4 py-3 rounded-[2px] bg-success/10 border border-success/30 text-success text-sm"
           >
             <Check className="w-4 h-4" />
             {success}
@@ -221,12 +221,12 @@ const EmailPage: FC = () => {
             {accounts.map((account) => (
               <div
                 key={account.id}
-                className={`flex items-center justify-between p-3 rounded-xl border transition-colors ${
+                className={`flex items-center justify-between p-3 rounded-[2px] border transition-colors ${
                   selectedAccountId === account.id ? 'border-info/50 bg-info/5' : 'border-border-color bg-bg-primary'
                 }`}
               >
                 <div className="flex items-center gap-3 cursor-pointer flex-1" onClick={() => setSelectedAccountId(account.id === selectedAccountId ? '' : account.id)}>
-                  <div className="w-8 h-8 rounded-lg bg-bg-tertiary flex items-center justify-center text-text-secondary">
+                  <div className="w-8 h-8 rounded-[2px] bg-bg-tertiary flex items-center justify-center text-text-secondary">
                     <Mail className="w-4 h-4" />
                   </div>
                   <div>
@@ -253,7 +253,7 @@ const EmailPage: FC = () => {
                   <button
                     onClick={() => handleSync(account)}
                     disabled={isSyncing}
-                    className="p-1.5 rounded-lg hover:bg-white/[0.05] text-text-muted hover:text-info transition-colors disabled:opacity-50"
+                    className="p-1.5 rounded-[2px] hover:bg-white/[0.05] text-text-muted hover:text-info transition-colors disabled:opacity-50"
                     title="同步邮件"
                   >
                     {isSyncing ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
@@ -261,7 +261,7 @@ const EmailPage: FC = () => {
                   <button
                     onClick={() => handleDeleteAccount(account.id)}
                     disabled={isDeleting}
-                    className="p-1.5 rounded-lg hover:bg-white/[0.05] text-text-muted hover:text-danger transition-colors disabled:opacity-50"
+                    className="p-1.5 rounded-[2px] hover:bg-white/[0.05] text-text-muted hover:text-danger transition-colors disabled:opacity-50"
                     title="删除账号"
                   >
                     <Trash2 className="w-4 h-4" />
@@ -283,7 +283,7 @@ const EmailPage: FC = () => {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="搜索邮件主题、正文..."
-              className="w-full bg-bg-secondary border border-border-color rounded-xl pl-10 pr-4 py-2.5 text-sm text-text-primary placeholder-text-secondary focus:outline-none focus:border-info/50 transition-colors"
+              className="w-full bg-bg-secondary border border-border-color rounded-[2px] pl-10 pr-4 py-2.5 text-sm text-text-primary placeholder-text-secondary focus:outline-none focus:border-info/50 transition-colors"
             />
           </div>
           {selectedAccountId && (
@@ -323,7 +323,7 @@ const EmailPage: FC = () => {
                   className="card group"
                 >
                   <div className="flex items-start gap-3">
-                    <div className="mt-0.5 p-1.5 rounded-lg bg-bg-tertiary text-text-secondary shrink-0">
+                    <div className="mt-0.5 p-1.5 rounded-[2px] bg-bg-tertiary text-text-secondary shrink-0">
                       <Mail className="w-4 h-4" />
                     </div>
                     <div className="flex-1 min-w-0">
@@ -349,14 +349,14 @@ const EmailPage: FC = () => {
                     <div className="flex items-center gap-1 shrink-0">
                       <button
                         onClick={() => openDetail(msg)}
-                        className="p-1.5 rounded-lg hover:bg-white/[0.05] text-text-muted hover:text-info transition-colors"
+                        className="p-1.5 rounded-[2px] hover:bg-white/[0.05] text-text-muted hover:text-info transition-colors"
                         title="查看详情"
                       >
                         <Eye className="w-4 h-4" />
                       </button>
                       <button
                         onClick={() => openDetail(msg)}
-                        className="p-1.5 rounded-lg hover:bg-white/[0.05] text-text-muted hover:text-success transition-colors"
+                        className="p-1.5 rounded-[2px] hover:bg-white/[0.05] text-text-muted hover:text-success transition-colors"
                         title="保存到知识库"
                       >
                         <BookOpen className="w-4 h-4" />
@@ -364,7 +364,7 @@ const EmailPage: FC = () => {
                       <button
                         onClick={() => deleteMessage(msg.id)}
                         disabled={isDeletingMessage}
-                        className="p-1.5 rounded-lg hover:bg-white/[0.05] text-text-muted hover:text-danger transition-colors disabled:opacity-50"
+                        className="p-1.5 rounded-[2px] hover:bg-white/[0.05] text-text-muted hover:text-danger transition-colors disabled:opacity-50"
                         title="删除"
                       >
                         <Trash2 className="w-4 h-4" />
@@ -385,7 +385,7 @@ const EmailPage: FC = () => {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
             onClick={() => setIsAddAccountOpen(false)}
           >
             <motion.div
@@ -393,11 +393,11 @@ const EmailPage: FC = () => {
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
               onClick={(e) => e.stopPropagation()}
-              className="w-full max-w-lg bg-bg-secondary border border-border-color rounded-2xl shadow-2xl overflow-hidden"
+              className="w-full max-w-lg bg-bg-secondary border border-border-color rounded-[2px] overflow-hidden"
             >
               <div className="flex items-center justify-between px-5 py-4 border-b border-border-color">
                 <h3 className="text-sm font-medium text-text-primary">添加邮箱账号</h3>
-                <button onClick={() => setIsAddAccountOpen(false)} className="p-1 rounded-lg hover:bg-white/[0.05] text-text-muted">
+                <button onClick={() => setIsAddAccountOpen(false)} className="p-1 rounded-[2px] hover:bg-white/[0.05] text-text-muted">
                   <X className="w-4 h-4" />
                 </button>
               </div>
@@ -407,7 +407,7 @@ const EmailPage: FC = () => {
                   <select
                     value={provider}
                     onChange={(e) => handleProviderChange(e.target.value)}
-                    className="w-full bg-bg-primary border border-border-color rounded-xl px-3 py-2.5 text-sm text-text-primary focus:outline-none focus:border-info/50"
+                    className="w-full bg-bg-primary border border-border-color rounded-[2px] px-3 py-2.5 text-sm text-text-primary focus:outline-none focus:border-info/50"
                   >
                     {PROVIDER_OPTIONS.map((p) => (
                       <option key={p.key} value={p.key}>{p.label}</option>
@@ -421,7 +421,7 @@ const EmailPage: FC = () => {
                     value={emailAddress}
                     onChange={(e) => setEmailAddress(e.target.value)}
                     placeholder="name@example.com"
-                    className="w-full bg-bg-primary border border-border-color rounded-xl px-4 py-2.5 text-sm text-text-primary placeholder-text-secondary focus:outline-none focus:border-info/50 transition-colors"
+                    className="w-full bg-bg-primary border border-border-color rounded-[2px] px-4 py-2.5 text-sm text-text-primary placeholder-text-secondary focus:outline-none focus:border-info/50 transition-colors"
                   />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
@@ -433,7 +433,7 @@ const EmailPage: FC = () => {
                       onChange={(e) => setImapHost(e.target.value)}
                       placeholder="imap.example.com"
                       disabled={provider !== 'imap_other'}
-                      className="w-full bg-bg-primary border border-border-color rounded-xl px-4 py-2.5 text-sm text-text-primary placeholder-text-secondary focus:outline-none focus:border-info/50 transition-colors disabled:opacity-50"
+                      className="w-full bg-bg-primary border border-border-color rounded-[2px] px-4 py-2.5 text-sm text-text-primary placeholder-text-secondary focus:outline-none focus:border-info/50 transition-colors disabled:opacity-50"
                     />
                   </div>
                   <div>
@@ -444,7 +444,7 @@ const EmailPage: FC = () => {
                       onChange={(e) => setImapPort(parseInt(e.target.value) || 993)}
                       placeholder="993"
                       disabled={provider !== 'imap_other'}
-                      className="w-full bg-bg-primary border border-border-color rounded-xl px-4 py-2.5 text-sm text-text-primary placeholder-text-secondary focus:outline-none focus:border-info/50 transition-colors disabled:opacity-50"
+                      className="w-full bg-bg-primary border border-border-color rounded-[2px] px-4 py-2.5 text-sm text-text-primary placeholder-text-secondary focus:outline-none focus:border-info/50 transition-colors disabled:opacity-50"
                     />
                   </div>
                 </div>
@@ -458,7 +458,7 @@ const EmailPage: FC = () => {
                     value={authCode}
                     onChange={(e) => setAuthCode(e.target.value)}
                     placeholder="填入邮箱提供的授权码"
-                    className="w-full bg-bg-primary border border-border-color rounded-xl px-4 py-2.5 text-sm text-text-primary placeholder-text-secondary focus:outline-none focus:border-info/50 transition-colors"
+                    className="w-full bg-bg-primary border border-border-color rounded-[2px] px-4 py-2.5 text-sm text-text-primary placeholder-text-secondary focus:outline-none focus:border-info/50 transition-colors"
                   />
                   <p className="text-[10px] text-text-muted mt-1.5">
                     QQ/163/126 等国内邮箱需要先在设置里开启 IMAP/SMTP 服务，并使用「授权码」而非登录密码。
@@ -490,7 +490,7 @@ const EmailPage: FC = () => {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
             onClick={() => setIsDetailOpen(false)}
           >
             <motion.div
@@ -498,11 +498,11 @@ const EmailPage: FC = () => {
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
               onClick={(e) => e.stopPropagation()}
-              className="w-full max-w-3xl max-h-[85vh] bg-bg-secondary border border-border-color rounded-2xl shadow-2xl overflow-hidden flex flex-col"
+              className="w-full max-w-3xl max-h-[85vh] bg-bg-secondary border border-border-color rounded-[2px] overflow-hidden flex flex-col"
             >
               <div className="flex items-center justify-between px-5 py-4 border-b border-border-color">
                 <h3 className="text-sm font-medium text-text-primary truncate pr-4">{detailMessage.subject || '(无主题)'}</h3>
-                <button onClick={() => setIsDetailOpen(false)} className="p-1 rounded-lg hover:bg-white/[0.05] text-text-muted shrink-0">
+                <button onClick={() => setIsDetailOpen(false)} className="p-1 rounded-[2px] hover:bg-white/[0.05] text-text-muted shrink-0">
                   <X className="w-4 h-4" />
                 </button>
               </div>
@@ -517,7 +517,7 @@ const EmailPage: FC = () => {
                     {formatDate(detailMessage.received_at)}
                   </div>
                 </div>
-                <div className="bg-bg-primary border border-border-color rounded-xl p-4 max-h-96 overflow-y-auto">
+                <div className="bg-bg-primary border border-border-color rounded-[2px] p-4 max-h-96 overflow-y-auto">
                   <div className="text-sm text-text-primary whitespace-pre-wrap leading-relaxed">
                     {detailMessage.body_text || emailServiceExtractPreview(detailMessage.body_html) || '(无正文)'}
                   </div>

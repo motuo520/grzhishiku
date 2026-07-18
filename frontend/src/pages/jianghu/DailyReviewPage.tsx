@@ -28,13 +28,13 @@ const DailyReviewPage: FC = () => {
   const statusBadge = (status: string) => {
     switch (status) {
       case 'reviewed':
-        return <span className="px-2 py-0.5 rounded-full bg-success/10 text-success text-xs border border-success/30">已复盘</span>;
+        return <span className="px-2 py-0.5 rounded-[2px] bg-success/10 text-success text-xs border border-success/30">已复盘</span>;
       case 'generated':
-        return <span className="px-2 py-0.5 rounded-full bg-info/10 text-info text-xs border border-info/30">已生成</span>;
+        return <span className="px-2 py-0.5 rounded-[2px] bg-info/10 text-info text-xs border border-info/30">已生成</span>;
       case 'archived':
-        return <span className="px-2 py-0.5 rounded-full bg-text-muted/10 text-text-muted text-xs border border-white/[0.06]">已归档</span>;
+        return <span className="px-2 py-0.5 rounded-[2px] bg-text-muted/10 text-text-muted text-xs border border-white/[0.06]">已归档</span>;
       default:
-        return <span className="px-2 py-0.5 rounded-full bg-warning/10 text-warning text-xs border border-warning/30">待处理</span>;
+        return <span className="px-2 py-0.5 rounded-[2px] bg-warning/10 text-warning text-xs border border-warning/30">待处理</span>;
     }
   };
 
@@ -43,7 +43,7 @@ const DailyReviewPage: FC = () => {
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-xl font-semibold text-text-primary flex items-center gap-2">
-            <Calendar className="w-5 h-5 text-amber-400" />
+            <Calendar className="w-5 h-5 text-warning" />
             每日复盘
           </h1>
           <p className="text-sm text-text-secondary mt-1">用 AI 总结今日输入，发现差距与下一步行动。</p>
@@ -65,7 +65,7 @@ const DailyReviewPage: FC = () => {
           <button
             onClick={handleGenerate}
             disabled={generate.isPending}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-info/10 text-info hover:bg-info/20 transition-colors disabled:opacity-50"
+            className="flex items-center gap-2 px-4 py-2 rounded-[2px] bg-info/10 text-info hover:bg-info/20 transition-colors disabled:opacity-50"
           >
             {generate.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
             生成今日复盘
@@ -75,7 +75,7 @@ const DailyReviewPage: FC = () => {
 
       {(generate.isError || updateReview.isError) && (
         <div className="mb-4">
-          <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/30 text-sm text-red-400">
+          <div className="p-3 rounded-[2px] bg-danger/10 border border-danger/30 text-sm text-danger">
             {((generate.error || updateReview.error) as any)?.message || '操作失败，请重试'}
           </div>
         </div>
@@ -83,7 +83,7 @@ const DailyReviewPage: FC = () => {
 
       {isError && (
         <div className="mb-4">
-          <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/30 text-sm text-red-400">
+          <div className="p-3 rounded-[2px] bg-danger/10 border border-danger/30 text-sm text-danger">
             {(error as any)?.message || '操作失败，请重试'}
           </div>
         </div>
@@ -97,7 +97,7 @@ const DailyReviewPage: FC = () => {
       )}
 
       {reviews && reviews.length === 0 && !isLoading && (
-        <div className="p-8 rounded-xl border border-white/[0.06] bg-bg-secondary text-center text-text-secondary">
+        <div className="p-8 rounded-[2px] border border-white/[0.06] bg-bg-secondary text-center text-text-secondary">
           暂无复盘记录，点击右上角生成今日复盘。
         </div>
       )}
@@ -106,7 +106,7 @@ const DailyReviewPage: FC = () => {
         {reviews?.map((review) => {
           const isExpanded = expandedId === review.id;
           return (
-            <div key={review.id} className="rounded-xl border border-white/[0.06] bg-bg-secondary overflow-hidden">
+            <div key={review.id} className="rounded-[2px] border border-white/[0.06] bg-bg-secondary overflow-hidden">
               <div className="flex items-center">
                 <button
                   onClick={() => toggleExpand(review.id)}
@@ -128,7 +128,7 @@ const DailyReviewPage: FC = () => {
                   <button
                     onClick={() => updateReview.mutate({ id: review.id, data: { status: 'reviewed' } })}
                     disabled={updateReview.isPending}
-                    className="flex items-center gap-1.5 mr-4 px-3 py-1.5 rounded-lg bg-success/10 text-success hover:bg-success/20 transition-colors text-xs shrink-0 disabled:opacity-50"
+                    className="flex items-center gap-1.5 mr-4 px-3 py-1.5 rounded-[2px] bg-success/10 text-success hover:bg-success/20 transition-colors text-xs shrink-0 disabled:opacity-50"
                   >
                     {updateReview.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
                     标记已复盘
@@ -195,13 +195,13 @@ const DailyReviewPage: FC = () => {
                   {review.praise_items.length > 0 && (
                     <div>
                       <div className="flex items-center gap-2 text-xs text-text-secondary mb-1.5">
-                        <Star className="w-3.5 h-3.5 text-amber-400" />
+                        <Star className="w-3.5 h-3.5 text-warning" />
                         值得肯定
                       </div>
                       <ul className="space-y-1">
                         {review.praise_items.map((item, idx) => (
                           <li key={idx} className="text-sm text-text-secondary flex items-start gap-2">
-                            <span className="text-amber-400">•</span>
+                            <span className="text-warning">•</span>
                             {item}
                           </li>
                         ))}
@@ -220,7 +220,7 @@ const DailyReviewPage: FC = () => {
           <button
             onClick={() => setLimit((l) => l + 30)}
             disabled={isFetching}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-info/10 text-info hover:bg-info/20 transition-colors disabled:opacity-50"
+            className="flex items-center gap-2 px-4 py-2 rounded-[2px] bg-info/10 text-info hover:bg-info/20 transition-colors disabled:opacity-50"
           >
             {isFetching && <Loader2 className="w-4 h-4 animate-spin" />}
             {isFetching ? '加载中…' : '加载更多'}

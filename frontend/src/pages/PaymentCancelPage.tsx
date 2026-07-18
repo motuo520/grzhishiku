@@ -16,7 +16,7 @@ const PaymentCancelPage: FC = () => {
         className="max-w-md w-full bg-bg-secondary border border-white/[0.06] rounded-2xl p-8 text-center"
       >
         <div className="flex justify-center mb-6">
-          <XCircle className="w-12 h-12 text-amber-400" />
+          <XCircle className="w-12 h-12 text-warning" />
         </div>
         <h1 className="text-2xl font-bold text-text-primary mb-3">支付未完成</h1>
         <p className="text-sm text-text-secondary mb-2">

@@ -226,7 +226,7 @@ const CollisionPage: FC = () => {
 
       {/* Error Banner */}
       {error && (
-        <div className="flex items-center gap-2 px-4 py-3 rounded-xl bg-danger/10 border border-danger/30 text-danger text-sm">
+        <div className="flex items-center gap-2 px-4 py-3 rounded-[2px] bg-danger/10 border border-danger/30 text-danger text-sm">
           <AlertCircle className="w-4 h-4" />
           {error}
           <button onClick={() => setError(null)} className="ml-auto">
@@ -237,7 +237,7 @@ const CollisionPage: FC = () => {
 
       {/* Success Notice */}
       {notice && (
-        <div className="flex items-center gap-2 px-4 py-3 rounded-xl bg-success/10 border border-success/30 text-success text-sm">
+        <div className="flex items-center gap-2 px-4 py-3 rounded-[2px] bg-success/10 border border-success/30 text-success text-sm">
           <CheckCircle2 className="w-4 h-4" />
           {notice}
           <button onClick={() => setNotice(null)} className="ml-auto">
@@ -257,7 +257,7 @@ const CollisionPage: FC = () => {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="搜索碰撞洞见..."
-                className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl pl-10 pr-4 py-2 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:border-info/40 transition-colors"
+                className="w-full bg-white/[0.03] border border-white/[0.08] rounded-[2px] pl-10 pr-4 py-2 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:border-info/40 transition-colors"
               />
             </div>
           </div>
@@ -288,7 +288,7 @@ const CollisionPage: FC = () => {
             <button
               onClick={() => handleBatchReview('reject')}
               disabled={selectedIds.size === 0 || isBatchRunning}
-              className="flex items-center gap-1.5 px-3 py-2 bg-white/[0.05] border border-white/[0.08] rounded-xl text-xs text-text-primary hover:bg-danger/10 hover:border-danger/30 hover:text-danger transition-all disabled:opacity-50"
+              className="flex items-center gap-1.5 px-3 py-2 bg-white/[0.05] border border-white/[0.08] rounded-[2px] text-xs text-text-primary hover:bg-danger/10 hover:border-danger/30 hover:text-danger transition-all disabled:opacity-50"
             >
               <XCircle className="w-3.5 h-3.5" />
               批量拒绝
@@ -296,7 +296,7 @@ const CollisionPage: FC = () => {
             <button
               onClick={() => handleBatchReview('approve')}
               disabled={selectedIds.size === 0 || isBatchRunning}
-              className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-success to-emerald-500 text-white rounded-xl text-xs font-medium hover:shadow-[0_0_20px_rgba(35,134,54,0.4)] transition-all disabled:opacity-50"
+              className="flex items-center gap-2 px-4 py-2 bg-accent text-white rounded-[2px] text-xs font-medium hover:bg-[var(--accent-hover)] transition-all disabled:opacity-50"
             >
               {isBatchRunning ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
               {isBatchRunning ? `处理中 ${batchProgress}/${selectedIds.size}` : '批量批准'}
@@ -320,7 +320,7 @@ const CollisionPage: FC = () => {
           <p className="text-text-muted text-xs mt-1">先去抽取页面对核心概念执行碰撞</p>
           <button
             onClick={() => navigate('/pipeline/extract')}
-            className="mt-4 px-4 py-2 bg-white/[0.05] border border-white/[0.08] rounded-xl text-xs text-text-primary hover:bg-white/[0.08] transition-colors flex items-center gap-1.5"
+            className="mt-4 px-4 py-2 bg-white/[0.05] border border-white/[0.08] rounded-[2px] text-xs text-text-primary hover:bg-white/[0.08] transition-colors flex items-center gap-1.5"
           >
             去抽取 <ArrowRight className="w-3 h-3" />
           </button>
@@ -360,7 +360,7 @@ const CollisionPage: FC = () => {
                   <button
                     onClick={() => handleReview(item, 'approve')}
                     disabled={isActing || isBatchRunning}
-                    className="flex items-center justify-center gap-1.5 px-3 py-1.5 bg-success/10 border border-success/30 rounded-lg text-xs text-success hover:bg-success/20 transition-all disabled:opacity-50"
+                    className="flex items-center justify-center gap-1.5 px-3 py-1.5 bg-success/10 border border-success/30 rounded-[2px] text-xs text-success hover:bg-success/20 transition-all disabled:opacity-50"
                   >
                     <CheckCircle2 className="w-3.5 h-3.5" />
                     批准
@@ -368,7 +368,7 @@ const CollisionPage: FC = () => {
                   <button
                     onClick={() => handleReview(item, 'reject')}
                     disabled={isActing || isBatchRunning}
-                    className="flex items-center justify-center gap-1.5 px-3 py-1.5 bg-white/[0.05] border border-white/[0.08] rounded-lg text-xs text-text-secondary hover:bg-danger/10 hover:border-danger/30 hover:text-danger transition-all disabled:opacity-50"
+                    className="flex items-center justify-center gap-1.5 px-3 py-1.5 bg-white/[0.05] border border-white/[0.08] rounded-[2px] text-xs text-text-secondary hover:bg-danger/10 hover:border-danger/30 hover:text-danger transition-all disabled:opacity-50"
                   >
                     <XCircle className="w-3.5 h-3.5" />
                     拒绝

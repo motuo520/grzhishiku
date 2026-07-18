@@ -23,7 +23,7 @@ const KnowledgeHealthPage: FC = () => {
   return (
     <div className="p-6 max-w-6xl mx-auto">
       <div className="flex items-center gap-2 mb-6">
-        <HeartPulse className="w-5 h-5 text-emerald-400" />
+        <HeartPulse className="w-5 h-5 text-success" />
         <h1 className="text-xl font-semibold text-text-primary">知识健康</h1>
       </div>
 
@@ -35,7 +35,7 @@ const KnowledgeHealthPage: FC = () => {
       )}
 
       {isError && (
-        <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/30 text-sm text-red-400">
+        <div className="p-3 rounded-[2px] bg-danger/10 border border-danger/30 text-sm text-danger">
           {(error as any)?.message || '操作失败，请重试'}
         </div>
       )}
@@ -48,12 +48,12 @@ const KnowledgeHealthPage: FC = () => {
             <StatCard icon={Activity} label="平均调用次数" value={health.avg_invoke_count} color="text-warning" bg="bg-warning/10" />
             <StatCard icon={Zap} label="高价值条目" value={health.high_value_items} color="text-fusion-primary" bg="bg-fusion-primary/10" />
             <StatCard icon={Skull} label="僵尸条目" value={health.zombie_items} color="text-danger" bg="bg-danger/10" />
-            <StatCard icon={Activity} label="日活跃率" value={`${(health.daily_active_rate * 100).toFixed(0)}%`} color="text-cyan-400" bg="bg-cyan-400/10" />
-            <StatCard icon={Zap} label="价值总分" value={health.value_score_total} color="text-amber-400" bg="bg-amber-400/10" />
-            <StatCard icon={HeartPulse} label="健康度" value={health.health_score} color="text-emerald-400" bg="bg-emerald-400/10" suffix="%" tooltip="健康度 = 活跃占比×50 + 践行占比×30 + 高价值占比×20（满分100）。活跃=非僵尸条目比例，践行=有实操记录条目比例" />
+            <StatCard icon={Activity} label="日活跃率" value={`${(health.daily_active_rate * 100).toFixed(0)}%`} color="text-network-primary" bg="bg-network-primary/10" />
+            <StatCard icon={Zap} label="价值总分" value={health.value_score_total} color="text-warning" bg="bg-warning/10" />
+            <StatCard icon={HeartPulse} label="健康度" value={health.health_score} color="text-success" bg="bg-success/10" suffix="%" tooltip="健康度 = 活跃占比×50 + 践行占比×30 + 高价值占比×20（满分100）。活跃=非僵尸条目比例，践行=有实操记录条目比例" />
           </div>
 
-          <div className="rounded-xl border border-white/[0.06] bg-bg-secondary p-5 mb-6">
+          <div className="rounded-[2px] border border-white/[0.06] bg-bg-secondary p-5 mb-6">
             <h2 className="text-sm font-semibold text-text-primary mb-4 flex items-center gap-2">
               <TrendingUp className="w-4 h-4 text-info" />
               进化分布
@@ -115,9 +115,9 @@ const buildSuggestions = (health: KnowledgeHealthResponse): string[] => {
 const StatCard: FC<{ icon: React.ElementType; label: string; value: string | number; color: string; bg: string; suffix?: string; tooltip?: string }> = ({
   icon: Icon, label, value, color, bg, suffix, tooltip,
 }) => (
-  <div className="p-4 rounded-xl border border-white/[0.06] bg-bg-secondary">
+  <div className="p-4 rounded-[2px] border border-white/[0.06] bg-bg-secondary">
     <div className="flex items-center gap-2 mb-2">
-      <div className={`w-7 h-7 rounded-lg ${bg} flex items-center justify-center`}>
+      <div className={`w-7 h-7 rounded-[2px] ${bg} flex items-center justify-center`}>
         <Icon className={`w-3.5 h-3.5 ${color}`} />
       </div>
       <div className="text-xs text-text-secondary flex items-center gap-1">
@@ -137,7 +137,7 @@ const StatCard: FC<{ icon: React.ElementType; label: string; value: string | num
 );
 
 const InsightCard: FC<{ title: string; items: string[] }> = ({ title, items }) => (
-  <div className="rounded-xl border border-white/[0.06] bg-bg-secondary p-4">
+  <div className="rounded-[2px] border border-white/[0.06] bg-bg-secondary p-4">
     <h3 className="text-sm font-semibold text-text-primary mb-3">{title}</h3>
     <ul className="space-y-2">
       {items.map((item, idx) => (

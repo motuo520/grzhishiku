@@ -4,6 +4,7 @@ from .alipay import AlipayProvider
 from .wechat import WechatProvider
 from .stripe import StripeProvider
 from .xorpay import XorpayProvider
+from .xunhupay import XunhupayProvider
 
 # 支付提供商注册表
 _PROVIDER_REGISTRY: Dict[PaymentProviderType, Type[BasePaymentProvider]] = {
@@ -11,6 +12,7 @@ _PROVIDER_REGISTRY: Dict[PaymentProviderType, Type[BasePaymentProvider]] = {
     PaymentProviderType.WECHAT: WechatProvider,
     PaymentProviderType.STRIPE: StripeProvider,
     PaymentProviderType.XORPAY: XorpayProvider,
+    PaymentProviderType.XUNHUPAY: XunhupayProvider,
 }
 
 class PaymentProviderFactory:
@@ -48,6 +50,7 @@ class PaymentProviderFactory:
             PaymentProviderType.WECHAT: ["mchid", "api_key", "private_key", "cert_serial_no"],
             PaymentProviderType.STRIPE: ["api_key"],
             PaymentProviderType.XORPAY: ["aid", "app_secret"],
+            PaymentProviderType.XUNHUPAY: ["appid", "app_secret"],
         }
         for pt in PaymentProviderType:
             provider_config = self.config.get(pt.value, {})

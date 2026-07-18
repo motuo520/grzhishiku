@@ -50,7 +50,7 @@ const StageContextBanner: FC<StageContextBannerProps> = ({
         <div className="flex-1 flex items-center gap-3 min-w-0">
           <button
             onClick={() => navigate(previousStage.path)}
-            className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/[0.03] border border-white/[0.08] hover:bg-white/[0.06] hover:text-text-primary text-text-secondary text-xs transition-colors shrink-0"
+            className="flex items-center gap-2 px-3 py-2 rounded-[2px] bg-white/[0.03] border border-white/[0.08] hover:bg-white/[0.06] hover:text-text-primary text-text-secondary text-xs transition-colors shrink-0"
           >
             <previousStage.icon className="w-3.5 h-3.5" />
             {previousStage.label}
@@ -68,7 +68,7 @@ const StageContextBanner: FC<StageContextBannerProps> = ({
             <button
               onClick={onPullFromPrevious}
               disabled={isPulling}
-              className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-info/10 border border-info/30 text-info text-xs hover:bg-info/20 transition-colors disabled:opacity-50 shrink-0"
+              className="flex items-center gap-1.5 px-3 py-2 rounded-[2px] bg-info/10 border border-info/30 text-info text-xs hover:bg-info/20 transition-colors disabled:opacity-50 shrink-0"
             >
               {isPulling ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ArrowRight className="w-3.5 h-3.5" />}
               {pullLabel || `从${previousStage.label}拉取`}
@@ -83,7 +83,7 @@ const StageContextBanner: FC<StageContextBannerProps> = ({
 
       {/* Current stage indicator */}
       {currentInfo && (
-        <div className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-info/10 border border-info/20 text-info text-xs shrink-0">
+        <div className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-[2px] bg-info/10 border border-info/20 text-info text-xs shrink-0">
           <currentInfo.icon className="w-3.5 h-3.5" />
           当前：{currentInfo.label}（{currentCount}）
         </div>
@@ -97,7 +97,7 @@ const StageContextBanner: FC<StageContextBannerProps> = ({
           </div>
           <button
             onClick={() => navigate(nextStage.path)}
-            className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/[0.03] border border-white/[0.08] hover:bg-white/[0.06] hover:text-text-primary text-text-secondary text-xs transition-colors shrink-0"
+            className="flex items-center gap-2 px-3 py-2 rounded-[2px] bg-white/[0.03] border border-white/[0.08] hover:bg-white/[0.06] hover:text-text-primary text-text-secondary text-xs transition-colors shrink-0"
           >
             {nextStage.label}
             <ArrowRight className="w-3 h-3" />

@@ -1,4 +1,4 @@
-import { FC, useState, Suspense, lazy } from 'react';
+import { FC, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -6,8 +6,6 @@ import {
 } from 'lucide-react';
 import { setToken } from '@/api/auth';
 import { useAuth } from '@/hooks/useAuth';
-
-const MoonlitRipple = lazy(() => import('@/components/backgrounds/MoonlitRipple'));
 
 type Tab = 'login' | 'register';
 
@@ -134,56 +132,45 @@ const LoginPage: FC = () => {
   const isLoading = isLoggingIn || isRegistering;
   const errorMessage = formError || (loginError as any)?.message || (registerError as any)?.message || (sendCodeError as any)?.message || null;
 
+  const inputClass =
+    'w-full pl-10 pr-4 py-2.5 bg-[var(--input-bg)] border border-[var(--input-border)] rounded-[2px] text-text-primary placeholder-text-muted focus:border-accent/50 outline-none transition-colors text-sm';
+
   return (
     <div className="min-h-screen w-full flex items-center justify-center relative overflow-hidden bg-bg-primary">
-      {/* Cinematic dynamic background */}
-      <Suspense fallback={null}>
-        <MoonlitRipple />
-      </Suspense>
-
-      {/* Vignette overlay for readability */}
-      <div
-        className="absolute inset-0 z-[1] pointer-events-none"
-        style={{
-          background: 'radial-gradient(ellipse at 50% 50%, transparent 30%, rgba(0,0,0,0.55) 100%)',
-        }}
-      />
-
-      {/* Glass card */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, ease: [0.4, 0, 0.2, 1] }}
         className="relative z-10 w-full max-w-[400px] mx-4"
       >
-        <div className="liquid-glass-strong rounded-2xl p-8">
+        <div className="liquid-glass-strong rounded-[2px] p-8">
           {/* Brand */}
           <div className="relative z-10 flex flex-col items-center mb-8">
-            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-info to-fusion-primary flex items-center justify-center mb-3">
-              <Brain className="w-7 h-7 text-white" />
+            <div className="w-12 h-12 rounded-[2px] bg-accent flex items-center justify-center mb-3">
+              <Brain className="w-7 h-7 text-[#f6ece6]" />
             </div>
-            <h1 className="text-xl font-bold text-[#e0e0e0] tracking-tight">第二大脑</h1>
-            <p className="text-sm text-[#888] mt-1">登录以开始你的认知增强之旅</p>
+            <h1 className="text-xl font-bold text-text-primary tracking-tight">第二大脑</h1>
+            <p className="text-sm text-text-secondary mt-1">欢迎回来</p>
           </div>
 
           {/* Tabs */}
-          <div className="relative z-10 flex gap-1 p-1 bg-black/20 rounded-xl border border-white/[0.08] mb-6">
+          <div className="relative z-10 flex gap-1 p-1 bg-bg-secondary rounded-[2px] border border-border-light mb-6">
             <button
               onClick={() => switchTab('login')}
-              className={`flex-1 py-2 text-sm font-medium rounded-lg transition-all ${
+              className={`flex-1 py-2 text-sm font-medium rounded-[2px] transition-colors ${
                 tab === 'login'
-                  ? 'bg-white/[0.08] text-[#e0e0e0] border border-white/[0.12]'
-                  : 'text-[#888] hover:text-[#ccc] hover:bg-white/[0.03]'
+                  ? 'bg-bg-tertiary text-text-primary border border-border-color'
+                  : 'text-text-secondary hover:text-text-primary hover:bg-bg-hover border border-transparent'
               }`}
             >
               登录
             </button>
             <button
               onClick={() => switchTab('register')}
-              className={`flex-1 py-2 text-sm font-medium rounded-lg transition-all ${
+              className={`flex-1 py-2 text-sm font-medium rounded-[2px] transition-colors ${
                 tab === 'register'
-                  ? 'bg-white/[0.08] text-[#e0e0e0] border border-white/[0.12]'
-                  : 'text-[#888] hover:text-[#ccc] hover:bg-white/[0.03]'
+                  ? 'bg-bg-tertiary text-text-primary border border-border-color'
+                  : 'text-text-secondary hover:text-text-primary hover:bg-bg-hover border border-transparent'
               }`}
             >
               注册
@@ -197,7 +184,7 @@ const LoginPage: FC = () => {
                 initial={{ opacity: 0, height: 0 }}
                 animate={{ opacity: 1, height: 'auto' }}
                 exit={{ opacity: 0, height: 0 }}
-                className="relative z-10 mb-4 bg-red-500/10 border border-red-500/20 text-red-300 rounded-xl px-4 py-3 text-sm"
+                className="relative z-10 mb-4 bg-danger/10 border border-danger/20 text-danger rounded-[2px] px-4 py-3 text-sm"
               >
                 {errorMessage}
               </motion.div>
@@ -217,36 +204,36 @@ const LoginPage: FC = () => {
                 className="relative z-10 space-y-4"
               >
                 <div>
-                  <label className="block text-xs font-medium text-[#888] mb-1.5">邮箱</label>
+                  <label className="block text-xs font-medium text-text-secondary mb-1.5">邮箱</label>
                   <div className="relative">
-                    <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#666]" />
+                    <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" />
                     <input
                       type="email"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       placeholder="your@email.com"
-                      className="w-full pl-10 pr-4 py-2.5 bg-black/20 border border-white/[0.08] rounded-xl text-[#e0e0e0] placeholder-[#555] focus:border-info/40 focus:shadow-[0_0_0_2px_rgba(200,149,108,0.1)] outline-none transition-all text-sm"
+                      className={inputClass}
                       disabled={isLoading}
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-xs font-medium text-[#888] mb-1.5">密码</label>
+                  <label className="block text-xs font-medium text-text-secondary mb-1.5">密码</label>
                   <div className="relative">
-                    <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#666]" />
+                    <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" />
                     <input
                       type={showPassword ? 'text' : 'password'}
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       placeholder="输入密码"
-                      className="w-full pl-10 pr-10 py-2.5 bg-black/20 border border-white/[0.08] rounded-xl text-[#e0e0e0] placeholder-[#555] focus:border-info/40 focus:shadow-[0_0_0_2px_rgba(200,149,108,0.1)] outline-none transition-all text-sm"
+                      className={`${inputClass} pr-10`}
                       disabled={isLoading}
                     />
                     <button
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-[#666] hover:text-[#aaa] transition-colors"
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted hover:text-text-secondary transition-colors"
                       tabIndex={-1}
                     >
                       {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -257,7 +244,7 @@ const LoginPage: FC = () => {
                 <button
                   type="submit"
                   disabled={isLoading}
-                  className="w-full bg-gradient-to-r from-info to-info/80 hover:from-info/90 hover:to-info/70 text-white px-5 py-2.5 rounded-xl font-medium transition-all flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
+                  className="w-full btn-primary flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
                 >
                   {isLoggingIn ? (
                     <>
@@ -286,32 +273,32 @@ const LoginPage: FC = () => {
                 className="relative z-10 space-y-4"
               >
                 <div>
-                  <label className="block text-xs font-medium text-[#888] mb-1.5">邮箱</label>
+                  <label className="block text-xs font-medium text-text-secondary mb-1.5">邮箱</label>
                   <div className="relative">
-                    <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#666]" />
+                    <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" />
                     <input
                       type="email"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       placeholder="your@email.com"
-                      className="w-full pl-10 pr-4 py-2.5 bg-black/20 border border-white/[0.08] rounded-xl text-[#e0e0e0] placeholder-[#555] focus:border-info/40 focus:shadow-[0_0_0_2px_rgba(200,149,108,0.1)] outline-none transition-all text-sm"
+                      className={inputClass}
                       disabled={isLoading}
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-xs font-medium text-[#888] mb-1.5">邮箱验证码</label>
+                  <label className="block text-xs font-medium text-text-secondary mb-1.5">邮箱验证码</label>
                   <div className="flex gap-2">
                     <div className="relative flex-1">
-                      <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#666]" />
+                      <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" />
                       <input
                         type="text"
                         inputMode="numeric"
                         value={verificationCode}
                         onChange={(e) => setVerificationCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
                         placeholder="6 位验证码"
-                        className="w-full pl-10 pr-4 py-2.5 bg-black/20 border border-white/[0.08] rounded-xl text-[#e0e0e0] placeholder-[#555] focus:border-info/40 focus:shadow-[0_0_0_2px_rgba(200,149,108,0.1)] outline-none transition-all text-sm"
+                        className={inputClass}
                         disabled={isLoading}
                       />
                     </div>
@@ -319,30 +306,30 @@ const LoginPage: FC = () => {
                       type="button"
                       onClick={handleSendCode}
                       disabled={isSendingCode || countdown > 0 || !email.trim()}
-                      className="shrink-0 px-3 py-2.5 bg-white/[0.08] hover:bg-white/[0.12] border border-white/[0.12] rounded-xl text-xs text-[#ccc] transition-all disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+                      className="shrink-0 px-3 py-2.5 bg-bg-tertiary hover:bg-bg-hover border border-border-color rounded-[2px] text-xs text-text-secondary transition-colors disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
                     >
                       {isSendingCode ? '发送中...' : countdown > 0 ? `${countdown}s` : '获取验证码'}
                     </button>
                   </div>
-                  <p className="text-[10px] text-[#555] mt-1.5">验证码将发送至您的邮箱，请查收</p>
+                  <p className="text-[10px] text-text-muted mt-1.5">验证码将发送至您的邮箱，请查收</p>
                 </div>
 
                 <div>
-                  <label className="block text-xs font-medium text-[#888] mb-1.5">密码</label>
+                  <label className="block text-xs font-medium text-text-secondary mb-1.5">密码</label>
                   <div className="relative">
-                    <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#666]" />
+                    <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" />
                     <input
                       type={showPassword ? 'text' : 'password'}
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       placeholder="至少 8 位"
-                      className="w-full pl-10 pr-10 py-2.5 bg-black/20 border border-white/[0.08] rounded-xl text-[#e0e0e0] placeholder-[#555] focus:border-info/40 focus:shadow-[0_0_0_2px_rgba(200,149,108,0.1)] outline-none transition-all text-sm"
+                      className={`${inputClass} pr-10`}
                       disabled={isLoading}
                     />
                     <button
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-[#666] hover:text-[#aaa] transition-colors"
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted hover:text-text-secondary transition-colors"
                       tabIndex={-1}
                     >
                       {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -353,7 +340,7 @@ const LoginPage: FC = () => {
                 <button
                   type="submit"
                   disabled={isLoading}
-                  className="w-full bg-gradient-to-r from-info to-info/80 hover:from-info/90 hover:to-info/70 text-white px-5 py-2.5 rounded-xl font-medium transition-all flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
+                  className="w-full btn-primary flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
                 >
                   {isRegistering ? (
                     <>

@@ -113,10 +113,10 @@ const PluginsSettings: FC = () => {
   return (
     <div className="space-y-6">
       {toast && (
-        <div className={`fixed top-4 right-4 z-50 px-4 py-3 rounded-xl border backdrop-blur-xl shadow-lg ${
+        <div className={`fixed top-4 right-4 z-50 px-4 py-3 rounded-[2px] border ${
           toast.type === 'success'
-            ? 'bg-success/20 border-success/30 text-green-400'
-            : 'bg-danger/20 border-danger/30 text-red-400'
+            ? 'bg-success/20 border-success/30 text-success'
+            : 'bg-danger/20 border-danger/30 text-danger'
         }`}>
           <div className="flex items-center gap-2">
             {toast.type === 'success' ? <Check size={16} /> : <AlertTriangle size={16} />}
@@ -152,12 +152,12 @@ const PluginsSettings: FC = () => {
           {plugins?.map(plugin => (
             <div
               key={plugin.id}
-              className={`p-4 rounded-xl border transition-all ${
+              className={`p-4 rounded-[2px] border transition-all ${
                 plugin.enabled ? 'border-info/30 bg-info/[0.03]' : 'border-white/[0.08] bg-white/[0.02]'
               }`}
             >
               <div className="flex items-start gap-4">
-                <div className="w-10 h-10 rounded-xl bg-info/10 flex items-center justify-center text-info shrink-0">
+                <div className="w-10 h-10 rounded-[2px] bg-info/10 flex items-center justify-center text-info shrink-0">
                   <Puzzle size={20} />
                 </div>
                 <div className="flex-1 min-w-0">
@@ -189,13 +189,13 @@ const PluginsSettings: FC = () => {
                         value={configDrafts[plugin.id] || '{}'}
                         onChange={(e) => handleConfigChange(plugin.id, e.target.value)}
                         rows={4}
-                        className="w-full bg-bg-primary border border-white/[0.08] rounded-xl p-3 text-xs font-mono text-text-primary focus:outline-none focus:border-info/40 transition-colors"
+                        className="w-full bg-bg-primary border border-white/[0.08] rounded-[2px] p-3 text-xs font-mono text-text-primary focus:outline-none focus:border-info/40 transition-colors"
                       />
                       <div className="flex items-center gap-2">
                         <button
                           onClick={() => saveConfig(plugin)}
                           disabled={configMutation.isPending}
-                          className="flex items-center gap-1.5 px-3 py-1.5 bg-white/[0.06] border border-white/[0.08] rounded-lg text-xs text-text-primary hover:bg-info/10 hover:border-info/30 transition-all disabled:opacity-50"
+                          className="flex items-center gap-1.5 px-3 py-1.5 bg-white/[0.06] border border-white/[0.08] rounded-[2px] text-xs text-text-primary hover:bg-info/10 hover:border-info/30 transition-all disabled:opacity-50"
                         >
                           {configMutation.isPending ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
                           保存配置
@@ -233,7 +233,7 @@ const PluginsSettings: FC = () => {
           <p>
             本系统已暴露 <strong>MCP Server</strong>，外部 AI 客户端（如 Cursor、Claude Desktop）可通过 SSE 连接：
           </p>
-          <code className="block bg-bg-primary border border-white/[0.08] rounded-xl p-3 text-xs text-info font-mono">
+          <code className="block bg-bg-primary border border-white/[0.08] rounded-[2px] p-3 text-xs text-info font-mono">
             {`${window.location.origin}/api/v1/mcp/sse`}
           </code>
           <p>
@@ -297,7 +297,7 @@ const PluginSyncPanel: FC<PluginSyncPanelProps> = ({ plugin, showToast }) => {
   };
 
   return (
-    <div className="mt-3 p-3 rounded-xl border border-white/[0.08] bg-bg-primary/50 space-y-3">
+    <div className="mt-3 p-3 rounded-[2px] border border-white/[0.08] bg-bg-primary/50 space-y-3">
       <div className="flex items-center gap-2 text-xs text-text-secondary">
         <Clock size={14} />
         <span>自动同步</span>
@@ -324,7 +324,7 @@ const PluginSyncPanel: FC<PluginSyncPanelProps> = ({ plugin, showToast }) => {
               value={intervalMinutes}
               onChange={(e) => setIntervalMinutes(Number(e.target.value))}
               disabled={!plugin.enabled || setAutoSyncMutation.isPending}
-              className="bg-bg-primary border border-white/[0.08] rounded-lg px-2 py-1 text-xs text-text-primary focus:outline-none focus:border-info/40"
+              className="bg-bg-primary border border-white/[0.08] rounded-[2px] px-2 py-1 text-xs text-text-primary focus:outline-none focus:border-info/40"
             >
               {INTERVAL_OPTIONS.map(opt => (
                 <option key={opt.value} value={opt.value}>{opt.label}</option>
@@ -334,7 +334,7 @@ const PluginSyncPanel: FC<PluginSyncPanelProps> = ({ plugin, showToast }) => {
             <button
               onClick={saveAutoSync}
               disabled={!plugin.enabled || setAutoSyncMutation.isPending}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-info/10 border border-info/30 rounded-lg text-xs text-info hover:bg-info/20 transition-all disabled:opacity-50"
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-info/10 border border-info/30 rounded-[2px] text-xs text-info hover:bg-info/20 transition-all disabled:opacity-50"
             >
               {setAutoSyncMutation.isPending ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
               保存
@@ -363,7 +363,7 @@ const PluginSyncPanel: FC<PluginSyncPanelProps> = ({ plugin, showToast }) => {
             <button
               onClick={() => triggerMutation.mutate(plugin.id)}
               disabled={!plugin.enabled || triggerMutation.isPending}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-success/10 border border-success/30 rounded-lg text-xs text-success hover:bg-success/20 transition-all disabled:opacity-50"
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-success/10 border border-success/30 rounded-[2px] text-xs text-success hover:bg-success/20 transition-all disabled:opacity-50"
             >
               {triggerMutation.isPending ? <Loader2 size={14} className="animate-spin" /> : <Play size={14} />}
               {SYNC_LABELS[plugin.id] || '立即同步'}

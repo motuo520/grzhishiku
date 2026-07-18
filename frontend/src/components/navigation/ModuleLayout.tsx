@@ -79,7 +79,7 @@ const ModuleLayout: FC<ModuleLayoutProps> = ({ menuId, showOverview = true }) =>
   return (
     <div className="flex flex-col h-full bg-transparent">
       {/* Top Secondary Menu Bar */}
-      <div className="flex-shrink-0 px-4 py-2 border-b border-border-color bg-bg-secondary/80 backdrop-blur-xl z-20">
+      <div className="flex-shrink-0 px-4 py-2 border-b border-border-color bg-bg-secondary/80 z-20">
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-1 overflow-x-auto">
           {showOverview && (
@@ -87,7 +87,7 @@ const ModuleLayout: FC<ModuleLayoutProps> = ({ menuId, showOverview = true }) =>
               to={`/${menuId}`}
               end
               className={({ isActive }) =>
-                `flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-colors ${
+                `flex items-center gap-1.5 px-3 py-1.5 rounded-[2px] text-xs font-medium whitespace-nowrap transition-colors ${
                   isActive || isModuleRoot
                     ? 'bg-bg-secondary text-info border border-border-color'
                     : 'text-text-secondary hover:bg-bg-hover hover:text-text-primary'
@@ -106,7 +106,7 @@ const ModuleLayout: FC<ModuleLayoutProps> = ({ menuId, showOverview = true }) =>
                 to={item.path}
                 title={item.label}
                 className={({ isActive }) =>
-                  `flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-colors max-w-[140px] ${
+                  `flex items-center gap-1.5 px-3 py-1.5 rounded-[2px] text-xs font-medium whitespace-nowrap transition-colors max-w-[140px] ${
                     isActive
                       ? 'bg-bg-secondary text-info border border-border-color'
                       : 'text-text-secondary hover:bg-bg-hover hover:text-text-primary'

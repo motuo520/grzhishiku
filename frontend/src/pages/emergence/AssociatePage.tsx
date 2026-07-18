@@ -91,10 +91,10 @@ const AssociatePage: FC = () => {
   };
 
   const scoreBarColor = (score: number) => {
-    if (score <= 3) return '#3fb950';
-    if (score <= 6) return '#d29922';
-    if (score <= 8) return '#f85149';
-    return '#a371f7';
+    if (score <= 3) return '#7d8f6a';
+    if (score <= 6) return '#b08a3e';
+    if (score <= 8) return '#b03a2e';
+    return '#7d8f6a';
   };
 
   return (
@@ -207,7 +207,7 @@ const AssociatePage: FC = () => {
                 <div className="flex items-center justify-center gap-3 flex-wrap">
                   {result.path?.map((step, i) => (
                     <div key={i} className="flex items-center gap-3">
-                      <div className="px-4 py-2 rounded-lg bg-white/[0.03] border border-white/[0.08] text-text-primary font-medium">
+                      <div className="px-4 py-2 rounded-[2px] bg-white/[0.03] border border-white/[0.08] text-text-primary font-medium">
                         {step}
                       </div>
                       {i < (result.path?.length || 0) - 1 && (
@@ -226,7 +226,7 @@ const AssociatePage: FC = () => {
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                   {result.applications?.map((app, i) => (
-                    <div key={i} className="p-4 rounded-xl bg-white/[0.02] border border-white/[0.05]">
+                    <div key={i} className="p-4 rounded-[2px] bg-white/[0.02] border border-white/[0.05]">
                       <span className="text-xs text-fusion-primary font-bold mb-2 block">场景 {i + 1}</span>
                       <p className="text-sm text-text-primary">{app}</p>
                     </div>
@@ -299,7 +299,7 @@ const AssociatePage: FC = () => {
                   <div
                     key={item.id}
                     onClick={() => handleLoadHistory(item)}
-                    className="p-3 rounded-lg bg-white/[0.02] border border-white/[0.05] hover:border-info/30 cursor-pointer transition-colors"
+                    className="p-3 rounded-[2px] bg-white/[0.02] border border-white/[0.05] hover:border-info/30 cursor-pointer transition-colors"
                   >
                     <div className="flex items-center justify-between mb-1">
                       <span className="text-xs text-text-muted">

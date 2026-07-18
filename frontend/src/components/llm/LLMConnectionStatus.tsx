@@ -18,10 +18,10 @@ const PROVIDER_ICONS: Record<string, React.ElementType> = {
 };
 
 const PROVIDER_COLORS: Record<string, string> = {
-  ollama: 'from-emerald-400 to-teal-500',
-  kimi: 'from-violet-400 to-purple-500',
-  deepseek: 'from-rose-400 to-pink-500',
-  opencode: 'from-cyan-400 to-blue-500',
+  ollama: 'bg-success',
+  kimi: 'bg-fusion-primary',
+  deepseek: 'bg-danger',
+  opencode: 'bg-network-primary',
 };
 
 interface LLMConnectionStatusProps {
@@ -78,7 +78,7 @@ const LLMConnectionStatus: FC<LLMConnectionStatusProps> = ({ placement = 'bottom
     model: displayModel,
     connected: isConnected,
     latency: activeLatency,
-    icon_color: PROVIDER_COLORS[activeProviderName.toLowerCase()] || 'from-emerald-400 to-teal-500',
+    icon_color: PROVIDER_COLORS[activeProviderName.toLowerCase()] || 'bg-success',
     available: true,
   };
 
@@ -173,22 +173,22 @@ const LLMConnectionStatus: FC<LLMConnectionStatusProps> = ({ placement = 'bottom
     <div ref={containerRef} className="relative">
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-medium transition-all duration-300 glass ${
+        className={`flex items-center gap-2 px-3 py-2 rounded-[2px] text-xs font-medium transition-all duration-300 glass ${
           isConnected
-            ? 'text-emerald-400 border-emerald-500/20 hover:shadow-[0_0_20px_rgba(16,185,129,0.2)]'
-            : 'text-danger border-danger/20 hover:shadow-[0_0_20px_rgba(248,81,73,0.2)]'
+            ? 'text-success border-success/20'
+            : 'text-danger border-danger/20'
         }`}
         title={`LLM: ${activeProviderName} ${displayModel} | ${isConnected ? '已连接' : '断开'}`}
       >
         <div className="relative">
           <div className={`w-2 h-2 rounded-full bg-gradient-to-r ${activeProviderInfo.icon_color}`} />
           {isConnected && (
-            <div className="absolute inset-0 w-2 h-2 rounded-full bg-emerald-400 animate-ping opacity-40" />
+            <div className="absolute inset-0 w-2 h-2 rounded-full bg-success animate-ping opacity-40" />
           )}
         </div>
 
         <span className="hidden lg:inline">
-          <span className={`bg-gradient-to-r ${activeProviderInfo.icon_color} bg-clip-text text-transparent font-semibold`}>
+          <span className="text-text-primary font-semibold">
             {activeProviderName}
           </span>
           <span className="text-text-muted ml-1">{displayModel}</span>
@@ -210,8 +210,7 @@ const LLMConnectionStatus: FC<LLMConnectionStatusProps> = ({ placement = 'bottom
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -10, scale: 0.95 }}
             transition={{ duration: 0.15 }}
-            className={`absolute right-0 ${placement === 'top' ? 'bottom-full mb-2' : 'top-full mt-2'} w-[460px] glass-popup rounded-2xl shadow-2xl p-4 z-50`}
-            style={{ boxShadow: '0 20px 50px rgba(0, 0, 0, 0.5), 0 0 30px rgba(88, 166, 255, 0.1)' }}
+            className={`absolute right-0 ${placement === 'top' ? 'bottom-full mb-2' : 'top-full mt-2'} w-[460px] glass-popup rounded-[2px] p-4 z-50`}
           >
             {/* Header */}
             <div className="flex items-center justify-between mb-4">
@@ -221,7 +220,7 @@ const LLMConnectionStatus: FC<LLMConnectionStatusProps> = ({ placement = 'bottom
               </div>
               <button
                 onClick={() => setIsOpen(false)}
-                className="p-1 rounded-lg hover:bg-white/[0.06] text-text-muted hover:text-text-primary transition-colors"
+                className="p-1 rounded-[2px] hover:bg-white/[0.06] text-text-muted hover:text-text-primary transition-colors"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -231,7 +230,7 @@ const LLMConnectionStatus: FC<LLMConnectionStatusProps> = ({ placement = 'bottom
             <div className="glass-card p-4 mb-3">
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
-                  <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${activeProviderInfo.icon_color} flex items-center justify-center shadow-lg`}>
+                  <div className={`w-10 h-10 rounded-[2px] bg-gradient-to-br ${activeProviderInfo.icon_color} flex items-center justify-center`}>
                     <Zap className="w-5 h-5 text-white" />
                   </div>
                   <div>
@@ -242,7 +241,7 @@ const LLMConnectionStatus: FC<LLMConnectionStatusProps> = ({ placement = 'bottom
                 <button
                   onClick={handleRefresh}
                   disabled={isLoading}
-                  className="p-1.5 rounded-lg hover:bg-white/[0.06] text-text-muted hover:text-info transition-colors disabled:opacity-50"
+                  className="p-1.5 rounded-[2px] hover:bg-white/[0.06] text-text-muted hover:text-info transition-colors disabled:opacity-50"
                   title="刷新状态"
                 >
                   <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
@@ -254,10 +253,10 @@ const LLMConnectionStatus: FC<LLMConnectionStatusProps> = ({ placement = 'bottom
                   {isConnected ? (
                     <>
                       <div className="relative">
-                        <div className="w-2 h-2 rounded-full bg-emerald-400" />
-                        <div className="absolute inset-0 w-2 h-2 rounded-full bg-emerald-400 animate-ping opacity-40" />
+                        <div className="w-2 h-2 rounded-full bg-success" />
+                        <div className="absolute inset-0 w-2 h-2 rounded-full bg-success animate-ping opacity-40" />
                       </div>
-                      <span className="text-xs font-medium text-emerald-400">已连接</span>
+                      <span className="text-xs font-medium text-success">已连接</span>
                     </>
                   ) : (
                     <>
@@ -272,8 +271,8 @@ const LLMConnectionStatus: FC<LLMConnectionStatusProps> = ({ placement = 'bottom
 
             {/* Balance display - only show when sufficient, hide warning */}
             {!isLocalModel(activeProviderName) && balanceSummary && balanceSummary.balance >= 0.1 && (
-              <div className="mb-3 flex items-center gap-1.5 text-xs text-text-muted bg-bg-secondary/50 rounded-lg px-3 py-2">
-                <Wallet className="w-3 h-3 text-emerald-400" />
+              <div className="mb-3 flex items-center gap-1.5 text-xs text-text-muted bg-bg-secondary/50 rounded-[2px] px-3 py-2">
+                <Wallet className="w-3 h-3 text-success" />
                 <span>可用余额 ¥{balanceSummary.balance.toFixed(2)}</span>
               </div>
             )}
@@ -290,7 +289,7 @@ const LLMConnectionStatus: FC<LLMConnectionStatusProps> = ({ placement = 'bottom
                 return (
                   <div key={provider} className="space-y-0.5">
                     {/* Models under this provider - no provider header shown */}
-                    <div className="divide-y divide-white/[0.04] border border-white/[0.06] rounded-xl overflow-hidden">
+                    <div className="divide-y divide-white/[0.04] border border-white/[0.06] rounded-[2px] overflow-hidden">
                       {models.map((model) => {
                         const isActive = model.provider.toLowerCase() === activeProviderName.toLowerCase() && model.provider_model_id === displayModel;
                         const isSetting = setMutation.isPending && setMutation.variables?.provider === model.provider && setMutation.variables?.model === model.provider_model_id;

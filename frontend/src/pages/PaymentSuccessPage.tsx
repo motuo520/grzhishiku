@@ -94,8 +94,8 @@ const PaymentSuccessPage: FC = () => {
 
   const icon = {
     loading: <Loader2 className="w-12 h-12 text-info animate-spin" />,
-    success: <CheckCircle className="w-12 h-12 text-emerald-400" />,
-    pending: <Loader2 className="w-12 h-12 text-amber-400 animate-spin" />,
+    success: <CheckCircle className="w-12 h-12 text-success" />,
+    pending: <Loader2 className="w-12 h-12 text-warning animate-spin" />,
     error: <XCircle className="w-12 h-12 text-danger" />,
   }[status];
 

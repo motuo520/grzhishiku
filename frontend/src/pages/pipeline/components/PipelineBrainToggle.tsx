@@ -11,9 +11,9 @@ interface PipelineBrainToggleProps {
 }
 
 const options: { id: BrainSide; label: string; icon: React.ElementType; color: string }[] = [
-  { id: 'personal', label: '个人脑', icon: Home, color: 'text-amber-400' },
-  { id: 'both', label: '双脑', icon: Brain, color: 'text-purple-400' },
-  { id: 'network', label: '网络脑', icon: Globe, color: 'text-blue-400' },
+  { id: 'personal', label: '个人脑', icon: Home, color: 'text-personal-primary' },
+  { id: 'both', label: '双脑', icon: Brain, color: 'text-fusion-primary' },
+  { id: 'network', label: '网络脑', icon: Globe, color: 'text-network-primary' },
 ];
 
 const STAGE_HINTS: Record<string, { recommended: BrainSide; discouraged?: BrainSide; message: string }> = {
@@ -47,7 +47,7 @@ const PipelineBrainToggle: FC<PipelineBrainToggleProps> = ({ value, onChange, st
 
   return (
     <div className="flex flex-col items-end gap-1.5">
-      <div className="inline-flex items-center gap-1 p-1 rounded-xl bg-white/[0.03] border border-white/[0.08]">
+      <div className="inline-flex items-center gap-1 p-1 rounded-[2px] bg-white/[0.03] border border-white/[0.08]">
         {options.map((opt) => {
           const Icon = opt.icon;
           const isActive = active === opt.id;
@@ -57,9 +57,9 @@ const PipelineBrainToggle: FC<PipelineBrainToggleProps> = ({ value, onChange, st
               key={opt.id}
               onClick={() => handleChange(opt.id)}
               title={isDiscouraged ? '当前阶段不推荐此脑侧' : opt.label}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-[2px] text-xs font-medium transition-all ${
                 isActive
-                  ? `${opt.color} bg-white/[0.08] shadow-[0_0_12px_rgba(88,166,255,0.1)]`
+                  ? `${opt.color} bg-white/[0.08]`
                   : isDiscouraged
                   ? 'text-text-muted hover:text-text-secondary hover:bg-white/[0.03] opacity-50'
                   : 'text-text-secondary hover:text-text-primary hover:bg-white/[0.05]'

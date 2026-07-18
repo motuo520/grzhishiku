@@ -263,7 +263,7 @@ const BatchImportPage: FC = () => {
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
-            className="flex items-center gap-2 px-4 py-3 rounded-xl bg-danger/10 border border-danger/30 text-danger text-sm"
+            className="flex items-center gap-2 px-4 py-3 rounded-[2px] bg-danger/10 border border-danger/30 text-danger text-sm"
           >
             <AlertCircle className="w-4 h-4" />
             {error}
@@ -278,7 +278,7 @@ const BatchImportPage: FC = () => {
         <motion.div
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="flex items-center gap-2 px-4 py-3 rounded-xl bg-success/10 border border-success/30 text-green-400 text-sm"
+          className="flex items-center gap-2 px-4 py-3 rounded-[2px] bg-success/10 border border-success/30 text-success text-sm"
         >
           <Check className="w-4 h-4" />
           导入完成：成功 {result.success} 条，失败 {result.failed} 条
@@ -286,7 +286,7 @@ const BatchImportPage: FC = () => {
       )}
 
       {/* Tabs */}
-      <div className="flex items-center gap-2 bg-bg-tertiary p-1 rounded-xl w-fit">
+      <div className="flex items-center gap-2 bg-bg-tertiary p-1 rounded-[2px] w-fit">
         {tabs.map(tab => {
           const Icon = tab.icon;
           const active = activeTab === tab.id;
@@ -294,7 +294,7 @@ const BatchImportPage: FC = () => {
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+              className={`flex items-center gap-2 px-4 py-2 rounded-[2px] text-sm font-medium transition-all ${
                 active
                   ? 'bg-white/[0.08] text-info'
                   : 'text-text-secondary hover:text-text-primary hover:bg-white/[0.03]'
@@ -342,7 +342,7 @@ const BatchImportPage: FC = () => {
               onChange={e => setTextInput(e.target.value)}
               placeholder={`{"notes":[{"title":"示例","content":"内容"}],"clips":[{"title":"示例","url":"https://..."}]}`}
               rows={8}
-              className="w-full bg-bg-tertiary border border-white/[0.08] rounded-xl px-4 py-3 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:border-info/50 transition-colors resize-none font-mono"
+              className="w-full bg-bg-tertiary border border-white/[0.08] rounded-[2px] px-4 py-3 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:border-info/50 transition-colors resize-none font-mono"
             />
             <button
               onClick={parseJsonCsv}
@@ -366,7 +366,7 @@ const BatchImportPage: FC = () => {
               onChange={e => setTextInput(e.target.value)}
               placeholder="https://example.com/article-1\nhttps://example.com/article-2"
               rows={8}
-              className="w-full bg-bg-tertiary border border-white/[0.08] rounded-xl px-4 py-3 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:border-info/50 transition-colors resize-none font-mono"
+              className="w-full bg-bg-tertiary border border-white/[0.08] rounded-[2px] px-4 py-3 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:border-info/50 transition-colors resize-none font-mono"
             />
             <button
               onClick={parseUrls}
@@ -386,7 +386,7 @@ const BatchImportPage: FC = () => {
               从本地选择文件导入。支持浏览器书签 HTML、Markdown/TXT 笔记、JSON 数据包、CSV 表格。
               <span className="text-danger">不会自动扫描，仅导入你主动选择的文件。</span>
             </div>
-            <div className="p-4 rounded-xl bg-bg-tertiary border border-white/[0.08] space-y-2">
+            <div className="p-4 rounded-[2px] bg-bg-tertiary border border-white/[0.08] space-y-2">
               <div className="text-xs text-text-muted space-y-1">
                 <p>• .html / .htm：浏览器书签导出文件 → 导入为剪藏</p>
                 <p>• .md / .txt / .markdown → 导入为笔记</p>
@@ -430,7 +430,7 @@ const BatchImportPage: FC = () => {
             {previews.map(item => (
               <div
                 key={item.id}
-                className="flex items-start gap-3 p-3 rounded-xl border border-white/[0.08] bg-white/[0.02] hover:border-white/[0.12] transition-colors"
+                className="flex items-start gap-3 p-3 rounded-[2px] border border-white/[0.08] bg-white/[0.02] hover:border-white/[0.12] transition-colors"
               >
                 <div className="mt-0.5">
                   {item.type === 'note' ? <FileText className="w-4 h-4 text-personal-primary" /> : <Globe className="w-4 h-4 text-network-primary" />}
@@ -446,7 +446,7 @@ const BatchImportPage: FC = () => {
                 </div>
                 <button
                   onClick={() => removePreview(item.id)}
-                  className="p-1.5 rounded-lg hover:bg-white/[0.05] text-text-muted hover:text-danger transition-colors"
+                  className="p-1.5 rounded-[2px] hover:bg-white/[0.05] text-text-muted hover:text-danger transition-colors"
                 >
                   <Trash2 className="w-4 h-4" />
                 </button>

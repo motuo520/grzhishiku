@@ -74,7 +74,7 @@ const AttentionBudgetPage: FC = () => {
       </div>
 
       {error && (
-        <div className="flex items-center gap-2 px-4 py-3 rounded-xl bg-danger/10 border border-danger/30 text-danger text-sm">
+        <div className="flex items-center gap-2 px-4 py-3 rounded-[2px] bg-danger/10 border border-danger/30 text-danger text-sm">
           <AlertCircle className="w-4 h-4" />
           {error}
         </div>
@@ -109,12 +109,12 @@ const AttentionBudgetPage: FC = () => {
             value={newName}
             onChange={(e) => setNewName(e.target.value)}
             placeholder="类别名称"
-            className="flex-1 bg-white/[0.03] border border-white/[0.08] rounded-xl px-4 py-2.5 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:border-info/50"
+            className="flex-1 bg-white/[0.03] border border-white/[0.08] rounded-[2px] px-4 py-2.5 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:border-info/50"
           />
           <select
             value={newSide}
             onChange={(e) => setNewSide(e.target.value as 'personal' | 'network')}
-            className="bg-white/[0.03] border border-white/[0.08] rounded-xl px-4 py-2.5 text-sm text-text-primary focus:outline-none focus:border-info/50"
+            className="bg-white/[0.03] border border-white/[0.08] rounded-[2px] px-4 py-2.5 text-sm text-text-primary focus:outline-none focus:border-info/50"
           >
             <option value="personal">个人脑</option>
             <option value="network">网络脑</option>
@@ -125,7 +125,7 @@ const AttentionBudgetPage: FC = () => {
             max={1440}
             value={newMinutes}
             onChange={(e) => setNewMinutes(parseInt(e.target.value) || 0)}
-            className="w-28 bg-white/[0.03] border border-white/[0.08] rounded-xl px-4 py-2.5 text-sm text-text-primary focus:outline-none focus:border-info/50"
+            className="w-28 bg-white/[0.03] border border-white/[0.08] rounded-[2px] px-4 py-2.5 text-sm text-text-primary focus:outline-none focus:border-info/50"
           />
           <button onClick={addItem} className="btn-primary flex items-center gap-2">
             <Plus className="w-4 h-4" />
@@ -178,7 +178,7 @@ const BudgetList: FC<{
         const pct = Math.min(100, Math.round(rawPct));
         const overBudget = rawPct > 100;
         return (
-          <div key={item.id} className="p-3 rounded-xl bg-white/[0.02] border border-white/[0.06]">
+          <div key={item.id} className="p-3 rounded-[2px] bg-white/[0.02] border border-white/[0.06]">
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-2">
                 <span className="w-3 h-3 rounded-full" style={{ backgroundColor: item.color || '#58a6ff' }} />
@@ -213,17 +213,17 @@ const BudgetList: FC<{
                   max={1440}
                   value={recordMinutes}
                   onChange={(e) => setRecordMinutes(parseInt(e.target.value) || 0)}
-                  className="w-24 bg-white/[0.03] border border-white/[0.08] rounded-lg px-2 py-1 text-xs text-text-primary focus:outline-none focus:border-info/50"
+                  className="w-24 bg-white/[0.03] border border-white/[0.08] rounded-[2px] px-2 py-1 text-xs text-text-primary focus:outline-none focus:border-info/50"
                 />
                 <span className="text-xs text-text-muted">分钟</span>
                 <button
                   onClick={() => submitRecord(item)}
                   disabled={recordSaving || recordMinutes < 1}
-                  className="px-2.5 py-1 rounded-lg bg-info/10 text-info text-xs border border-info/20 disabled:opacity-50"
+                  className="px-2.5 py-1 rounded-[2px] bg-info/10 text-info text-xs border border-info/20 disabled:opacity-50"
                 >
                   {recordSaving ? '保存中...' : '确认'}
                 </button>
-                <button onClick={() => setRecordingId(null)} className="px-2 py-1 rounded-lg text-text-muted text-xs hover:text-text-secondary">
+                <button onClick={() => setRecordingId(null)} className="px-2 py-1 rounded-[2px] text-text-muted text-xs hover:text-text-secondary">
                   取消
                 </button>
               </div>

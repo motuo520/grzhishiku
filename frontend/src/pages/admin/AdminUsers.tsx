@@ -57,6 +57,27 @@ export default function AdminUsers() {
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [actionError, setActionError] = useState('');
 
+  // 等级/额度调整
+  const [plans, setPlans] = useState<Array<{ slug: string; name: string }>>([]);
+  const [tierChoice, setTierChoice] = useState('');
+  const [adjustAmount, setAdjustAmount] = useState('');
+  const [adjustReason, setAdjustReason] = useState('');
+
+  useEffect(() => {
+    adminApi.getPlans()
+      .then(({ data }) => {
+        const list = Array.isArray(data) ? data : [];
+        setPlans(list.map((p: any) => ({ slug: p.slug, name: p.name })));
+      })
+      .catch(() => {});
+  }, []);
+
+  // 打开详情弹窗时同步等级选择并清空错误
+  useEffect(() => {
+    setTierChoice(detailUser?.subscription_tier || '');
+    setActionError('');
+  }, [detailUser?.id]);
+
   const loadUsers = useCallback(() => {
     setLoading(true);
     adminApi
@@ -95,6 +116,53 @@ export default function AdminUsers() {
       setEditStatusUser(null);
     } catch (err: any) {
       setActionError(err.response?.data?.detail || '操作失败');
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleTierSave = async () => {
+    if (!detailUser || !tierChoice) return;
+    setActionLoading('tier');
+    setActionError('');
+    try {
+      await adminApi.updateUserTier(detailUser.id, tierChoice);
+      setDetailUser({ ...detailUser, subscription_tier: tierChoice });
+      loadUsers();
+    } catch (err: any) {
+      setActionError(err.response?.data?.detail || '等级调整失败');
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleBalanceAdjust = async () => {
+    if (!detailUser) return;
+    const amount = parseFloat(adjustAmount);
+    if (isNaN(amount) || amount === 0) {
+      setActionError('请输入有效的调整金额（正数充值 / 负数扣减）');
+      return;
+    }
+    if (!adjustReason.trim()) {
+      setActionError('请填写调整原因');
+      return;
+    }
+    setActionLoading('balance');
+    setActionError('');
+    try {
+      const { data } = await adminApi.adjustUserBalance(detailUser.id, {
+        amount_yuan: amount,
+        reason: adjustReason.trim(),
+      });
+      setDetailUser({
+        ...detailUser,
+        balance: typeof data?.balance_after === 'number' ? data.balance_after : (detailUser.balance ?? 0) + amount,
+      });
+      setAdjustAmount('');
+      setAdjustReason('');
+      loadUsers();
+    } catch (err: any) {
+      setActionError(err.response?.data?.detail || '额度调整失败');
     } finally {
       setActionLoading(null);
     }
@@ -406,7 +474,7 @@ export default function AdminUsers() {
                   <X className="w-5 h-5" />
                 </button>
               </div>
-              <div className="p-6 space-y-4">
+              <div className="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <div className="text-xs text-text-secondary mb-1">ID</div>
@@ -453,6 +521,65 @@ export default function AdminUsers() {
                     <div className="text-sm text-text-primary">{detailUser.capsules_count ?? '—'}</div>
                   </div>
                 </div>
+
+                {/* 等级调整 */}
+                <div className="border-t border-border-color pt-4">
+                  <div className="text-xs text-text-secondary mb-2">调整等级（套餐）</div>
+                  <div className="flex gap-2">
+                    <select
+                      value={tierChoice}
+                      onChange={(e: any) => setTierChoice(e.target.value)}
+                      className="flex-1 px-3 py-2 bg-bg-tertiary border border-border-color rounded-lg text-text-primary focus:outline-none focus:border-[#58a6ff] text-sm"
+                    >
+                      <option value="">选择套餐</option>
+                      {plans.map((p) => (
+                        <option key={p.slug} value={p.slug}>{p.name}（{p.slug}）</option>
+                      ))}
+                    </select>
+                    <button
+                      onClick={handleTierSave}
+                      disabled={!tierChoice || tierChoice === detailUser.subscription_tier || actionLoading === 'tier'}
+                      className="px-4 py-2 rounded-lg bg-[#58a6ff] text-white hover:bg-[#58a6ff]/90 text-sm transition-colors flex items-center gap-2 disabled:opacity-60"
+                    >
+                      {actionLoading === 'tier' && <Loader2 className="w-4 h-4 animate-spin" />}
+                      保存等级
+                    </button>
+                  </div>
+                </div>
+
+                {/* 额度调整 */}
+                <div>
+                  <div className="text-xs text-text-secondary mb-2">调整额度（元，正数充值 / 负数扣减）</div>
+                  <div className="flex gap-2">
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={adjustAmount}
+                      onChange={(e: any) => setAdjustAmount(e.target.value)}
+                      placeholder="金额，如 10 或 -5"
+                      className="w-36 px-3 py-2 bg-bg-tertiary border border-border-color rounded-lg text-text-primary focus:outline-none focus:border-[#58a6ff] text-sm"
+                    />
+                    <input
+                      type="text"
+                      value={adjustReason}
+                      onChange={(e: any) => setAdjustReason(e.target.value)}
+                      placeholder="调整原因（必填）"
+                      className="flex-1 px-3 py-2 bg-bg-tertiary border border-border-color rounded-lg text-text-primary focus:outline-none focus:border-[#58a6ff] text-sm"
+                    />
+                    <button
+                      onClick={handleBalanceAdjust}
+                      disabled={!adjustAmount || !adjustReason.trim() || actionLoading === 'balance'}
+                      className="px-4 py-2 rounded-lg bg-[#58a6ff] text-white hover:bg-[#58a6ff]/90 text-sm transition-colors flex items-center gap-2 disabled:opacity-60"
+                    >
+                      {actionLoading === 'balance' && <Loader2 className="w-4 h-4 animate-spin" />}
+                      调整
+                    </button>
+                  </div>
+                </div>
+
+                {actionError && (
+                  <div className="text-xs text-[#f85149]">{actionError}</div>
+                )}
               </div>
               <div className="px-6 py-4 border-t border-border-color flex justify-end gap-2">
                 <button

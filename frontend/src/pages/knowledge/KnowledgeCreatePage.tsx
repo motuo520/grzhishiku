@@ -58,7 +58,7 @@ const KnowledgeCreatePage: FC = () => {
       <div className="flex items-center gap-3">
         <button
           onClick={() => navigate(-1)}
-          className="p-2 bg-white/[0.03] border border-white/[0.08] rounded-lg text-text-secondary hover:text-text-primary hover:bg-white/[0.06] transition-all"
+          className="p-2 bg-white/[0.03] border border-white/[0.08] rounded-[2px] text-text-secondary hover:text-text-primary hover:bg-white/[0.06] transition-all"
         >
           <ArrowLeft className="w-4 h-4" />
         </button>
@@ -68,13 +68,13 @@ const KnowledgeCreatePage: FC = () => {
       <AnimatePresence>
         {errorMsg && (
           <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-danger/10 border border-danger/20 text-danger text-sm">
+            className="flex items-center gap-2 px-4 py-2.5 rounded-[2px] bg-danger/10 border border-danger/20 text-danger text-sm">
             <AlertCircle className="w-4 h-4" /> {errorMsg}
           </motion.div>
         )}
         {successMsg && (
           <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-success/10 border border-success/20 text-success text-sm">
+            className="flex items-center gap-2 px-4 py-2.5 rounded-[2px] bg-success/10 border border-success/20 text-success text-sm">
             <CheckCircle2 className="w-4 h-4" /> {successMsg}
           </motion.div>
         )}
@@ -86,7 +86,7 @@ const KnowledgeCreatePage: FC = () => {
           <div className="flex gap-2">
             <button
               onClick={() => setBrainSide('network')}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-medium border transition-all ${
+              className={`flex items-center gap-2 px-4 py-2 rounded-[2px] text-xs font-medium border transition-all ${
                 brainSide === 'network'
                   ? 'bg-info/15 text-info border-info/30'
                   : 'bg-white/[0.03] text-text-secondary border-white/[0.06]'
@@ -96,7 +96,7 @@ const KnowledgeCreatePage: FC = () => {
             </button>
             <button
               onClick={() => setBrainSide('personal')}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-medium border transition-all ${
+              className={`flex items-center gap-2 px-4 py-2 rounded-[2px] text-xs font-medium border transition-all ${
                 brainSide === 'personal'
                   ? 'bg-personal-primary/15 text-personal-primary border-personal-primary/30'
                   : 'bg-white/[0.03] text-text-secondary border-white/[0.06]'
@@ -116,7 +116,7 @@ const KnowledgeCreatePage: FC = () => {
             onChange={(e) => setContent(e.target.value)}
             rows={6}
             placeholder="输入需要保存或验证的知识内容..."
-            className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl px-4 py-3 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:border-info/40 transition-colors resize-none"
+            className="w-full bg-white/[0.03] border border-white/[0.08] rounded-[2px] px-4 py-3 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:border-info/40 transition-colors resize-none"
           />
         </div>
 
@@ -129,7 +129,7 @@ const KnowledgeCreatePage: FC = () => {
             value={contentType}
             onChange={(e) => setContentType(e.target.value)}
             placeholder="例如：article、note、claim"
-            className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl px-4 py-2 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:border-info/40 transition-colors"
+            className="w-full bg-white/[0.03] border border-white/[0.08] rounded-[2px] px-4 py-2 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:border-info/40 transition-colors"
           />
         </div>
 
@@ -143,7 +143,7 @@ const KnowledgeCreatePage: FC = () => {
               value={sourceUrl}
               onChange={(e) => setSourceUrl(e.target.value)}
               placeholder="https://..."
-              className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl px-4 py-2 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:border-info/40 transition-colors"
+              className="w-full bg-white/[0.03] border border-white/[0.08] rounded-[2px] px-4 py-2 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:border-info/40 transition-colors"
             />
           </div>
           <div>
@@ -153,7 +153,7 @@ const KnowledgeCreatePage: FC = () => {
               value={sourceTitle}
               onChange={(e) => setSourceTitle(e.target.value)}
               placeholder="文章或书籍标题"
-              className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl px-4 py-2 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:border-info/40 transition-colors"
+              className="w-full bg-white/[0.03] border border-white/[0.08] rounded-[2px] px-4 py-2 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:border-info/40 transition-colors"
             />
           </div>
         </div>
@@ -165,14 +165,14 @@ const KnowledgeCreatePage: FC = () => {
             value={sourceAuthor}
             onChange={(e) => setSourceAuthor(e.target.value)}
             placeholder="来源作者"
-            className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl px-4 py-2 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:border-info/40 transition-colors"
+            className="w-full bg-white/[0.03] border border-white/[0.08] rounded-[2px] px-4 py-2 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:border-info/40 transition-colors"
           />
         </div>
 
         <button
           onClick={handleSubmit}
           disabled={isSubmitting}
-          className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-info to-network-secondary text-white rounded-xl text-sm font-medium hover:shadow-[0_0_20px_rgba(88,166,255,0.4)] transition-all disabled:opacity-60"
+          className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-accent text-white rounded-[2px] text-sm font-medium hover:bg-[var(--accent-hover)] transition-all disabled:opacity-60"
         >
           {isSubmitting ? (
             <>

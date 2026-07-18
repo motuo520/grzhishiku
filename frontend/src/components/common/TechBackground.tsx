@@ -21,7 +21,7 @@ const TechBackground: FC = () => {
     resize();
     window.addEventListener('resize', resize);
 
-    const colors = ['#58a6ff', '#a371f7', '#d29922', '#79b8ff'];
+    const colors = ['#5b7c99', '#7d8f6a', '#bd4a2e', '#5b7c99'];
     for (let i = 0; i < 60; i++) {
       particles.push({
         x: Math.random() * canvas.width,
@@ -43,7 +43,7 @@ const TechBackground: FC = () => {
           const dist = Math.sqrt(dx * dx + dy * dy);
           if (dist < 150) {
             ctx.beginPath();
-            ctx.strokeStyle = `rgba(88, 166, 255, ${0.08 * (1 - dist / 150)})`;
+            ctx.strokeStyle = `rgba(91, 124, 153, ${0.08 * (1 - dist / 150)})`;
             ctx.lineWidth = 0.5;
             ctx.moveTo(p.x, p.y);
             ctx.lineTo(p2.x, p2.y);
@@ -79,8 +79,8 @@ const TechBackground: FC = () => {
         className="absolute inset-0 opacity-[0.03]"
         style={{
           backgroundImage: `
-            linear-gradient(rgba(88, 166, 255, 0.5) 1px, transparent 1px),
-            linear-gradient(90deg, rgba(88, 166, 255, 0.5) 1px, transparent 1px)
+            linear-gradient(rgba(91, 124, 153, 0.5) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(91, 124, 153, 0.5) 1px, transparent 1px)
           `,
           backgroundSize: '60px 60px',
         }}

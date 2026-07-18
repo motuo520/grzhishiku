@@ -17,9 +17,9 @@ const CATEGORIES = [
     label: '可下沉',
     desc: '转化为习惯、决策框架或行动清单',
     icon: ArrowDownToLine,
-    color: 'text-emerald-400',
-    bg: 'bg-emerald-400/10',
-    border: 'border-emerald-400/20',
+    color: 'text-success',
+    bg: 'bg-success/10',
+    border: 'border-success/20',
   },
   {
     key: 'outputable' as const,
@@ -169,7 +169,7 @@ const CognitivePotentialPage: FC = () => {
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
-                      <span className={`text-xs px-1.5 py-0.5 rounded border ${item.content_type === 'note' ? 'text-amber-400 border-amber-400/30 bg-amber-400/10' : 'text-info border-info/30 bg-info/10'}`}>
+                      <span className={`text-xs px-1.5 py-0.5 rounded border ${item.content_type === 'note' ? 'text-warning border-warning/30 bg-warning/10' : 'text-info border-info/30 bg-info/10'}`}>
                         {item.content_type === 'note' ? '笔记' : '知识'}
                       </span>
                       <span className={`text-xs font-medium ${currentMeta.color}`}>

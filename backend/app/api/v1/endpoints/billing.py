@@ -182,6 +182,7 @@ async def list_payment_methods(
         "wechat": "微信支付",
         "stripe": "信用卡",
         "xorpay": "虎皮椒",
+        "xunhupay": "迅虎支付",
     }
     return [
         {"id": key, "name": labels.get(key, key), "enabled": True}

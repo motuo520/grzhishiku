@@ -62,7 +62,7 @@ const NoteCard: FC<NoteCardProps> = ({ note, onUpdate, onDelete, onConvertToNote
       initial={{ opacity: 0, scale: 0.9 }}
       animate={{ opacity: 1, scale: 1 }}
       exit={{ opacity: 0, scale: 0.9 }}
-      className={`rounded-2xl p-4 shadow-lg border border-white/10 flex flex-col relative group ${note.is_archived ? 'opacity-60' : ''} ${note.is_completed ? 'opacity-50' : ''}`}
+      className={`rounded-[2px] p-4 border border-white/10 flex flex-col relative group ${note.is_archived ? 'opacity-60' : ''} ${note.is_completed ? 'opacity-50' : ''}`}
       style={{
         backgroundColor: `${note.color}20`,
         borderLeft: `4px solid ${note.color}`,
@@ -74,7 +74,7 @@ const NoteCard: FC<NoteCardProps> = ({ note, onUpdate, onDelete, onConvertToNote
         <div className="flex items-center gap-1.5">
           <button
             onClick={() => onUpdate(note.id, { is_pinned: !note.is_pinned })}
-            className={`p-1 rounded-lg transition-colors ${note.is_pinned ? 'text-warning bg-warning/15' : 'text-text-muted hover:text-text-primary hover:bg-bg-hover'}`}
+            className={`p-1 rounded-[2px] transition-colors ${note.is_pinned ? 'text-warning bg-warning/15' : 'text-text-muted hover:text-text-primary hover:bg-bg-hover'}`}
             title={note.is_pinned ? '取消置顶' : '置顶'}
           >
             <Pin className="w-3.5 h-3.5" />
@@ -82,7 +82,7 @@ const NoteCard: FC<NoteCardProps> = ({ note, onUpdate, onDelete, onConvertToNote
           {note.is_todo && (
             <button
               onClick={() => onUpdate(note.id, { is_completed: !note.is_completed })}
-              className={`p-1 rounded-lg transition-colors ${note.is_completed ? 'text-success bg-success/15' : 'text-text-muted hover:text-success hover:bg-success/10'}`}
+              className={`p-1 rounded-[2px] transition-colors ${note.is_completed ? 'text-success bg-success/15' : 'text-text-muted hover:text-success hover:bg-success/10'}`}
               title={note.is_completed ? '标记未完成' : '标记完成'}
             >
               {note.is_completed ? <SquareCheck className="w-3.5 h-3.5" /> : <Square className="w-3.5 h-3.5" />}
@@ -103,7 +103,7 @@ const NoteCard: FC<NoteCardProps> = ({ note, onUpdate, onDelete, onConvertToNote
             <>
               <button
                 onClick={() => onUpdate(note.id, { is_todo: !note.is_todo })}
-                className={`p-1.5 rounded-lg transition-colors ${note.is_todo ? 'text-success bg-success/10' : 'text-text-muted hover:text-text-primary hover:bg-bg-hover'}`}
+                className={`p-1.5 rounded-[2px] transition-colors ${note.is_todo ? 'text-success bg-success/10' : 'text-text-muted hover:text-text-primary hover:bg-bg-hover'}`}
                 title={note.is_todo ? '取消待办' : '设为待办'}
               >
                 <Check className="w-3.5 h-3.5" />
@@ -112,7 +112,7 @@ const NoteCard: FC<NoteCardProps> = ({ note, onUpdate, onDelete, onConvertToNote
                 onClick={() => {
                   if (confirm('确定将这条便签转为笔记吗？')) onConvertToNote(note.id);
                 }}
-                className="p-1.5 rounded-lg text-text-muted hover:text-info hover:bg-info/10"
+                className="p-1.5 rounded-[2px] text-text-muted hover:text-info hover:bg-info/10"
                 title="转为笔记"
               >
                 <FileText className="w-3.5 h-3.5" />
@@ -121,7 +121,7 @@ const NoteCard: FC<NoteCardProps> = ({ note, onUpdate, onDelete, onConvertToNote
           )}
           <button
             onClick={() => onUpdate(note.id, { is_archived: !note.is_archived })}
-            className="p-1.5 rounded-lg text-text-muted hover:text-text-primary hover:bg-bg-hover"
+            className="p-1.5 rounded-[2px] text-text-muted hover:text-text-primary hover:bg-bg-hover"
             title={note.is_archived ? '恢复' : '归档'}
           >
             {note.is_archived ? <RotateCcw className="w-3.5 h-3.5" /> : <Archive className="w-3.5 h-3.5" />}
@@ -130,7 +130,7 @@ const NoteCard: FC<NoteCardProps> = ({ note, onUpdate, onDelete, onConvertToNote
             onClick={() => {
               if (confirm('确定删除这条便签吗？')) onDelete(note.id);
             }}
-            className="p-1.5 rounded-lg text-text-muted hover:text-danger hover:bg-danger/10"
+            className="p-1.5 rounded-[2px] text-text-muted hover:text-danger hover:bg-danger/10"
             title="删除"
           >
             <Trash2 className="w-3.5 h-3.5" />
@@ -189,7 +189,7 @@ interface ReminderItemProps {
 
 const ReminderItem: FC<ReminderItemProps> = ({ reminder, onToggle, onDelete }) => {
   return (
-    <div className={`flex items-start gap-2 p-2 rounded-xl ${reminder.is_completed ? 'opacity-50' : 'bg-bg-secondary/50'}`}>
+    <div className={`flex items-start gap-2 p-2 rounded-[2px] ${reminder.is_completed ? 'opacity-50' : 'bg-bg-secondary/50'}`}>
       <button
         onClick={() => onToggle(reminder.id, !reminder.is_completed)}
         className={`mt-0.5 w-4 h-4 rounded border flex items-center justify-center ${reminder.is_completed ? 'bg-success border-success text-white' : 'border-text-muted'}`}
@@ -275,7 +275,7 @@ const StickyNotesPage: FC = () => {
   if (!isLoggedIn) {
     return (
       <div className="min-h-[calc(100vh-64px)] flex items-center justify-center p-6">
-        <div className="glass-card rounded-2xl p-8 text-center max-w-md">
+        <div className="glass-card rounded-[2px] p-8 text-center max-w-md">
           <StickyNoteIcon className="w-12 h-12 text-warning mx-auto mb-4" />
           <h2 className="text-lg font-bold text-text-primary mb-2">登录后使用便签</h2>
           <p className="text-sm text-text-secondary">便签和提醒会保存在你的账户中，方便随时查看。</p>
@@ -290,7 +290,7 @@ const StickyNotesPage: FC = () => {
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-warning/15 flex items-center justify-center">
+            <div className="w-10 h-10 rounded-[2px] bg-warning/15 flex items-center justify-center">
               <StickyNoteIcon className="w-5 h-5 text-warning" />
             </div>
             <div>
@@ -302,20 +302,20 @@ const StickyNotesPage: FC = () => {
           <div className="flex items-center gap-2">
             <button
               onClick={() => setShowTodosOnly((v) => !v)}
-              className={`px-3 py-1.5 text-xs rounded-xl border transition-colors flex items-center gap-1 ${showTodosOnly ? 'bg-bg-secondary border-success text-success' : 'border-border-color text-text-secondary hover:text-text-primary'}`}
+              className={`px-3 py-1.5 text-xs rounded-[2px] border transition-colors flex items-center gap-1 ${showTodosOnly ? 'bg-bg-secondary border-success text-success' : 'border-border-color text-text-secondary hover:text-text-primary'}`}
             >
               <Check className="w-3.5 h-3.5" />
               {showTodosOnly ? '全部' : '待办'}
             </button>
             <button
               onClick={() => setShowArchived((v) => !v)}
-              className={`px-3 py-1.5 text-xs rounded-xl border transition-colors ${showArchived ? 'bg-bg-secondary border-info text-info' : 'border-border-color text-text-secondary hover:text-text-primary'}`}
+              className={`px-3 py-1.5 text-xs rounded-[2px] border transition-colors ${showArchived ? 'bg-bg-secondary border-info text-info' : 'border-border-color text-text-secondary hover:text-text-primary'}`}
             >
               {showArchived ? '隐藏归档' : '显示归档'}
             </button>
             <button
               onClick={() => setShowReminderPanel((v) => !v)}
-              className={`px-3 py-1.5 text-xs rounded-xl border transition-colors flex items-center gap-1.5 ${showReminderPanel ? 'bg-bg-secondary border-info text-info' : 'border-border-color text-text-secondary hover:text-text-primary'}`}
+              className={`px-3 py-1.5 text-xs rounded-[2px] border transition-colors flex items-center gap-1.5 ${showReminderPanel ? 'bg-bg-secondary border-info text-info' : 'border-border-color text-text-secondary hover:text-text-primary'}`}
             >
               <Bell className="w-3.5 h-3.5" />
               提醒 ({reminders.length})
@@ -327,13 +327,13 @@ const StickyNotesPage: FC = () => {
           {/* Notes board */}
           <div className="lg:col-span-2 space-y-4">
             {/* Quick add */}
-            <div className="glass-card rounded-2xl p-4 space-y-3">
+            <div className="glass-card rounded-[2px] p-4 space-y-3">
               <textarea
                 value={quickContent}
                 onChange={(e) => setQuickContent(e.target.value)}
                 placeholder="写点什么... 支持 Ctrl+Enter 快速保存"
                 rows={3}
-                className="w-full bg-bg-secondary border border-border-color rounded-xl p-3 text-sm text-text-primary placeholder-text-muted outline-none resize-none focus:border-warning/40 transition-colors"
+                className="w-full bg-bg-secondary border border-border-color rounded-[2px] p-3 text-sm text-text-primary placeholder-text-muted outline-none resize-none focus:border-warning/40 transition-colors"
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' && e.ctrlKey) handleQuickAdd();
                 }}
@@ -355,11 +355,11 @@ const StickyNotesPage: FC = () => {
                     type="datetime-local"
                     value={quickReminder}
                     onChange={(e) => setQuickReminder(e.target.value)}
-                    className="bg-bg-secondary border border-border-color rounded-lg px-2 py-1 text-xs text-text-primary outline-none focus:border-warning/40"
+                    className="bg-bg-secondary border border-border-color rounded-[2px] px-2 py-1 text-xs text-text-primary outline-none focus:border-warning/40"
                   />
                   <button
                     onClick={() => setQuickIsTodo((v) => !v)}
-                    className={`px-2 py-1 text-xs rounded-lg border transition-colors flex items-center gap-1 ${quickIsTodo ? 'border-success text-success bg-success/10' : 'border-border-color text-text-muted hover:text-text-primary'}`}
+                    className={`px-2 py-1 text-xs rounded-[2px] border transition-colors flex items-center gap-1 ${quickIsTodo ? 'border-success text-success bg-success/10' : 'border-border-color text-text-muted hover:text-text-primary'}`}
                     title={quickIsTodo ? '取消设为待办' : '设为待办'}
                   >
                     <Check className="w-3 h-3" />
@@ -387,7 +387,7 @@ const StickyNotesPage: FC = () => {
                 <div className="w-8 h-8 border-2 border-warning border-t-transparent rounded-full animate-spin" />
               </div>
             ) : sortedNotes.length === 0 ? (
-              <div className="glass-card rounded-2xl p-12 text-center">
+              <div className="glass-card rounded-[2px] p-12 text-center">
                 <StickyNoteIcon className="w-12 h-12 text-text-muted mx-auto mb-3" />
                 <p className="text-sm text-text-secondary">还没有便签，写一条吧</p>
               </div>
@@ -410,7 +410,7 @@ const StickyNotesPage: FC = () => {
 
           {/* Reminder panel */}
           <div className={`space-y-4 ${showReminderPanel ? '' : 'hidden lg:block'}`}>
-            <div className="glass-card rounded-2xl p-4 space-y-3">
+            <div className="glass-card rounded-[2px] p-4 space-y-3">
               <div className="flex items-center gap-2 text-sm font-medium text-text-primary">
                 <Bell className="w-4 h-4 text-info" />
                 新建提醒
@@ -420,13 +420,13 @@ const StickyNotesPage: FC = () => {
                 value={reminderTitle}
                 onChange={(e) => setReminderTitle(e.target.value)}
                 placeholder="提醒内容..."
-                className="w-full bg-bg-secondary border border-border-color rounded-xl px-3 py-2 text-sm text-text-primary placeholder-text-muted outline-none focus:border-info/40"
+                className="w-full bg-bg-secondary border border-border-color rounded-[2px] px-3 py-2 text-sm text-text-primary placeholder-text-muted outline-none focus:border-info/40"
               />
               <input
                 type="datetime-local"
                 value={reminderTime}
                 onChange={(e) => setReminderTime(e.target.value)}
-                className="w-full bg-bg-secondary border border-border-color rounded-xl px-3 py-2 text-sm text-text-primary outline-none focus:border-info/40"
+                className="w-full bg-bg-secondary border border-border-color rounded-[2px] px-3 py-2 text-sm text-text-primary outline-none focus:border-info/40"
               />
               <button
                 onClick={handleAddReminder}
@@ -437,7 +437,7 @@ const StickyNotesPage: FC = () => {
               </button>
             </div>
 
-            <div className="glass-card rounded-2xl p-4 space-y-3">
+            <div className="glass-card rounded-[2px] p-4 space-y-3">
               <div className="flex items-center justify-between">
                 <span className="text-sm font-medium text-text-primary"> upcoming </span>
                 <span className="text-xs text-text-muted">{reminders.filter((r) => !r.is_completed).length} 待办</span>

@@ -15,10 +15,10 @@ const Toast: FC<{ message: string; type: 'success' | 'error'; onClose: () => voi
     return () => clearTimeout(timer);
   }, [onClose]);
   return (
-    <div className={`fixed top-5 right-5 z-50 flex items-center gap-2 px-4 py-3 rounded-xl border backdrop-blur ${
+    <div className={`fixed top-5 right-5 z-50 flex items-center gap-2 px-4 py-3 rounded-[2px] border ${
       type === 'success'
-        ? 'bg-green-500/10 border-green-500/30 text-green-400'
-        : 'bg-red-500/10 border-red-500/30 text-red-400'
+        ? 'bg-success/10 border-success/30 text-success'
+        : 'bg-danger/10 border-danger/30 text-danger'
     }`}>
       {type === 'success' ? <CheckCircle size={18} /> : <XCircle size={18} />}
       <span className="text-sm">{message}</span>
@@ -129,7 +129,7 @@ const SyncSettings: FC = () => {
           {FREQUENCIES.map(f => (
             <label
               key={f.id}
-              className={`flex items-start gap-3 p-4 rounded-xl border cursor-pointer transition-all ${
+              className={`flex items-start gap-3 p-4 rounded-[2px] border cursor-pointer transition-all ${
                 settings.frequency === f.id
                   ? 'border-info/40 bg-info/[0.05]'
                   : 'border-white/[0.06] bg-white/[0.02] hover:border-white/[0.12]'
@@ -162,7 +162,7 @@ const SyncSettings: FC = () => {
           {CONFLICTS.map(c => (
             <label
               key={c.id}
-              className={`flex items-start gap-3 p-4 rounded-xl border cursor-pointer transition-all ${
+              className={`flex items-start gap-3 p-4 rounded-[2px] border cursor-pointer transition-all ${
                 settings.conflictStrategy === c.id
                   ? 'border-info/40 bg-info/[0.05]'
                   : 'border-white/[0.06] bg-white/[0.02] hover:border-white/[0.12]'
@@ -227,9 +227,9 @@ const SyncSettings: FC = () => {
                   {formatBytes(used)} / {limit > 0 ? formatBytes(limit) : '不限'}
                 </span>
               </div>
-              <div className="w-full h-2 bg-white/5 rounded-full overflow-hidden">
+              <div className="w-full h-2 bg-white/5 rounded-[2px] overflow-hidden">
                 <div
-                  className={`h-full rounded-full transition-all ${percent > 90 ? 'bg-danger' : percent > 70 ? 'bg-warning' : 'bg-info'}`}
+                  className={`h-full rounded-[2px] transition-all ${percent > 90 ? 'bg-danger' : percent > 70 ? 'bg-warning' : 'bg-info'}`}
                   style={{ width: `${Math.max(percent, used > 0 ? 1 : 0)}%` }}
                 />
               </div>

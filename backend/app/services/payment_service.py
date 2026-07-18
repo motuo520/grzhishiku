@@ -370,6 +370,9 @@ class PaymentService:
             # Xorpay 回调 info 或顶层都有 out_trade_no
             info = data.get("info", {})
             return info.get("out_trade_no") or data.get("out_trade_no")
+        elif provider == "xunhupay":
+            # 虎皮椒回调顶层 trade_order_id
+            return data.get("trade_order_id")
         return None
 
     def _extract_provider_order_id(self, provider: str, data: Dict[str, Any]) -> Optional[str]:
@@ -386,6 +389,8 @@ class PaymentService:
         elif provider == "xorpay":
             info = data.get("info", {})
             return info.get("trade_no") or data.get("trade_no")
+        elif provider == "xunhupay":
+            return data.get("open_order_id") or data.get("transaction_id")
         return None
 
     def _extend_period(self, from_date: datetime, billing_cycle: str) -> datetime:

@@ -125,7 +125,7 @@ const AnnotatePage: FC = () => {
 
       {/* Error Banner */}
       {error && (
-        <div className="flex items-center gap-2 px-4 py-3 rounded-xl bg-danger/10 border border-danger/30 text-danger text-sm">
+        <div className="flex items-center gap-2 px-4 py-3 rounded-[2px] bg-danger/10 border border-danger/30 text-danger text-sm">
           <AlertCircle className="w-4 h-4" />
           {error}
           <button onClick={() => setError(null)} className="ml-auto">
@@ -145,7 +145,7 @@ const AnnotatePage: FC = () => {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="搜索已批准的洞见..."
-                className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl pl-10 pr-4 py-2 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:border-info/40 transition-colors"
+                className="w-full bg-white/[0.03] border border-white/[0.08] rounded-[2px] pl-10 pr-4 py-2 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:border-info/40 transition-colors"
               />
             </div>
           </div>
@@ -167,7 +167,7 @@ const AnnotatePage: FC = () => {
           <p className="text-text-muted text-xs mt-1">先去碰撞页面批准碰撞结果</p>
           <button
             onClick={() => navigate('/pipeline/collision')}
-            className="mt-4 px-4 py-2 bg-white/[0.05] border border-white/[0.08] rounded-xl text-xs text-text-primary hover:bg-white/[0.08] transition-colors flex items-center gap-1.5"
+            className="mt-4 px-4 py-2 bg-white/[0.05] border border-white/[0.08] rounded-[2px] text-xs text-text-primary hover:bg-white/[0.08] transition-colors flex items-center gap-1.5"
           >
             去碰撞 <ArrowRight className="w-3 h-3" />
           </button>
@@ -204,7 +204,7 @@ const AnnotatePage: FC = () => {
                 <div className="flex flex-col gap-2 shrink-0">
                   <button
                     onClick={() => setEditingItem(item)}
-                    className="flex items-center justify-center gap-1.5 px-3 py-1.5 bg-personal-primary/10 border border-personal-primary/30 rounded-lg text-xs text-personal-primary hover:bg-personal-primary/20 transition-colors"
+                    className="flex items-center justify-center gap-1.5 px-3 py-1.5 bg-personal-primary/10 border border-personal-primary/30 rounded-[2px] text-xs text-personal-primary hover:bg-personal-primary/20 transition-colors"
                     title="编辑这条知识的个人语境"
                   >
                     <Pencil className="w-3.5 h-3.5" />
@@ -212,7 +212,7 @@ const AnnotatePage: FC = () => {
                   </button>
                   <button
                     onClick={() => navigate(`/social-brain/practice-records?target_id=${item.content_id}&target_type=knowledge_unit`)}
-                    className="flex items-center justify-center gap-1.5 px-3 py-1.5 bg-amber-400/10 border border-amber-400/30 rounded-lg text-xs text-amber-400 hover:bg-amber-400/20 transition-colors"
+                    className="flex items-center justify-center gap-1.5 px-3 py-1.5 bg-warning/10 border border-warning/30 rounded-[2px] text-xs text-warning hover:bg-warning/20 transition-colors"
                     title="记录这条知识的落地实践"
                   >
                     <Dumbbell className="w-3.5 h-3.5" />
@@ -220,7 +220,7 @@ const AnnotatePage: FC = () => {
                   </button>
                   <button
                     onClick={() => navigate(`/social-brain/evolution-track?id=${item.content_id}`)}
-                    className="flex items-center justify-center gap-1.5 px-3 py-1.5 bg-purple-400/10 border border-purple-400/30 rounded-lg text-xs text-purple-400 hover:bg-purple-400/20 transition-colors"
+                    className="flex items-center justify-center gap-1.5 px-3 py-1.5 bg-fusion-primary/10 border border-fusion-primary/30 rounded-[2px] text-xs text-fusion-primary hover:bg-fusion-primary/20 transition-colors"
                     title="查看这条知识从采集到注卡的进化轨迹"
                   >
                     <TrendingUp className="w-3.5 h-3.5" />

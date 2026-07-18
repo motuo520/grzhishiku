@@ -86,9 +86,6 @@ const SubMenuPanel: FC = () => {
           exit={{ height: 0, opacity: 0 }}
           transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}
           className="overflow-hidden bg-bg-secondary border-b border-border-color z-30 relative"
-          style={{
-            boxShadow: '0 20px 40px rgba(0, 0, 0, 0.4)',
-          }}
         >
           <div className="w-full px-6 py-3">
             <div className="flex items-center justify-between mb-3">
@@ -98,7 +95,7 @@ const SubMenuPanel: FC = () => {
               </div>
               <button
                 onClick={(e) => { e.stopPropagation(); closeSubMenu(); }}
-                className="p-1.5 rounded-lg hover:bg-bg-tertiary text-text-secondary hover:text-text-primary transition-colors pointer-events-auto"
+                className="p-1.5 rounded-[2px] hover:bg-bg-tertiary text-text-secondary hover:text-text-primary transition-colors pointer-events-auto"
               >
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
               </button>
@@ -129,9 +126,9 @@ const SubMenuPanel: FC = () => {
                           transition={{ delay: index * 0.04 }}
                           onClick={() => handleItemClick(item.path)}
                           type="button"
-                          className="flex flex-col items-center gap-1.5 p-2 rounded-xl liquid-glass bg-bg-secondary transition-all duration-300 group overflow-hidden min-h-[66px]"
+                          className="flex flex-col items-center gap-1.5 p-2 rounded-[2px] liquid-glass bg-bg-secondary transition-all duration-300 group overflow-hidden min-h-[66px]"
                         >
-                          <div className="relative z-10 w-6 h-6 rounded-lg bg-bg-tertiary flex items-center justify-center text-info group-hover:bg-bg-hover transition-all duration-300 shrink-0">
+                          <div className="relative z-10 w-6 h-6 rounded-[2px] bg-bg-tertiary flex items-center justify-center text-info group-hover:bg-bg-hover transition-all duration-300 shrink-0">
                             {(() => {
                               const Icon = ICON_MAP[item.icon] || Brain;
                               return <Icon className="w-3.5 h-3.5" />;

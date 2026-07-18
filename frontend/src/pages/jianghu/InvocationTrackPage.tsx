@@ -58,24 +58,24 @@ const InvocationTrackPage: FC = () => {
       value: health ? `${Math.round((health.daily_active_rate || 0) * 100)}%` : '--',
       sub: health ? `${health.total_items} 条知识` : '',
       icon: Flame,
-      color: 'text-orange-400',
-      bg: 'bg-orange-400/10',
+      color: 'text-warning',
+      bg: 'bg-warning/10',
     },
     {
       label: '平均调用',
       value: health ? `${health.avg_invoke_count ?? 0}` : '--',
       sub: '每条知识',
       icon: TrendingUp,
-      color: 'text-cyan-400',
-      bg: 'bg-cyan-400/10',
+      color: 'text-network-primary',
+      bg: 'bg-network-primary/10',
     },
     {
       label: '高频价值',
       value: health ? `${health.high_value_items ?? 0}` : '--',
       sub: '深度≥3 且 调用≥5',
       icon: Trophy,
-      color: 'text-yellow-400',
-      bg: 'bg-yellow-400/10',
+      color: 'text-warning',
+      bg: 'bg-warning/10',
     },
     {
       label: '沉睡知识',
@@ -93,7 +93,7 @@ const InvocationTrackPage: FC = () => {
     <div className="p-6 max-w-6xl mx-auto space-y-6">
       <div className="flex items-center justify-between flex-wrap gap-4">
         <h1 className="text-xl font-semibold text-text-primary flex items-center gap-2">
-          <Activity className="w-5 h-5 text-cyan-400" />
+          <Activity className="w-5 h-5 text-network-primary" />
           调用追踪
         </h1>
         <div className="flex items-center gap-2">
@@ -101,7 +101,7 @@ const InvocationTrackPage: FC = () => {
             <button
               key={r}
               onClick={() => setTimeRange(r)}
-              className={`px-3 py-1.5 rounded-lg text-xs border transition-all ${
+              className={`px-3 py-1.5 rounded-[2px] text-xs border transition-all ${
                 timeRange === r
                   ? 'bg-info/15 text-info border-info/30'
                   : 'bg-white/[0.03] text-text-secondary border-white/[0.06] hover:bg-white/[0.06]'
@@ -129,7 +129,7 @@ const InvocationTrackPage: FC = () => {
                 </div>
                 {card.sub && <div className="text-xs text-text-muted mt-1">{card.sub}</div>}
               </div>
-              <div className={`p-2.5 rounded-xl ${card.bg}`}>
+              <div className={`p-2.5 rounded-[2px] ${card.bg}`}>
                 <card.icon className={`w-5 h-5 ${card.color}`} />
               </div>
             </div>
@@ -142,14 +142,14 @@ const InvocationTrackPage: FC = () => {
           <div className="glass-card p-4">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-sm font-medium text-text-primary flex items-center gap-2">
-                <Trophy className="w-4 h-4 text-yellow-400" /> 调用排行榜
+                <Trophy className="w-4 h-4 text-warning" /> 调用排行榜
               </h2>
               <span className="text-xs text-text-muted">按调用次数排序</span>
             </div>
             {isLoading ? (
               <div className="space-y-2">
                 {Array.from({ length: 5 }).map((_, i) => (
-                  <div key={i} className="h-12 bg-white/5 rounded-xl animate-pulse" />
+                  <div key={i} className="h-12 bg-white/5 rounded-[2px] animate-pulse" />
                 ))}
               </div>
             ) : (topUnits || []).length === 0 ? (
@@ -163,12 +163,12 @@ const InvocationTrackPage: FC = () => {
                   <div
                     key={unit.id}
                     onClick={() => navigate(`/knowledge/${unit.id}`)}
-                    className="flex items-center gap-3 p-3 rounded-xl bg-white/[0.02] hover:bg-white/[0.05] border border-white/[0.04] hover:border-info/20 cursor-pointer transition-all"
+                    className="flex items-center gap-3 p-3 rounded-[2px] bg-white/[0.02] hover:bg-white/[0.05] border border-white/[0.04] hover:border-info/20 cursor-pointer transition-all"
                   >
-                    <div className={`w-6 h-6 flex items-center justify-center rounded-lg text-xs font-bold ${
-                      index === 0 ? 'bg-yellow-400/15 text-yellow-400' :
+                    <div className={`w-6 h-6 flex items-center justify-center rounded-[2px] text-xs font-bold ${
+                      index === 0 ? 'bg-warning/15 text-warning' :
                       index === 1 ? 'bg-gray-300/15 text-gray-300' :
-                      index === 2 ? 'bg-orange-400/15 text-orange-400' :
+                      index === 2 ? 'bg-warning/15 text-warning' :
                       'bg-white/[0.05] text-text-muted'
                     }`}>
                       {index + 1}
@@ -190,7 +190,7 @@ const InvocationTrackPage: FC = () => {
                       </div>
                     </div>
                     <div className="text-right shrink-0">
-                      <div className="text-sm font-semibold text-cyan-400">{unit.invoke_count || 0}</div>
+                      <div className="text-sm font-semibold text-network-primary">{unit.invoke_count || 0}</div>
                       <div className="text-xs text-text-muted">次调用</div>
                     </div>
                   </div>
@@ -206,7 +206,7 @@ const InvocationTrackPage: FC = () => {
               <BarChart3 className="w-4 h-4 text-info" /> 进化分布
             </h2>
             {isLoading || !distribution ? (
-              <div className="h-32 bg-white/5 rounded-xl animate-pulse" />
+              <div className="h-32 bg-white/5 rounded-[2px] animate-pulse" />
             ) : (
               <div className="space-y-3">
                 {Object.entries(distribution).map(([stage, count]) => {
@@ -220,7 +220,7 @@ const InvocationTrackPage: FC = () => {
                       </div>
                       <div className="h-2 bg-white/[0.05] rounded-full overflow-hidden">
                         <div
-                          className="h-full bg-gradient-to-r from-info to-network-secondary rounded-full transition-all"
+                          className="h-full bg-accent rounded-full transition-all"
                           style={{ width: `${pct}%` }}
                         />
                       </div>
@@ -245,7 +245,7 @@ const InvocationTrackPage: FC = () => {
                   <div
                     key={unit.id}
                     onClick={() => navigate(`/knowledge/${unit.id}`)}
-                    className="flex items-center justify-between p-2.5 rounded-lg bg-white/[0.02] hover:bg-white/[0.05] cursor-pointer transition-all"
+                    className="flex items-center justify-between p-2.5 rounded-[2px] bg-white/[0.02] hover:bg-white/[0.05] cursor-pointer transition-all"
                   >
                     <div className="text-xs text-text-primary truncate pr-2">{unit.content_raw}</div>
                     <div className="text-xs font-medium text-success shrink-0">深度 {unit.practice_depth}</div>

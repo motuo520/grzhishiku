@@ -82,14 +82,19 @@ const Dashboard: FC = () => {
     },
   ];
 
+  const dateStr = new Date().toLocaleDateString('zh-CN', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    weekday: 'long',
+  });
+
   return (
     <div className="p-6 max-w-7xl mx-auto space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl sm:text-4xl font-bold text-text-primary tracking-tight">欢迎回到你的第二大脑</h1>
-          <p className="text-text-secondary mt-2 text-lg">记忆、注意力与创造力在此交汇。今天，你想沉淀什么？</p>
-        </div>
-        <div className="flex items-center gap-2">
+      <div className="border-b border-border-light pb-5">
+        <div className="eyebrow mb-2">{dateStr}</div>
+        <div className="flex items-end justify-between gap-4">
+          <h1 className="text-3xl sm:text-4xl font-bold text-text-primary tracking-tight">欢迎回来</h1>
           <span className={`badge-${brainSide === 'network' ? 'network' : brainSide === 'both' ? 'fusion' : 'personal'}`}>
             {brainSide === 'network' ? 'Network Brain' : brainSide === 'both' ? 'Dual Brain' : 'Personal Brain'}
           </span>
@@ -98,17 +103,13 @@ const Dashboard: FC = () => {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {stats.map((stat, i) => (
-          <div key={i} className="card hover:border-border-color hover:bg-bg-tertiary transition-all">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className={`p-2 rounded-lg bg-bg-secondary ${stat.color}`}>
-                  <stat.icon className="w-5 h-5" />
-                </div>
-                <div>
-                  <div className="text-2xl font-bold text-text-primary">{stat.value}</div>
-                  <div className="text-sm text-text-secondary">{stat.label}</div>
-                </div>
+          <div key={i} className="card transition-colors">
+            <div className="flex items-start justify-between">
+              <div>
+                <div className="eyebrow">{stat.label}</div>
+                <div className="text-3xl font-bold text-text-primary mt-2">{stat.value}</div>
               </div>
+              <stat.icon className={`w-5 h-5 ${stat.color} opacity-70`} />
             </div>
           </div>
         ))}
@@ -116,14 +117,14 @@ const Dashboard: FC = () => {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="card">
-          <h3 className="text-lg font-semibold text-text-primary mb-4">最近活动</h3>
+          <h3 className="text-lg font-semibold text-text-primary mb-4 pb-3 border-b border-border-light">最近活动</h3>
           <div className="flex items-center justify-center h-48 text-text-secondary">
             <p>暂无最近活动</p>
           </div>
         </div>
 
         <div className="card">
-          <h3 className="text-lg font-semibold text-text-primary mb-4">知识分布</h3>
+          <h3 className="text-lg font-semibold text-text-primary mb-4 pb-3 border-b border-border-light">知识分布</h3>
           <div className="flex items-center justify-center h-48">
             <div className="relative w-32 h-32">
               <div className="absolute inset-0 rounded-full border-8 border-network-primary/30" />

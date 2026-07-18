@@ -65,7 +65,7 @@ const AnnotateCardModal: FC<AnnotateCardModalProps> = ({
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
           onClick={onClose}
         >
           <motion.div
@@ -73,7 +73,7 @@ const AnnotateCardModal: FC<AnnotateCardModalProps> = ({
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
             onClick={(e) => e.stopPropagation()}
-            className="w-full max-w-2xl bg-bg-secondary border border-border-color rounded-2xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col"
+            className="w-full max-w-2xl bg-bg-secondary border border-border-color rounded-[2px] overflow-hidden max-h-[90vh] flex flex-col"
           >
             <form onSubmit={handleSubmit} className="flex flex-col h-full">
               <div className="flex items-center justify-between px-5 py-4 border-b border-border-color shrink-0">
@@ -84,7 +84,7 @@ const AnnotateCardModal: FC<AnnotateCardModalProps> = ({
                 <button
                   type="button"
                   onClick={onClose}
-                  className="p-1 rounded-lg hover:bg-white/[0.05] text-text-muted"
+                  className="p-1 rounded-[2px] hover:bg-white/[0.05] text-text-muted"
                 >
                   <X className="w-4 h-4" />
                 </button>
@@ -97,7 +97,7 @@ const AnnotateCardModal: FC<AnnotateCardModalProps> = ({
                     value={contentRaw}
                     onChange={(e) => setContentRaw(e.target.value)}
                     rows={4}
-                    className="w-full bg-bg-primary border border-border-color rounded-xl p-3 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:border-info/40 transition-colors resize-none"
+                    className="w-full bg-bg-primary border border-border-color rounded-[2px] p-3 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:border-info/40 transition-colors resize-none"
                     placeholder="记录这个洞见的核心内容..."
                   />
                 </div>
@@ -108,7 +108,7 @@ const AnnotateCardModal: FC<AnnotateCardModalProps> = ({
                     value={contentProcessed}
                     onChange={(e) => setContentProcessed(e.target.value)}
                     rows={4}
-                    className="w-full bg-bg-primary border border-border-color rounded-xl p-3 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:border-info/40 transition-colors resize-none"
+                    className="w-full bg-bg-primary border border-border-color rounded-[2px] p-3 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:border-info/40 transition-colors resize-none"
                     placeholder="它让我想到什么？当时的情绪、身体状态、下一步行动..."
                   />
                 </div>
@@ -134,7 +134,7 @@ const AnnotateCardModal: FC<AnnotateCardModalProps> = ({
                     <select
                       value={practiceDepth}
                       onChange={(e) => setPracticeDepth(parseInt(e.target.value, 10))}
-                      className="w-full bg-bg-primary border border-border-color rounded-xl px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-info/40"
+                      className="w-full bg-bg-primary border border-border-color rounded-[2px] px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-info/40"
                     >
                       {[0, 1, 2, 3, 4, 5].map((n) => (
                         <option key={n} value={n}>
@@ -150,7 +150,7 @@ const AnnotateCardModal: FC<AnnotateCardModalProps> = ({
                   <select
                     value={evolutionStage}
                     onChange={(e) => setEvolutionStage(e.target.value)}
-                    className="w-full bg-bg-primary border border-border-color rounded-xl px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-info/40"
+                    className="w-full bg-bg-primary border border-border-color rounded-[2px] px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-info/40"
                   >
                     {EVOLUTION_STAGES.map((s) => (
                       <option key={s.value} value={s.value}>
@@ -165,14 +165,14 @@ const AnnotateCardModal: FC<AnnotateCardModalProps> = ({
                 <button
                   type="button"
                   onClick={onClose}
-                  className="px-4 py-2 rounded-xl text-xs text-text-secondary hover:bg-white/[0.05] transition-colors"
+                  className="px-4 py-2 rounded-[2px] text-xs text-text-secondary hover:bg-white/[0.05] transition-colors"
                 >
                   取消
                 </button>
                 <button
                   type="submit"
                   disabled={isSaving}
-                  className="flex items-center gap-2 px-4 py-2 bg-personal-primary text-white rounded-xl text-xs font-medium hover:bg-personal-primary/90 transition-colors disabled:opacity-60"
+                  className="flex items-center gap-2 px-4 py-2 bg-personal-primary text-white rounded-[2px] text-xs font-medium hover:bg-personal-primary/90 transition-colors disabled:opacity-60"
                 >
                   {isSaving ? (
                     <Loader2 className="w-3.5 h-3.5 animate-spin" />

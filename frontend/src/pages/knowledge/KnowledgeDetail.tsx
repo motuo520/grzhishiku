@@ -140,13 +140,13 @@ const KnowledgeDetail: FC = () => {
       <AnimatePresence>
         {errorMsg && (
           <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-danger/10 border border-danger/20 text-danger text-sm">
+            className="flex items-center gap-2 px-4 py-2.5 rounded-[2px] bg-danger/10 border border-danger/20 text-danger text-sm">
             <AlertCircle className="w-4 h-4" /> {errorMsg}
           </motion.div>
         )}
         {successMsg && (
           <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-success/10 border border-success/20 text-success text-sm">
+            className="flex items-center gap-2 px-4 py-2.5 rounded-[2px] bg-success/10 border border-success/20 text-success text-sm">
             <CheckCircle2 className="w-4 h-4" /> {successMsg}
           </motion.div>
         )}
@@ -154,7 +154,7 @@ const KnowledgeDetail: FC = () => {
 
       <div className="flex items-center gap-3">
         <button onClick={() => navigate(fromPath || '/knowledge/network')}
-          className="p-2 bg-white/[0.03] border border-white/[0.08] rounded-lg text-text-secondary hover:text-text-primary hover:bg-white/[0.06] transition-all">
+          className="p-2 bg-white/[0.03] border border-white/[0.08] rounded-[2px] text-text-secondary hover:text-text-primary hover:bg-white/[0.06] transition-all">
           <ArrowLeft className="w-4 h-4" />
         </button>
         <div className="flex items-center gap-2">
@@ -334,23 +334,23 @@ const KnowledgeDetail: FC = () => {
               <LLMCostBadge modelId={modelId} inputText={unit.content_raw} outputTokenEstimate={600} className="w-full" />
             </div>
             <button onClick={handleVerify} disabled={isVerifying}
-              className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-info to-network-secondary text-white rounded-xl text-sm font-medium hover:shadow-[0_0_20px_rgba(88,166,255,0.4)] transition-all disabled:opacity-60 disabled:cursor-not-allowed">
+              className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-accent text-white rounded-[2px] text-sm font-medium hover:bg-[var(--accent-hover)] transition-all disabled:opacity-60 disabled:cursor-not-allowed">
               {isVerifying ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
               {isVerifying ? '验证中...' : '触发验证'}
             </button>
             <button onClick={() => setShowCounterForm((s) => !s)}
-              className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-white/[0.05] text-warning border border-warning/20 rounded-xl text-sm font-medium hover:bg-warning/10 transition-all">
+              className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-white/[0.05] text-warning border border-warning/20 rounded-[2px] text-sm font-medium hover:bg-warning/10 transition-all">
               <AlertTriangle className="w-4 h-4" /> 添加反证
             </button>
             <AnimatePresence>
               {showCounterForm && (
                 <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden space-y-2">
                   <textarea value={counterText} onChange={(e) => setCounterText(e.target.value)} placeholder="输入反证内容..." rows={3}
-                    className="w-full bg-white/[0.03] border border-white/[0.08] rounded-lg px-3 py-2 text-xs text-text-primary placeholder-text-muted focus:outline-none focus:border-warning/40 transition-colors resize-none" />
+                    className="w-full bg-white/[0.03] border border-white/[0.08] rounded-[2px] px-3 py-2 text-xs text-text-primary placeholder-text-muted focus:outline-none focus:border-warning/40 transition-colors resize-none" />
                   <input type="text" value={counterUrl} onChange={(e) => setCounterUrl(e.target.value)} placeholder="反证来源 URL（可选）"
-                    className="w-full bg-white/[0.03] border border-white/[0.08] rounded-lg px-3 py-2 text-xs text-text-primary placeholder-text-muted focus:outline-none focus:border-warning/40 transition-colors" />
+                    className="w-full bg-white/[0.03] border border-white/[0.08] rounded-[2px] px-3 py-2 text-xs text-text-primary placeholder-text-muted focus:outline-none focus:border-warning/40 transition-colors" />
                   <button onClick={handleCounterEvidence} disabled={isSubmittingEvidence || !counterText.trim()}
-                    className="w-full px-3 py-2 bg-warning/15 text-warning border border-warning/30 rounded-lg text-xs font-medium hover:bg-warning/25 transition-all disabled:opacity-50">
+                    className="w-full px-3 py-2 bg-warning/15 text-warning border border-warning/30 rounded-[2px] text-xs font-medium hover:bg-warning/25 transition-all disabled:opacity-50">
                     {isSubmittingEvidence ? '提交中...' : '提交反证'}
                   </button>
                 </motion.div>

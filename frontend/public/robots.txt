@@ -1,0 +1,27 @@
+# 第二大脑 · 个人知识库 — robots
+User-agent: *
+Allow: /$
+Allow: /welcome
+
+# 应用区（登录后）与接口不收录
+Disallow: /app
+Disallow: /admin
+Disallow: /api
+Disallow: /ingest
+Disallow: /graph
+Disallow: /search
+Disallow: /settings
+Disallow: /payment
+Disallow: /topup
+Disallow: /knowledge
+Disallow: /capsules
+Disallow: /attention
+Disallow: /cognitive
+Disallow: /emergence
+Disallow: /jianghu
+Disallow: /pipeline
+Disallow: /social-brain
+Disallow: /embodied-cognition
+Disallow: /community
+
+Sitemap: https://grzhishiku.com/sitemap.xml

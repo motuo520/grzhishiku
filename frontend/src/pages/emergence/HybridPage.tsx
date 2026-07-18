@@ -92,10 +92,10 @@ const HybridPage: FC = () => {
   };
 
   const scoreBarColor = (score: number) => {
-    if (score <= 3) return '#3fb950';
-    if (score <= 6) return '#d29922';
-    if (score <= 8) return '#f85149';
-    return '#a371f7';
+    if (score <= 3) return '#7d8f6a';
+    if (score <= 6) return '#b08a3e';
+    if (score <= 8) return '#b03a2e';
+    return '#7d8f6a';
   };
 
   return (
@@ -221,7 +221,7 @@ const HybridPage: FC = () => {
                       initial={{ opacity: 0, x: -10 }}
                       animate={{ opacity: 1, x: 0 }}
                       transition={{ delay: i * 0.1 }}
-                      className="flex items-start gap-3 p-3 rounded-lg bg-white/[0.02] border border-white/[0.05]"
+                      className="flex items-start gap-3 p-3 rounded-[2px] bg-white/[0.02] border border-white/[0.05]"
                     >
                       <div className="p-1 rounded-full bg-success/10 text-success flex-shrink-0 mt-0.5">
                         <Check className="w-3 h-3" />
@@ -242,7 +242,7 @@ const HybridPage: FC = () => {
                   {result.applications?.map((app, i) => (
                     <div
                       key={i}
-                      className="p-4 rounded-xl bg-white/[0.02] border border-white/[0.05]"
+                      className="p-4 rounded-[2px] bg-white/[0.02] border border-white/[0.05]"
                     >
                       <span className="text-xs text-fusion-primary font-bold mb-2 block">场景 {i + 1}</span>
                       <p className="text-sm text-text-primary">{app}</p>
@@ -310,7 +310,7 @@ const HybridPage: FC = () => {
                   <div
                     key={item.id}
                     onClick={() => handleLoadHistory(item)}
-                    className="p-3 rounded-lg bg-white/[0.02] border border-white/[0.05] hover:border-fusion-primary/30 cursor-pointer transition-colors"
+                    className="p-3 rounded-[2px] bg-white/[0.02] border border-white/[0.05] hover:border-fusion-primary/30 cursor-pointer transition-colors"
                   >
                     <div className="flex items-center justify-between mb-1">
                       <span className="text-xs text-text-muted">

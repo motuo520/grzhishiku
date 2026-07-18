@@ -155,7 +155,7 @@ const CollisionPage: FC = () => {
                   return (
                     <div
                       key={p}
-                      className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-sm border ${stance.bg} ${stance.border}`}
+                      className={`flex items-center gap-1 px-3 py-1.5 rounded-[2px] text-sm border ${stance.bg} ${stance.border}`}
                     >
                       <span className={stance.text}>{p}</span>
                       <button
@@ -233,7 +233,7 @@ const CollisionPage: FC = () => {
                       className={`glass-card p-4 border ${stance.border}`}
                     >
                       <div className="flex items-center gap-2 mb-2">
-                        <span className={`px-2 py-0.5 text-xs font-bold rounded-full ${stance.bg} ${stance.text}`}>
+                        <span className={`px-2 py-0.5 text-xs font-bold rounded-[2px] ${stance.bg} ${stance.text}`}>
                           {stance.label}
                         </span>
                         <span className="text-sm font-bold text-text-primary">{p.role}</span>
@@ -261,7 +261,7 @@ const CollisionPage: FC = () => {
                       className={`flex ${i % 2 === 0 ? 'justify-start' : 'justify-end'}`}
                     >
                       <div
-                        className={`max-w-[80%] p-3 rounded-xl text-sm ${
+                        className={`max-w-[80%] p-3 rounded-[2px] text-sm ${
                           i % 2 === 0
                             ? 'bg-white/[0.03] border border-white/[0.08] text-text-primary rounded-tl-sm'
                             : 'bg-info/10 border border-info/20 text-info rounded-tr-sm'
@@ -334,7 +334,7 @@ const CollisionPage: FC = () => {
                   <div
                     key={item.id}
                     onClick={() => handleLoadHistory(item)}
-                    className="p-3 rounded-lg bg-white/[0.02] border border-white/[0.05] hover:border-warning/30 cursor-pointer transition-colors"
+                    className="p-3 rounded-[2px] bg-white/[0.02] border border-white/[0.05] hover:border-warning/30 cursor-pointer transition-colors"
                   >
                     <div className="flex items-center justify-between mb-1">
                       <span className="text-xs text-text-muted">

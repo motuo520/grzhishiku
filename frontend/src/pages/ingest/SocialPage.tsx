@@ -12,9 +12,9 @@ import TagSelector from '@/components/TagSelector';
 import type { SocialAccount, SocialMessage } from '@/api/social';
 
 const PROVIDER_OPTIONS: { key: SocialAccount['provider']; label: string; color: string; ext: string }[] = [
-  { key: 'wechat', label: '微信', color: 'text-emerald-400', ext: '.txt / .csv / .html / .zip' },
-  { key: 'dingtalk', label: '钉钉', color: 'text-blue-400', ext: '.txt / .csv / .html' },
-  { key: 'feishu', label: '飞书', color: 'text-indigo-400', ext: '.txt / .csv / .json / .html' },
+  { key: 'wechat', label: '微信', color: 'text-success', ext: '.txt / .csv / .html / .zip' },
+  { key: 'dingtalk', label: '钉钉', color: 'text-network-primary', ext: '.txt / .csv / .html' },
+  { key: 'feishu', label: '飞书', color: 'text-network-primary', ext: '.txt / .csv / .json / .html' },
 ];
 
 const PROVIDER_LABEL: Record<string, string> = {
@@ -206,7 +206,7 @@ const SocialPage: FC = () => {
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
-            className="flex items-center gap-2 px-4 py-3 rounded-xl bg-danger/10 border border-danger/30 text-danger text-sm"
+            className="flex items-center gap-2 px-4 py-3 rounded-[2px] bg-danger/10 border border-danger/30 text-danger text-sm"
           >
             <AlertCircle className="w-4 h-4" />
             {error}
@@ -220,7 +220,7 @@ const SocialPage: FC = () => {
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
-            className="flex items-center gap-2 px-4 py-3 rounded-xl bg-success/10 border border-success/30 text-success text-sm"
+            className="flex items-center gap-2 px-4 py-3 rounded-[2px] bg-success/10 border border-success/30 text-success text-sm"
           >
             <Check className="w-4 h-4" />
             {success}
@@ -248,7 +248,7 @@ const SocialPage: FC = () => {
               return (
                 <div
                   key={account.id}
-                  className={`flex flex-col p-3 rounded-xl border transition-colors ${
+                  className={`flex flex-col p-3 rounded-[2px] border transition-colors ${
                     selectedAccountId === account.id ? 'border-info/50 bg-info/5' : 'border-border-color bg-bg-primary'
                   }`}
                 >
@@ -283,7 +283,7 @@ const SocialPage: FC = () => {
                     </div>
                     <div className="flex items-center gap-1 shrink-0">
                       <label
-                        className={`p-1.5 rounded-lg hover:bg-white/[0.05] text-text-muted hover:text-info transition-colors cursor-pointer ${isUploading ? 'opacity-50 pointer-events-none' : ''}`}
+                        className={`p-1.5 rounded-[2px] hover:bg-white/[0.05] text-text-muted hover:text-info transition-colors cursor-pointer ${isUploading ? 'opacity-50 pointer-events-none' : ''}`}
                         title="上传导出文件"
                       >
                         <Upload className="w-4 h-4" />
@@ -301,7 +301,7 @@ const SocialPage: FC = () => {
                       <button
                         onClick={() => handleDeleteAccount(account.id)}
                         disabled={isDeleting}
-                        className="p-1.5 rounded-lg hover:bg-white/[0.05] text-text-muted hover:text-danger transition-colors disabled:opacity-50"
+                        className="p-1.5 rounded-[2px] hover:bg-white/[0.05] text-text-muted hover:text-danger transition-colors disabled:opacity-50"
                         title="删除导入源"
                       >
                         <Trash2 className="w-4 h-4" />
@@ -326,7 +326,7 @@ const SocialPage: FC = () => {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="搜索消息内容、发送者或会话名称..."
-              className="w-full bg-bg-secondary border border-border-color rounded-xl pl-10 pr-4 py-2.5 text-sm text-text-primary placeholder-text-secondary focus:outline-none focus:border-info/50 transition-colors"
+              className="w-full bg-bg-secondary border border-border-color rounded-[2px] pl-10 pr-4 py-2.5 text-sm text-text-primary placeholder-text-secondary focus:outline-none focus:border-info/50 transition-colors"
             />
           </div>
           {selectedAccountId && (
@@ -375,10 +375,10 @@ const SocialPage: FC = () => {
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, scale: 0.95 }}
-                        className="group p-3 rounded-xl bg-bg-primary border border-border-color/50 hover:border-border-color transition-colors"
+                        className="group p-3 rounded-[2px] bg-bg-primary border border-border-color/50 hover:border-border-color transition-colors"
                       >
                         <div className="flex items-start gap-3">
-                          <div className="mt-0.5 p-1.5 rounded-lg bg-bg-tertiary text-text-secondary shrink-0">
+                          <div className="mt-0.5 p-1.5 rounded-[2px] bg-bg-tertiary text-text-secondary shrink-0">
                             <MessageCircle className="w-4 h-4" />
                           </div>
                           <div className="flex-1 min-w-0">
@@ -413,7 +413,7 @@ const SocialPage: FC = () => {
                           <div className="flex items-center gap-1 shrink-0">
                             <button
                               onClick={() => openDetail(msg)}
-                              className="p-1.5 rounded-lg hover:bg-white/[0.05] text-text-muted hover:text-info transition-colors"
+                              className="p-1.5 rounded-[2px] hover:bg-white/[0.05] text-text-muted hover:text-info transition-colors"
                               title="查看详情"
                             >
                               <Eye className="w-4 h-4" />
@@ -421,7 +421,7 @@ const SocialPage: FC = () => {
                             <button
                               onClick={() => handleQuickSaveToKnowledge(msg)}
                               disabled={isSavingToKnowledge}
-                              className="p-1.5 rounded-lg hover:bg-white/[0.05] text-text-muted hover:text-success transition-colors disabled:opacity-50"
+                              className="p-1.5 rounded-[2px] hover:bg-white/[0.05] text-text-muted hover:text-success transition-colors disabled:opacity-50"
                               title="保存到知识库"
                             >
                               {isSavingToKnowledge ? <Loader2 className="w-4 h-4 animate-spin" /> : <BookOpen className="w-4 h-4" />}
@@ -429,7 +429,7 @@ const SocialPage: FC = () => {
                             <button
                               onClick={() => handleDeleteMessage(msg.id)}
                               disabled={isDeletingMessage}
-                              className="p-1.5 rounded-lg hover:bg-white/[0.05] text-text-muted hover:text-danger transition-colors disabled:opacity-50"
+                              className="p-1.5 rounded-[2px] hover:bg-white/[0.05] text-text-muted hover:text-danger transition-colors disabled:opacity-50"
                               title="删除"
                             >
                               <Trash2 className="w-4 h-4" />
@@ -453,7 +453,7 @@ const SocialPage: FC = () => {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
             onClick={() => setIsAddAccountOpen(false)}
           >
             <motion.div
@@ -461,11 +461,11 @@ const SocialPage: FC = () => {
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
               onClick={(e) => e.stopPropagation()}
-              className="w-full max-w-lg bg-bg-secondary border border-border-color rounded-2xl shadow-2xl overflow-hidden"
+              className="w-full max-w-lg bg-bg-secondary border border-border-color rounded-[2px] overflow-hidden"
             >
               <div className="flex items-center justify-between px-5 py-4 border-b border-border-color">
                 <h3 className="text-sm font-medium text-text-primary">添加社交导入源</h3>
-                <button onClick={() => setIsAddAccountOpen(false)} className="p-1 rounded-lg hover:bg-white/[0.05] text-text-muted">
+                <button onClick={() => setIsAddAccountOpen(false)} className="p-1 rounded-[2px] hover:bg-white/[0.05] text-text-muted">
                   <X className="w-4 h-4" />
                 </button>
               </div>
@@ -477,7 +477,7 @@ const SocialPage: FC = () => {
                       <button
                         key={p.key}
                         onClick={() => setProvider(p.key)}
-                        className={`flex flex-col items-center gap-2 p-3 rounded-xl border transition-all ${
+                        className={`flex flex-col items-center gap-2 p-3 rounded-[2px] border transition-all ${
                           provider === p.key
                             ? 'border-info/50 bg-info/10 text-white'
                             : 'border-border-color bg-bg-primary text-text-secondary hover:border-info/30'
@@ -498,10 +498,10 @@ const SocialPage: FC = () => {
                     value={accountName}
                     onChange={(e) => setAccountName(e.target.value)}
                     placeholder="例如：工作群、家庭群"
-                    className="w-full bg-bg-primary border border-border-color rounded-xl px-4 py-2.5 text-sm text-text-primary placeholder-text-secondary focus:outline-none focus:border-info/50 transition-colors"
+                    className="w-full bg-bg-primary border border-border-color rounded-[2px] px-4 py-2.5 text-sm text-text-primary placeholder-text-secondary focus:outline-none focus:border-info/50 transition-colors"
                   />
                 </div>
-                <div className="rounded-xl bg-bg-primary border border-border-color p-3 space-y-2">
+                <div className="rounded-[2px] bg-bg-primary border border-border-color p-3 space-y-2">
                   <div className="text-xs text-text-muted flex items-center gap-2">
                     <Upload className="w-3.5 h-3.5" />
                     导入说明
@@ -540,7 +540,7 @@ const SocialPage: FC = () => {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
             onClick={() => setIsDetailOpen(false)}
           >
             <motion.div
@@ -548,7 +548,7 @@ const SocialPage: FC = () => {
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
               onClick={(e) => e.stopPropagation()}
-              className="w-full max-w-3xl max-h-[85vh] bg-bg-secondary border border-border-color rounded-2xl shadow-2xl overflow-hidden flex flex-col"
+              className="w-full max-w-3xl max-h-[85vh] bg-bg-secondary border border-border-color rounded-[2px] overflow-hidden flex flex-col"
             >
               <div className="flex items-center justify-between px-5 py-4 border-b border-border-color">
                 <div className="flex items-center gap-2 min-w-0">
@@ -557,7 +557,7 @@ const SocialPage: FC = () => {
                     {detailMessage.sender_name || '未知发送者'}
                   </h3>
                 </div>
-                <button onClick={() => setIsDetailOpen(false)} className="p-1 rounded-lg hover:bg-white/[0.05] text-text-muted shrink-0">
+                <button onClick={() => setIsDetailOpen(false)} className="p-1 rounded-[2px] hover:bg-white/[0.05] text-text-muted shrink-0">
                   <X className="w-4 h-4" />
                 </button>
               </div>
@@ -572,25 +572,25 @@ const SocialPage: FC = () => {
                     {formatDate(detailMessage.sent_at)}
                   </div>
                 </div>
-                <div className="bg-bg-primary border border-border-color rounded-xl p-4 max-h-96 overflow-y-auto">
+                <div className="bg-bg-primary border border-border-color rounded-[2px] p-4 max-h-96 overflow-y-auto">
                   <div className="text-sm text-text-primary whitespace-pre-wrap leading-relaxed">
                     {detailMessage.content_text || detailMessage.content_raw || '(无内容)'}
                   </div>
                 </div>
                 <div>
                   <label className="block text-xs text-text-muted mb-1.5">存入脑侧</label>
-                  <div className="inline-flex items-center gap-1 p-1 rounded-xl bg-bg-primary border border-border-color">
+                  <div className="inline-flex items-center gap-1 p-1 rounded-[2px] bg-bg-primary border border-border-color">
                     {[
-                      { value: 'personal', label: '个人脑', icon: Home, color: 'text-amber-400' },
-                      { value: 'network', label: '网络脑', icon: Globe, color: 'text-blue-400' },
-                      { value: 'both', label: '双脑', icon: Brain, color: 'text-purple-400' },
+                      { value: 'personal', label: '个人脑', icon: Home, color: 'text-personal-primary' },
+                      { value: 'network', label: '网络脑', icon: Globe, color: 'text-network-primary' },
+                      { value: 'both', label: '双脑', icon: Brain, color: 'text-fusion-primary' },
                     ].map((opt) => {
                       const Icon = opt.icon;
                       return (
                         <button
                           key={opt.value}
                           onClick={() => setSaveBrainSide(opt.value as typeof saveBrainSide)}
-                          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-[2px] text-xs font-medium transition-all ${
                             saveBrainSide === opt.value
                               ? `${opt.color} bg-white/[0.08]`
                               : 'text-text-secondary hover:text-text-primary hover:bg-white/[0.05]'

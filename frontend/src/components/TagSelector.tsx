@@ -90,9 +90,9 @@ const TagSelector: FC<TagSelectorProps> = ({
   return (
     <div className="relative">
     <div
-      className={`min-h-[42px] w-full bg-bg-primary border rounded-xl px-3 py-2 flex flex-wrap items-center gap-2 transition-colors ${
+      className={`min-h-[42px] w-full bg-bg-primary border rounded-[2px] px-3 py-2 flex flex-wrap items-center gap-2 transition-colors ${
         disabled ? 'opacity-60 cursor-not-allowed' : ''
-      } ${isFocused ? 'border-[#58a6ff]/50' : 'border-border-color'}`}
+      } ${isFocused ? 'border-network-primary/50' : 'border-border-color'}`}
       onClick={() => !disabled && inputRef.current?.focus()}
     >
       {selectedTags.map((tag) => (
@@ -137,7 +137,7 @@ const TagSelector: FC<TagSelectorProps> = ({
 
       {/* Suggestions dropdown */}
       {isFocused && suggestions.length > 0 && (
-        <div className="absolute left-0 right-0 top-full mt-1 max-h-48 overflow-y-auto bg-bg-secondary border border-border-color rounded-xl shadow-lg z-10">
+        <div className="absolute left-0 right-0 top-full mt-1 max-h-48 overflow-y-auto bg-bg-secondary border border-border-color rounded-[2px] z-10">
           {suggestions.map((tag) => (
             <button
               key={tag.id}

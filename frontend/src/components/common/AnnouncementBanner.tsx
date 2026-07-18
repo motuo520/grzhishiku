@@ -11,18 +11,18 @@ const AnnouncementBanner: FC = () => {
   }
 
   return (
-    <div className="relative z-50 bg-bg-secondary/80 backdrop-blur-md border-b border-amber-500/20 px-4 py-2">
+    <div className="relative z-50 bg-bg-secondary/80 border-b border-warning/20 px-4 py-2">
       <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
         <div className="flex items-center gap-2 min-w-0">
-          <Megaphone className="w-4 h-4 text-amber-400 flex-shrink-0" />
-          <div className="text-sm text-amber-200 truncate">
+          <Megaphone className="w-4 h-4 text-warning flex-shrink-0" />
+          <div className="text-sm text-warning truncate">
             {data.title && <span className="font-semibold mr-2">{data.title}</span>}
-            <span className="text-amber-100/80">{data.content}</span>
+            <span className="text-warning/80">{data.content}</span>
           </div>
         </div>
         <button
           onClick={() => setDismissed(true)}
-          className="p-1 rounded-lg text-amber-400 hover:bg-amber-500/10 flex-shrink-0"
+          className="p-1 rounded-[2px] text-warning hover:bg-warning/10 flex-shrink-0"
           title="关闭"
         >
           <X className="w-4 h-4" />

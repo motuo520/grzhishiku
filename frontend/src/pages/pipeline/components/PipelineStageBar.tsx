@@ -37,7 +37,7 @@ const PipelineStageBar: FC<PipelineStageBarProps> = ({ counts, showFlowHints = t
       <div className="flex items-center gap-1.5 flex-wrap">
         <button
           onClick={() => navigate('/pipeline')}
-          className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium transition-all ${
+          className={`flex items-center gap-1.5 px-3 py-2 rounded-[2px] text-xs font-medium transition-all ${
             isOverview
               ? 'bg-info/15 text-info border border-info/30'
               : 'bg-white/[0.03] text-text-secondary border border-white/[0.08] hover:bg-white/[0.06]'
@@ -57,7 +57,7 @@ const PipelineStageBar: FC<PipelineStageBarProps> = ({ counts, showFlowHints = t
               <button
                 onClick={() => navigate(stage.path)}
                 title={`${stage.label}：从${stage.from}来，到${stage.to}去`}
-                className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium transition-all border ${
+                className={`flex items-center gap-1.5 px-3 py-2 rounded-[2px] text-xs font-medium transition-all border ${
                   isActive
                     ? 'bg-info/15 text-info border-info/30'
                     : count > 0
@@ -71,7 +71,7 @@ const PipelineStageBar: FC<PipelineStageBarProps> = ({ counts, showFlowHints = t
                 <Icon className="w-3.5 h-3.5" />
                 {stage.label}
                 {count > 0 && (
-                  <span className="ml-0.5 px-1.5 py-0.5 rounded-full bg-white/[0.08] text-[10px]">
+                  <span className="ml-0.5 px-1.5 py-0.5 rounded-[2px] bg-white/[0.08] text-[10px]">
                     {count}
                   </span>
                 )}

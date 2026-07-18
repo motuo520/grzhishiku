@@ -1,7 +1,8 @@
 import { FC, Suspense, lazy, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Brain, ArrowRight } from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
+import { SealMark } from '@/components/common/BrandLogo';
 
 // 湖光背景（底层 WebGL shader）
 const MoonlitRipple = lazy(() => import('@/components/backgrounds/MoonlitRipple'));
@@ -54,33 +55,35 @@ const WelcomePage: FC = () => {
           transition={{ duration: 0.9, ease: [0.4, 0, 0.2, 1] }}
           className="max-w-2xl mx-auto"
         >
-          {/* Logo */}
-          <div className="flex items-center justify-center mb-8">
-            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-info to-fusion-primary flex items-center justify-center shadow-[0_0_40px_rgba(88,166,255,0.35)]">
-              <Brain className="w-9 h-9 text-white" />
-            </div>
+          {/* 品牌印章 */}
+          <div className="flex items-center justify-center mb-7">
+            <SealMark size={76} />
           </div>
 
-          {/* Title */}
-          <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold text-[#e8e8e8] tracking-tight mb-2">
+          {/* 英文眉题 */}
+          <p className="text-[11px] sm:text-xs text-[#6b655c] tracking-[0.35em] uppercase mb-4">
             Personal Second Brain
+          </p>
+
+          {/* 中文大刊头 */}
+          <h1 className="text-6xl sm:text-7xl font-bold text-[#f0ebe2] tracking-[0.08em] mb-5">
+            第二大脑
           </h1>
 
           {/* Tagline */}
-          <p className="text-xl sm:text-2xl text-info font-medium tracking-wide mb-6">
+          <p className="text-xl sm:text-2xl text-[#e0704f] font-medium tracking-[0.2em] mb-6">
             个人知识库
           </p>
 
           {/* Subtitle */}
-          <p className="text-base sm:text-lg text-[#999] leading-relaxed mb-10 max-w-xl mx-auto">
-            把记忆、灵感、阅读与思考沉淀成可生长、可验证、可对话的知识网络，
-            用 AI 放大你的认知。
+          <p className="text-base sm:text-lg text-[#9a9286] leading-relaxed mb-10 max-w-xl mx-auto">
+            把记忆、灵感、阅读与思考沉淀成可生长、可验证、可对话的知识网络。
           </p>
 
-          {/* Enter button */}
+          {/* Enter button — 朱砂平面 */}
           <button
             onClick={handleEnter}
-            className="group inline-flex items-center gap-3 px-8 py-3.5 rounded-2xl bg-white/[0.06] border border-white/[0.12] text-[#e8e8e8] text-base font-medium backdrop-blur-md hover:bg-white/[0.12] hover:border-white/[0.2] hover:shadow-[0_0_40px_rgba(88,166,255,0.25)] transition-all duration-300 pointer-events-auto"
+            className="group inline-flex items-center gap-3 px-8 py-3.5 rounded-[2px] bg-accent hover:bg-[var(--accent-hover)] text-[#f6ece6] text-base font-medium transition-colors duration-200 pointer-events-auto"
           >
             进入网站
             <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
@@ -92,9 +95,9 @@ const WelcomePage: FC = () => {
           initial={{ opacity: 0 }}
           animate={{ opacity: mounted ? 1 : 0 }}
           transition={{ duration: 0.9, delay: 0.4 }}
-          className="absolute bottom-8 text-[#555] text-xs"
+          className="absolute bottom-8 text-[#6b655c] text-xs"
         >
-          Personal Second Brain · AI 增强的个人知识管理系统
+          Personal Second Brain · 个人知识管理系统
         </motion.div>
       </div>
 

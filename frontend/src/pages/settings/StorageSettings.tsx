@@ -12,17 +12,17 @@ const PROVIDERS = [
     key: 'baidu',
     name: '百度网盘',
     desc: '百度网盘开放平台，需配置 client_id / client_secret',
-    color: 'text-blue-400',
-    bg: 'bg-blue-500/10',
-    border: 'border-blue-500/20',
+    color: 'text-network-primary',
+    bg: 'bg-network-primary/10',
+    border: 'border-network-primary/20',
   },
   {
     key: 'aliyun',
     name: '阿里云盘',
     desc: '阿里云盘开放平台，需配置 client_id / client_secret',
-    color: 'text-cyan-400',
-    bg: 'bg-cyan-500/10',
-    border: 'border-cyan-500/20',
+    color: 'text-network-primary',
+    bg: 'bg-network-primary/10',
+    border: 'border-network-primary/20',
   },
 ] as const;
 
@@ -248,10 +248,10 @@ const StorageSettings: FC = () => {
   return (
     <div className="space-y-6">
       {toast && (
-        <div className={`fixed top-4 right-4 z-50 px-4 py-3 rounded-xl border backdrop-blur-xl shadow-lg ${
+        <div className={`fixed top-4 right-4 z-50 px-4 py-3 rounded-[2px] border ${
           toast.type === 'success'
-            ? 'bg-success/20 border-success/30 text-green-400'
-            : 'bg-danger/20 border-danger/30 text-red-400'
+            ? 'bg-success/20 border-success/30 text-success'
+            : 'bg-danger/20 border-danger/30 text-danger'
         }`}>
           <div className="flex items-center gap-2">
             {toast.type === 'success' ? <CheckCircle size={16} /> : <AlertTriangle size={16} />}
@@ -264,11 +264,11 @@ const StorageSettings: FC = () => {
       )}
 
       {/* Membership status */}
-      <div className={`glass-card p-6 ${isStorageMember ? 'border-amber-500/20' : ''}`}>
+      <div className={`glass-card p-6 ${isStorageMember ? 'border-warning/20' : ''}`}>
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${isStorageMember ? 'bg-amber-500/10' : 'bg-white/5'}`}>
-              {isStorageMember ? <Crown className="w-5 h-5 text-amber-400" /> : <HardDrive className="w-5 h-5 text-text-secondary" />}
+            <div className={`w-10 h-10 rounded-[2px] flex items-center justify-center ${isStorageMember ? 'bg-warning/10' : 'bg-white/5'}`}>
+              {isStorageMember ? <Crown className="w-5 h-5 text-warning" /> : <HardDrive className="w-5 h-5 text-text-secondary" />}
             </div>
             <div>
               <h2 className="text-lg font-semibold text-text-primary">
@@ -284,7 +284,7 @@ const StorageSettings: FC = () => {
           {!isStorageMember && (
             <button
               onClick={() => navigate('/payment')}
-              className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 text-white text-sm font-bold transition-all flex items-center gap-2"
+              className="px-5 py-2.5 rounded-[2px] bg-accent text-white text-sm font-bold hover:bg-[var(--accent-hover)] transition-all flex items-center gap-2"
             >
               <Crown className="w-4 h-4" />
               开通 9.9 元存储会员
@@ -329,7 +329,7 @@ const StorageSettings: FC = () => {
           打包记录
         </h3>
         {packages.length === 0 ? (
-          <div className="text-sm text-text-secondary py-6 text-center border border-white/[0.06] rounded-xl bg-white/[0.02]">
+          <div className="text-sm text-text-secondary py-6 text-center border border-white/[0.06] rounded-[2px] bg-white/[0.02]">
             暂无打包记录
           </div>
         ) : (
@@ -337,7 +337,7 @@ const StorageSettings: FC = () => {
             {packages.map((pkg) => (
               <div
                 key={pkg.id}
-                className="flex flex-col md:flex-row md:items-center justify-between gap-3 p-4 rounded-xl border border-white/[0.06] bg-white/[0.02]"
+                className="flex flex-col md:flex-row md:items-center justify-between gap-3 p-4 rounded-[2px] border border-white/[0.06] bg-white/[0.02]"
               >
                 <div className="min-w-0">
                   <div className="text-sm font-medium text-text-primary truncate">{pkg.filename}</div>
@@ -345,10 +345,10 @@ const StorageSettings: FC = () => {
                     <span>{formatBytes(pkg.file_size)}</span>
                     <span>{formatDate(pkg.created_at)}</span>
                     <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs ${
-                      pkg.status === 'ready' ? 'bg-emerald-500/10 text-emerald-400' :
-                      pkg.status === 'uploaded' ? 'bg-blue-500/10 text-blue-400' :
-                      pkg.status === 'failed' ? 'bg-red-500/10 text-red-400' :
-                      'bg-amber-500/10 text-amber-400'
+                      pkg.status === 'ready' ? 'bg-success/10 text-success' :
+                      pkg.status === 'uploaded' ? 'bg-network-primary/10 text-network-primary' :
+                      pkg.status === 'failed' ? 'bg-danger/10 text-danger' :
+                      'bg-warning/10 text-warning'
                     }`}>
                       {pkg.status === 'ready' && <CheckCircle className="w-3 h-3" />}
                       {pkg.status === 'uploaded' && <Cloud className="w-3 h-3" />}
@@ -359,7 +359,7 @@ const StorageSettings: FC = () => {
                        pkg.status === 'failed' ? '失败' : '打包中'}
                     </span>
                     {pkg.error_message && (
-                      <span className="text-red-400">{pkg.error_message}</span>
+                      <span className="text-danger">{pkg.error_message}</span>
                     )}
                   </div>
                 </div>
@@ -377,7 +377,7 @@ const StorageSettings: FC = () => {
                     <button
                       onClick={() => handleUpload(pkg, 'baidu')}
                       disabled={uploadingId === `${pkg.id}-baidu`}
-                      className="px-3 py-1.5 rounded-lg bg-blue-500/10 border border-blue-500/20 text-blue-400 text-xs hover:bg-blue-500/20 transition-colors disabled:opacity-50 flex items-center gap-1.5"
+                      className="px-3 py-1.5 rounded-[2px] bg-network-primary/10 border border-network-primary/20 text-network-primary text-xs hover:bg-network-primary/20 transition-colors disabled:opacity-50 flex items-center gap-1.5"
                     >
                       {uploadingId === `${pkg.id}-baidu` && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
                       传百度
@@ -387,7 +387,7 @@ const StorageSettings: FC = () => {
                     <button
                       onClick={() => handleUpload(pkg, 'aliyun')}
                       disabled={uploadingId === `${pkg.id}-aliyun`}
-                      className="px-3 py-1.5 rounded-lg bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 text-xs hover:bg-cyan-500/20 transition-colors disabled:opacity-50 flex items-center gap-1.5"
+                      className="px-3 py-1.5 rounded-[2px] bg-network-primary/10 border border-network-primary/20 text-network-primary text-xs hover:bg-network-primary/20 transition-colors disabled:opacity-50 flex items-center gap-1.5"
                     >
                       {uploadingId === `${pkg.id}-aliyun` && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
                       传阿里云盘
@@ -396,7 +396,7 @@ const StorageSettings: FC = () => {
                   <button
                     onClick={() => handleDelete(pkg)}
                     disabled={deletingId === pkg.id}
-                    className="p-2 rounded-lg hover:bg-danger/10 text-text-secondary hover:text-danger transition-colors disabled:opacity-50"
+                    className="p-2 rounded-[2px] hover:bg-danger/10 text-text-secondary hover:text-danger transition-colors disabled:opacity-50"
                     title="删除"
                   >
                     {deletingId === pkg.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
@@ -420,12 +420,12 @@ const StorageSettings: FC = () => {
             return (
               <div
                 key={p.key}
-                className={`p-5 rounded-xl border ${p.border} ${p.bg} flex flex-col gap-3`}
+                className={`p-5 rounded-[2px] border ${p.border} ${p.bg} flex flex-col gap-3`}
               >
                 <div className="flex items-center justify-between">
                   <div className={`font-semibold ${p.color}`}>{p.name}</div>
                   {drive ? (
-                    <span className="text-xs px-2 py-1 rounded-full bg-emerald-500/10 text-emerald-400 flex items-center gap-1">
+                    <span className="text-xs px-2 py-1 rounded-full bg-success/10 text-success flex items-center gap-1">
                       <CheckCircle className="w-3 h-3" />
                       已绑定
                     </span>
@@ -441,7 +441,7 @@ const StorageSettings: FC = () => {
                     </div>
                     <button
                       onClick={() => handleDisconnect(p.key)}
-                      className="w-full px-3 py-2 rounded-lg bg-white/[0.06] border border-white/[0.08] text-text-secondary text-xs hover:text-danger hover:border-danger/30 transition-colors"
+                      className="w-full px-3 py-2 rounded-[2px] bg-white/[0.06] border border-white/[0.08] text-text-secondary text-xs hover:text-danger hover:border-danger/30 transition-colors"
                     >
                       解绑
                     </button>
@@ -450,7 +450,7 @@ const StorageSettings: FC = () => {
                   <button
                     onClick={() => handleConnect(p.key)}
                     disabled={connecting === p.key}
-                    className="w-full px-3 py-2 rounded-lg bg-white/[0.08] border border-white/[0.12] text-text-primary text-xs hover:bg-white/[0.12] transition-colors disabled:opacity-50 flex items-center justify-center gap-1.5"
+                    className="w-full px-3 py-2 rounded-[2px] bg-white/[0.08] border border-white/[0.12] text-text-primary text-xs hover:bg-white/[0.12] transition-colors disabled:opacity-50 flex items-center justify-center gap-1.5"
                   >
                     {connecting === p.key && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
                     <ExternalLink className="w-3.5 h-3.5" />

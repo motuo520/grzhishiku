@@ -43,8 +43,14 @@ extension-build-all:
 desktop:
 	cd desktop && npm run dev
 
+desktop-embedded:
+	cd desktop && npm run dev:embedded
+
 desktop-smoke:
 	cd desktop && npm run smoke
+
+desktop-icon:
+	cd desktop && npm run icon
 
 desktop-dist:
 	cd desktop && npm run dist

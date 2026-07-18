@@ -119,7 +119,7 @@ const CapsuleCreate: FC = () => {
           <div key={s.id} className="flex items-center gap-2">
             <button
               onClick={() => setStep(s.id)}
-              className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all ${
+              className={`flex items-center gap-2 px-3 py-2 rounded-[2px] text-sm font-medium transition-all ${
                 step === s.id
                   ? 'bg-info/10 text-info'
                   : step > s.id
@@ -159,10 +159,10 @@ const CapsuleCreate: FC = () => {
                     onClick={() => !item.soon && setContentType(item.type)}
                     disabled={item.soon}
                     title={item.soon ? '即将支持' : undefined}
-                    className={`flex-1 flex flex-col items-center gap-2 p-4 rounded-xl border transition-all ${
+                    className={`flex-1 flex flex-col items-center gap-2 p-4 rounded-[2px] border transition-all ${
                       contentType === item.type
                         ? 'border-info bg-info/10 text-info'
-                        : 'border-border-color bg-white/[0.03] backdrop-blur text-text-secondary hover:border-text-muted'
+                        : 'border-border-color bg-white/[0.03] text-text-secondary hover:border-text-muted'
                     } disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:border-border-color`}
                   >
                     <item.icon className="w-6 h-6" />
@@ -181,7 +181,7 @@ const CapsuleCreate: FC = () => {
                 onChange={(e) => { setContent(e.target.value); setErrors((e) => ({ ...e, content: '' })); }}
                 placeholder="写下你想封存的内容..."
                 rows={6}
-                className="w-full bg-white/[0.03] backdrop-blur border border-white/[0.08] rounded-lg px-4 py-3 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:border-info/50 transition-colors resize-none"
+                className="w-full bg-white/[0.03] border border-white/[0.08] rounded-[2px] px-4 py-3 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:border-info/50 transition-colors resize-none"
               />
               {errors.content && (
                 <div className="flex items-center gap-1 text-xs text-danger mt-1">
@@ -202,7 +202,7 @@ const CapsuleCreate: FC = () => {
                 value={mood.emotion}
                 onChange={(e) => setMood({ ...mood, emotion: e.target.value })}
                 placeholder="例如：平静、兴奋、期待..."
-                className="w-full bg-white/[0.03] backdrop-blur border border-white/[0.08] rounded-lg px-4 py-2 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:border-info/50 transition-colors"
+                className="w-full bg-white/[0.03] border border-white/[0.08] rounded-[2px] px-4 py-2 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:border-info/50 transition-colors"
               />
             </div>
             <div>
@@ -274,10 +274,10 @@ const CapsuleCreate: FC = () => {
                   <button
                     key={item.type}
                     onClick={() => setUnlockType(item.type)}
-                    className={`flex items-center gap-3 p-4 rounded-xl border transition-all text-left ${
+                    className={`flex items-center gap-3 p-4 rounded-[2px] border transition-all text-left ${
                       unlockType === item.type
                         ? 'border-info bg-info/10 text-info'
-                        : 'border-border-color bg-white/[0.03] backdrop-blur text-text-secondary'
+                        : 'border-border-color bg-white/[0.03] text-text-secondary'
                     }`}
                   >
                     <item.icon className="w-5 h-5" />
@@ -297,7 +297,7 @@ const CapsuleCreate: FC = () => {
                   type="datetime-local"
                   value={unlockDate}
                   onChange={(e) => { setUnlockDate(e.target.value); setErrors((e) => ({ ...e, unlock: '' })); }}
-                  className="w-full bg-white/[0.03] backdrop-blur border border-white/[0.08] rounded-lg px-4 py-2 text-sm text-text-primary focus:outline-none focus:border-info/50 transition-colors"
+                  className="w-full bg-white/[0.03] border border-white/[0.08] rounded-[2px] px-4 py-2 text-sm text-text-primary focus:outline-none focus:border-info/50 transition-colors"
                 />
               </div>
             )}
@@ -309,7 +309,7 @@ const CapsuleCreate: FC = () => {
                   value={unlockEvent}
                   onChange={(e) => { setUnlockEvent(e.target.value); setErrors((e) => ({ ...e, unlock: '' })); }}
                   placeholder="例如：完成项目、毕业、旅行..."
-                  className="w-full bg-white/[0.03] backdrop-blur border border-white/[0.08] rounded-lg px-4 py-2 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:border-info/50 transition-colors"
+                  className="w-full bg-white/[0.03] border border-white/[0.08] rounded-[2px] px-4 py-2 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:border-info/50 transition-colors"
                 />
               </div>
             )}
@@ -321,7 +321,7 @@ const CapsuleCreate: FC = () => {
                   onChange={(e) => { setUnlockCustom(e.target.value); setErrors((e) => ({ ...e, unlock: '' })); }}
                   placeholder="描述解锁条件..."
                   rows={3}
-                  className="w-full bg-white/[0.03] backdrop-blur border border-white/[0.08] rounded-lg px-4 py-2 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:border-info/50 transition-colors resize-none"
+                  className="w-full bg-white/[0.03] border border-white/[0.08] rounded-[2px] px-4 py-2 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:border-info/50 transition-colors resize-none"
                 />
               </div>
             )}
@@ -342,12 +342,12 @@ const CapsuleCreate: FC = () => {
                     key={item.key}
                     onClick={() => setBrainSide(item.key as typeof brainSide)}
                     disabled={privacyLevel !== 'private' && item.key === 'personal'}
-                    className={`flex-1 flex items-center justify-center gap-2 p-3 rounded-xl border transition-all ${
+                    className={`flex-1 flex items-center justify-center gap-2 p-3 rounded-[2px] border transition-all ${
                       brainSide === item.key
                         ? item.key === 'network'
                           ? 'border-network-primary/30 bg-network-primary/10 text-network-primary'
                           : 'border-personal-primary/30 bg-personal-primary/10 text-personal-primary'
-                        : 'border-border-color bg-white/[0.03] backdrop-blur text-text-secondary'
+                        : 'border-border-color bg-white/[0.03] text-text-secondary'
                     } disabled:opacity-50`}
                   >
                     <item.icon className="w-4 h-4" />
@@ -364,10 +364,10 @@ const CapsuleCreate: FC = () => {
                   <button
                     key={opt.key}
                     onClick={() => setPrivacyLevel(opt.key)}
-                    className={`flex items-center gap-3 p-3 rounded-xl border transition-all text-left ${
+                    className={`flex items-center gap-3 p-3 rounded-[2px] border transition-all text-left ${
                       privacyLevel === opt.key
                         ? 'border-info bg-info/10 text-info'
-                        : 'border-border-color bg-white/[0.03] backdrop-blur text-text-secondary'
+                        : 'border-border-color bg-white/[0.03] text-text-secondary'
                     }`}
                   >
                     <opt.icon className="w-5 h-5" />

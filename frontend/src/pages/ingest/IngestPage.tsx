@@ -121,17 +121,17 @@ const IngestPage: FC = () => {
                   navigate(card.path);
                 }
               }}
-              className={`relative group overflow-hidden rounded-2xl border p-5 transition-all duration-300 ${
+              className={`relative group overflow-hidden rounded-[2px] border p-5 transition-all duration-300 ${
                 card.active
-                  ? 'bg-white/[0.03] backdrop-blur-xl border-white/[0.08] cursor-pointer hover:border-info/30 hover:shadow-[0_8px_40px_rgba(88,166,255,0.08)]'
-                  : 'bg-white/[0.015] backdrop-blur-sm border-white/[0.04] cursor-default'
+                  ? 'bg-white/[0.03] border-white/[0.08] cursor-pointer hover:border-info/30'
+                  : 'bg-white/[0.015] border-white/[0.04] cursor-default'
               }`}
             >
               <div className="flex items-start justify-between mb-3">
                 <div
-                  className={`p-2.5 rounded-xl ${
+                  className={`p-2.5 rounded-[2px] ${
                     card.active
-                      ? 'bg-white/[0.05] text-info group-hover:text-[#79b8ff] group-hover:bg-white/[0.08]'
+                      ? 'bg-white/[0.05] text-info group-hover:text-[#5b7c99] group-hover:bg-white/[0.08]'
                       : 'bg-white/[0.03] text-[#484f58]'
                   } transition-colors`}
                 >
@@ -151,8 +151,8 @@ const IngestPage: FC = () => {
                 {card.active ? card.desc : '功能开发中...'}
               </div>
               {!card.active && (
-                <div className="absolute inset-0 flex items-center justify-center bg-bg-primary/40 backdrop-blur-[1px] rounded-2xl">
-                  <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-bg-tertiary/80 border border-border-color/50 text-text-secondary text-xs">
+                <div className="absolute inset-0 flex items-center justify-center bg-bg-primary/40 rounded-[2px]">
+                  <div className="flex items-center gap-2 px-3 py-1.5 rounded-[2px] bg-bg-tertiary/80 border border-border-color/50 text-text-secondary text-xs">
                     <Construction className="w-3.5 h-3.5" />
                     开发中
                   </div>

@@ -35,7 +35,7 @@ const PipelineItemDeleteButton: FC<{ item: PipelineItem }> = ({ item }) => {
       onClick={handle}
       disabled={busy}
       title="删除（可恢复）"
-      className="flex items-center justify-center p-1.5 bg-white/[0.03] border border-white/[0.08] rounded-lg text-text-muted hover:bg-danger/10 hover:border-danger/30 hover:text-danger transition-all disabled:opacity-50 shrink-0"
+      className="flex items-center justify-center p-1.5 bg-white/[0.03] border border-white/[0.08] rounded-[2px] text-text-muted hover:bg-danger/10 hover:border-danger/30 hover:text-danger transition-all disabled:opacity-50 shrink-0"
     >
       {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
     </button>

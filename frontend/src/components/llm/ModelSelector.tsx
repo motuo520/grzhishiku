@@ -154,7 +154,7 @@ export function ModelSelector({
             value={value || ''}
             onChange={(e) => onChange(e.target.value)}
             disabled={disabled || isLoading}
-            className="w-full appearance-none pl-9 pr-8 py-2 rounded-xl bg-white/[0.03] border border-white/[0.08] text-sm text-text-primary focus:outline-none focus:border-info disabled:opacity-50"
+            className="w-full appearance-none pl-9 pr-8 py-2 rounded-[2px] bg-white/[0.03] border border-white/[0.08] text-sm text-text-primary focus:outline-none focus:border-info disabled:opacity-50"
           >
             {!value && <option value="">{placeholder}</option>}
 
@@ -192,8 +192,8 @@ export function ModelSelector({
         <div className="mt-1.5 flex items-center gap-2 text-xs text-text-muted">
           {isLocalModel(selectedModel.id) ? (
             <>
-              <Server className="w-3 h-3 text-emerald-400" />
-              <span className="text-emerald-400">本地调用，不计费</span>
+              <Server className="w-3 h-3 text-success" />
+              <span className="text-success">本地调用，不计费</span>
             </>
           ) : (
             <>
@@ -207,13 +207,13 @@ export function ModelSelector({
       {/* Balance info */}
       {!isLocalModel(value) && balanceSummary && (
         balanceSummary.balance < 0.1 ? (
-          <div className="mt-1.5 flex items-center gap-1.5 text-xs text-amber-400">
+          <div className="mt-1.5 flex items-center gap-1.5 text-xs text-warning">
             <AlertCircle className="w-3 h-3" />
-            <span>余额不足，<a href="/topup" className="underline hover:text-amber-300">去充值</a></span>
+            <span>余额不足，<a href="/topup" className="underline hover:text-warning/80">去充值</a></span>
           </div>
         ) : (
           <div className="mt-1.5 flex items-center gap-1.5 text-xs text-text-muted">
-            <Wallet className="w-3 h-3 text-emerald-400" />
+            <Wallet className="w-3 h-3 text-success" />
             <span>可用余额 ¥{balanceSummary.balance.toFixed(2)}，<a href="/topup" className="underline hover:text-text-primary">充值</a></span>
           </div>
         )

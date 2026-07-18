@@ -30,12 +30,12 @@ const StorageFeatureGate: FC<StorageFeatureGateProps> = ({
   if (!hasAccess) {
     return (
       <div className="min-h-[60vh] flex items-center justify-center p-4">
-        <div className="max-w-md w-full bg-bg-secondary border border-white/[0.06] rounded-2xl p-8 text-center">
-          <div className="w-16 h-16 mx-auto mb-6 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center">
-            <Crown className="w-8 h-8 text-amber-400" />
+        <div className="max-w-md w-full bg-bg-secondary border border-white/[0.06] rounded-[2px] p-8 text-center">
+          <div className="w-16 h-16 mx-auto mb-6 rounded-[2px] bg-warning/10 border border-warning/20 flex items-center justify-center">
+            <Crown className="w-8 h-8 text-warning" />
           </div>
           <div className="flex items-center justify-center gap-2 mb-3">
-            <Lock className="w-4 h-4 text-amber-400" />
+            <Lock className="w-4 h-4 text-warning" />
             <h2 className="text-xl font-bold text-text-primary">{title}</h2>
           </div>
           <p className="text-sm text-text-secondary mb-2">{description}</p>
@@ -44,7 +44,7 @@ const StorageFeatureGate: FC<StorageFeatureGateProps> = ({
           </p>
           <button
             onClick={() => navigate('/payment')}
-            className="w-full px-4 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 text-white text-sm font-bold hover:shadow-[0_0_20px_rgba(245,158,11,0.3)] transition-shadow flex items-center justify-center gap-2"
+            className="w-full px-4 py-2.5 rounded-[2px] bg-accent hover:bg-[var(--accent-hover)] text-white text-sm font-bold transition-colors flex items-center justify-center gap-2"
           >
             <Zap className="w-4 h-4" />
             订阅存储会员

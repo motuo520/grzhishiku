@@ -22,9 +22,9 @@ interface SearchResultItem {
 
 const TYPE_LABELS: Record<string, { label: string; icon: React.ElementType; color: string; bg: string }> = {
   note: { label: '笔记', icon: FileText, color: 'text-personal-primary', bg: 'bg-personal-primary/10' },
-  capsule: { label: '胶囊', icon: Package, color: 'text-emerald-400', bg: 'bg-emerald-400/10' },
+  capsule: { label: '胶囊', icon: Package, color: 'text-success', bg: 'bg-success/10' },
   clip: { label: '剪藏', icon: Globe, color: 'text-network-primary', bg: 'bg-network-primary/10' },
-  knowledge: { label: '知识', icon: BookOpen, color: 'text-purple-400', bg: 'bg-purple-400/10' },
+  knowledge: { label: '知识', icon: BookOpen, color: 'text-fusion-primary', bg: 'bg-fusion-primary/10' },
 };
 
 const TIME_RANGES = [
@@ -167,7 +167,7 @@ const SearchPage: FC = () => {
         key={item.id}
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
-        className="bg-bg-secondary/60 border border-white/[0.06] rounded-xl p-4 hover:border-white/[0.12] transition-all cursor-pointer group"
+        className="bg-bg-secondary/60 border border-white/[0.06] rounded-[2px] p-4 hover:border-white/[0.12] transition-all cursor-pointer group"
         onClick={() => {
           const pathMap: Record<string, string> = {
             note: `/ingest/notes/${item.id}`,
@@ -179,7 +179,7 @@ const SearchPage: FC = () => {
         }}
       >
         <div className="flex items-start gap-3">
-          <div className={`w-9 h-9 rounded-lg ${meta.bg} flex items-center justify-center flex-shrink-0`}>
+          <div className={`w-9 h-9 rounded-[2px] ${meta.bg} flex items-center justify-center flex-shrink-0`}>
             <Icon className={`w-4 h-4 ${meta.color}`} />
           </div>
           <div className="flex-1 min-w-0">
@@ -233,14 +233,14 @@ const SearchPage: FC = () => {
               value={query}
               onChange={(e) => handleInputChange(e.target.value)}
               placeholder="融合搜索：跨脑查找笔记、知识、剪藏..."
-              className="w-full pl-12 pr-24 py-4 bg-bg-secondary border border-white/[0.06] rounded-2xl text-text-primary placeholder-text-muted focus:outline-none focus:border-info/50 focus:shadow-[0_0_20px_rgba(88,166,255,0.1)] transition-all text-base"
+              className="w-full pl-12 pr-24 py-4 bg-bg-secondary border border-white/[0.06] rounded-[2px] text-text-primary placeholder-text-muted focus:outline-none focus:border-info/50 transition-all text-base"
             />
             <div className="absolute right-4 flex items-center gap-2">
               {query && (
                 <button
                   type="button"
                   onClick={() => { setQuery(''); setResults([]); setSearchParams({}); }}
-                  className="p-1.5 rounded-lg hover:bg-white/[0.08] text-text-muted hover:text-text-primary transition-colors"
+                  className="p-1.5 rounded-[2px] hover:bg-white/[0.08] text-text-muted hover:text-text-primary transition-colors"
                 >
                   <X className="w-4 h-4" />
                 </button>
@@ -259,7 +259,7 @@ const SearchPage: FC = () => {
                 initial={{ opacity: 0, y: -8 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -8 }}
-                className="absolute top-full left-0 right-0 mt-2 bg-bg-secondary border border-white/[0.06] rounded-xl shadow-2xl z-50 overflow-hidden"
+                className="absolute top-full left-0 right-0 mt-2 bg-bg-secondary border border-white/[0.06] rounded-[2px] z-50 overflow-hidden"
               >
                 {suggestions.map((s, i) => (
                   <button
@@ -281,7 +281,7 @@ const SearchPage: FC = () => {
       {/* Filters */}
       <div className="flex-shrink-0 flex items-center gap-3 mb-4 overflow-x-auto pb-1">
         {/* Tabs */}
-        <div className="flex items-center gap-1 bg-bg-tertiary rounded-lg p-1">
+        <div className="flex items-center gap-1 bg-bg-tertiary rounded-[2px] p-1">
           {([
             { id: 'all', label: '全部', icon: Brain },
             { id: 'personal', label: '个人脑', icon: User },
@@ -330,12 +330,12 @@ const SearchPage: FC = () => {
 
         {/* Time Range */}
         <div className="relative group">
-          <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs text-text-muted hover:text-text-primary hover:bg-white/[0.05] transition-all border border-white/[0.06]">
+          <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-[2px] text-xs text-text-muted hover:text-text-primary hover:bg-white/[0.05] transition-all border border-white/[0.06]">
             <Calendar className="w-3.5 h-3.5" />
             {TIME_RANGES.find((t) => t.value === timeRange)?.label}
             <ChevronDown className="w-3 h-3" />
           </button>
-          <div className="absolute top-full left-0 mt-1 hidden group-hover:block bg-bg-secondary border border-white/[0.06] rounded-lg shadow-xl p-1 z-40 min-w-[100px]">
+          <div className="absolute top-full left-0 mt-1 hidden group-hover:block bg-bg-secondary border border-white/[0.06] rounded-[2px] p-1 z-40 min-w-[100px]">
             {TIME_RANGES.map((t) => (
               <button
                 key={t.value}
@@ -353,7 +353,7 @@ const SearchPage: FC = () => {
         {/* Sort */}
         <button
           onClick={() => setSortBy((prev) => (prev === 'relevance' ? 'time' : 'relevance'))}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs text-text-muted hover:text-text-primary hover:bg-white/[0.05] transition-all border border-white/[0.06]"
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-[2px] text-xs text-text-muted hover:text-text-primary hover:bg-white/[0.05] transition-all border border-white/[0.06]"
         >
           <ArrowUpDown className="w-3.5 h-3.5" />
           {sortBy === 'relevance' ? '相关度' : '时间'}
@@ -404,7 +404,7 @@ const SearchPage: FC = () => {
           </div>
         ) : query ? (
           <div className="text-center py-20">
-            <div className="w-16 h-16 rounded-2xl bg-bg-tertiary border border-white/[0.06] flex items-center justify-center mx-auto mb-4">
+            <div className="w-16 h-16 rounded-[2px] bg-bg-tertiary border border-white/[0.06] flex items-center justify-center mx-auto mb-4">
               <Search className="w-7 h-7 text-text-muted" />
             </div>
             <div className="text-sm text-text-secondary mb-1">未找到相关内容</div>
@@ -412,7 +412,7 @@ const SearchPage: FC = () => {
           </div>
         ) : (
           <div className="text-center py-20">
-            <div className="w-16 h-16 rounded-2xl bg-bg-tertiary border border-white/[0.06] flex items-center justify-center mx-auto mb-4">
+            <div className="w-16 h-16 rounded-[2px] bg-bg-tertiary border border-white/[0.06] flex items-center justify-center mx-auto mb-4">
               <Brain className="w-7 h-7 text-text-muted" />
             </div>
             <div className="text-sm text-text-secondary mb-1">输入关键词开始跨脑搜索</div>

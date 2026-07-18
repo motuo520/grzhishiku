@@ -9,7 +9,7 @@ import { useSubscription } from '@/hooks/useSubscription';
 import apiClient from '@/api/client';
 
 interface PaymentProvider {
-  id: 'alipay' | 'wechat' | 'stripe' | 'xorpay';
+  id: 'alipay' | 'wechat' | 'stripe' | 'xorpay' | 'xunhupay';
   name: string;
   icon: React.ElementType;
   color: string;
@@ -17,10 +17,11 @@ interface PaymentProvider {
 }
 
 const PROVIDERS: PaymentProvider[] = [
-  { id: 'alipay', name: '支付宝', icon: QrCode, color: 'text-blue-400', description: '扫码或跳转支付' },
-  { id: 'wechat', name: '微信支付', icon: Smartphone, color: 'text-emerald-400', description: '微信内或扫码' },
-  { id: 'stripe', name: '信用卡', icon: CreditCard, color: 'text-violet-400', description: 'Visa / Mastercard' },
-  { id: 'xorpay', name: '虎皮椒', icon: Wallet, color: 'text-amber-400', description: '个人聚合支付' },
+  { id: 'alipay', name: '支付宝', icon: QrCode, color: 'text-network-primary', description: '扫码或跳转支付' },
+  { id: 'wechat', name: '微信支付', icon: Smartphone, color: 'text-success', description: '微信内或扫码' },
+  { id: 'stripe', name: '信用卡', icon: CreditCard, color: 'text-fusion-primary', description: 'Visa / Mastercard' },
+  { id: 'xorpay', name: '虎皮椒', icon: Wallet, color: 'text-warning', description: '个人聚合支付' },
+  { id: 'xunhupay', name: '迅虎支付', icon: QrCode, color: 'text-personal-primary', description: '虎皮椒·扫码支付' },
 ];
 
 interface PaymentOrder {
@@ -97,7 +98,7 @@ const PaymentPage: FC = () => {
 
     try {
       const payParams: Record<string, any> = {};
-      if (selectedProvider === 'alipay' || selectedProvider === 'wechat' || selectedProvider === 'xorpay') {
+      if (selectedProvider === 'alipay' || selectedProvider === 'wechat' || selectedProvider === 'xorpay' || selectedProvider === 'xunhupay') {
         payParams.qr_code = true; // 默认扫码
       }
 
@@ -186,7 +187,7 @@ const PaymentPage: FC = () => {
       <div className="flex items-center gap-3 mb-8">
         <button
           onClick={() => navigate('/settings/account')}
-          className="p-2 rounded-xl hover:bg-white/[0.05] text-text-secondary transition-colors"
+          className="p-2 rounded-[2px] hover:bg-white/[0.05] text-text-secondary transition-colors"
         >
           <ArrowLeft className="w-5 h-5" />
         </button>
@@ -198,17 +199,17 @@ const PaymentPage: FC = () => {
 
       {/* Current Status */}
       {currentSubscription && (
-        <div className="mb-6 p-4 rounded-xl bg-white/[0.02] border border-white/[0.06]">
+        <div className="mb-6 p-4 rounded-[2px] bg-white/[0.02] border border-white/[0.06]">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Crown className="w-4 h-4 text-amber-400" />
+              <Crown className="w-4 h-4 text-warning" />
               <span className="text-sm text-text-secondary">当前方案：</span>
-              <span className={`text-sm font-bold ${tier === 'storage' ? 'text-amber-400' : 'text-emerald-400'}`}>
+              <span className={`text-sm font-bold ${tier === 'storage' ? 'text-warning' : 'text-success'}`}>
                 {tier === 'storage' ? '存储会员' : 'Free'}
               </span>
             </div>
             {currentSubscription.status === 'trial' && (
-              <span className="text-xs text-amber-400 bg-amber-400/10 px-2 py-1 rounded-full">
+              <span className="text-xs text-warning bg-warning/10 px-2 py-1 rounded-[2px]">
                 试用中
               </span>
             )}
@@ -218,10 +219,10 @@ const PaymentPage: FC = () => {
 
       {/* Billing Cycle Toggle */}
       <div className="flex justify-center mb-8">
-        <div className="inline-flex p-1 bg-bg-tertiary rounded-xl">
+        <div className="inline-flex p-1 bg-bg-tertiary rounded-[2px]">
           <button
             onClick={() => setSelectedCycle('monthly')}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+            className={`px-4 py-2 rounded-[2px] text-sm font-medium transition-all ${
               selectedCycle === 'monthly'
                 ? 'bg-bg-secondary text-text-primary shadow-sm'
                 : 'text-text-muted hover:text-text-secondary'
@@ -231,14 +232,14 @@ const PaymentPage: FC = () => {
           </button>
           <button
             onClick={() => setSelectedCycle('yearly')}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2 ${
+            className={`px-4 py-2 rounded-[2px] text-sm font-medium transition-all flex items-center gap-2 ${
               selectedCycle === 'yearly'
                 ? 'bg-bg-secondary text-text-primary shadow-sm'
                 : 'text-text-muted hover:text-text-secondary'
             }`}
           >
             年付
-            <span className="text-[10px] px-1.5 py-0.5 bg-emerald-500/20 text-emerald-400 rounded-full">
+            <span className="text-[10px] px-1.5 py-0.5 bg-success/20 text-success rounded-[2px]">
               省20%
             </span>
           </button>
@@ -251,14 +252,14 @@ const PaymentPage: FC = () => {
         <motion.div
           whileHover={{ scale: 1.02 }}
           onClick={() => setSelectedPlan(freePlan?.id || '')}
-          className={`rounded-2xl border p-6 cursor-pointer transition-all ${
+          className={`rounded-[2px] border p-6 cursor-pointer transition-all ${
             selectedPlan === freePlan?.id
-              ? 'border-emerald-500/30 bg-emerald-500/5'
+              ? 'border-success/30 bg-success/5'
               : 'border-white/[0.06] bg-white/[0.02] hover:border-white/[0.1]'
           }`}
         >
           <div className="flex items-center gap-2 mb-4">
-            <Shield className="w-5 h-5 text-emerald-400" />
+            <Shield className="w-5 h-5 text-success" />
             <h3 className="text-lg font-bold text-text-primary">Free</h3>
           </div>
           <div className="text-3xl font-black text-text-primary mb-1">¥0</div>
@@ -266,7 +267,7 @@ const PaymentPage: FC = () => {
           <div className="space-y-2">
             {['无限本地笔记', '本地 Ollama AI', '本地时间胶囊', '模型调用按量充值'].map(f => (
               <div key={f} className="flex items-center gap-2 text-xs text-text-secondary">
-                <CheckCircle className="w-3.5 h-3.5 text-emerald-400" />
+                <CheckCircle className="w-3.5 h-3.5 text-success" />
                 {f}
               </div>
             ))}
@@ -277,17 +278,17 @@ const PaymentPage: FC = () => {
         <motion.div
           whileHover={{ scale: 1.02 }}
           onClick={() => setSelectedPlan(storagePlan?.id || '')}
-          className={`rounded-2xl border p-6 cursor-pointer transition-all relative ${
+          className={`rounded-[2px] border p-6 cursor-pointer transition-all relative ${
             selectedPlan === storagePlan?.id
-              ? 'border-amber-500/30 bg-amber-500/5'
+              ? 'border-warning/30 bg-warning/5'
               : 'border-white/[0.06] bg-white/[0.02] hover:border-white/[0.1]'
           }`}
         >
-          <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-0.5 rounded-full bg-gradient-to-r from-amber-500 to-orange-500 text-white text-xs font-bold">
+          <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-0.5 rounded-[2px] bg-accent text-white text-xs font-bold">
             推荐
           </div>
           <div className="flex items-center gap-2 mb-4">
-            <Cloud className="w-5 h-5 text-amber-400" />
+            <Cloud className="w-5 h-5 text-warning" />
             <h3 className="text-lg font-bold text-text-primary">存储会员</h3>
           </div>
           <div className="text-3xl font-black text-text-primary mb-1">
@@ -296,13 +297,13 @@ const PaymentPage: FC = () => {
           </div>
           <div className="text-xs text-text-muted mb-4">
             {selectedCycle === 'yearly' && storagePlan ? (
-              <span className="text-emerald-400">省 ¥{formatPrice((storagePlan.price_monthly * 12) - storagePlan.price_yearly)}</span>
+              <span className="text-success">省 ¥{formatPrice((storagePlan.price_monthly * 12) - storagePlan.price_yearly)}</span>
             ) : '按月订阅，随时取消'}
           </div>
           <div className="space-y-2">
             {['提供云端存储接口（百度/阿里云盘直传）', '多端同步', '时间胶囊云端封存', '优先客服支持', '不影响模型调用计费'].map(f => (
               <div key={f} className="flex items-center gap-2 text-xs text-text-secondary">
-                <CheckCircle className="w-3.5 h-3.5 text-amber-400" />
+                <CheckCircle className="w-3.5 h-3.5 text-warning" />
                 {f}
               </div>
             ))}
@@ -325,7 +326,7 @@ const PaymentPage: FC = () => {
               <button
                 key={provider.id}
                 onClick={() => setSelectedProvider(provider.id)}
-                className={`flex items-center gap-3 px-5 py-3 rounded-xl border transition-all ${
+                className={`flex items-center gap-3 px-5 py-3 rounded-[2px] border transition-all ${
                   selectedProvider === provider.id
                     ? 'border-info bg-info/5 text-info'
                     : 'border-white/[0.06] bg-white/[0.02] text-text-secondary hover:border-white/[0.1]'
@@ -363,13 +364,13 @@ const PaymentPage: FC = () => {
                   setCouponSummary(null);
                 }}
                 placeholder="输入优惠码"
-                className="w-full pl-9 pr-3 py-2.5 rounded-xl bg-white/[0.02] border border-white/[0.06] text-white text-sm focus:outline-none focus:border-info uppercase placeholder:normal-case"
+                className="w-full pl-9 pr-3 py-2.5 rounded-[2px] bg-white/[0.02] border border-white/[0.06] text-white text-sm focus:outline-none focus:border-info uppercase placeholder:normal-case"
               />
             </div>
             <button
               onClick={validateCoupon}
               disabled={!couponCode.trim() || validatingCoupon}
-              className="px-4 py-2.5 rounded-xl bg-white/[0.06] border border-white/[0.1] text-sm text-text-secondary hover:bg-white/[0.1] hover:text-text-primary transition-colors disabled:opacity-50 flex items-center gap-2"
+              className="px-4 py-2.5 rounded-[2px] bg-white/[0.06] border border-white/[0.1] text-sm text-text-secondary hover:bg-white/[0.1] hover:text-text-primary transition-colors disabled:opacity-50 flex items-center gap-2"
             >
               {validatingCoupon && <Loader2 className="w-4 h-4 animate-spin" />}
               校验
@@ -378,7 +379,7 @@ const PaymentPage: FC = () => {
           {couponSummary && (
             <div className="mt-3 flex items-center justify-center gap-2 text-sm">
               <span className="text-text-muted">已优惠</span>
-              <span className="text-emerald-400 font-bold">¥{formatPrice(couponSummary.discount_amount)}</span>
+              <span className="text-success font-bold">¥{formatPrice(couponSummary.discount_amount)}</span>
               <span className="text-text-muted">，实付</span>
               <span className="text-info font-bold">¥{formatPrice(couponSummary.final_amount)}</span>
             </div>
@@ -392,10 +393,10 @@ const PaymentPage: FC = () => {
           <button
             onClick={handleCreateOrder}
             disabled={isPaying || !selectedPlan}
-            className={`px-8 py-3 rounded-xl font-bold text-sm transition-all ${
+            className={`px-8 py-3 rounded-[2px] font-bold text-sm transition-all ${
               selectedPlan === freePlan?.id
-                ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/30'
-                : 'bg-gradient-to-r from-info to-network-secondary text-white hover:shadow-[0_0_25px_rgba(200,149,108,0.4)]'
+                ? 'bg-success/20 text-success border border-success/30 hover:bg-success/30'
+                : 'bg-accent text-white hover:bg-[var(--accent-hover)]'
             } disabled:opacity-50 disabled:cursor-not-allowed`}
           >
             {isPaying ? (
@@ -419,14 +420,14 @@ const PaymentPage: FC = () => {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60"
             onClick={() => setQrCodeUrl(null)}
           >
             <motion.div
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
-              className="bg-bg-secondary border border-white/[0.06] rounded-2xl p-6 max-w-sm w-full mx-4"
+              className="bg-bg-secondary border border-white/[0.06] rounded-[2px] p-6 max-w-sm w-full mx-4"
               onClick={(e) => e.stopPropagation()}
             >
               <div className="flex items-center justify-between mb-4">
@@ -449,13 +450,13 @@ const PaymentPage: FC = () => {
               </div>
 
               {/* Payment URL fallback (no qrcode lib installed) */}
-              <div className="mb-4 p-3 bg-bg-tertiary rounded-lg border border-white/[0.06]">
+              <div className="mb-4 p-3 bg-bg-tertiary rounded-[2px] border border-white/[0.06]">
                 <div className="text-xs text-text-muted mb-2">请使用{paymentOrder.provider === 'alipay' ? '支付宝' : paymentOrder.provider === 'wechat' ? '微信' : '对应应用'}完成支付：</div>
                 <a
                   href={qrCodeUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="block w-full text-center px-4 py-2 rounded-lg bg-info/10 text-info text-sm font-medium hover:bg-info/20 transition-colors break-all"
+                  className="block w-full text-center px-4 py-2 rounded-[2px] bg-info/10 text-info text-sm font-medium hover:bg-info/20 transition-colors break-all"
                 >
                   打开支付页面
                 </a>
@@ -465,7 +466,7 @@ const PaymentPage: FC = () => {
                 支付完成后本页会自动刷新状态，请勿关闭窗口。
               </p>
 
-              <div className="flex items-center justify-center gap-2 text-xs text-amber-400">
+              <div className="flex items-center justify-center gap-2 text-xs text-warning">
                 <Clock className="w-3.5 h-3.5 animate-pulse" />
                 等待支付结果...
               </div>
@@ -479,16 +480,16 @@ const PaymentPage: FC = () => {
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="mt-4 p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-sm text-center"
+          className="mt-4 p-4 rounded-[2px] bg-success/10 border border-success/20 text-success text-sm text-center"
         >
           <div className="flex items-center justify-center gap-2 mb-2">
             <CheckCircle className="w-5 h-5" />
             <span className="font-semibold">支付成功！</span>
           </div>
-          <p className="text-emerald-400/80 mb-3">你的订阅已生效，可以开始使用全部功能。</p>
+          <p className="text-success/80 mb-3">你的订阅已生效，可以开始使用全部功能。</p>
           <button
             onClick={() => navigate('/settings/account')}
-            className="px-4 py-1.5 rounded-lg bg-emerald-500/20 text-emerald-400 text-xs font-medium hover:bg-emerald-500/30 transition-colors"
+            className="px-4 py-1.5 rounded-[2px] bg-success/20 text-success text-xs font-medium hover:bg-success/30 transition-colors"
           >
             返回账户设置
           </button>
@@ -500,7 +501,7 @@ const PaymentPage: FC = () => {
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="mt-4 p-3 rounded-xl bg-danger/10 border border-danger/20 text-danger text-sm text-center"
+          className="mt-4 p-3 rounded-[2px] bg-danger/10 border border-danger/20 text-danger text-sm text-center"
         >
           {error}
         </motion.div>

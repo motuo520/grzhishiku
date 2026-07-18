@@ -21,10 +21,11 @@ interface PaymentOrder {
 }
 
 const PROVIDERS = [
-  { id: 'alipay', name: '支付宝', icon: QrCode, color: 'text-blue-400' },
-  { id: 'wechat', name: '微信支付', icon: Smartphone, color: 'text-emerald-400' },
-  { id: 'stripe', name: '信用卡', icon: CreditCard, color: 'text-violet-400' },
-  { id: 'xorpay', name: '虎皮椒', icon: Wallet, color: 'text-amber-400' },
+  { id: 'alipay', name: '支付宝', icon: QrCode, color: 'text-network-primary' },
+  { id: 'wechat', name: '微信支付', icon: Smartphone, color: 'text-success' },
+  { id: 'stripe', name: '信用卡', icon: CreditCard, color: 'text-fusion-primary' },
+  { id: 'xorpay', name: '虎皮椒', icon: Wallet, color: 'text-warning' },
+  { id: 'xunhupay', name: '迅虎支付', icon: QrCode, color: 'text-personal-primary' },
 ];
 
 const PRESETS = [1000, 3000, 5000, 10000]; // cents
@@ -124,7 +125,7 @@ const TopupPage: FC = () => {
     setError(null);
     try {
       const payParams: Record<string, any> = {};
-      if (provider === 'alipay' || provider === 'wechat' || provider === 'xorpay') {
+      if (provider === 'alipay' || provider === 'wechat' || provider === 'xorpay' || provider === 'xunhupay') {
         payParams.qr_code = true;
       }
       const payload: Record<string, any> = {
@@ -152,7 +153,7 @@ const TopupPage: FC = () => {
       <div className="flex items-center gap-3 mb-8">
         <button
           onClick={() => navigate('/settings/account')}
-          className="p-2 rounded-xl hover:bg-white/[0.05] text-text-secondary transition-colors"
+          className="p-2 rounded-[2px] hover:bg-white/[0.05] text-text-secondary transition-colors"
         >
           <ArrowLeft className="w-5 h-5" />
         </button>
@@ -162,16 +163,16 @@ const TopupPage: FC = () => {
         </div>
       </div>
 
-      <div className="mb-6 p-4 rounded-xl bg-white/[0.02] border border-white/[0.06] flex items-center justify-between">
+      <div className="mb-6 p-4 rounded-[2px] bg-white/[0.02] border border-white/[0.06] flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Wallet className="w-4 h-4 text-emerald-400" />
+          <Wallet className="w-4 h-4 text-success" />
           <span className="text-sm text-text-secondary">当前余额</span>
         </div>
-        <span className="text-lg font-bold text-emerald-400">¥{displayedBalance.toFixed(2)}</span>
+        <span className="text-lg font-bold text-success">¥{displayedBalance.toFixed(2)}</span>
       </div>
 
       {error && (
-        <div className="mb-4 px-4 py-3 rounded-lg bg-danger/10 border border-danger/20 text-danger text-sm">
+        <div className="mb-4 px-4 py-3 rounded-[2px] bg-danger/10 border border-danger/20 text-danger text-sm">
           {error}
         </div>
       )}
@@ -180,14 +181,14 @@ const TopupPage: FC = () => {
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="p-8 rounded-2xl bg-white/[0.02] border border-white/[0.06] text-center"
+          className="p-8 rounded-[2px] bg-white/[0.02] border border-white/[0.06] text-center"
         >
-          <CheckCircle className="w-12 h-12 text-emerald-400 mx-auto mb-4" />
+          <CheckCircle className="w-12 h-12 text-success mx-auto mb-4" />
           <h2 className="text-xl font-bold text-white mb-2">充值成功</h2>
           <p className="text-text-secondary mb-6">余额已到账，可立即使用</p>
           <button
             onClick={() => navigate('/settings/account')}
-            className="px-6 py-2 rounded-xl bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 transition-colors"
+            className="px-6 py-2 rounded-[2px] bg-success/20 text-success hover:bg-success/30 transition-colors"
           >
             返回设置
           </button>
@@ -196,7 +197,7 @@ const TopupPage: FC = () => {
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="p-6 rounded-2xl bg-white/[0.02] border border-white/[0.06] text-center"
+          className="p-6 rounded-[2px] bg-white/[0.02] border border-white/[0.06] text-center"
         >
           <h2 className="text-lg font-bold text-white mb-2">等待支付</h2>
           <p className="text-text-secondary mb-4">订单金额 ¥{(order.amount / 100).toFixed(2)}</p>
@@ -204,14 +205,14 @@ const TopupPage: FC = () => {
             <img
               src={order.pay_qr_code}
               alt="支付二维码"
-              className="w-48 h-48 mx-auto rounded-xl border border-white/[0.06]"
+              className="w-48 h-48 mx-auto rounded-[2px] border border-white/[0.06]"
             />
           ) : order.pay_url ? (
             <a
               href={order.pay_url}
               target="_blank"
               rel="noreferrer"
-              className="inline-block px-6 py-2 rounded-xl bg-admin-primary text-white"
+              className="inline-block px-6 py-2 rounded-[2px] bg-accent text-white hover:bg-[var(--accent-hover)] transition-colors"
             >
               前往支付
             </a>
@@ -232,9 +233,9 @@ const TopupPage: FC = () => {
                 <button
                   key={preset}
                   onClick={() => { setAmount(preset); setCustom(''); }}
-                  className={`py-3 rounded-xl border text-sm font-medium transition-all ${
+                  className={`py-3 rounded-[2px] border text-sm font-medium transition-all ${
                     !custom && amount === preset
-                      ? 'border-emerald-500/50 bg-emerald-500/10 text-emerald-400'
+                      ? 'border-success/50 bg-success/10 text-success'
                       : 'border-white/[0.06] bg-white/[0.02] text-text-secondary hover:bg-white/[0.05]'
                   }`}
                 >
@@ -250,7 +251,7 @@ const TopupPage: FC = () => {
                 value={custom}
                 onChange={(e) => setCustom(e.target.value)}
                 placeholder="输入金额"
-                className="flex-1 px-3 py-2 rounded-xl bg-white/[0.02] border border-white/[0.06] text-white text-sm focus:outline-none focus:border-emerald-500/50"
+                className="flex-1 px-3 py-2 rounded-[2px] bg-white/[0.02] border border-white/[0.06] text-white text-sm focus:outline-none focus:border-success/50"
               />
               <span className="text-sm text-text-muted">元</span>
             </div>
@@ -270,13 +271,13 @@ const TopupPage: FC = () => {
                     setCouponSummary(null);
                   }}
                   placeholder="输入优惠码"
-                  className="w-full pl-9 pr-3 py-2.5 rounded-xl bg-white/[0.02] border border-white/[0.06] text-white text-sm focus:outline-none focus:border-emerald-500/50 uppercase placeholder:normal-case"
+                  className="w-full pl-9 pr-3 py-2.5 rounded-[2px] bg-white/[0.02] border border-white/[0.06] text-white text-sm focus:outline-none focus:border-success/50 uppercase placeholder:normal-case"
                 />
               </div>
               <button
                 onClick={validateCoupon}
                 disabled={!couponCode.trim() || validatingCoupon}
-                className="px-4 py-2.5 rounded-xl bg-white/[0.06] border border-white/[0.1] text-sm text-text-secondary hover:bg-white/[0.1] hover:text-text-primary transition-colors disabled:opacity-50 flex items-center gap-2"
+                className="px-4 py-2.5 rounded-[2px] bg-white/[0.06] border border-white/[0.1] text-sm text-text-secondary hover:bg-white/[0.1] hover:text-text-primary transition-colors disabled:opacity-50 flex items-center gap-2"
               >
                 {validatingCoupon && <Loader2 className="w-4 h-4 animate-spin" />}
                 校验
@@ -285,9 +286,9 @@ const TopupPage: FC = () => {
             {couponSummary && (
               <div className="mt-2 flex items-center gap-2 text-sm">
                 <span className="text-text-muted">已优惠</span>
-                <span className="text-emerald-400 font-bold">¥{(couponSummary.discount_amount / 100).toFixed(2)}</span>
+                <span className="text-success font-bold">¥{(couponSummary.discount_amount / 100).toFixed(2)}</span>
                 <span className="text-text-muted">，实付</span>
-                <span className="text-emerald-300 font-bold">¥{(couponSummary.final_amount / 100).toFixed(2)}</span>
+                <span className="text-success font-bold">¥{(couponSummary.final_amount / 100).toFixed(2)}</span>
               </div>
             )}
           </div>
@@ -301,9 +302,9 @@ const TopupPage: FC = () => {
                   <button
                     key={p.id}
                     onClick={() => setProvider(p.id)}
-                    className={`flex flex-col items-center gap-2 py-4 rounded-xl border transition-all ${
+                    className={`flex flex-col items-center gap-2 py-4 rounded-[2px] border transition-all ${
                       provider === p.id
-                        ? 'border-emerald-500/50 bg-emerald-500/10'
+                        ? 'border-success/50 bg-success/10'
                         : 'border-white/[0.06] bg-white/[0.02] hover:bg-white/[0.05]'
                     }`}
                   >
@@ -319,7 +320,7 @@ const TopupPage: FC = () => {
             <button
               onClick={handleCreateOrder}
               disabled={loading}
-              className="w-full py-3 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 text-white font-medium hover:opacity-90 transition-opacity disabled:opacity-50 flex items-center justify-center gap-2"
+              className="w-full py-3 rounded-[2px] bg-accent text-white font-medium hover:bg-[var(--accent-hover)] transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
             >
               {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
               立即充值 ¥{displayAmount || 0}

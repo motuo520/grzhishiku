@@ -126,24 +126,37 @@ npm run build
 # Chrome 扩展管理页加载 dist/ 目录
 ```
 
-**桌面端（Electron）**
+**桌面端（Electron + 内嵌后端）**
+
+桌面端是自包含应用：Electron 主进程启动时自动拉起内嵌的 FastAPI 后端
+（`127.0.0.1` 动态端口，同源托管 API 与前端页面），托盘常驻，
+`Ctrl+Shift+N` 全局唤起快记。数据存在系统用户目录（`%APPDATA%/个人第二大脑/data`）。
+
+**安装（推荐）**：`desktop/release/个人第二大脑 Setup x.y.z.exe` —— 引导式安装，
+可自选安装目录/盘符（免管理员），自动创建桌面与开始菜单快捷方式。
+`desktop/release/` 下的 portable 单文件版仅作备用（每次启动解压到临时目录，
+易被安全软件/清理工具干扰）。
+
 ```bash
 cd desktop
 npm install
 
-# 开发模式：加载 vite 开发服务器（需先启动前端）
+# 开发模式 A（推荐）：内嵌后端 + 源码后端，一键起全栈
+npm run dev:embedded
+
+# 开发模式 B：前端热更新 —— 先启动前端 dev server 和后端，再
 set PSB_WEB_URL=http://127.0.0.1:3000
 npm run dev
 
-# 生产模式：先用绝对 API 地址构建前端，再启动
-cd ../frontend
-set VITE_API_URL=http://127.0.0.1:8002
-npm run build
-cd ../desktop
-npm run dev        # 加载 ../frontend/dist
+# 打包 Windows 安装包与便携版（前端构建 + PyInstaller 冻结后端 + electron-builder）
+# 前置：backend/.venv 已装依赖，且 pip install pyinstaller 已装入该 venv
+npm run dist     # 输出在 desktop/release/
+```
 
-# 打包 Windows 便携版（输出在 desktop/release/）
-npm run dist
+冒烟自检（主进程 + 后端 sidecar 启动后立即退出）：
+
+```bash
+npm run smoke
 ```
 
 ---
@@ -193,7 +206,7 @@ npm run dist
 │   ├── Dockerfile
 │   └── nginx.conf
 ├── browser-extension/    # 浏览器扩展
-├── desktop/              # 桌面端（Electron 壳，复用 frontend 构建产物）
+├── desktop/              # 桌面端（Electron + 内嵌后端 sidecar，托盘/全局快捷键）
 ├── docs/                 # 文档
 │   ├── design/           # 架构设计文档
 │   ├── plans/            # 迭代计划

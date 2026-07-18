@@ -228,7 +228,7 @@ const CardsPage: FC = () => {
 
       {/* Error Banner */}
       {error && (
-        <div className="flex items-center gap-2 px-4 py-3 rounded-xl bg-danger/10 border border-danger/30 text-danger text-sm">
+        <div className="flex items-center gap-2 px-4 py-3 rounded-[2px] bg-danger/10 border border-danger/30 text-danger text-sm">
           <AlertCircle className="w-4 h-4" />
           {error}
           <button onClick={() => setError(null)} className="ml-auto">
@@ -248,14 +248,14 @@ const CardsPage: FC = () => {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="搜索卡片标题、内容..."
-                className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl pl-10 pr-4 py-2 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:border-info/40 transition-colors"
+                className="w-full bg-white/[0.03] border border-white/[0.08] rounded-[2px] pl-10 pr-4 py-2 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:border-info/40 transition-colors"
               />
             </div>
           </div>
           <div className="flex items-center gap-2 flex-wrap">
             <button
               onClick={() => setSelectedType('all')}
-              className={`px-2.5 py-1 rounded-lg text-xs border transition-all ${selectedType === 'all' ? 'bg-info/15 text-info border-info/30' : 'bg-white/[0.03] text-text-secondary border-white/[0.08] hover:bg-white/[0.06]'}`}
+              className={`px-2.5 py-1 rounded-[2px] text-xs border transition-all ${selectedType === 'all' ? 'bg-info/15 text-info border-info/30' : 'bg-white/[0.03] text-text-secondary border-white/[0.08] hover:bg-white/[0.06]'}`}
             >
               全部
             </button>
@@ -265,7 +265,7 @@ const CardsPage: FC = () => {
                 <button
                   key={type}
                   onClick={() => setSelectedType(type)}
-                  className={`px-2.5 py-1 rounded-lg text-xs border transition-all ${selectedType === type ? 'bg-info/15 text-info border-info/30' : 'bg-white/[0.03] text-text-secondary border-white/[0.08] hover:bg-white/[0.06]'}`}
+                  className={`px-2.5 py-1 rounded-[2px] text-xs border transition-all ${selectedType === type ? 'bg-info/15 text-info border-info/30' : 'bg-white/[0.03] text-text-secondary border-white/[0.08] hover:bg-white/[0.06]'}`}
                 >
                   {config.label}
                 </button>
@@ -303,7 +303,7 @@ const CardsPage: FC = () => {
             <button
               onClick={handleBatchExtract}
               disabled={selectedIds.size === 0 || isBatchRunning}
-              className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-warning to-amber-500 text-white rounded-xl text-sm font-medium hover:shadow-[0_0_20px_rgba(210,153,34,0.4)] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex items-center gap-2 px-4 py-2 bg-accent text-white rounded-[2px] text-sm font-medium hover:bg-[var(--accent-hover)] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isBatchRunning ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
               {isBatchRunning ? `抽取中 ${batchProgress}/${selectedIds.size}` : '批量抽取概念'}
@@ -327,7 +327,7 @@ const CardsPage: FC = () => {
           <p className="text-text-muted text-xs mt-1">先去原始素材页面把内容卡片化</p>
           <button
             onClick={() => navigate('/pipeline/raw')}
-            className="mt-4 px-4 py-2 bg-white/[0.05] border border-white/[0.08] rounded-xl text-xs text-text-primary hover:bg-white/[0.08] transition-colors flex items-center gap-1.5"
+            className="mt-4 px-4 py-2 bg-white/[0.05] border border-white/[0.08] rounded-[2px] text-xs text-text-primary hover:bg-white/[0.08] transition-colors flex items-center gap-1.5"
           >
             去原始素材 <ArrowRight className="w-3 h-3" />
           </button>
@@ -366,7 +366,7 @@ const CardsPage: FC = () => {
                 <button
                   onClick={() => handleExtract(item)}
                   disabled={isExtracting || isBatchRunning}
-                  className="flex items-center gap-1.5 px-3 py-1.5 bg-white/[0.05] border border-white/[0.08] rounded-lg text-xs text-text-primary hover:bg-warning/10 hover:border-warning/30 hover:text-warning transition-all disabled:opacity-50 shrink-0"
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-white/[0.05] border border-white/[0.08] rounded-[2px] text-xs text-text-primary hover:bg-warning/10 hover:border-warning/30 hover:text-warning transition-all disabled:opacity-50 shrink-0"
                 >
                   {isExtracting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Filter className="w-3.5 h-3.5" />}
                   抽取概念

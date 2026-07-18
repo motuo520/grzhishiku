@@ -157,10 +157,10 @@ const DataSettings: FC = () => {
   return (
     <div className="space-y-6">
       {toast && (
-        <div className={`fixed top-4 right-4 z-50 px-4 py-3 rounded-xl border backdrop-blur-xl shadow-lg ${
+        <div className={`fixed top-4 right-4 z-50 px-4 py-3 rounded-[2px] border ${
           toast.type === 'success'
-            ? 'bg-success/20 border-success/30 text-green-400'
-            : 'bg-danger/20 border-danger/30 text-red-400'
+            ? 'bg-success/20 border-success/30 text-success'
+            : 'bg-danger/20 border-danger/30 text-danger'
         }`}>
           <div className="flex items-center gap-2">
             {toast.type === 'success' ? <Check size={16} /> : <AlertTriangle size={16} />}
@@ -222,9 +222,9 @@ const DataSettings: FC = () => {
             <div className="text-sm text-text-muted">
               解析到 {preview.length} 条数据，确认后导入：
             </div>
-            <div className="max-h-64 overflow-y-auto space-y-2 rounded-xl border border-white/[0.08] p-2">
+            <div className="max-h-64 overflow-y-auto space-y-2 rounded-[2px] border border-white/[0.08] p-2">
               {preview.map((item, idx) => (
-                <div key={idx} className="flex items-center gap-3 p-2 rounded-lg bg-white/[0.03]">
+                <div key={idx} className="flex items-center gap-3 p-2 rounded-[2px] bg-white/[0.03]">
                   {item.type === 'note' && <FileText size={16} className="text-info" />}
                   {item.type === 'capsule' && <span className="text-personal-primary text-xs font-bold">CAP</span>}
                   {item.type === 'clip' && <span className="text-network-primary text-xs font-bold">CLIP</span>}
@@ -269,20 +269,20 @@ const DataSettings: FC = () => {
         {!showClearCacheConfirm ? (
           <button
             onClick={() => setShowClearCacheConfirm(true)}
-            className="px-5 py-2.5 bg-danger/10 text-danger border border-danger/30 rounded-xl font-medium transition-all hover:bg-danger/20 flex items-center gap-2"
+            className="px-5 py-2.5 bg-danger/10 text-danger border border-danger/30 rounded-[2px] font-medium transition-all hover:bg-danger/20 flex items-center gap-2"
           >
             <Trash2 size={16} />
             清除本地缓存
           </button>
         ) : (
           <div className="space-y-4 max-w-md">
-            <div className="p-3 bg-danger/10 border border-danger/20 rounded-xl text-sm text-danger">
+            <div className="p-3 bg-danger/10 border border-danger/20 rounded-[2px] text-sm text-danger">
               确定要清除本地缓存吗？登录信息会被保留。
             </div>
             <div className="flex gap-3">
               <button
                 onClick={clearCache}
-                className="px-5 py-2.5 bg-danger text-white rounded-xl font-medium transition-all flex items-center gap-2"
+                className="px-5 py-2.5 bg-danger text-white rounded-[2px] font-medium transition-all flex items-center gap-2"
               >
                 <Trash2 size={16} />
                 确认清除

@@ -90,10 +90,10 @@ const PrivacySettings: FC = () => {
   return (
     <div className="space-y-6">
       {toast && (
-        <div className={`fixed top-4 right-4 z-50 px-4 py-3 rounded-xl border backdrop-blur-xl shadow-lg ${
+        <div className={`fixed top-4 right-4 z-50 px-4 py-3 rounded-[2px] border ${
           toast.type === 'success'
-            ? 'bg-success/20 border-success/30 text-green-400'
-            : 'bg-danger/20 border-danger/30 text-red-400'
+            ? 'bg-success/20 border-success/30 text-success'
+            : 'bg-danger/20 border-danger/30 text-danger'
         }`}>
           <div className="flex items-center gap-2">
             {toast.type === 'success' ? <Check size={16} /> : <AlertTriangle size={16} />}
@@ -121,7 +121,7 @@ const PrivacySettings: FC = () => {
           导出我的数据
         </button>
         {exportMessage && (
-          <div className="mt-3 p-3 bg-info/10 border border-info/20 rounded-xl text-sm text-info">
+          <div className="mt-3 p-3 bg-info/10 border border-info/20 rounded-[2px] text-sm text-info">
             {exportMessage}
           </div>
         )}
@@ -165,7 +165,7 @@ const PrivacySettings: FC = () => {
           ] as const).map(opt => (
             <label
               key={opt.value}
-              className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all ${
+              className={`flex items-center gap-3 p-3 rounded-[2px] border cursor-pointer transition-all ${
                 defaultPrivacyLevel === opt.value
                   ? 'border-network-primary/40 bg-network-primary/5'
                   : 'border-white/[0.08] hover:border-white/[0.15]'
@@ -201,14 +201,14 @@ const PrivacySettings: FC = () => {
         {!showClearConfirm ? (
           <button
             onClick={() => setShowClearConfirm(true)}
-            className="px-5 py-2.5 bg-danger/10 text-danger border border-danger/30 rounded-xl font-medium transition-all hover:bg-danger/20 flex items-center gap-2"
+            className="px-5 py-2.5 bg-danger/10 text-danger border border-danger/30 rounded-[2px] font-medium transition-all hover:bg-danger/20 flex items-center gap-2"
           >
             <Trash2 size={16} />
             清除所有数据
           </button>
         ) : (
           <div className="space-y-4 max-w-md">
-            <div className="p-3 bg-danger/10 border border-danger/20 rounded-xl text-sm text-danger">
+            <div className="p-3 bg-danger/10 border border-danger/20 rounded-[2px] text-sm text-danger">
               请输入「确认删除」以确认清除所有数据
             </div>
             <input
@@ -221,7 +221,7 @@ const PrivacySettings: FC = () => {
               <button
                 onClick={handleClearData}
                 disabled={clearDataMutation.isPending}
-                className="px-5 py-2.5 bg-danger text-white rounded-xl font-medium transition-all flex items-center gap-2 disabled:opacity-60"
+                className="px-5 py-2.5 bg-danger text-white rounded-[2px] font-medium transition-all flex items-center gap-2 disabled:opacity-60"
               >
                 {clearDataMutation.isPending && <Loader2 size={16} className="animate-spin" />}
                 <Trash2 size={16} />

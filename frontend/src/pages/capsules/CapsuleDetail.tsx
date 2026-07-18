@@ -66,22 +66,22 @@ const CountdownTimer: FC<{ targetDate: string; isUnlocked: boolean }> = ({ targe
     <div className="flex items-center gap-3">
       <Lock className="w-5 h-5 text-warning" />
       <div className="flex items-center gap-1">
-        <div className="bg-bg-tertiary border border-border-color rounded-lg px-2 py-1 text-center min-w-[48px]">
+        <div className="bg-bg-tertiary border border-border-color rounded-[2px] px-2 py-1 text-center min-w-[48px]">
           <div className="text-lg font-bold text-text-primary">{pad(timeLeft.days)}</div>
           <div className="text-[10px] text-text-muted">天</div>
         </div>
         <span className="text-text-muted font-bold">:</span>
-        <div className="bg-bg-tertiary border border-border-color rounded-lg px-2 py-1 text-center min-w-[48px]">
+        <div className="bg-bg-tertiary border border-border-color rounded-[2px] px-2 py-1 text-center min-w-[48px]">
           <div className="text-lg font-bold text-text-primary">{pad(timeLeft.hours)}</div>
           <div className="text-[10px] text-text-muted">时</div>
         </div>
         <span className="text-text-muted font-bold">:</span>
-        <div className="bg-bg-tertiary border border-border-color rounded-lg px-2 py-1 text-center min-w-[48px]">
+        <div className="bg-bg-tertiary border border-border-color rounded-[2px] px-2 py-1 text-center min-w-[48px]">
           <div className="text-lg font-bold text-text-primary">{pad(timeLeft.minutes)}</div>
           <div className="text-[10px] text-text-muted">分</div>
         </div>
         <span className="text-text-muted font-bold">:</span>
-        <div className="bg-bg-tertiary border border-border-color rounded-lg px-2 py-1 text-center min-w-[48px]">
+        <div className="bg-bg-tertiary border border-border-color rounded-[2px] px-2 py-1 text-center min-w-[48px]">
           <div className="text-lg font-bold text-text-primary">{pad(timeLeft.seconds)}</div>
           <div className="text-[10px] text-text-muted">秒</div>
         </div>
@@ -239,7 +239,7 @@ const CapsuleDetail: FC = () => {
               </span>
             )}
             {capsule.privacy_allow_export && (
-              <button className="p-2 rounded-lg hover:bg-white/[0.05] text-text-secondary transition-colors" title="导出">
+              <button className="p-2 rounded-[2px] hover:bg-white/[0.05] text-text-secondary transition-colors" title="导出">
                 <Download className="w-4 h-4" />
               </button>
             )}
@@ -250,7 +250,7 @@ const CapsuleDetail: FC = () => {
             )}
             <button
               onClick={handleDelete}
-              className="p-2 rounded-lg hover:bg-danger/10 text-text-secondary hover:text-danger transition-colors"
+              className="p-2 rounded-[2px] hover:bg-danger/10 text-text-secondary hover:text-danger transition-colors"
               title="删除胶囊"
             >
               <Trash2 className="w-4 h-4" />
@@ -278,7 +278,7 @@ const CapsuleDetail: FC = () => {
         )}
 
         {/* Content */}
-        <div className="bg-white/[0.02] rounded-xl p-4 mb-4 border border-white/[0.06]">
+        <div className="bg-white/[0.02] rounded-[2px] p-4 mb-4 border border-white/[0.06]">
           <p className="text-sm text-text-primary whitespace-pre-wrap leading-relaxed">{capsule.content_body}</p>
         </div>
 
@@ -349,7 +349,7 @@ const CapsuleDetail: FC = () => {
           </button>
         )}
         {error && (
-          <div className="mt-3 p-2 rounded-lg bg-danger/10 border border-danger/20 text-danger text-xs flex items-center gap-1.5">
+          <div className="mt-3 p-2 rounded-[2px] bg-danger/10 border border-danger/20 text-danger text-xs flex items-center gap-1.5">
             <AlertCircle className="w-3.5 h-3.5" />
             {error}
           </div>
@@ -382,7 +382,7 @@ const CapsuleDetail: FC = () => {
                 className="overflow-hidden"
               >
                 {/* Cross-time hint */}
-                <div className="mb-4 p-3 rounded-lg bg-fusion-primary/5 border border-fusion-primary/20 flex items-start gap-2">
+                <div className="mb-4 p-3 rounded-[2px] bg-fusion-primary/5 border border-fusion-primary/20 flex items-start gap-2">
                   <Zap className="w-4 h-4 text-fusion-primary flex-shrink-0 mt-0.5" />
                   <p className="text-xs text-text-secondary">
                     这是与过去的自己对话的珍贵时刻。你可以向过去的自己提问，分享现在的感悟。
@@ -404,7 +404,7 @@ const CapsuleDetail: FC = () => {
                     >
                       <div className={`max-w-[80%] ${msg.role === 'user' ? 'mr-1' : 'ml-1'}`}>
                         <div
-                          className={`px-4 py-2.5 rounded-2xl text-sm ${
+                          className={`px-4 py-2.5 rounded-[2px] text-sm ${
                             msg.role === 'user'
                               ? 'bg-info text-white rounded-br-md'
                               : 'bg-white/[0.03] text-text-primary rounded-bl-md border border-white/[0.08]'
@@ -426,7 +426,7 @@ const CapsuleDetail: FC = () => {
                   ))}
                   {isSending && (
                     <div className="flex justify-start">
-                      <div className="ml-1 px-4 py-2.5 rounded-2xl rounded-bl-md bg-white/[0.03] border border-white/[0.08] text-sm text-text-muted flex items-center gap-2">
+                      <div className="ml-1 px-4 py-2.5 rounded-[2px] rounded-bl-md bg-white/[0.03] border border-white/[0.08] text-sm text-text-muted flex items-center gap-2">
                         <div className="w-3.5 h-3.5 border-2 border-info border-t-transparent rounded-full animate-spin" />
                         过去的自己正在回忆…
                       </div>
@@ -435,7 +435,7 @@ const CapsuleDetail: FC = () => {
                 </div>
 
                 {dialogueError && (
-                  <div className="mb-3 p-2.5 rounded-lg bg-danger/10 border border-danger/20 text-danger text-xs flex items-center gap-1.5">
+                  <div className="mb-3 p-2.5 rounded-[2px] bg-danger/10 border border-danger/20 text-danger text-xs flex items-center gap-1.5">
                     <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
                     <span>{dialogueError}</span>
                     {dialogueError.includes('余额不足') && (
@@ -467,12 +467,12 @@ const CapsuleDetail: FC = () => {
                     onChange={(e) => setMessage(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
                     placeholder="对过去的自己说点什么..."
-                    className="flex-1 bg-white/[0.03] border border-white/[0.08] rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-info/50 transition-colors text-text-primary placeholder-text-muted"
+                    className="flex-1 bg-white/[0.03] border border-white/[0.08] rounded-[2px] px-4 py-2.5 text-sm focus:outline-none focus:border-info/50 transition-colors text-text-primary placeholder-text-muted"
                   />
                   <button
                     onClick={handleSendMessage}
                     disabled={!message.trim() || isSending}
-                    className="p-2.5 bg-info rounded-xl hover:bg-network-secondary transition-colors disabled:opacity-50"
+                    className="p-2.5 bg-info rounded-[2px] hover:bg-network-secondary transition-colors disabled:opacity-50"
                   >
                     <Send className="w-4 h-4 text-white" />
                   </button>

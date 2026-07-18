@@ -219,7 +219,7 @@ const NoteDetail: FC = () => {
       .replace(/^\> (.*$)/gim, '<blockquote class="border-l-2 border-[#8b949e] pl-3 my-2 text-text-secondary italic">$1</blockquote>')
       .replace(/^\- (.*$)/gim, '<li class="ml-4 text-text-secondary">$1</li>')
       .replace(/^\d+\. (.*$)/gim, '<li class="ml-4 text-text-secondary list-decimal">$1</li>')
-      .replace(/\[\[([^\]]+)\]\]/g, '<span class="text-info bg-[#58a6ff]/10 px-1 rounded cursor-pointer">$1</span>')
+      .replace(/\[\[([^\]]+)\]\]/g, '<span class="text-info bg-network-primary/10 px-1 rounded cursor-pointer">$1</span>')
       .replace(/\n/g, '<br />');
   };
 
@@ -238,7 +238,7 @@ const NoteDetail: FC = () => {
         <div className="flex items-center gap-3">
           <button
             onClick={() => navigate('/ingest/notes')}
-            className="p-2 rounded-xl bg-white/[0.03] border border-white/[0.08] text-text-muted hover:text-text-primary transition-colors"
+            className="p-2 rounded-[2px] bg-white/[0.03] border border-white/[0.08] text-text-muted hover:text-text-primary transition-colors"
           >
             <ArrowLeft className="w-4 h-4" />
           </button>
@@ -276,7 +276,7 @@ const NoteDetail: FC = () => {
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
-            className="flex items-center gap-2 px-4 py-3 rounded-xl bg-danger/10 border border-danger/30 text-danger text-sm"
+            className="flex items-center gap-2 px-4 py-3 rounded-[2px] bg-danger/10 border border-danger/30 text-danger text-sm"
           >
             <AlertCircle className="w-4 h-4" />
             {error}
@@ -296,7 +296,7 @@ const NoteDetail: FC = () => {
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             placeholder="输入笔记标题..."
-            className="w-full bg-bg-secondary border border-border-color rounded-xl px-4 py-3 text-sm text-text-primary placeholder-text-secondary focus:outline-none focus:border-info/50 transition-colors"
+            className="w-full bg-bg-secondary border border-border-color rounded-[2px] px-4 py-3 text-sm text-text-primary placeholder-text-secondary focus:outline-none focus:border-info/50 transition-colors"
           />
         </div>
 
@@ -314,29 +314,29 @@ const NoteDetail: FC = () => {
 
         {/* Toolbar */}
         {!showPreview && (
-          <div className="flex items-center gap-1 p-1.5 bg-bg-secondary border border-border-color rounded-xl w-fit">
-            <button onClick={() => insertAtCursor('**', '**', '粗体')} className="p-1.5 rounded-lg hover:bg-white/[0.05] text-text-muted hover:text-text-primary" title="粗体">
+          <div className="flex items-center gap-1 p-1.5 bg-bg-secondary border border-border-color rounded-[2px] w-fit">
+            <button onClick={() => insertAtCursor('**', '**', '粗体')} className="p-1.5 rounded-[2px] hover:bg-white/[0.05] text-text-muted hover:text-text-primary" title="粗体">
               <Bold className="w-4 h-4" />
             </button>
-            <button onClick={() => insertAtCursor('*', '*', '斜体')} className="p-1.5 rounded-lg hover:bg-white/[0.05] text-text-muted hover:text-text-primary" title="斜体">
+            <button onClick={() => insertAtCursor('*', '*', '斜体')} className="p-1.5 rounded-[2px] hover:bg-white/[0.05] text-text-muted hover:text-text-primary" title="斜体">
               <Italic className="w-4 h-4" />
             </button>
-            <button onClick={() => insertAtCursor('\n# ', '')} className="p-1.5 rounded-lg hover:bg-white/[0.05] text-text-muted hover:text-text-primary" title="标题">
+            <button onClick={() => insertAtCursor('\n# ', '')} className="p-1.5 rounded-[2px] hover:bg-white/[0.05] text-text-muted hover:text-text-primary" title="标题">
               <Heading className="w-4 h-4" />
             </button>
-            <button onClick={() => insertAtCursor('\n- ', '')} className="p-1.5 rounded-lg hover:bg-white/[0.05] text-text-muted hover:text-text-primary" title="无序列表">
+            <button onClick={() => insertAtCursor('\n- ', '')} className="p-1.5 rounded-[2px] hover:bg-white/[0.05] text-text-muted hover:text-text-primary" title="无序列表">
               <List className="w-4 h-4" />
             </button>
-            <button onClick={() => insertAtCursor('\n1. ', '')} className="p-1.5 rounded-lg hover:bg-white/[0.05] text-text-muted hover:text-text-primary" title="有序列表">
+            <button onClick={() => insertAtCursor('\n1. ', '')} className="p-1.5 rounded-[2px] hover:bg-white/[0.05] text-text-muted hover:text-text-primary" title="有序列表">
               <ListOrdered className="w-4 h-4" />
             </button>
-            <button onClick={() => insertAtCursor('`', '`', 'code')} className="p-1.5 rounded-lg hover:bg-white/[0.05] text-text-muted hover:text-text-primary" title="行内代码">
+            <button onClick={() => insertAtCursor('`', '`', 'code')} className="p-1.5 rounded-[2px] hover:bg-white/[0.05] text-text-muted hover:text-text-primary" title="行内代码">
               <Code className="w-4 h-4" />
             </button>
-            <button onClick={() => insertAtCursor('\n> ', '')} className="p-1.5 rounded-lg hover:bg-white/[0.05] text-text-muted hover:text-text-primary" title="引用">
+            <button onClick={() => insertAtCursor('\n> ', '')} className="p-1.5 rounded-[2px] hover:bg-white/[0.05] text-text-muted hover:text-text-primary" title="引用">
               <Quote className="w-4 h-4" />
             </button>
-            <button onClick={() => insertAtCursor('[[', ']]', '笔记标题')} className="p-1.5 rounded-lg hover:bg-white/[0.05] text-text-muted hover:text-text-primary" title="双向链接">
+            <button onClick={() => insertAtCursor('[[', ']]', '笔记标题')} className="p-1.5 rounded-[2px] hover:bg-white/[0.05] text-text-muted hover:text-text-primary" title="双向链接">
               <LinkIcon className="w-4 h-4" />
             </button>
           </div>
@@ -344,13 +344,13 @@ const NoteDetail: FC = () => {
 
         {/* AI Toolbar */}
         {!showPreview && (
-          <div className="flex flex-wrap items-center gap-2 p-2 bg-bg-secondary border border-border-color rounded-xl">
+          <div className="flex flex-wrap items-center gap-2 p-2 bg-bg-secondary border border-border-color rounded-[2px]">
             <div className="flex items-center gap-1">
               <span className="text-[10px] text-text-muted px-1">AI 辅助</span>
               <button
                 onClick={() => handleAIAction('continue')}
                 disabled={aiLoading}
-                className="flex items-center gap-1 px-2 py-1.5 rounded-lg text-xs text-text-muted hover:text-warning hover:bg-white/[0.05] transition-colors disabled:opacity-50"
+                className="flex items-center gap-1 px-2 py-1.5 rounded-[2px] text-xs text-text-muted hover:text-warning hover:bg-white/[0.05] transition-colors disabled:opacity-50"
                 title="续写（未选中文字时基于全文）"
               >
                 {aiLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <PenLine className="w-3.5 h-3.5" />}
@@ -359,7 +359,7 @@ const NoteDetail: FC = () => {
               <button
                 onClick={() => handleAIAction('polish')}
                 disabled={aiLoading}
-                className="flex items-center gap-1 px-2 py-1.5 rounded-lg text-xs text-text-muted hover:text-warning hover:bg-white/[0.05] transition-colors disabled:opacity-50"
+                className="flex items-center gap-1 px-2 py-1.5 rounded-[2px] text-xs text-text-muted hover:text-warning hover:bg-white/[0.05] transition-colors disabled:opacity-50"
                 title="润色选中的文字"
               >
                 <Wand2 className="w-3.5 h-3.5" />
@@ -368,7 +368,7 @@ const NoteDetail: FC = () => {
               <button
                 onClick={() => handleAIAction('summarize')}
                 disabled={aiLoading}
-                className="flex items-center gap-1 px-2 py-1.5 rounded-lg text-xs text-text-muted hover:text-warning hover:bg-white/[0.05] transition-colors disabled:opacity-50"
+                className="flex items-center gap-1 px-2 py-1.5 rounded-[2px] text-xs text-text-muted hover:text-warning hover:bg-white/[0.05] transition-colors disabled:opacity-50"
                 title="总结选中的文字或全文"
               >
                 <AlignLeft className="w-3.5 h-3.5" />
@@ -377,7 +377,7 @@ const NoteDetail: FC = () => {
               <button
                 onClick={() => handleAIAction('tags')}
                 disabled={aiLoading}
-                className="flex items-center gap-1 px-2 py-1.5 rounded-lg text-xs text-text-muted hover:text-warning hover:bg-white/[0.05] transition-colors disabled:opacity-50"
+                className="flex items-center gap-1 px-2 py-1.5 rounded-[2px] text-xs text-text-muted hover:text-warning hover:bg-white/[0.05] transition-colors disabled:opacity-50"
                 title="从内容提取标签"
               >
                 <Hash className="w-3.5 h-3.5" />
@@ -398,7 +398,7 @@ const NoteDetail: FC = () => {
           </label>
           {showPreview ? (
             <div
-              className="w-full min-h-[400px] bg-bg-secondary border border-border-color rounded-xl px-4 py-3 text-sm text-text-primary leading-relaxed overflow-y-auto"
+              className="w-full min-h-[400px] bg-bg-secondary border border-border-color rounded-[2px] px-4 py-3 text-sm text-text-primary leading-relaxed overflow-y-auto"
               dangerouslySetInnerHTML={{ __html: renderMarkdown(content) || '<span class="text-text-secondary">暂无内容</span>' }}
             />
           ) : (
@@ -408,7 +408,7 @@ const NoteDetail: FC = () => {
               onChange={handleContentChange}
               placeholder="在这里输入笔记内容..."
               rows={16}
-              className="w-full bg-bg-secondary border border-border-color rounded-xl px-4 py-3 text-sm text-text-primary placeholder-text-secondary focus:outline-none focus:border-info/50 transition-colors resize-none font-mono leading-relaxed"
+              className="w-full bg-bg-secondary border border-border-color rounded-[2px] px-4 py-3 text-sm text-text-primary placeholder-text-secondary focus:outline-none focus:border-info/50 transition-colors resize-none font-mono leading-relaxed"
             />
           )}
           {/* Link Dropdown */}
@@ -418,7 +418,7 @@ const NoteDetail: FC = () => {
                 initial={{ opacity: 0, y: 4 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: 4 }}
-                className="absolute left-4 right-4 bottom-4 bg-bg-secondary border border-border-color rounded-xl shadow-2xl z-40 overflow-hidden max-h-48 overflow-y-auto"
+                className="absolute left-4 right-4 bottom-4 bg-bg-secondary border border-border-color rounded-[2px] z-40 overflow-hidden max-h-48 overflow-y-auto"
               >
                 {linkCandidates.map((note) => (
                   <button
@@ -441,7 +441,7 @@ const NoteDetail: FC = () => {
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: 8 }}
-                className="mt-3 p-3 rounded-xl bg-warning/5 border border-warning/20"
+                className="mt-3 p-3 rounded-[2px] bg-warning/5 border border-warning/20"
               >
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-1.5 text-xs text-warning">
@@ -457,7 +457,7 @@ const NoteDetail: FC = () => {
                     </button>
                     <button
                       onClick={applySuggestion}
-                      className="text-[10px] flex items-center gap-1 text-emerald-400 hover:text-emerald-300"
+                      className="text-[10px] flex items-center gap-1 text-success hover:text-success"
                     >
                       <Check className="w-3 h-3" />
                       插入替换
