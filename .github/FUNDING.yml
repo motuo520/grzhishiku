@@ -1,0 +1,12 @@
+# 赞助入口 / Sponsorship
+# 请将以下占位用户名替换为真实账号后再发布。
+
+github: [your-github-username]          # GitHub Sponsors 用户名
+ko_fi: your-ko-fi-username               # 可选
+liberapay: your-liberapay-username       # 可选
+
+custom:
+  # 爱发电：请替换为真实链接
+  - "https://afdian.net/a/your-username"
+  # 也可以直接放微信/支付宝赞赏码图片链接
+  # - "https://grzhishiku.com/sponsor.png"

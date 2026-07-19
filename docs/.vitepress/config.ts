@@ -6,11 +6,13 @@ export default defineConfig({
   lang: 'zh-CN',
   lastUpdated: true,
   cleanUrls: true,
+  ignoreDeadLinks: true,
   themeConfig: {
     nav: [
       { text: '首页', link: '/' },
       { text: '指南', link: '/guide/getting-started' },
       { text: '对比', link: '/comparison' },
+      { text: '企业版', link: '/enterprise' },
       { text: 'GitHub', link: 'https://github.com/your-org/personal-second-brain' },
     ],
     sidebar: {
@@ -22,6 +24,14 @@ export default defineConfig({
             { text: '自托管部署', link: '/guide/self-host' },
             { text: '模型配置', link: '/guide/model-setup' },
             { text: '云同步', link: '/guide/sync' },
+          ],
+        },
+        {
+          text: '更多',
+          items: [
+            { text: '与同类工具对比', link: '/comparison' },
+            { text: '企业版 / 私有化部署', link: '/enterprise' },
+            { text: '依赖许可证清单', link: '/compliance/dependency-licenses' },
           ],
         },
       ],

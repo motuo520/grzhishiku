@@ -175,6 +175,8 @@ Please report security issues to **security@grzhishiku.com** instead of opening 
 
 [AGPL-3.0](LICENSE) © 2024-2026 Personal Second Brain Contributors
 
+**商标声明**："第二大脑"、"Personal Second Brain"、"grzhishiku.com" 及相关 LOGO 不随代码授权，详见 [TRADEMARK.md](TRADEMARK.md)。
+
 ---
 
 > ⭐ 如果这个项目对你有帮助，请给我们一个 Star！

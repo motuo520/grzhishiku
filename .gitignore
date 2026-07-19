@@ -35,6 +35,11 @@ desktop/backend-dist/
 frontend/shots-before/
 frontend/shots-after/
 
+# 文档站
+docs/node_modules/
+docs/.vitepress/dist/
+docs/.vitepress/cache/
+
 # 备份与临时文件
 *.bak
 *.incomplete
