@@ -9,6 +9,8 @@
 ![FastAPI](https://img.shields.io/badge/Backend-FastAPI-009688?logo=fastapi)
 ![Docker](https://img.shields.io/badge/Deploy-Docker%20Compose-2496ED?logo=docker)
 
+![Demo](screenshots/demo.gif)
+
 [中文](#快速开始) · [English](#quick-start)
 
 ---
@@ -89,7 +91,13 @@ Core principles:
 
 ## 功能截图 / Screenshots
 
-> 待补充实际运行截图。建议目录：`screenshots/`
+| 首页 | 仪表盘（空状态引导） |
+|------|----------------------|
+| ![Welcome](screenshots/welcome.png) | ![Dashboard](screenshots/dashboard.png) |
+
+| RAG 问答（本地模型 + 引用出处） | 个人知识库 |
+|--------------------------------|----------------------|
+| ![Chat with citation](screenshots/chat-citation.png) | ![Knowledge library](screenshots/knowledge-personal.png) |
 
 ---
 
@@ -175,7 +183,7 @@ Please report security issues to **security@grzhishiku.com** instead of opening 
 
 [AGPL-3.0](LICENSE) © 2024-2026 Personal Second Brain Contributors
 
-**商标声明**："第二大脑"、"Personal Second Brain"、"grzhishiku.com" 及相关 LOGO 不随代码授权，详见 [TRADEMARK.md](TRADEMARK.md)。
+**商标声明**："个人第二大脑"、"第二大脑"、"Personal Second Brain"、"grzhishiku.com" 及相关 LOGO 不随代码授权，详见 [TRADEMARK.md](TRADEMARK.md)。
 
 ---
 

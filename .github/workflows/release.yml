@@ -10,7 +10,28 @@ permissions:
   packages: write
 
 jobs:
+  rag-eval:
+    name: RAG Evaluation Gate
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install backend dependencies
+        working-directory: ./backend
+        run: pip install -r requirements.txt
+
+      - name: Run 50-question RAG eval set
+        working-directory: ./backend
+        run: pytest tests/test_rag_eval.py -q -m rag_eval
+
   release:
+    needs: rag-eval
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
