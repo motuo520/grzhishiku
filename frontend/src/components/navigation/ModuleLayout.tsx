@@ -14,7 +14,7 @@ import {
   Workflow, SquareStack, BrainCircuit, FlaskConical, Heart, ShieldAlert, MapPin, Pencil,
 } from 'lucide-react';
 
-import { useNavigation, MENU_DATA, getVisibleItems, type MenuId, type BrainSide } from '@/store/navigation';
+import { useNavigation, useMenuData, getVisibleItems, type MenuId, type BrainSide } from '@/store/navigation';
 import BrainSideToggle from '@/components/brain/BrainSideToggle';
 
 import { useSystemFeatures } from '@/hooks/useSystemFeatures';
@@ -40,7 +40,8 @@ interface ModuleLayoutProps {
 
 const ModuleLayout: FC<ModuleLayoutProps> = ({ menuId, showOverview = true }) => {
   const location = useLocation();
-  const menu = MENU_DATA[menuId];
+  const { menuData } = useMenuData();
+  const menu = menuData[menuId];
   const allItems = menu?.items || [];
   const { brainSide, setBrainSide } = useNavigation();
   const visibleItems = getVisibleItems(allItems, brainSide);

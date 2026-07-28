@@ -14,7 +14,7 @@ import { useBrain } from '@/hooks/useBrain';
 import { useAuth } from '@/hooks/useAuth';
 import { useSubscription } from '@/hooks/useSubscription';
 import {
-  QUICK_ACTIONS,
+  useMenuData,
   SETTINGS_ITEMS,
   getVisibleItems,
   type BrainSide,
@@ -40,7 +40,8 @@ const Sidebar: FC = () => {
   const [brainMenuOpen, setBrainMenuOpen] = useState(false);
 
   const effectiveBrain = activeBrain || 'both';
-  const quickActions = getVisibleItems(QUICK_ACTIONS, effectiveBrain);
+  const { quickActions: modeQuickActions } = useMenuData();
+  const quickActions = getVisibleItems(modeQuickActions, effectiveBrain);
 
   const handleBrainSwitch = async (target: BrainSide) => {
     try {

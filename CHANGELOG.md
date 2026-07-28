@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Dual interface modes (Classic ⇄ Simple)**: one-click switch in the top navigation bar and in Settings → Appearance; the choice is persisted locally.
+  - Classic mode (default): the full 12-module navigation — capture, pipeline, attention, emergence studio, graph, knowledge base, time capsules, cognitive mirror, social brain, embodied cognition, community, settings.
+  - Simple mode: the streamlined three-action navigation (capture → organize → retrieve).
+  - Restored classic-mode pages: attention (6), cognitive mirror (7), emergence studio (7), social brain / jianghu (9+), embodied cognition (4), extra graph pages (5), extra knowledge pages (5), extra capsule pages (4), and the business-plan page.
+  - Routes hidden in simple mode redirect to the dashboard; both modes share the same backend and data.
+
+### Fixed
+
+- **Auth interceptor deadlock**: a failed `/auth/refresh` (401) used to re-trigger the refresh flow and await itself, leaving the UI on an infinite loading spinner.
+- **Anonymous 401 redirect**: guest users hitting a 401 API were force-redirected to `/welcome`; they can now browse the app in guest mode as designed.
+- **KnowledgeDetail crash**: the page crashed with `Cannot read properties of undefined (reading 'length')` when a knowledge unit had an empty `content_raw`.
+
 ## [0.1.0] - 2026-07-19
 
 ### Added

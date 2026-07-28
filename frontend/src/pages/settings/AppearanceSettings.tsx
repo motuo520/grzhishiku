@@ -2,7 +2,7 @@ import { FC, useState, useEffect } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { settingsApi, UserSettings } from '@/api/settings';
 import { useSettings } from '@/store/settings';
-import { Palette, Type, Monitor, Sun, Moon, Check, Loader2, AlertTriangle } from 'lucide-react';
+import { Palette, Type, Monitor, Sun, Moon, Check, Loader2, AlertTriangle, LayoutGrid } from 'lucide-react';
 
 type Theme = 'dark' | 'light' | 'system';
 type FontSize = 'small' | 'medium' | 'large';
@@ -16,6 +16,8 @@ const AppearanceSettings: FC = () => {
   const storeSetFontSize = useSettings(s => s.setFontSize);
   const mascotVisible = useSettings(s => s.mascotVisible);
   const setMascotVisible = useSettings(s => s.setMascotVisible);
+  const uiMode = useSettings(s => s.uiMode);
+  const setUiMode = useSettings(s => s.setUiMode);
 
   const showToast = (message: string, type: 'success' | 'error') => {
     setToast({ message, type });
@@ -200,6 +202,40 @@ const AppearanceSettings: FC = () => {
             <span className={`absolute top-1 left-1 w-4 h-4 rounded-full bg-white transition-transform ${mascotVisible ? 'translate-x-6' : ''}`} />
           </button>
         </div>
+      </section>
+
+      {/* UI Version */}
+      <section className="glass-card p-6">
+        <h2 className="text-lg font-semibold text-text-primary mb-4 flex items-center gap-2">
+          <LayoutGrid size={18} className="text-info" />
+          界面版本
+        </h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {([
+            { value: 'classic' as const, label: '经典版', desc: '旧版完整功能：全部 12 个模块' },
+            { value: 'simple' as const, label: '简化版', desc: '只保留三个动作：存进来 / 自动理好 / 问出来' },
+          ]).map(opt => {
+            const selected = uiMode === opt.value;
+            return (
+              <button
+                key={opt.value}
+                onClick={() => setUiMode(opt.value)}
+                className={`flex items-center gap-3 p-4 rounded-[2px] border text-left transition-all ${
+                  selected
+                    ? 'border-info/40 bg-info/10 text-info'
+                    : 'border-white/[0.08] hover:border-white/[0.15] text-text-secondary'
+                }`}
+              >
+                <div className="flex-1">
+                  <div className="text-sm font-medium">{opt.label}</div>
+                  <div className="text-xs text-text-muted mt-0.5">{opt.desc}</div>
+                </div>
+                {selected && <Check size={16} className="shrink-0" />}
+              </button>
+            );
+          })}
+        </div>
+        <p className="text-xs text-text-muted mt-3">切换即时生效并自动记住，也可以随时点顶栏的版本图标切换。</p>
       </section>
 
       {/* Save */}

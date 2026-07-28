@@ -4,7 +4,8 @@ import { getToken, setToken, clearToken, TOKEN_KEY } from './auth';
 const API_BASE_URL = import.meta.env.VITE_API_URL || '';
 
 // Endpoints that should NOT send auth header (and should not trigger refresh on 401)
-const PUBLIC_ENDPOINTS = ['/api/v1/auth/login', '/api/v1/auth/register'];
+// 注意：refresh 自己必须在列，否则 refresh 返回 401 时会再次等待自己，死锁导致页面永远转圈
+const PUBLIC_ENDPOINTS = ['/api/v1/auth/login', '/api/v1/auth/register', '/api/v1/auth/refresh'];
 
 class ApiClient {
   private client: AxiosInstance;
@@ -77,6 +78,10 @@ class ApiClient {
         }
 
         if (error.response?.status === 401 && !originalRequest._retry) {
+          // 匿名（无 token）用户的 401：不刷新、不踢回欢迎页，交给调用方按空态处理
+          if (!getToken()) {
+            return Promise.reject({ message: '未登录或会话已过期', code: 'UNAUTHORIZED', status: 401 });
+          }
           originalRequest._retry = true;
           try {
             const newToken = await this.refreshToken();

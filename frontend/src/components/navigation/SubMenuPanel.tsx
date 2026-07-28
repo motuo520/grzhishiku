@@ -16,8 +16,7 @@ import {
 } from 'lucide-react';
 import {
   useNavigation,
-  MENU_DATA,
-  TOP_NAV_BUCKETS,
+  useMenuData,
   getBucketByMenuId,
   type MenuId,
 } from '@/store/navigation';
@@ -43,12 +42,21 @@ const MENU_MODULE_MAP: Record<MenuId, string | null> = {
   ask: null,
   community: null,
   settings: null,
+  graph: null,
+  cognitive: 'cognitive',
+  emergence: 'emergence',
+  attention: null,
+  capsules: null,
+  knowledge: null,
+  'social-brain': 'social_brain',
+  'embodied-cognition': 'embodied_cognition',
 };
 
 const SubMenuPanel: FC = () => {
   const { activeMenu, subMenuOpen, closeSubMenu } = useNavigation();
   const navigate = useNavigate();
   const { data: systemFeatures } = useSystemFeatures();
+  const { menuData, topNavBuckets } = useMenuData();
 
   const moduleEnabled = (menuId: MenuId) => {
     const key = MENU_MODULE_MAP[menuId];
@@ -61,13 +69,14 @@ const SubMenuPanel: FC = () => {
     setTimeout(() => navigate(path), 50);
   };
 
-  const bucket = activeMenu ? getBucketByMenuId(activeMenu) : undefined;
+  const bucket = activeMenu ? getBucketByMenuId(activeMenu, topNavBuckets) : undefined;
   if (!bucket) return null;
 
   // 过滤被关闭的模块；下拉索引展示全部子项，不按脑侧过滤
   const visibleModules = bucket.moduleIds
     .filter(moduleEnabled)
-    .map((menuId) => MENU_DATA[menuId]);
+    .map((menuId) => menuData[menuId])
+    .filter(Boolean);
 
   return (
     <AnimatePresence mode="wait">

@@ -174,9 +174,9 @@ const KnowledgeDetail: FC = () => {
               <h2 className="text-sm font-semibold text-text-primary">知识内容</h2>
             </div>
             <div className={`text-sm text-text-primary leading-relaxed whitespace-pre-line break-all overflow-hidden max-w-full ${!showFullContent ? 'line-clamp-6' : ''}`}>
-              {unit.content_raw}
+              {unit.content_raw || '（暂无内容）'}
             </div>
-            {unit.content_raw.length > 300 && (
+            {(unit.content_raw?.length ?? 0) > 300 && (
               <button onClick={() => setShowFullContent((s) => !s)}
                 className="flex items-center gap-1 text-xs text-info mt-3 hover:underline">
                 {showFullContent ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
@@ -331,7 +331,7 @@ const KnowledgeDetail: FC = () => {
             <h2 className="text-sm font-semibold text-text-primary">操作</h2>
             <div className="space-y-2">
               <ModelSelector value={modelId} onChange={setModelId} taskType="analysis" className="w-full" />
-              <LLMCostBadge modelId={modelId} inputText={unit.content_raw} outputTokenEstimate={600} className="w-full" />
+              <LLMCostBadge modelId={modelId} inputText={unit.content_raw ?? ''} outputTokenEstimate={600} className="w-full" />
             </div>
             <button onClick={handleVerify} disabled={isVerifying}
               className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-accent text-white rounded-[2px] text-sm font-medium hover:bg-[var(--accent-hover)] transition-all disabled:opacity-60 disabled:cursor-not-allowed">

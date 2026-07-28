@@ -16,6 +16,8 @@ interface SettingsState {
   theme: 'dark' | 'light' | 'system';
   fontSize: 'small' | 'medium' | 'large';
   density: 'compact' | 'comfortable';
+  /** 界面版本：classic=旧版完整功能，simple=简化版三动作 */
+  uiMode: 'classic' | 'simple';
 
   defaultLLM: string;
   localLLMEnabled: boolean;
@@ -35,6 +37,7 @@ interface SettingsState {
   mascotVisible: boolean;
 
   setTheme: (theme: 'dark' | 'light' | 'system') => void;
+  setUiMode: (mode: 'classic' | 'simple') => void;
   setFontSize: (size: 'small' | 'medium' | 'large') => void;
   setDefaultLLM: (llm: string) => Promise<void>;
   setOllamaUrl: (url: string) => void;
@@ -55,6 +58,7 @@ export const useSettings = create<SettingsState>()(
       theme: 'dark',
       fontSize: 'medium',
       density: 'comfortable',
+      uiMode: 'classic',
       defaultLLM: 'ollama',
       localLLMEnabled: true,
       externalLLMEnabled: false,
@@ -72,6 +76,7 @@ export const useSettings = create<SettingsState>()(
       mascotVisible: true,
 
       setTheme: (theme) => set({ theme }),
+      setUiMode: (uiMode) => set({ uiMode }),
       setFontSize: (fontSize) => set({ fontSize }),
       setDefaultLLM: async (defaultLLM) => {
         const config = LLM_MODEL_MAP[defaultLLM];
@@ -122,6 +127,7 @@ export const useSettings = create<SettingsState>()(
         theme: state.theme,
         fontSize: state.fontSize,
         density: state.density,
+        uiMode: state.uiMode,
         defaultLLM: state.defaultLLM,
         localLLMEnabled: state.localLLMEnabled,
         externalLLMEnabled: state.externalLLMEnabled,

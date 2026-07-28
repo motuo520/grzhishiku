@@ -3,10 +3,11 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   Download, Network, Sparkles, Target, Package, Shield, Settings, Brain,
   LogOut, User, Search, Sun, Moon, Monitor, MessageSquare, Users, Workflow,
+  Layers, LayoutGrid,
 } from 'lucide-react';
 import {
   useNavigation,
-  TOP_NAV_BUCKETS,
+  useMenuData,
   type MenuId,
   getMenuIdByPath,
   getBucketByMenuId,
@@ -28,6 +29,14 @@ const MENU_MODULE_MAP: Record<MenuId, string | null> = {
   ask: null,
   community: null,
   settings: null,
+  graph: null,
+  cognitive: 'cognitive',
+  emergence: 'emergence',
+  attention: null,
+  capsules: null,
+  knowledge: null,
+  'social-brain': 'social_brain',
+  'embodied-cognition': 'embodied_cognition',
 };
 
 interface TopNavigationProps {
@@ -42,6 +51,9 @@ const TopNavigation: FC<TopNavigationProps> = ({ onLoginClick }) => {
   const { data: systemFeatures } = useSystemFeatures();
   const theme = useSettings((state) => state.theme);
   const setTheme = useSettings((state) => state.setTheme);
+  const uiMode = useSettings((state) => state.uiMode);
+  const setUiMode = useSettings((state) => state.setUiMode);
+  const { menuData, topNavBuckets } = useMenuData();
   const [userMenuOpen, setUserMenuOpen] = useState(false);
 
   const cycleTheme = () => {
@@ -59,11 +71,11 @@ const TopNavigation: FC<TopNavigationProps> = ({ onLoginClick }) => {
   };
 
   // 根据当前路径推导所在模块和一级桶，保证直接访问 URL 时顶部高亮正确
-  const currentMenuId = getMenuIdByPath(location.pathname);
-  const currentBucket = getBucketByMenuId(currentMenuId);
+  const currentMenuId = getMenuIdByPath(location.pathname, menuData);
+  const currentBucket = getBucketByMenuId(currentMenuId, topNavBuckets);
 
   const handleBucketClick = useCallback((bucketId: string) => {
-    const bucket = TOP_NAV_BUCKETS.find((b) => b.id === bucketId);
+    const bucket = topNavBuckets.find((b) => b.id === bucketId);
     if (!bucket) return;
     // 如果桶内主模块被关闭，则使用第一个仍开启的模块
     const enabledIds = bucket.moduleIds.filter(moduleEnabled);
@@ -74,14 +86,14 @@ const TopNavigation: FC<TopNavigationProps> = ({ onLoginClick }) => {
     } else {
       setActiveMenu(targetMenuId);
     }
-  }, [activeMenu, setActiveMenu, toggleSubMenu]);
+  }, [activeMenu, setActiveMenu, toggleSubMenu, topNavBuckets]);
 
-  // Keyboard shortcuts: Ctrl+1~3 for top 3 buckets
+  // Keyboard shortcuts: Ctrl+1~3 for top buckets
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.ctrlKey && e.key >= '1' && e.key <= '3') {
+      if (e.ctrlKey && e.key >= '1' && e.key <= '9') {
         const index = parseInt(e.key, 10) - 1;
-        const bucket = TOP_NAV_BUCKETS[index];
+        const bucket = topNavBuckets[index];
         if (bucket) {
           handleBucketClick(bucket.id);
         }
@@ -89,7 +101,7 @@ const TopNavigation: FC<TopNavigationProps> = ({ onLoginClick }) => {
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [handleBucketClick]);
+  }, [handleBucketClick, topNavBuckets]);
 
   return (
     <>
@@ -100,7 +112,7 @@ const TopNavigation: FC<TopNavigationProps> = ({ onLoginClick }) => {
 
           {/* Main Menu: 3 buckets */}
           <div className="flex items-center gap-1">
-            {TOP_NAV_BUCKETS.map((bucket, index) => {
+            {topNavBuckets.map((bucket, index) => {
               const Icon = ICON_MAP[bucket.icon] || Brain;
               const isActive = currentBucket?.id === bucket.id;
 
@@ -138,6 +150,14 @@ const TopNavigation: FC<TopNavigationProps> = ({ onLoginClick }) => {
               title="全局搜索 /search"
             >
               <Search className="w-4 h-4" />
+            </button>
+
+            <button
+              onClick={() => setUiMode(uiMode === 'classic' ? 'simple' : 'classic')}
+              className="p-2 rounded-[2px] hover:bg-bg-tertiary text-text-secondary hover:text-accent transition-colors duration-200"
+              title={`界面版本：${uiMode === 'classic' ? '经典版（完整功能）' : '简化版（三个动作）'} (点击切换)`}
+            >
+              {uiMode === 'classic' ? <LayoutGrid className="w-4 h-4" /> : <Layers className="w-4 h-4" />}
             </button>
 
             <button
