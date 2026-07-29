@@ -36,7 +36,7 @@ export const adminApi = {
 
   // Users
   getUsers: (params?: { status?: string; role?: string; search?: string; page?: number; page_size?: number }) =>
-    adminApiClient.get('/users', { params }),
+    adminApiClient.get('/users/', { params }),
   getUser: (id: string) => adminApiClient.get(`/users/${id}`),
   updateUserStatus: (id: string, status: string) => adminApiClient.patch(`/users/${id}/status`, { status }),
   updateUserTier: (id: string, tier: string) => adminApiClient.patch(`/users/${id}/tier`, { tier }),
@@ -45,7 +45,7 @@ export const adminApi = {
 
   // Content
   getContent: (params?: { type?: string; status?: string; reported?: boolean; skip?: number; limit?: number }) =>
-    adminApiClient.get('/content', { params }),
+    adminApiClient.get('/content/', { params }),
   moderateContent: (id: string, action: string, reason?: string) => adminApiClient.post(`/content/${id}/moderate`, { action, reason }),
 
   // Billing
@@ -90,7 +90,7 @@ export const adminApi = {
       mapped.risk_level = mapped.severity;
       delete mapped.severity;
     }
-    const res = await adminApiClient.get('/logs', { params: mapped });
+    const res = await adminApiClient.get('/logs/', { params: mapped });
     return { data: res.data.items || [] };
   },
   exportLogs: (format: 'json' | 'csv') => adminApiClient.get(`/logs/export?format=${format}`, { responseType: 'blob' }),
@@ -121,7 +121,7 @@ export const adminApi = {
   getSupportStats: () => adminApiClient.get('/support/stats'),
 
   // Tenants
-  getTenants: () => adminApiClient.get('/tenants'),
+  getTenants: () => adminApiClient.get('/tenants/'),
   getTenantStats: (id: string) => adminApiClient.get(`/tenants/${id}/stats`),
   createTenant: (data: any) => adminApiClient.post('/tenants', data),
   updateTenant: (id: string, data: any) => adminApiClient.patch(`/tenants/${id}`, data),

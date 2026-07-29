@@ -143,11 +143,11 @@ def graphify_graph(
 
 
 @router.post("/query", summary="Ask a plain-language question against the graph")
-def graphify_query(
+async def graphify_query(
     req: QueryRequest,
     current_user: User = Depends(get_current_user),
 ):
-    return gfs.query_graph(current_user.id, req.question)
+    return await gfs.query_graph(current_user.id, req.question)
 
 
 @router.post("/path", summary="Shortest path between two graph nodes")

@@ -434,8 +434,43 @@ def _run_query(user_id: str, args: List[str]) -> Dict[str, Any]:
     return {"ok": True, "result": out}
 
 
-def query_graph(user_id: str, question: str) -> Dict[str, Any]:
-    return _run_query(user_id, ["query", question])
+async def query_graph(user_id: str, question: str) -> Dict[str, Any]:
+    retrieval = _run_query(user_id, ["query", question])
+    if not retrieval.get("ok"):
+        return retrieval
+    trace = (retrieval.get("result") or "").strip()
+    if not trace:
+        return {"ok": True, "result": "图谱中没有检索到与问题相关的内容。", "evidence": ""}
+
+    # graphify CLI 的 query 只做检索（节点/边列表），自然语言答案由这里
+    # 用 LLM 基于检索结果组织——要求引用具体条目，不允许编造
+    from app.services.llm_billing_service import billed_chat_completion
+    from app.core.database import SessionLocal
+
+    prompt = (
+        f"用户问题：{question}\n\n"
+        f"以下是从用户的个人知识图谱中检索到的相关条目（NODE）和关系（EDGE）：\n"
+        f"{trace[:4000]}\n\n"
+        "请基于以上检索结果回答用户的问题。要求：\n"
+        "- 只使用检索结果里的信息，不要编造或补充外部知识\n"
+        "- 引用具体条目名称（用书名号《》标出）\n"
+        "- 若检索结果与问题无关，如实说明知识库中暂未找到相关内容\n"
+        "- 回答控制在 300 字以内，条理清晰\n"
+    )
+    db = SessionLocal()
+    try:
+        answer = await billed_chat_completion(
+            db=db,
+            user_id=user_id,
+            model_id="deepseek-v4-flash",
+            task_type="graph_query",
+            prompt=prompt,
+            system_prompt="你是个人知识库问答助手，只根据给定的检索结果回答，答案必须带条目引用。",
+        )
+    finally:
+        db.close()
+    answer = answer.strip() or "暂时无法生成回答，请重试。"
+    return {"ok": True, "result": answer, "evidence": trace}
 
 
 def path_graph(user_id: str, a: str, b: str) -> Dict[str, Any]:

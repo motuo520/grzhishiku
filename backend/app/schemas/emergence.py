@@ -20,6 +20,7 @@ class EmergenceSourceList(BaseModel):
 class EmergenceBaseRequest(BaseModel):
     brain_side: Optional[str] = Field(None, description="personal / network / both")
     source_ids: Optional[List[str]] = Field(None, description="Selected source content ids")
+    source_types: Optional[List[str]] = Field(None, description="Content type for each source id (note/clip/knowledge)")
     preferred_model: Optional[str] = Field(None, description="Preferred LLM model identifier")
 
 

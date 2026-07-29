@@ -1,8 +1,8 @@
 # 个人第二大脑 / Personal Second Brain
 
-> 把零散的知识**存进来**，让 AI 帮你**自动理好**，需要时**一句话问出来**。数据优先留在本机，云模型仅在你填写 API Key 后才会调用。
+> **中文优先的本地 AI 知识库**：把网页、笔记、文件**存进来**，AI 帮你**自动理好**，需要时**一句话问出来**——每个答案都带着原文出处。数据不出本机，一条命令自托管。
 
-> Collect scattered knowledge, let AI organize it automatically, and retrieve anything with a single sentence. Data stays on your machine first; cloud models are only called after you provide your own API key.
+> A Chinese-first, local-first AI knowledge base. Capture anything, let AI organize it, and ask in plain language — every answer comes with citations. Your data stays on your machine.
 
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL%20v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
 ![React](https://img.shields.io/badge/Frontend-React%2019-61DAFB?logo=react)
@@ -17,17 +17,20 @@
 
 ## 快速开始
 
+一条命令（需要 Docker）：
+
 ```bash
 git clone https://github.com/your-org/personal-second-brain.git
 cd personal-second-brain
 cp backend/.env.example .env
-# 编辑 .env，填入强密钥（生产环境必须）
 docker compose up -d
 ```
 
 - 前端：`http://localhost:3000`
 - API：`http://localhost:8000`
 - API 文档：`http://localhost:8000/docs`
+
+打开就能用：默认进入「简化版」——只有三个动作，零学习成本。想要全部 12 个模块，点顶栏的版本图标切到「经典版」即可。
 
 首次启动后，注册一个普通账号，再通过以下命令将其设为管理员：
 
@@ -40,17 +43,20 @@ cd backend
 
 ## Quick Start
 
+One command (Docker required):
+
 ```bash
 git clone https://github.com/your-org/personal-second-brain.git
 cd personal-second-brain
 cp backend/.env.example .env
-# Edit .env and set strong secrets (required for production)
 docker compose up -d
 ```
 
 - Web UI: `http://localhost:3000`
 - API: `http://localhost:8000`
 - API docs: `http://localhost:8000/docs`
+
+It starts in **Simple Mode** — three actions, zero learning curve. Switch to **Classic Mode** (12 modules) anytime from the top bar.
 
 After the first launch, register a regular account, then promote it to admin:
 
@@ -63,28 +69,34 @@ cd backend
 
 ## 这是什么 / What is this
 
-**个人第二大脑**是一款面向长期知识工作者的开源全栈工具：
+**只有三个动作，这就是全部**：
 
-1. **存进来** — 笔记、网页剪藏、文件导入，一键沉淀。
-2. **自动理好** — 自动摘要、标签、向量化与关系图谱，让知识可检索。
-3. **一句话问出来** — RAG 对话会引用原文出处，本地模型免费跑，云模型按需接入。
+1. **存进来** — 笔记、网页剪藏、RSS、稍后读、文件导入，一个入口沉淀。
+2. **自动理好** — 自动摘要、标签、向量化与关系图谱，不用你整理。
+3. **一句话问出来** — 用大白话提问，AI 只在你的资料里检索，每句话标注来源。
+
+> 想要更完整的工具箱（时间胶囊、注意力管家、知识图谱、认知镜像等 12 个模块）？顶栏一键切到「经典版」，数据完全共用。
 
 核心设计原则：
 
 - **本地优先**：默认使用 SQLite + Ollama，数据不出本机。
-- **模型自由**：Ollama、DeepSeek、Kimi、OpenCode 等可配置切换。
+- **模型自由**：Ollama 本地模型免费跑；DeepSeek、Kimi 等自带 key 即可接入（BYOK）。
+- **中文优先**：界面、文档、默认提示词全部为中文设计。
 - **开源可审计**：AGPL-3.0 协议，服务端代码完全开放。
 
-**Personal Second Brain** is an open-source full-stack tool for long-term knowledge workers:
+**Personal Second Brain** is built around three actions, and that is the whole product:
 
-1. **Capture** — notes, web clips, file imports.
+1. **Capture** — notes, web clips, RSS, read-later, file imports.
 2. **Organize** — auto summary, tags, embeddings, and relationship graph.
-3. **Retrieve** — RAG chat with source citations; free local models, optional cloud models.
+3. **Retrieve** — ask in plain language; answers cite your own sources.
+
+> Want the full toolbox (time capsules, attention manager, knowledge graph, cognitive mirror — 12 modules)? Switch to Classic Mode from the top bar; all data is shared.
 
 Core principles:
 
 - **Local-first**: SQLite + Ollama by default; data stays on your machine.
-- **Model freedom**: Ollama, DeepSeek, Kimi, OpenCode, and more.
+- **Model freedom**: free local models via Ollama; bring your own key for DeepSeek, Kimi, and more.
+- **Chinese-first**: UI, docs, and prompts are designed in Chinese (English UI works too).
 - **Open & auditable**: AGPL-3.0, server code fully open.
 
 ---

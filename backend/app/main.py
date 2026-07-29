@@ -460,6 +460,12 @@ class SPAStaticFiles(StaticFiles):
 
     async def get_response(self, path: str, scope):
         from starlette.exceptions import HTTPException as StarletteHTTPException
+        from starlette.responses import JSONResponse
+
+        # 未匹配的 /api 路径一律返回 JSON 404，绝不能回退成 index.html——
+        # 否则前端拿到的"数据"是 HTML 字符串，在调用方手里炸成莫名错误
+        if path.startswith("api/"):
+            return JSONResponse({"detail": "Not Found"}, status_code=404)
 
         try:
             return await super().get_response(path, scope)
