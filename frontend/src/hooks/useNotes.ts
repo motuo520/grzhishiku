@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { notesApi, NoteUpdateData } from '@/api/notes';
+import { notesApi, NoteUpdateData, Note } from '@/api/notes';
 
 export const useNotes = (filters?: { q?: string; tag_ids?: string; brain_side?: string; limit?: number }) => {
   const queryClient = useQueryClient();
@@ -7,8 +7,23 @@ export const useNotes = (filters?: { q?: string; tag_ids?: string; brain_side?: 
   const { data: notes, isLoading } = useQuery({
     queryKey: ['notes', filters?.q, filters?.tag_ids, filters?.brain_side, filters?.limit],
     queryFn: async () => {
-      const response = await notesApi.list(filters);
-      return response.data;
+      // 后端单页上限 100；请求量超出时自动分页拉取并合并（如进化轨迹要全量笔记）
+      const limit = filters?.limit;
+      if (!limit || limit <= 100) {
+        const response = await notesApi.list(filters);
+        return response.data;
+      }
+      const all: Note[] = [];
+      let skip = 0;
+      while (all.length < limit) {
+        const pageSize = Math.min(100, limit - all.length);
+        const response = await notesApi.list({ ...filters, limit: pageSize, skip });
+        const batch: Note[] = response.data || [];
+        all.push(...batch);
+        if (batch.length < pageSize) break;
+        skip += batch.length;
+      }
+      return all;
     },
     staleTime: 5 * 60 * 1000,
     gcTime: 10 * 60 * 1000,

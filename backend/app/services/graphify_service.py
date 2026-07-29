@@ -15,6 +15,7 @@ import re
 import shutil
 import subprocess
 import sys
+import tempfile
 import threading
 from datetime import datetime
 from pathlib import Path
@@ -188,31 +189,35 @@ def build_graph(db: Session, user_id: str) -> Dict[str, Any]:
     user_dir = _user_dir(user_id)
     backend = _pick_backend()
     # Build in a throwaway copy of the corpus, then swap graphify-out on success.
-    # Two reasons:
+    # Three reasons:
     # 1. graphify caches per-chunk extraction results under graphify-out/cache —
     #    including FAILED chunks (a doc that failed extraction is cached as an
     #    edge-less fallback node). Building in a fresh dir guarantees no poisoned
     #    cache is reused.
     # 2. The previous graph stays readable while the new one builds, and a failed
     #    build leaves it untouched.
-    build_dir = user_dir / "corpus_building"
+    # 3. graphify honours ancestor .gitignore files, and this repo gitignores
+    #    backend/graphify_data/ — building inside the repo made the scanner see
+    #    0 documents ("graph is empty"). The throwaway copy therefore lives in
+    #    the system temp dir, outside any repo.
+    tmp_root = Path(tempfile.mkdtemp(prefix="psb-graphify-"))
+    build_dir = tmp_root / "corpus_building"
     out_dir = _out_dir(user_id)
     new_graph_json = build_dir / "graphify-out" / "graph.json"
-    shutil.rmtree(build_dir, ignore_errors=True)
     shutil.copytree(_corpus_dir(user_id), build_dir,
                     ignore=shutil.ignore_patterns("graphify-out"))
 
     _set_build_status(user_id, state="building", progress=f"正在用 {backend} 提取 {total_docs} 篇文档…")
     try:
-        proc = _run_cli(["extract", "corpus_building", "--backend", backend], cwd=user_dir)
+        proc = _run_cli(["extract", "corpus_building", "--backend", backend], cwd=tmp_root)
     except subprocess.TimeoutExpired:
-        shutil.rmtree(build_dir, ignore_errors=True)
+        shutil.rmtree(tmp_root, ignore_errors=True)
         _set_build_status(user_id, state="failed", error="构建超时（30 分钟）")
         return get_build_status(user_id)
 
     if proc.returncode != 0 or not new_graph_json.exists():
         tail = (proc.stderr or proc.stdout or "")[-500:]
-        shutil.rmtree(build_dir, ignore_errors=True)
+        shutil.rmtree(tmp_root, ignore_errors=True)
         _set_build_status(user_id, state="failed", error=f"graphify 提取失败: {tail}")
         return get_build_status(user_id)
 
@@ -220,7 +225,7 @@ def build_graph(db: Session, user_id: str) -> Dict[str, Any]:
     warning = None
     _set_build_status(user_id, state="building", progress="正在检测社区并生成报告…")
     try:
-        proc2 = _run_cli(["cluster-only", "corpus_building", "--backend", backend], cwd=user_dir)
+        proc2 = _run_cli(["cluster-only", "corpus_building", "--backend", backend], cwd=tmp_root)
         if proc2.returncode != 0:
             # graph is already usable; report failure is non-fatal
             tail = (proc2.stderr or proc2.stdout or "")[-300:]
@@ -231,7 +236,7 @@ def build_graph(db: Session, user_id: str) -> Dict[str, Any]:
     # Swap the fresh output into place atomically-ish, then drop the build copy.
     shutil.rmtree(out_dir, ignore_errors=True)
     shutil.move(str(build_dir / "graphify-out"), str(out_dir))
-    shutil.rmtree(build_dir, ignore_errors=True)
+    shutil.rmtree(tmp_root, ignore_errors=True)
 
     # Deep fusion: write semantic relations back into graph_edges so collision
     # pairing and the legacy graph APIs consume them. Sync failure must not

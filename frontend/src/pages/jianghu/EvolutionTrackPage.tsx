@@ -22,6 +22,7 @@ const EvolutionTrackPage: FC = () => {
   const { brainSide } = useNavigation();
   const { units: knowledgeUnits, isLoading: knowledgeLoading, error: knowledgeError } = useKnowledge(brainSide);
   // useNotes 的入参类型未声明 limit，但其会原样透传给 notesApi.list（支持 limit），故以带 limit 的局部变量传入
+  // limit>100 时 useNotes 内部自动分页（后端单页上限 100）
   const notesFilters: { q?: string; tag_ids?: string; brain_side?: string; limit?: number } = { brain_side: brainSide, limit: 1000 };
   const { notes, isLoading: notesLoading } = useNotes(notesFilters);
   const [expandedStages, setExpandedStages] = useState<Set<string>>(new Set(['practiced', 'validated']));

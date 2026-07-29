@@ -120,6 +120,10 @@ const ModuleLayout: FC<ModuleLayoutProps> = ({ menuId, showOverview = true }) =>
             );
           })}
         </div>
+        {/* 脑侧过滤开关：条目被脑侧过滤隐藏时，用户可在此切回“双脑融合”显示全部 */}
+        <div className="flex-shrink-0">
+          <BrainSideToggle value={brainSide} onChange={setBrainSide} size="sm" />
+        </div>
       </div>
       </div>
 

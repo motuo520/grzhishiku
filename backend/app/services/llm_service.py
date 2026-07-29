@@ -1435,7 +1435,9 @@ class LLMService:
         if history:
             messages.extend(history)
         messages.append({"role": "user", "content": message})
-        payload = {"model": model, "messages": messages, "stream": True}
+        # deepseek-v4 默认开启思考，reasoning 散文会污染所有 JSON 消费方
+        # （验证/摘要/标签/管线抽取），按官方参数关闭思考输出
+        payload = {"model": model, "messages": messages, "stream": True, "thinking": {"type": "disabled"}}
         key = api_key or self.deepseek_key
         base = (base_url or settings.DEEPSEEK_BASE_URL or "https://api.deepseek.com").rstrip("/")
         try:
@@ -1460,8 +1462,7 @@ class LLMService:
                                     delta = data["choices"][0].get("delta", {})
                                     if delta.get("content"):
                                         yield delta["content"]
-                                    if delta.get("reasoning_content"):
-                                        yield delta["reasoning_content"]
+                                    # reasoning_content 不再混入正文流（见上方 thinking 开关）
                             except json.JSONDecodeError:
                                 continue
         except Exception as e:

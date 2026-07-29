@@ -202,6 +202,27 @@ class LLMBillingService:
 
     # ─── LLM usage lifecycle ────────────────────────────────────────
 
+    def _ensure_model_row(self, model_id: str) -> None:
+        """目录外模型（内置默认模型、用户自定义本地模型等）自动补一行零计价
+        目录，只用于记录用量。否则 llm_usage_records.model_id 的外键会让整个
+        请求 500（FK constraint failed）。"""
+        exists = self.db.query(LLMModel).filter(LLMModel.id == model_id).first()
+        if exists:
+            return
+        self.db.add(LLMModel(
+            id=model_id,
+            name=model_id,
+            provider=model_id.split("-")[0] if model_id else "unknown",
+            provider_model_id=model_id,
+            description="自动补录的目录外模型，仅记录用量不计费",
+            is_active=False,
+            is_system=False,
+            supports_streaming=True,
+            context_length=128000,
+            sort_order=999,
+        ))
+        self.db.flush()
+
     def freeze(
         self,
         user_id: str,
@@ -219,6 +240,8 @@ class LLMBillingService:
         """
         balance = self.get_or_create_balance(user_id)
         price = _to_decimal(estimated_price)
+
+        self._ensure_model_row(model_id)
 
         if _to_decimal(balance.balance) < price:
             raise ValueError("余额不足，请先充值")

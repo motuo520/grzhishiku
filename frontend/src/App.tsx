@@ -221,6 +221,7 @@ const App: FC = () => {
               <Route path="read-later" element={<ReadLaterPage />} />
               <Route path="documents" element={<DocumentLibraryPage />} />
               {!isClassic && <Route path="sources" element={<SourcePoolPage />} />}
+              {isClassic && <Route path="sources" element={<Navigate to="/emergence/sources" replace />} />}
             </Route>
 
             {/* Graph */}
@@ -386,8 +387,8 @@ const App: FC = () => {
             <Route path="topup" element={<TopupPage />} />
             <Route path="billing" element={<BillingPage />} />
 
-            {/* 简化版下，经典版独有路由统一重定向回仪表盘 */}
-            {!isClassic && <Route path="*" element={<Navigate to="/app" replace />} />}
+            {/* 未匹配路由（含另一模式的专属路由）统一重定向回仪表盘 */}
+            <Route path="*" element={<Navigate to="/app" replace />} />
           </Route>
           {/* Admin routes */}
           <Route path="/admin/login" element={<AdminLogin />} />

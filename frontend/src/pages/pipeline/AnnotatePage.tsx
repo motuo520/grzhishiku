@@ -8,6 +8,7 @@ import PipelineBrainToggle from './components/PipelineBrainToggle';
 import PipelineStageBar from './components/PipelineStageBar';
 import AnnotateCardModal from './components/AnnotateCardModal';
 import { useNavigation } from '@/store/navigation';
+import { useSettings } from '@/store/settings';
 import { usePipelineStats, usePipelineItems, useReviewCollision } from '@/hooks/usePipeline';
 import { useUpdateKnowledgeUnit } from '@/hooks/useKnowledge';
 import StageContextBanner from './components/StageContextBanner';
@@ -17,6 +18,7 @@ import ErrorState from '@/components/ErrorState';
 const AnnotatePage: FC = () => {
   const navigate = useNavigate();
   const { brainSide } = useNavigation();
+  const isClassic = useSettings((s) => s.uiMode === 'classic');
   const [searchQuery, setSearchQuery] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [editingItem, setEditingItem] = useState<import('@/api/pipeline').PipelineItem | null>(null);
@@ -210,22 +212,26 @@ const AnnotatePage: FC = () => {
                     <Pencil className="w-3.5 h-3.5" />
                     编辑注卡
                   </button>
-                  <button
-                    onClick={() => navigate(`/social-brain/practice-records?target_id=${item.content_id}&target_type=knowledge_unit`)}
-                    className="flex items-center justify-center gap-1.5 px-3 py-1.5 bg-warning/10 border border-warning/30 rounded-[2px] text-xs text-warning hover:bg-warning/20 transition-colors"
-                    title="记录这条知识的落地实践"
-                  >
-                    <Dumbbell className="w-3.5 h-3.5" />
-                    记录实操
-                  </button>
-                  <button
-                    onClick={() => navigate(`/social-brain/evolution-track?id=${item.content_id}`)}
-                    className="flex items-center justify-center gap-1.5 px-3 py-1.5 bg-fusion-primary/10 border border-fusion-primary/30 rounded-[2px] text-xs text-fusion-primary hover:bg-fusion-primary/20 transition-colors"
-                    title="查看这条知识从采集到注卡的进化轨迹"
-                  >
-                    <TrendingUp className="w-3.5 h-3.5" />
-                    进化轨迹
-                  </button>
+                  {isClassic && (
+                    <>
+                      <button
+                        onClick={() => navigate(`/social-brain/practice-records?target_id=${item.content_id}&target_type=knowledge_unit`)}
+                        className="flex items-center justify-center gap-1.5 px-3 py-1.5 bg-warning/10 border border-warning/30 rounded-[2px] text-xs text-warning hover:bg-warning/20 transition-colors"
+                        title="记录这条知识的落地实践"
+                      >
+                        <Dumbbell className="w-3.5 h-3.5" />
+                        记录实操
+                      </button>
+                      <button
+                        onClick={() => navigate(`/social-brain/evolution-track?id=${item.content_id}`)}
+                        className="flex items-center justify-center gap-1.5 px-3 py-1.5 bg-fusion-primary/10 border border-fusion-primary/30 rounded-[2px] text-xs text-fusion-primary hover:bg-fusion-primary/20 transition-colors"
+                        title="查看这条知识从采集到注卡的进化轨迹"
+                      >
+                        <TrendingUp className="w-3.5 h-3.5" />
+                        进化轨迹
+                      </button>
+                    </>
+                  )}
                 </div>
               </div>
             );

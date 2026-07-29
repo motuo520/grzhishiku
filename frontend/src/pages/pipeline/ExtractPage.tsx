@@ -8,6 +8,7 @@ import {
 import PipelineBrainToggle from './components/PipelineBrainToggle';
 import PipelineStageBar from './components/PipelineStageBar';
 import { useNavigation } from '@/store/navigation';
+import { useSettings } from '@/store/settings';
 import { usePipelineStats, usePipelineItems, useCollideConcept, useExtractConcepts } from '@/hooks/usePipeline';
 import type { PipelineItem } from '@/api/pipeline';
 import StageContextBanner from './components/StageContextBanner';
@@ -31,6 +32,7 @@ type SubtypeFilter = 'all' | 'concept' | 'source';
 const ExtractPage: FC = () => {
   const navigate = useNavigate();
   const { brainSide } = useNavigation();
+  const isClassic = useSettings((s) => s.uiMode === 'classic');
   const [searchQuery, setSearchQuery] = useState('');
   const [subtypeFilter, setSubtypeFilter] = useState<SubtypeFilter>('all');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -451,14 +453,16 @@ const ExtractPage: FC = () => {
                         {isColliding ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Shuffle className="w-3.5 h-3.5" />}
                         碰撞
                       </button>
-                      <button
-                        onClick={() => navigate(`/social-brain/relevance-check?content=${encodeURIComponent(item.content_raw)}`)}
-                        className="flex items-center justify-center gap-1.5 px-3 py-1.5 bg-danger/10 border border-danger/30 rounded-[2px] text-xs text-danger hover:bg-danger/20 transition-colors"
-                        title="判断这个概念与你是否相关"
-                      >
-                        <Filter className="w-3.5 h-3.5" />
-                        关我屁事
-                      </button>
+                      {isClassic && (
+                        <button
+                          onClick={() => navigate(`/social-brain/relevance-check?content=${encodeURIComponent(item.content_raw)}`)}
+                          className="flex items-center justify-center gap-1.5 px-3 py-1.5 bg-danger/10 border border-danger/30 rounded-[2px] text-xs text-danger hover:bg-danger/20 transition-colors"
+                          title="判断这个概念与你是否相关"
+                        >
+                          <Filter className="w-3.5 h-3.5" />
+                          关我屁事
+                        </button>
+                      )}
                     </>
                   )}
                   <PipelineItemActions item={item} />
