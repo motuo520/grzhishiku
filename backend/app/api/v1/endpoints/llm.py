@@ -524,8 +524,12 @@ async def model_catalog(
     db: Session = Depends(get_db),
 ):
     """Return the active model catalog managed by admins."""
+    from app.core.config_loader import get_system_config
     cost_svc = LLMCostService(db)
     models = cost_svc.get_active_models()
+    # 平台计费开关关闭时（开源/自托管默认），不展示平台计价模型，只留本地/BYOK
+    if not get_system_config(db).is_feature_enabled("platform_billing_enabled", default=False):
+        models = [m for m in models if not m.is_system]
     return {
         "models": [
             {

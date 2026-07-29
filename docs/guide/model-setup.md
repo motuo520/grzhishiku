@@ -48,3 +48,9 @@ OPENCODE_API_KEY=your-opencode-key
 ## 计费
 
 云模型按实际 token 消耗计费；本地模型免费。管理员可在后台调整用户额度与等级。
+
+## 平台模型计费开关（自托管必读）
+
+「平台模型计费 / 外部模型控制台」默认**关闭**——这是开源版的预期行为：自托管用户使用本地模型（Ollama）或自带 key（BYOK），界面上不会出现余额、充值、模型市场等计费元素，相关 API（`/api/v1/billing/balance`、`/topup`、`/usage`、`/api/admin/llm/*`）返回 404。
+
+如果你自己运营托管服务、想对终端用户按 token 售卖模型调用，在管理员后台的「系统配置 → feature_flags」中把 `platform_billing_enabled` 置为 `true`（或直接改 `system_configs` 表），然后在 LLM 控制台为模型设置价格即可开启完整计费链路（余额冻结/结算、充值订单、用量记录）。

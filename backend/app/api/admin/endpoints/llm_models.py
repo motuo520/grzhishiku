@@ -9,11 +9,12 @@ from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.core.admin_permissions import Permission, require_permission
+from app.core.feature_guard import require_platform_billing
 from app.models.base import AdminUser
 from app.api.admin.endpoints.auth import get_current_admin
 from app.services.llm_billing_service import LLMBillingService
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(require_platform_billing())])
 
 
 # ─── Schemas ──────────────────────────────────────────────────────

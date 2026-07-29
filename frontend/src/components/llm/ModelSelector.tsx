@@ -5,6 +5,7 @@ import { getModelCatalog, LLMModelCatalogItem } from '@/api/llm';
 import { useSettings } from '@/store/settings';
 import { useAuth } from '@/hooks/useAuth';
 import { useLLMBalance } from '@/hooks/useLLMBalance';
+import { usePlatformBilling } from '@/hooks/useSystemFeatures';
 
 export type TaskType = 'chat' | 'summary' | 'analysis' | 'creative' | 'coding' | 'reasoning' | 'default';
 
@@ -77,6 +78,7 @@ export function ModelSelector({
     staleTime: 5 * 60 * 1000,
   });
   const { balance: balanceSummary } = useLLMBalance();
+  const platformBilling = usePlatformBilling();
   const ollamaModel = useSettings((s) => s.ollamaModel);
   const activeProvider = useSettings((s) => s.activeProvider);
   const activeModel = useSettings((s) => s.activeModel);
@@ -204,8 +206,8 @@ export function ModelSelector({
         </div>
       )}
 
-      {/* Balance info */}
-      {!isLocalModel(value) && balanceSummary && (
+      {/* Balance info（平台计费开启时才显示） */}
+      {platformBilling && !isLocalModel(value) && balanceSummary && (
         balanceSummary.balance < 0.1 ? (
           <div className="mt-1.5 flex items-center gap-1.5 text-xs text-warning">
             <AlertCircle className="w-3 h-3" />

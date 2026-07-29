@@ -8,6 +8,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import apiClientInstance, { apiClient } from '@/api/client';
 import { useLLMBalance } from '@/hooks/useLLMBalance';
+import { usePlatformBilling } from '@/hooks/useSystemFeatures';
 import { BrainSide } from '@/types';
 import { LLM_MODEL_MAP, getBackendModelId, getModelIdByProviderModel } from '@/config/llmModels';
 
@@ -54,6 +55,7 @@ const ChatInputBar: FC<ChatInputBarProps> = ({ sidebarOpen = true, onLoginClick 
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { balance } = useLLMBalance();
+  const platformBilling = usePlatformBilling();
   const [message, setMessage] = useState('');
   const [isRecording, setIsRecording] = useState(false);
   const [attachments, setAttachments] = useState<string[]>([]);
@@ -119,7 +121,8 @@ const ChatInputBar: FC<ChatInputBarProps> = ({ sidebarOpen = true, onLoginClick 
     if (!message.trim() && attachments.length === 0) return;
 
     // Check balance for non-local models before sending (use cached balance)
-    if (!isLocalModel(currentModel)) {
+    // 平台计费关闭（开源/自托管）时不做余额检查，模型走 BYOK/本地
+    if (platformBilling && !isLocalModel(currentModel)) {
       const balanceAmount = balance?.balance ?? 0;
       if (balanceAmount < 0.1) {
         navigate('/topup');

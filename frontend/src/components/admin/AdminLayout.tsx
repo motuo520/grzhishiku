@@ -5,6 +5,7 @@ import {
   CreditCard, Settings, MessageSquare, Building2, ScrollText, Cpu
 } from 'lucide-react';
 import { useAdminStore } from '../../store/adminStore';
+import { usePlatformBilling } from '@/hooks/useSystemFeatures';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -24,8 +25,12 @@ export default function AdminLayout() {
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const { admin, logout, hasPermission } = useAdminStore();
+  const platformBilling = usePlatformBilling();
   const visibleItems = sidebarItems.filter(
-    (item) => !item.permission || hasPermission(item.permission)
+    (item) =>
+      (!item.permission || hasPermission(item.permission)) &&
+      // 平台计费关闭（开源/自托管）时不显示外部模型控制台
+      (item.path !== '/admin/models' || platformBilling)
   );
   const navigate = useNavigate();
   const location = useLocation();

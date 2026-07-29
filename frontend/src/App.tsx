@@ -11,6 +11,7 @@ import SubscriptionUpgradeListener from './components/billing/SubscriptionUpgrad
 import WelcomePage from './pages/WelcomePage';
 import { useAuth } from '@/hooks/useAuth';
 import { useSettings } from '@/store/settings';
+import { usePlatformBilling } from '@/hooks/useSystemFeatures';
 import { getActiveProvider } from '@/api/llm';
 
 // ── Lazy-loaded pages ───────────────────────────────
@@ -170,6 +171,8 @@ const App: FC = () => {
   // 界面版本：classic=旧版完整功能（默认），simple=简化版三动作
   const uiMode = useSettings((state) => state.uiMode);
   const isClassic = uiMode === 'classic';
+  // 平台模型计费开关（开源/自托管默认关闭）
+  const platformBilling = usePlatformBilling();
 
   useEffect(() => {
     if (!isLoggedIn) return;
@@ -390,7 +393,11 @@ const App: FC = () => {
 
             {isClassic && <Route path="business-plan" element={<BusinessPlanPage />} />}
             <Route path="payment" element={<PaymentPage />} />
-            <Route path="topup" element={<TopupPage />} />
+            {platformBilling ? (
+              <Route path="topup" element={<TopupPage />} />
+            ) : (
+              <Route path="topup" element={<Navigate to="/app" replace />} />
+            )}
             <Route path="billing" element={<BillingPage />} />
 
             {/* 未匹配路由（含另一模式的专属路由）统一重定向回仪表盘 */}
@@ -403,7 +410,11 @@ const App: FC = () => {
             <Route path="users" element={<AdminUsers />} />
             <Route path="content" element={<AdminContent />} />
             <Route path="billing" element={<AdminBilling />} />
-            <Route path="models" element={<AdminModels />} />
+            {platformBilling ? (
+              <Route path="models" element={<AdminModels />} />
+            ) : (
+              <Route path="models" element={<Navigate to="/admin" replace />} />
+            )}
             <Route path="system" element={<AdminSystem />} />
             <Route path="logs" element={<AdminLogs />} />
             <Route path="support" element={<AdminSupport />} />

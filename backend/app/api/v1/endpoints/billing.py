@@ -6,6 +6,7 @@ import json
 
 from app.core.database import get_db
 from app.core.security import get_current_user
+from app.core.feature_guard import require_platform_billing
 from app.services.billing_service import BillingService, get_billing_service
 from app.services.payment_service import PaymentService, get_payment_service
 from app.services.payment_providers.factory import PaymentProviderFactory, get_payment_factory
@@ -299,6 +300,7 @@ async def subscribe_free(
 async def create_topup_order(
     req: TopupRequest,
     user: User = Depends(get_current_user),
+    _: None = Depends(require_platform_billing()),
     payment_service: PaymentService = Depends(get_payment_service),
 ):
     """创建 LLM 余额充值订单"""
@@ -524,6 +526,7 @@ async def get_billing_stats(
 @router.get("/balance")
 async def get_llm_balance(
     user: User = Depends(get_current_user),
+    _: None = Depends(require_platform_billing()),
     db: Session = Depends(get_db),
 ):
     """获取当前用户的 LLM 预付费余额"""
@@ -534,6 +537,7 @@ async def get_llm_balance(
 async def list_llm_usage(
     limit: int = 20,
     user: User = Depends(get_current_user),
+    _: None = Depends(require_platform_billing()),
     db: Session = Depends(get_db),
 ):
     """获取当前用户的 LLM 调用记录"""
@@ -564,6 +568,7 @@ async def list_balance_transactions(
     skip: int = 0,
     limit: int = 100,
     user: User = Depends(get_current_user),
+    _: None = Depends(require_platform_billing()),
     db: Session = Depends(get_db),
 ):
     """获取当前用户的余额交易流水"""

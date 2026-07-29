@@ -68,6 +68,19 @@ def require_feature(feature_key: str):
     return _check
 
 
+def require_platform_billing():
+    """FastAPI dependency: 平台模型计费（外部模型控制台）总开关。
+
+    开源/自托管默认关闭（404，如同功能不存在）；运营方在系统配置的
+    feature_flags 里把 platform_billing_enabled 置 true 后开放。
+    """
+    def _check(db: Session = Depends(get_db)) -> None:
+        sys_config = get_system_config(db)
+        if not sys_config.is_feature_enabled("platform_billing_enabled", default=False):
+            raise HTTPException(status_code=404, detail="Not Found")
+    return _check
+
+
 def require_module(module_key: str):
     """FastAPI dependency factory: require a module-level feature flag."""
     def _check(
