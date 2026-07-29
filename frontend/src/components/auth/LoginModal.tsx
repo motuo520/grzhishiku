@@ -48,6 +48,9 @@ const LoginModal: FC<LoginModalProps> = ({ isOpen, onClose }) => {
     if (!verificationCode.trim()) { setFormError('请输入邮箱验证码'); return false; }
     if (!password) { setFormError('请输入密码'); return false; }
     if (password.length < 8) { setFormError('密码长度至少 8 位'); return false; }
+    if (!/[A-Z]/.test(password)) { setFormError('密码必须包含至少一个大写字母'); return false; }
+    if (!/[a-z]/.test(password)) { setFormError('密码必须包含至少一个小写字母'); return false; }
+    if (!/\d/.test(password)) { setFormError('密码必须包含至少一个数字'); return false; }
     return true;
   };
 
@@ -325,7 +328,7 @@ const LoginModal: FC<LoginModalProps> = ({ isOpen, onClose }) => {
                       type={showPassword ? 'text' : 'password'}
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
-                      placeholder="至少 8 位"
+                      placeholder="至少 8 位，含大小写字母和数字"
                       className="w-full pl-10 pr-10 py-2.5 bg-bg-secondary border border-border-color rounded-[2px] text-text-primary placeholder-text-muted focus:border-info/40 outline-none transition-all text-sm"
                       disabled={isLoading}
                     />

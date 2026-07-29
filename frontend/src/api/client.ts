@@ -122,8 +122,15 @@ class ApiClient {
           }
         }
 
-        const errorData = error.response?.data as { error?: { message?: string; code?: string } };
-        const message = errorData?.error?.message || error.message;
+        const errorData = error.response?.data as { error?: { message?: string; code?: string; details?: { field: string; message: string }[] } };
+        // 422 校验错误带字段级明细，直接展示明细（如“密码必须包含至少一个大写字母”）
+        const details = errorData?.error?.details;
+        let message: string;
+        if (Array.isArray(details) && details.length > 0) {
+          message = details.map((d) => d.message).join('；');
+        } else {
+          message = errorData?.error?.message || error.message;
+        }
         const code = errorData?.error?.code || 'UNKNOWN_ERROR';
         console.error(`API Error [${code}]:`, message);
         return Promise.reject({ message, code, status: error.response?.status });

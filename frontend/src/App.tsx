@@ -243,7 +243,13 @@ const App: FC = () => {
             <Route path="search" element={<SearchPage />} />
             <Route path="community" element={<CommunityPage />} />
             <Route path="community/guide" element={<GuidePage />} />
-            <Route path="daily-review" element={<DailyReviewPage />} />
+            {isClassic ? (
+              <Route path="daily-review" element={<DailyReviewPage />} />
+            ) : (
+              <Route path="daily-review" element={<ModuleLayout menuId="ask" showOverview={false} />}>
+                <Route index element={<DailyReviewPage />} />
+              </Route>
+            )}
 
             {/* Attention（经典版） */}
             {isClassic && (
@@ -271,12 +277,12 @@ const App: FC = () => {
                 <Route path=":id" element={<CapsuleDetail />} />
               </Route>
             ) : (
-              <>
-                <Route path="capsules" element={<Navigate to="/capsules/my" replace />} />
-                <Route path="capsules/my" element={<CapsuleListPage />} />
-                <Route path="capsules/create" element={<CapsuleCreate />} />
-                <Route path="capsules/:id" element={<CapsuleDetail />} />
-              </>
+              <Route path="capsules" element={<ModuleLayout menuId="ask" showOverview={false} />}>
+                <Route index element={<Navigate to="my" replace />} />
+                <Route path="my" element={<CapsuleListPage />} />
+                <Route path="create" element={<CapsuleCreate />} />
+                <Route path=":id" element={<CapsuleDetail />} />
+              </Route>
             )}
 
             {/* Knowledge */}
@@ -295,14 +301,14 @@ const App: FC = () => {
                 <Route path=":id" element={<KnowledgeDetail />} />
               </Route>
             ) : (
-              <>
-                <Route path="knowledge" element={<Navigate to="/knowledge/network" replace />} />
-                <Route path="knowledge/network" element={<NetworkKnowledgePage />} />
-                <Route path="knowledge/personal" element={<PersonalKnowledgePage />} />
-                <Route path="knowledge/verify" element={<VerificationCenterPage />} />
-                <Route path="knowledge/create" element={<KnowledgeCreatePage />} />
-                <Route path="knowledge/:id" element={<KnowledgeDetail />} />
-              </>
+              <Route path="knowledge" element={<ModuleLayout menuId="ask" showOverview={false} />}>
+                <Route index element={<Navigate to="network" replace />} />
+                <Route path="network" element={<NetworkKnowledgePage />} />
+                <Route path="personal" element={<PersonalKnowledgePage />} />
+                <Route path="verify" element={<VerificationCenterPage />} />
+                <Route path="create" element={<KnowledgeCreatePage />} />
+                <Route path=":id" element={<KnowledgeDetail />} />
+              </Route>
             )}
 
             {/* Pipeline */}

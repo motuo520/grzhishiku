@@ -21,7 +21,7 @@ python-dotenv==1.0.1
 prometheus-client==0.21.0
 psutil==6.1.0
 slowapi==0.1.9
-mcp>=1.0.0
+mcp>=1.0.0,<2.0.0
 bleach==6.1.0
 markupsafe==2.1.5
 pypdf>=4.0.0
