@@ -307,7 +307,7 @@ const WelcomePage: FC = () => {
                 name: 'L3 云端模型包',
                 price: '按量计费',
                 desc: '外出或手机端使用顶级云端模型。',
-                features: ['DeepSeek / Kimi / OpenAI', '每千 token ×3 加价', '与本地模型互补', '余额管理'],
+                features: ['DeepSeek / Kimi / OpenAI', '免配 key，开箱即用', '用多少算多少，小额起充', '与本地模型自由切换'],
                 highlight: false,
               },
             ].map((tier) => (
