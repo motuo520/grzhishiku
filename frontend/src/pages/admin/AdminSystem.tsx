@@ -539,7 +539,7 @@ export default function AdminSystem() {
                 type="text"
                 value={config?.email_config?.sender_name || ''}
                 onChange={(e) => updateEmailConfig('sender_name', e.target.value)}
-                placeholder="第二大脑"
+                placeholder="问墨"
                 className="w-full px-4 py-2.5 bg-admin-bg border border-admin-border rounded-lg text-white placeholder-admin-muted focus:outline-none focus:border-admin-primary"
               />
             </div>

@@ -149,7 +149,7 @@ const LoginPage: FC = () => {
             <div className="w-12 h-12 rounded-[2px] bg-accent flex items-center justify-center mb-3">
               <Brain className="w-7 h-7 text-[#f6ece6]" />
             </div>
-            <h1 className="text-xl font-bold text-text-primary tracking-tight">第二大脑</h1>
+            <h1 className="text-xl font-bold text-text-primary tracking-tight">问墨</h1>
             <p className="text-sm text-text-secondary mt-1">欢迎回来</p>
           </div>
 

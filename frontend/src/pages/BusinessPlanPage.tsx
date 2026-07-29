@@ -64,13 +64,13 @@ const BusinessPlanPage: FC = () => {
       <motion.div variants={fadeUp} className="text-center mb-10 pt-4">
         <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-[2px] bg-info/10 border border-info/20 text-info text-xs font-semibold mb-4">
           <Sparkles className="w-3.5 h-3.5" />
-          第二大脑 商业计划书
+          问墨 商业计划书
         </div>
         <h1 className="text-3xl md:text-4xl font-black text-text-primary mb-3">
           开源建立信任，免费获客，云端与 AI 收费
         </h1>
         <p className="text-text-muted max-w-2xl mx-auto leading-relaxed">
-          个人第二大脑（Personal Second Brain）是一款面向知识工作者的本地优先 + 云端增强的
+          问墨（Wenmo）是一款面向知识工作者的本地优先 + 云端增强的
           知识管理工具，采用 Freemium 免费增值 + 订阅制 + 开源核心 的三层商业模式。
         </p>
       </motion.div>
@@ -396,7 +396,7 @@ const BusinessPlanPage: FC = () => {
       {/* ═══════ FOOTER ═══════ */}
       <motion.div variants={fadeUp} className="text-center pt-8 border-t border-white/[0.06]">
         <p className="text-xs text-text-muted">
-          第二大脑（Personal Second Brain）· 让知识为你所用
+          问墨（Wenmo）· 让知识为你所用
         </p>
         <p className="text-[10px] text-text-muted/50 mt-1">
           商业计划书 v1.0 · 2026年 · 机密文件

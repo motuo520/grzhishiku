@@ -5,7 +5,7 @@ from mcp.server.fastmcp import FastMCP
 mcp = FastMCP(
     "personal-second-brain",
     instructions=(
-        "You are an agent connected to a Personal Second Brain. "
+        "You are an agent connected to Wenmo, a local-first AI knowledge base. "
         "You can search knowledge, create notes and knowledge units, "
         "and inspect the cognitive production pipeline. "
         "Always ask for user_id when a tool requires it."

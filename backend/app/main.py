@@ -169,7 +169,7 @@ async def lifespan(app: FastAPI):
         if free_exists:
             conn.execute(text("""
                 UPDATE plans
-                SET name='免费版', description='适合个人入门：笔记、剪藏、知识库与基础 AI 功能，零成本开启第二大脑。', price_monthly=0, price_yearly=0,
+                SET name='免费版', description='适合个人入门：笔记、剪藏、知识库与基础 AI 功能，零成本开启你的 AI 知识库。', price_monthly=0, price_yearly=0,
                     currency='CNY', billing_cycle='monthly', is_active=1, sort_order=0,
                     features=:features, limits=:limits, updated_at=:now
                 WHERE slug='free'
@@ -177,7 +177,7 @@ async def lifespan(app: FastAPI):
         else:
             conn.execute(text("""
                 INSERT INTO plans (id, name, slug, description, price_monthly, price_yearly, currency, billing_cycle, is_active, sort_order, features, limits, created_at, updated_at)
-                VALUES (:id, '免费版', 'free', '适合个人入门：笔记、剪藏、知识库与基础 AI 功能，零成本开启第二大脑。', 0, 0, 'CNY', 'monthly', 1, 0, :features, :limits, :now, :now)
+                VALUES (:id, '免费版', 'free', '适合个人入门：笔记、剪藏、知识库与基础 AI 功能，零成本开启你的 AI 知识库。', 0, 0, 'CNY', 'monthly', 1, 0, :features, :limits, :now, :now)
             """), {"id": str(uuid.uuid4()), "features": free_features, "limits": free_limits, "now": now})
 
         storage_features = json.dumps({
@@ -319,7 +319,7 @@ async def lifespan(app: FastAPI):
     await shutdown_billing_scheduler()
 
 app = FastAPI(
-    title="Personal Second Brain API",
+    title="Wenmo API",
     description="AI-enhanced personal knowledge management system",
     version="0.1.0",
     lifespan=lifespan,
@@ -444,7 +444,7 @@ async def receive_client_error(report: ClientErrorReport):
 if not _serve_frontend_dir:
     @app.get("/", tags=["Health"])
     async def root():
-        return {"message": "Personal Second Brain API", "version": "0.1.0"}
+        return {"message": "Wenmo API", "version": "0.1.0"}
 
 @app.get("/health", tags=["Health"])
 async def health_check():

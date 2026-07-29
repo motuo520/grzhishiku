@@ -101,7 +101,7 @@ class WechatProvider(BasePaymentProvider):
             # H5 支付
             scene_info = {
                 "payer_client_ip": order.pay_params.get("client_ip", "127.0.0.1"),
-                "h5_info": {"type": "Wap", "app_name": "第二大脑", "app_url": "https://psb.app"},
+                "h5_info": {"type": "Wap", "app_name": "问墨", "app_url": "https://psb.app"},
             }
             params["scene_info"] = scene_info
             result = client.h5(**params)

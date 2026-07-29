@@ -5,7 +5,7 @@ import secrets
 import warnings
 
 class Settings(BaseSettings):
-    APP_NAME: str = "Personal Second Brain"
+    APP_NAME: str = "Wenmo"
     DEBUG: bool = True
     
     # Environment

@@ -1,6 +1,6 @@
 {
-  "name": "第二大脑 Personal Second Brain",
-  "short_name": "第二大脑",
+  "name": "问墨 Wenmo",
+  "short_name": "问墨",
   "description": "本地优先的开源个人知识库：存进来、自动理好、一句话问出来。",
   "start_url": "/",
   "display": "standalone",

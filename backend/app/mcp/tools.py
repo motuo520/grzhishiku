@@ -8,7 +8,7 @@ from app.models.base import KnowledgeUnit, Note, User
 
 
 def register_core_tools(mcp: FastMCP) -> None:
-    """Register core Personal Second Brain tools on the given FastMCP instance."""
+    """Register core Wenmo tools on the given FastMCP instance."""
 
     @mcp.tool()
     def search_knowledge(

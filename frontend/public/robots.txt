@@ -1,4 +1,4 @@
-# 第二大脑 · 个人知识库 — robots
+# 问墨 · 中文优先的本地 AI 知识库 — robots
 User-agent: *
 Allow: /$
 Allow: /welcome

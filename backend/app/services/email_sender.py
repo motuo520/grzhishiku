@@ -74,12 +74,12 @@ def send_email_sync(
 
 def send_verification_email_sync(to_email: str, code: str, config: EmailConfig) -> None:
     """Send a verification code email synchronously. Raises on failure."""
-    subject = "【第二大脑】邮箱验证码"
+    subject = "【问墨】邮箱验证码"
     body = (
         f"您好，\n\n"
         f"您的邮箱验证码是：{code}\n\n"
         f"该验证码 10 分钟内有效，请勿泄露给他人。\n\n"
         f"如非本人操作，请忽略本邮件。\n\n"
-        f"—— 第二大脑"
+        f"—— 问墨"
     )
     send_email_sync(to_email, subject, body, config)
