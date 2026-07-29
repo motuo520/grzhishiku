@@ -298,7 +298,7 @@ const WelcomePage: FC = () => {
               },
               {
                 name: 'L2 云同步',
-                price: '¥15–30 / 月',
+                price: '¥9.9 / 月',
                 desc: '多设备同步、端到端加密、自动备份。',
                 features: ['多端实时同步', '端到端加密', '历史版本', '优先支持'],
                 highlight: true,
