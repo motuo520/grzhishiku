@@ -187,7 +187,7 @@ function createWindow() {
     height: 900,
     minWidth: 960,
     minHeight: 600,
-    title: '个人第二大脑',
+    title: '问墨',
     backgroundColor: '#12100e',
     autoHideMenuBar: true,
     show: false,
@@ -259,7 +259,7 @@ function createTray() {
   const iconPath = path.join(__dirname, 'icon.png');
   const icon = fs.existsSync(iconPath) ? nativeImage.createFromPath(iconPath) : nativeImage.createEmpty();
   tray = new Tray(icon.resize({ width: 16, height: 16 }));
-  tray.setToolTip('个人第二大脑');
+  tray.setToolTip('问墨');
   tray.setContextMenu(Menu.buildFromTemplate([
     { label: '显示主界面', click: () => showMainWindow() },
     { type: 'separator' },
