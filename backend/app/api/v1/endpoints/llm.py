@@ -254,14 +254,22 @@ async def chat(
     # Build RAG system prompt.
     rag_system_prompt = None
     if sources:
+        type_labels = {
+            "note": "个人笔记",
+            "clip": "网页剪藏",
+            "knowledge": "知识卡片",
+            "manual": "知识卡片",
+        }
         context_blocks = []
         for idx, src in enumerate(sources, 1):
-            context_blocks.append(f"[{idx}] {src['title']}\n{src['preview']}")
+            label = type_labels.get(src.get("source_type"), src.get("source_type") or "资料")
+            context_blocks.append(f"[{idx}]（{label}）{src['title']}\n{src['preview']}")
         context_text = "\n\n".join(context_blocks)
         rag_system_prompt = (
-            "你是用户的本地知识库助手。回答问题时，请优先基于下面提供的笔记内容。"
-            "如果笔记中没有相关信息，请明确说明。"
-            "回答中需要引用笔记时，使用 [1], [2] 这样的脚注格式标注来源编号。\n\n"
+            "你是用户的本地知识库助手。回答问题时，请优先基于下面提供的资料内容。"
+            "如果资料中没有相关信息，请明确说明。"
+            "回答中需要引用资料时，使用 [1], [2] 这样的脚注格式标注来源编号，"
+            "并保留来源类型（如：在你的个人笔记《X》中、在你的知识卡片《Y》中）。\n\n"
             f"--- 参考资料 ---\n\n{context_text}\n\n--- 参考资料结束 ---"
         )
 
