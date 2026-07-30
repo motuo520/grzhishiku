@@ -22,11 +22,19 @@ from app.core.metrics import get_metrics
 from app.services.payment_providers.factory import init_payment_factory
 
 class StaticFilesCacheMiddleware(BaseHTTPMiddleware):
-    """Add cache-control headers to static files."""
+    """Add cache-control headers to static files.
+
+    /assets/ 与 /uploads/ 的文件名带内容哈希，可永久缓存；
+    HTML（含 SPA 回退页）必须每次向服务器校验，否则部署后浏览器里的旧
+    index.html 会引用已删除的 chunk 文件，整站白屏打不开。
+    """
     async def dispatch(self, request: Request, call_next):
         response = await call_next(request)
-        if request.url.path.startswith("/uploads/"):
+        path = request.url.path
+        if path.startswith("/uploads/") or path.startswith("/assets/"):
             response.headers["Cache-Control"] = "public, max-age=31536000, immutable"
+        elif "text/html" in response.headers.get("content-type", ""):
+            response.headers["Cache-Control"] = "no-cache"
         return response
 
 @asynccontextmanager
