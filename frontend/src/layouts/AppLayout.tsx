@@ -50,7 +50,7 @@ const AppLayout: FC = () => {
       {!isLoggedIn && (
         <div className="flex-shrink-0 z-30 bg-bg-secondary border-b border-border-light px-4 py-2 flex items-center justify-between gap-4">
           <p className="text-xs text-text-secondary">
-            你当前以游客身份浏览，登录后可使用全部功能。
+            你正在浏览演示数据，注册后即可创建属于你自己的知识库。
           </p>
           <button
             onClick={() => setLoginOpen(true)}
