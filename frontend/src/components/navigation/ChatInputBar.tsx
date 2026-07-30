@@ -242,7 +242,8 @@ const ChatInputBar: FC<ChatInputBarProps> = ({ sidebarOpen = true, onLoginClick 
     }
   };
 
-  // 语音输入：Web Speech API 语音识别（中文），不支持的环境明确降级提示
+  // 语音输入：Web Speech API 语音识别（中文），仅支持 Chrome / Edge；
+  // Chrome 依赖 Google 语音服务，国内不可用，国内用户应使用 Edge（走微软服务）
   const handleVoiceToggle = () => {
     if (isRecording) {
       recognitionRef.current?.stop();
@@ -252,7 +253,7 @@ const ChatInputBar: FC<ChatInputBarProps> = ({ sidebarOpen = true, onLoginClick 
 
     const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (!SR) {
-      showToast('当前环境不支持语音输入，请使用 Chrome 或桌面端', 'error');
+      showToast('语音输入仅支持 Chrome / Edge 浏览器', 'error');
       return;
     }
 
@@ -274,6 +275,8 @@ const ChatInputBar: FC<ChatInputBarProps> = ({ sidebarOpen = true, onLoginClick 
       setIsRecording(false);
       if (e.error === 'not-allowed' || e.error === 'service-not-allowed') {
         showToast('麦克风权限被拒绝，请在系统/浏览器中授权', 'error');
+      } else if (e.error === 'network') {
+        showToast('语音识别服务不可用：Chrome 需访问 Google 服务，国内用户请改用 Edge 浏览器', 'error');
       } else if (e.error !== 'aborted') {
         showToast(`语音识别失败：${e.error}`, 'error');
       }
