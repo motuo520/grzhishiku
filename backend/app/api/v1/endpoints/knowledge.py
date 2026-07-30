@@ -188,9 +188,10 @@ Return ONLY a JSON object with exactly these keys (no markdown formatting, no ex
 
 Rules:
 - confidence: overall factual confidence based on clarity, specificity, and consistency with general knowledge
-- bias_indicators: detect confirmation bias, political lean, emotional language, cherry-picking, unrepresentative examples, etc.
+- bias_indicators: detect confirmation bias, political lean, emotional language, cherry-picking, unrepresentative examples, etc.（必须用简体中文短语返回，例如 "缺乏具体实证"、"情绪化表述"，不要返回英文）
 - source_reliability: if no source URL is provided, score is 0.0; otherwise use the domain credibility score
 - verdict: confirmed = high confidence and no major issues; disputed = significant uncertainty or bias; debunked = contradicts known facts or highly unreliable
+- reasoning 用简体中文返回
 '''
 
     try:
