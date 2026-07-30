@@ -51,5 +51,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Removed old placeholder secrets and test passwords from current code and git history using `git filter-repo`.
 - E2E sync encryption ensures the server never sees plaintext user data.
 
-[Unreleased]: https://github.com/your-org/personal-second-brain/compare/v0.1.0...HEAD
-[0.1.0]: https://github.com/your-org/personal-second-brain/releases/tag/v0.1.0
+[Unreleased]: https://github.com/motuo520/grzhishiku/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/motuo520/grzhishiku/releases/tag/v0.1.0

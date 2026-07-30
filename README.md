@@ -20,7 +20,7 @@
 一条命令（需要 Docker）：
 
 ```bash
-git clone https://github.com/your-org/personal-second-brain.git
+git clone https://github.com/motuo520/grzhishiku.git
 cd personal-second-brain
 cp backend/.env.example .env
 docker compose up -d
@@ -46,7 +46,7 @@ cd backend
 One command (Docker required):
 
 ```bash
-git clone https://github.com/your-org/personal-second-brain.git
+git clone https://github.com/motuo520/grzhishiku.git
 cd personal-second-brain
 cp backend/.env.example .env
 docker compose up -d

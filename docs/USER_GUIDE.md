@@ -148,4 +148,4 @@
 
 - 客服工单：应用内「设置」→「帮助与反馈」
 - 支持邮箱：support@example.com
-- 社区论坛：https://github.com/your-org/personal-second-brain/discussions
+- 社区论坛：https://github.com/motuo520/grzhishiku/discussions

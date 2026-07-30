@@ -8,7 +8,7 @@
 ## Docker 一键启动
 
 ```bash
-git clone https://github.com/your-org/personal-second-brain.git
+git clone https://github.com/motuo520/grzhishiku.git
 cd personal-second-brain
 cp backend/.env.example .env
 # 编辑 .env：至少设置 SECRET_KEY、ADMIN_SECRET_KEY、DATABASE_ENCRYPT_KEY

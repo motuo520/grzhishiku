@@ -28,7 +28,7 @@ const MoonlitRipple = lazy(() => import('@/components/backgrounds/MoonlitRipple'
 // 3D 引力球（中层 three.js，可拖拽、鼠标吸引）
 const WelcomeNetwork3D = lazy(() => import('@/components/backgrounds/WelcomeNetwork3D'));
 
-const GITHUB_URL = 'https://github.com/motuo/grzhishiku';
+const GITHUB_URL = 'https://github.com/motuo520/grzhishiku';
 const DOCKER_CMD = 'docker-compose up -d';
 
 const fadeInUp = {

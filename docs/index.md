@@ -11,7 +11,7 @@ hero:
       link: /guide/getting-started
     - theme: alt
       text: 在 GitHub 上查看
-      link: https://github.com/your-org/personal-second-brain
+      link: https://github.com/motuo520/grzhishiku
 
 features:
   - title: 本地优先
