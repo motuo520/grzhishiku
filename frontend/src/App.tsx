@@ -1,5 +1,5 @@
 import { FC, Suspense, lazy, useEffect } from 'react';
-import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import AppLayout from './layouts/AppLayout';
 import AdminRoute from './components/auth/AdminRoute';
 import ErrorBoundary from './components/ErrorBoundary';
@@ -165,6 +165,45 @@ const AuthGuard: FC<{ children: React.ReactNode }> = ({ children }) => {
   return <>{children}</>;
 };
 
+// 未匹配路由兜底：多数是另一界面版本的专属路由。给出说明并可一键切经典版，
+// 2.5 秒后自动回首页，避免静默跳转造成的「打不开」困惑。
+const RouteFallback: FC = () => {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const setUiMode = useSettings((s) => s.setUiMode);
+
+  useEffect(() => {
+    const t = setTimeout(() => navigate('/app', { replace: true }), 2500);
+    return () => clearTimeout(t);
+  }, [navigate]);
+
+  return (
+    <div className="h-full flex flex-col items-center justify-center text-center px-6 gap-3">
+      <div className="text-text-primary font-semibold">该页面在当前界面版本不可用</div>
+      <div className="text-sm text-text-secondary max-w-md">
+        <span className="font-mono">{location.pathname}</span> 属于经典版功能。即将自动返回首页…
+      </div>
+      <div className="flex items-center gap-3">
+        <button
+          onClick={() => {
+            setUiMode('classic');
+            navigate(location.pathname, { replace: true });
+          }}
+          className="btn-primary text-xs px-3 py-1.5"
+        >
+          切到经典版打开
+        </button>
+        <button
+          onClick={() => navigate('/app', { replace: true })}
+          className="text-xs text-text-secondary hover:text-text-primary"
+        >
+          返回首页
+        </button>
+      </div>
+    </div>
+  );
+};
+
 const App: FC = () => {
   const { isLoggedIn } = useAuth();
   const syncActiveProvider = useSettings((state) => state.syncActiveProvider);
@@ -232,15 +271,12 @@ const App: FC = () => {
               <Route index element={<GraphNetworkPage />} />
               <Route path="network" element={<GraphNetworkPage />} />
               <Route path="query" element={<GraphQueryPage />} />
-              {isClassic && (
-                <>
-                  <Route path="path" element={<GraphPathPage />} />
-                  <Route path="report" element={<GraphReportPage />} />
-                  <Route path="bridges" element={<GraphBridgesPage />} />
-                  <Route path="tags" element={<GraphTagsPage />} />
-                  <Route path="timeline" element={<GraphTimelinePage />} />
-                </>
-              )}
+              {/* 双模式只隐入口不隐路由：直接 URL 在简化版也可访问（README 约定） */}
+              <Route path="path" element={<GraphPathPage />} />
+              <Route path="report" element={<GraphReportPage />} />
+              <Route path="bridges" element={<GraphBridgesPage />} />
+              <Route path="tags" element={<GraphTagsPage />} />
+              <Route path="timeline" element={<GraphTimelinePage />} />
             </Route>
 
             <Route path="search" element={<SearchPage />} />
@@ -284,6 +320,11 @@ const App: FC = () => {
                 <Route index element={<Navigate to="my" replace />} />
                 <Route path="my" element={<CapsuleListPage />} />
                 <Route path="create" element={<CapsuleCreate />} />
+                {/* 经典版专属子页：显式兜底，避免被 :id 吞掉显示空详情 */}
+                <Route path="dialogue" element={<RouteFallback />} />
+                <Route path="plaza" element={<RouteFallback />} />
+                <Route path="schedule" element={<RouteFallback />} />
+                <Route path="stats" element={<RouteFallback />} />
                 <Route path=":id" element={<CapsuleDetail />} />
               </Route>
             )}
@@ -310,6 +351,12 @@ const App: FC = () => {
                 <Route path="personal" element={<PersonalKnowledgePage />} />
                 <Route path="verify" element={<VerificationCenterPage />} />
                 <Route path="create" element={<KnowledgeCreatePage />} />
+                {/* 经典版专属子页：显式兜底，避免被 :id 吞掉显示空详情 */}
+                <Route path="sources" element={<RouteFallback />} />
+                <Route path="counter" element={<RouteFallback />} />
+                <Route path="credibility" element={<RouteFallback />} />
+                <Route path="timeliness" element={<RouteFallback />} />
+                <Route path="stats" element={<RouteFallback />} />
                 <Route path=":id" element={<KnowledgeDetail />} />
               </Route>
             )}
@@ -400,8 +447,8 @@ const App: FC = () => {
             )}
             <Route path="billing" element={<BillingPage />} />
 
-            {/* 未匹配路由（含另一模式的专属路由）统一重定向回仪表盘 */}
-            <Route path="*" element={<Navigate to="/app" replace />} />
+            {/* 未匹配路由（含另一模式的专属路由）：提示后可一键切经典版 */}
+            <Route path="*" element={<RouteFallback />} />
           </Route>
           {/* Admin routes */}
           <Route path="/admin/login" element={<AdminLogin />} />
