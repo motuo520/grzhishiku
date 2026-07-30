@@ -18,6 +18,7 @@ import {
   Briefcase,
   LayoutGrid,
   Laptop,
+  Download,
 } from 'lucide-react';
 import { SealMark } from '@/components/common/BrandLogo';
 import BrandLogo from '@/components/common/BrandLogo';
@@ -142,6 +143,13 @@ const WelcomePage: FC = () => {
             >
               <Github className="w-5 h-5" />
               GitHub
+            </a>
+            <a
+              href="/download/PSB-Setup-0.1.0.exe"
+              className="inline-flex items-center gap-2 px-7 py-3.5 rounded-[2px] border border-[rgba(232,226,216,0.18)] hover:border-[#bd4a2e]/60 text-[#e8e2d8] text-base font-medium transition-colors duration-200"
+            >
+              <Download className="w-5 h-5" />
+              下载桌面端
             </a>
           </div>
         </motion.div>

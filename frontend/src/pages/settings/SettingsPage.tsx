@@ -1,6 +1,6 @@
 import { FC, useMemo, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { User, Brain, Shield, RefreshCw, Palette, Database, Puzzle, HardDrive } from 'lucide-react';
+import { User, Brain, Shield, RefreshCw, Palette, Database, Puzzle, HardDrive, Monitor } from 'lucide-react';
 import AccountSettings from './AccountSettings';
 import AISettings from './AISettings';
 import PrivacySettings from './PrivacySettings';
@@ -9,8 +9,9 @@ import AppearanceSettings from './AppearanceSettings';
 import DataSettings from './DataSettings';
 import StorageSettings from './StorageSettings';
 import PluginsSettings from './PluginsSettings';
+import DesktopSettings from './DesktopSettings';
 
-type TabId = 'account' | 'ai' | 'privacy' | 'sync' | 'appearance' | 'data' | 'storage' | 'plugins';
+type TabId = 'desktop' | 'account' | 'ai' | 'privacy' | 'sync' | 'appearance' | 'data' | 'storage' | 'plugins';
 
 interface Tab {
   id: TabId;
@@ -20,6 +21,7 @@ interface Tab {
 }
 
 const TABS: Tab[] = [
+  { id: 'desktop', label: '桌面端', icon: Monitor, component: DesktopSettings },
   { id: 'account', label: '账户', icon: User, component: AccountSettings },
   { id: 'ai', label: 'AI 设置', icon: Brain, component: AISettings },
   { id: 'privacy', label: '隐私', icon: Shield, component: PrivacySettings },

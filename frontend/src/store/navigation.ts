@@ -161,6 +161,7 @@ export const MENU_DATA_SIMPLE: Record<SimpleMenuId, MenuData> = {
     description: '系统配置与个性化',
     defaultBrainSide: 'both',
     items: [
+      { id: 'desktop', label: '桌面端', description: 'Windows 客户端下载，数据不出本机', icon: 'Monitor', path: '/settings/desktop', brainSide: 'both' },
       { id: 'account', label: '账户', description: '个人信息与密码', icon: 'User', path: '/settings/account', brainSide: 'both' },
       { id: 'privacy', label: '隐私', description: '数据安全设置', icon: 'Lock', path: '/settings/privacy', brainSide: 'both' },
       { id: 'ai', label: 'AI 设置', description: '模型与偏好配置', icon: 'Cpu', path: '/settings/ai', brainSide: 'both' },
@@ -400,6 +401,7 @@ export const MENU_DATA_CLASSIC: Record<ClassicMenuId, MenuData> = {
     description: '系统配置与个性化',
     defaultBrainSide: 'both',
     items: [
+      { id: 'desktop', label: '桌面端', description: 'Windows 客户端下载，数据不出本机', icon: 'Monitor', path: '/settings/desktop', brainSide: 'both' },
       { id: 'account', label: '账户', description: '个人信息与密码', icon: 'User', path: '/settings/account', brainSide: 'both' },
       { id: 'privacy', label: '隐私', description: '数据安全设置', icon: 'Lock', path: '/settings/privacy', brainSide: 'both' },
       { id: 'ai', label: 'AI 设置', description: '模型与偏好配置', icon: 'Cpu', path: '/settings/ai', brainSide: 'both' },

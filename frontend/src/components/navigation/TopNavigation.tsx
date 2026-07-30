@@ -19,6 +19,7 @@ import { useSettings } from '@/store/settings';
 import BrandLogo from '@/components/common/BrandLogo';
 
 const ICON_MAP: Record<string, React.ElementType> = {
+  Monitor,
   Download, Network, Sparkles, Target, Package, Shield, Settings, Brain,
   Users, Workflow, User, MessageSquare,
 };

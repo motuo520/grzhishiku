@@ -8,7 +8,7 @@ import {
   Fingerprint, AlertTriangle, Scale, ClipboardCheck, GitBranch, Gamepad2, Shuffle, Zap, Combine,
   HelpCircle, Network, PieChart, Timer, Wallet, Shield, Newspaper, TrendingUp, SquareStack, Filter,
   Pencil, BrainCircuit, FlaskConical, HeartPulse, Dumbbell, Activity, ShieldAlert, MapPin, MessageSquare,
-  XCircle, Map, GitCommit,
+  XCircle, Map, GitCommit, Monitor
 } from 'lucide-react';
 import { useBrain } from '@/hooks/useBrain';
 import { useAuth } from '@/hooks/useAuth';
@@ -21,6 +21,7 @@ import {
 } from '@/store/navigation';
 
 const ICON_MAP: Record<string, React.ElementType> = {
+  Monitor,
   FileText, Globe, Package, BookOpen, Target, Tag, Brain, Settings, User, Lock, Cpu,
   RefreshCw, Puzzle, Database, Palette, HardDrive, Crown, Menu, Home, List, BarChart2, Calendar,
   MessageCircle, CheckCircle, Rss, Upload, Share2, Search, Route, Link2, BarChart3, GitMerge, Clock,

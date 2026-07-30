@@ -11,7 +11,7 @@ import {
   CheckCircle, GitCommit, Activity, XCircle, Map,
   User, Lock, Cpu, RefreshCw, Puzzle, Database, Palette, Bookmark,
   Scale, Gamepad2, Wallet, Newspaper, Dumbbell, HeartPulse, Filter, Users,
-  Workflow, SquareStack, BrainCircuit, FlaskConical, Heart, ShieldAlert, MapPin, Pencil,
+  Workflow, SquareStack, BrainCircuit, FlaskConical, Heart, ShieldAlert, MapPin, Pencil, Monitor
 } from 'lucide-react';
 
 import { useNavigation, useMenuData, getVisibleItems, type MenuId, type BrainSide } from '@/store/navigation';
@@ -20,6 +20,7 @@ import BrainSideToggle from '@/components/brain/BrainSideToggle';
 import { useSystemFeatures } from '@/hooks/useSystemFeatures';
 
 const ICON_MAP: Record<string, React.ElementType> = {
+  Monitor,
   Download, Network, Sparkles, Target, Package, Shield, Settings, Brain,
   Globe, FileText, Upload, Rss, Tag, Tags, Mail, MessageCircle, BookOpen, FolderOpen, StickyNote,
   Share2, Search, Route, Clock, Calendar, Link2, BarChart3, GitMerge,

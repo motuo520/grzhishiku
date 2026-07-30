@@ -428,6 +428,7 @@ const App: FC = () => {
             {/* Settings */}
             <Route path="settings" element={<ModuleLayout menuId="settings" showOverview={false} />}>
               <Route index element={<Navigate to="account" replace />} />
+              <Route path="desktop" element={<SettingsPage />} />
               <Route path="account" element={<SettingsPage />} />
               <Route path="ai" element={<SettingsPage />} />
               <Route path="privacy" element={<SettingsPage />} />
