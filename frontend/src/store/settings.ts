@@ -58,7 +58,7 @@ export const useSettings = create<SettingsState>()(
       theme: 'dark',
       fontSize: 'medium',
       density: 'comfortable',
-      uiMode: 'classic',
+      uiMode: 'simple',
       defaultLLM: 'ollama',
       localLLMEnabled: true,
       externalLLMEnabled: false,

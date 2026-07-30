@@ -105,15 +105,15 @@ Core principles:
 
 应用内置两套界面，顶栏图标一键切换，选择会被记住：
 
-- **经典版（默认）**：完整 12 个功能模块——素材采集、认知生产管线、注意力管家、涌现工作室、知识图谱、反脆弱知识库、时间胶囊、认知镜像、社会大脑、具身认知、社区、设置。
-- **简化版**：只保留三个核心动作「存进来 → 自动理好 → 一句话问出来」+ 社区 + 设置，界面更干净，适合新手上手。
+- **经典版**：完整 12 个功能模块——素材采集、认知生产管线、注意力管家、涌现工作室、知识图谱、反脆弱知识库、时间胶囊、认知镜像、社会大脑、具身认知、社区、设置。
+- **简化版（默认）**：只保留三个核心动作「存进来 → 自动理好 → 一句话问出来」+ 社区 + 设置，界面更干净，适合新手上手。
 
 切换入口：顶栏主题按钮旁的版本图标，或「设置 → 外观 → 界面版本」。数据完全共用，只是导航与功能入口的显隐，随时可切回。
 
 The app ships with two interface modes, switchable from the top navigation bar (your choice is remembered):
 
-- **Classic (default)**: the full 12 modules — capture, pipeline, attention, emergence studio, knowledge graph, antifragile knowledge base, time capsules, cognitive mirror, social brain, embodied cognition, community, and settings.
-- **Simple**: only the three core actions — capture → organize → retrieve — plus community and settings. A cleaner UI for getting started.
+- **Classic**: the full 12 modules — capture, pipeline, attention, emergence studio, knowledge graph, antifragile knowledge base, time capsules, cognitive mirror, social brain, embodied cognition, community, and settings.
+- **Simple (default)**: only the three core actions — capture → organize → retrieve — plus community and settings. A cleaner UI for getting started.
 
 Both modes share the same data; only navigation and feature entries differ. Switch anytime from the top bar or **Settings → Appearance → Interface Version**.
 
