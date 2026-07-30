@@ -16,6 +16,8 @@ import {
   Eye,
   Building2,
   Briefcase,
+  LayoutGrid,
+  Laptop,
 } from 'lucide-react';
 import { SealMark } from '@/components/common/BrandLogo';
 import BrandLogo from '@/components/common/BrandLogo';
@@ -101,17 +103,28 @@ const WelcomePage: FC = () => {
             Open Source · Self-Hosted · Private AI
           </p>
 
-          <h1 className="text-4xl sm:text-6xl lg:text-7xl font-bold text-[#f0ebe2] tracking-[0.04em] mb-5 leading-tight">
+          <h1 className="text-3xl sm:text-5xl lg:text-6xl font-bold text-[#f0ebe2] tracking-[0.04em] mb-5 leading-tight">
             用你自己的资料
             <br />
             <span className="text-[#e0704f]">回答你自己</span>
           </h1>
 
-          <p className="text-lg sm:text-xl text-[#b8b0a4] leading-relaxed mb-8 max-w-2xl mx-auto">
+          <p className="text-lg sm:text-xl text-[#b8b0a4] leading-relaxed mb-6 max-w-2xl mx-auto">
             开源、可自托管、数据不出本机的 AI 知识库。
             <br className="hidden sm:block" />
             剪藏 → 整理 → 提问，每一步都带引用出处。
           </p>
+
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-2.5 mb-8 text-sm">
+            <span className="inline-flex items-center gap-2 px-4 py-2 rounded-[2px] border border-[rgba(232,226,216,0.14)] text-[#b8b0a4]">
+              <LayoutGrid className="w-4 h-4 text-[#e0704f]" />
+              经典版 ⇄ 简化版，两种界面随心切换
+            </span>
+            <span className="inline-flex items-center gap-2 px-4 py-2 rounded-[2px] border border-[rgba(232,226,216,0.14)] text-[#b8b0a4]">
+              <Laptop className="w-4 h-4 text-[#e0704f]" />
+              桌面端本地使用，数据不出本机
+            </span>
+          </div>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pointer-events-auto">
             <button
