@@ -104,17 +104,14 @@ def _retrieve_knowledge_sources(
     brain_side: str = "both",
     top_k: int = 5,
 ) -> List[dict]:
-    """Minimal keyword-based retrieval over user's knowledge units.
+    """Minimal keyword-based retrieval over the user's notes, clips and knowledge units.
 
     Returns list of dicts with id, title, preview, source_type.
-    For the demo brain (<=200 notes) simple LIKE matching is sufficient;
+    For small personal libraries simple LIKE matching is sufficient;
     production should use vector similarity via embedding_service.
     """
     from sqlalchemy import or_
-
-    query = db.query(KnowledgeUnit).filter(KnowledgeUnit.user_id == user_id)
-    if brain_side != "both":
-        query = query.filter(KnowledgeUnit.brain_side == brain_side)
+    from app.models.base import Note, BrowserClip
 
     # Extract short keywords / 2-grams from the message.
     # For Chinese we use 2-grams because whole phrases rarely match verbatim.
@@ -139,56 +136,100 @@ def _retrieve_knowledge_sources(
     keywords = [k for k in keywords if not (k in seen or seen.add(k))]
     if not keywords:
         keywords = [message.strip()[:10]]
+    kws = keywords[:6]
 
-    filters = []
-    for kw in keywords[:6]:
-        like = f"%{kw}%"
-        filters.append(KnowledgeUnit.content_raw.ilike(like))
-        filters.append(KnowledgeUnit.source_title.ilike(like))
-        filters.append(KnowledgeUnit.content_type.ilike(like))
+    def _score(title: str, content: str) -> int:
+        t = (title or "").lower()
+        c = (content or "").lower()
+        return sum(3 for kw in keywords if kw.lower() in t) + \
+               sum(1 for kw in keywords if kw.lower() in c)
 
-    if filters:
-        query = query.filter(or_(*filters))
-
-    # Score by number of matched keywords; title matches weighted 3x.
-    units = query.order_by(KnowledgeUnit.invoke_count.desc()).limit(top_k * 5).all()
-    scored = []
-    for unit in units:
-        content_text = (unit.content_raw or "") + " " + (unit.content_type or "")
-        title_text = unit.source_title or ""
-        content_score = sum(1 for kw in keywords if kw.lower() in content_text.lower())
-        title_score = sum(3 for kw in keywords if kw.lower() in title_text.lower())
-        score = content_score + title_score
-        if score > 0:
-            scored.append((score, unit))
-
-    scored.sort(key=lambda x: x[0], reverse=True)
-    results = []
-    for _, unit in scored[:top_k]:
-        raw = (unit.content_raw or "").replace("\n", " ")
-        # Try to build a snippet around the first matched keyword.
-        snippet = raw
+    def _snippet(content: str) -> str:
+        raw = (content or "").replace("\n", " ")
         lower_raw = raw.lower()
         for kw in keywords:
             pos = lower_raw.find(kw.lower())
             if pos != -1:
                 start = max(0, pos - 80)
                 end = min(len(raw), pos + 280)
-                snippet = raw[start:end]
+                snip = raw[start:end]
                 if start > 0:
-                    snippet = "..." + snippet
+                    snip = "..." + snip
                 if end < len(raw):
-                    snippet = snippet + "..."
-                break
-        if len(snippet) > 400:
-            snippet = snippet[:397] + "..."
+                    snip = snip + "..."
+                if len(snip) > 400:
+                    snip = snip[:397] + "..."
+                return snip
+        return raw[:400]
+
+    # (score, source_type, id, title, content)
+    scored: List[tuple] = []
+
+    # 1) 知识单元
+    q = db.query(KnowledgeUnit).filter(KnowledgeUnit.user_id == user_id)
+    if brain_side != "both":
+        q = q.filter(KnowledgeUnit.brain_side == brain_side)
+    ku_filters = []
+    for kw in kws:
+        like = f"%{kw}%"
+        ku_filters.append(KnowledgeUnit.content_raw.ilike(like))
+        ku_filters.append(KnowledgeUnit.source_title.ilike(like))
+        ku_filters.append(KnowledgeUnit.content_type.ilike(like))
+    if ku_filters:
+        q = q.filter(or_(*ku_filters))
+    for unit in q.order_by(KnowledgeUnit.invoke_count.desc()).limit(top_k * 5).all():
+        content_text = (unit.content_raw or "") + " " + (unit.content_type or "")
+        s = _score(unit.source_title or "", content_text)
+        if s > 0:
+            scored.append((s, unit.source_type or "knowledge", unit.id,
+                           unit.source_title or unit.content_type or "未命名知识",
+                           unit.content_raw or ""))
+
+    # 2) 个人笔记
+    qn = db.query(Note).filter(Note.user_id == user_id, Note.status == "active")
+    if brain_side != "both":
+        qn = qn.filter(Note.brain_side == brain_side)
+    note_filters = []
+    for kw in kws:
+        like = f"%{kw}%"
+        note_filters.append(Note.title.ilike(like))
+        note_filters.append(Note.content.ilike(like))
+    if note_filters:
+        qn = qn.filter(or_(*note_filters))
+    for note in qn.order_by(Note.updated_at.desc()).limit(top_k * 5).all():
+        s = _score(note.title or "", note.content or "")
+        if s > 0:
+            scored.append((s, "note", note.id, note.title or "无标题笔记", note.content or ""))
+
+    # 3) 浏览器剪藏
+    qc = db.query(BrowserClip).filter(BrowserClip.user_id == user_id, BrowserClip.status == "active")
+    if brain_side != "both":
+        qc = qc.filter(BrowserClip.brain_side == brain_side)
+    clip_filters = []
+    for kw in kws:
+        like = f"%{kw}%"
+        clip_filters.append(BrowserClip.title.ilike(like))
+        clip_filters.append(BrowserClip.full_text.ilike(like))
+        clip_filters.append(BrowserClip.excerpt.ilike(like))
+    if clip_filters:
+        qc = qc.filter(or_(*clip_filters))
+    for clip in qc.order_by(BrowserClip.capture_timestamp.desc()).limit(top_k * 5).all():
+        s = _score(clip.title or "", (clip.full_text or "") + " " + (clip.excerpt or ""))
+        if s > 0:
+            scored.append((s, "clip", clip.id,
+                           clip.title or clip.url or "未命名剪藏",
+                           clip.full_text or clip.excerpt or ""))
+
+    scored.sort(key=lambda x: x[0], reverse=True)
+    results = []
+    for _, stype, sid, title, content in scored[:top_k]:
+        raw = (content or "").replace("\n", " ")
         results.append({
-            "id": unit.id,
-            "title": unit.source_title or unit.content_type or "未命名笔记",
-            "preview": snippet,
-            "source_type": unit.source_type or "note",
-            "content_type": unit.content_type,
-            "content_raw": raw,  # included for eval / prompt context
+            "id": sid,
+            "title": title,
+            "preview": _snippet(content),
+            "source_type": stype,
+            "content_raw": raw[:2000],  # included for eval / prompt context
         })
     return results
 
