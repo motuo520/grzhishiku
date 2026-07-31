@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X, Mail, Lock, Eye, EyeOff, Loader2, ArrowRight, Cloud } from 'lucide-react';
 import { setToken } from '@/api/auth';
 import api from '@/api/client';
-import { isDesktop } from '@/api/unifiedSync';
+import { isDesktop, markCloudBound } from '@/api/unifiedSync';
 import { useAuth } from '@/hooks/useAuth';
 import { SealMark } from '@/components/common/BrandLogo';
 
@@ -42,6 +42,7 @@ const LoginModal: FC<LoginModalProps> = ({ isOpen, onClose }) => {
         password,
       });
       setToken(data.access_token);
+      markCloudBound(true);
       window.location.reload();
     } catch (err: any) {
       setFormError(formatError(err));

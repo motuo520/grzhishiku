@@ -1,4 +1,5 @@
 import { FC, useState, useRef, useCallback, useEffect } from 'react';
+import { llmBase } from '@/api/unifiedSync';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Sparkles, X, BookOpen } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -66,7 +67,7 @@ const ChatPanel: FC<ChatPanelProps> = ({ isOpen, onClose }) => {
 
     try {
       const token = apiClient.getToken();
-      const response = await fetch('/api/v1/llm/chat', {
+      const response = await fetch(`${llmBase()}/llm/chat`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

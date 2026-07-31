@@ -11,7 +11,7 @@ import os
 from typing import Optional
 
 import httpx
-from fastapi import APIRouter, Depends, HTTPException, Request, Response
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 
 from app.core.security import get_current_user
@@ -22,7 +22,7 @@ router = APIRouter()
 _BINDING_FILE = "cloud_account.json"
 
 # 允许转发的云端路径前缀（相对于 /api/v1/）
-_ALLOWED_PREFIXES = ("sync/",)
+_ALLOWED_PREFIXES = ("sync/", "llm/")
 _ALLOWED_EXACT = {"users/me/export", "users/me/import"}
 
 
@@ -167,23 +167,40 @@ async def cloud_forward(path: str, request: Request, current_user: User = Depend
     if content_type:
         headers["Content-Type"] = content_type
 
+    from fastapi.responses import StreamingResponse
+
+    # 流式透传：llm/chat 的 SSE 逐 chunk 下发，普通 JSON 同样兼容
+    client = httpx.AsyncClient(timeout=httpx.Timeout(300.0, connect=20.0))
     try:
-        async with httpx.AsyncClient(timeout=120) as client:
-            resp = await client.request(
-                request.method,
-                f"{binding['server_url']}/api/v1/{path}",
-                params=dict(request.query_params),
-                content=body if body else None,
-                headers=headers,
-            )
+        req = client.build_request(
+            request.method,
+            f"{binding['server_url']}/api/v1/{path}",
+            params=dict(request.query_params),
+            content=body if body else None,
+            headers=headers,
+        )
+        resp = await client.send(req, stream=True)
     except httpx.HTTPError as e:
+        await client.aclose()
         raise HTTPException(status_code=502, detail=f"云端请求失败：{e}") from e
 
     if resp.status_code == 401:
+        await resp.aclose()
+        await client.aclose()
         raise HTTPException(status_code=401, detail="云端登录已过期，请重新绑定")
 
-    return Response(
-        content=resp.content,
+    async def stream_body():
+        try:
+            # aiter_bytes 由 httpx 完成 gzip/br 解压；aiter_raw 会把压缩字节透传给
+            # 浏览器而我们又不带 content-encoding 头，会导致响应不可读
+            async for chunk in resp.aiter_bytes():
+                yield chunk
+        finally:
+            await resp.aclose()
+            await client.aclose()
+
+    return StreamingResponse(
+        stream_body(),
         status_code=resp.status_code,
         media_type=resp.headers.get("content-type"),
     )

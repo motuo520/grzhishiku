@@ -4,7 +4,7 @@ import { settingsApi } from '@/api/settings';
 import { useAuth } from '@/hooks/useAuth';
 import { useSubscription } from '@/hooks/useSubscription';
 import ProFeatureGate from '@/components/billing/ProFeatureGate';
-import { unifiedSyncApi, cloudAccountApi, isDesktop, getFingerprint } from '@/api/unifiedSync';
+import { unifiedSyncApi, cloudAccountApi, isDesktop, getFingerprint, markCloudBound } from '@/api/unifiedSync';
 import type { SyncDevice } from '@/api/sync';
 import { encryptSnapshot, decryptSnapshot } from '@/services/syncCrypto';
 
@@ -109,6 +109,7 @@ const SyncSettingsContent: FC = () => {
         ? cloudAccountApi.status().then(res => {
             const bound = res.data.bound && res.data.account;
             setCloudBound(!!bound);
+            markCloudBound(!!bound);
             if (bound) {
               setCloudEmail(res.data.account!.email);
               setServerUrl(res.data.account!.server_url);
@@ -131,6 +132,7 @@ const SyncSettingsContent: FC = () => {
     try {
       const res = await cloudAccountApi.login(serverUrl.trim().replace(/\/+$/, ''), loginEmail.trim(), loginPassword);
       setCloudBound(true);
+      markCloudBound(true);
       setCloudEmail(res.data.email);
       setLoginPassword('');
       showToast(`已绑定云端账号 ${res.data.email}`, 'success');
@@ -145,6 +147,7 @@ const SyncSettingsContent: FC = () => {
   const handleCloudUnbind = async () => {
     try {
       await cloudAccountApi.logout();
+      markCloudBound(false);
       setCloudBound(false);
       setCloudEmail('');
       setDevices([]);

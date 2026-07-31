@@ -145,7 +145,7 @@ const WelcomePage: FC = () => {
               GitHub
             </a>
             <a
-              href="/download/PSB-Setup-0.1.5.exe"
+              href="/download/PSB-Setup-0.1.6.exe"
               className="inline-flex items-center gap-2 px-7 py-3.5 rounded-[2px] border border-[rgba(232,226,216,0.18)] hover:border-[#bd4a2e]/60 text-[#e8e2d8] text-base font-medium transition-colors duration-200"
             >
               <Download className="w-5 h-5" />
@@ -319,7 +319,7 @@ const WelcomePage: FC = () => {
                 需要多设备时，再绑定云端账号：同步走端到端加密，服务器只存密文，读不懂你的内容。
               </p>
               <a
-                href="/download/PSB-Setup-0.1.5.exe"
+                href="/download/PSB-Setup-0.1.6.exe"
                 className="inline-flex items-center gap-2 px-6 py-3 rounded-[2px] bg-[#bd4a2e] hover:bg-[#a83c22] text-[#f6ece6] text-sm font-medium transition-colors duration-200"
               >
                 <Download className="w-4 h-4" />

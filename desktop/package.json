@@ -1,6 +1,6 @@
 {
   "name": "wenmo-desktop",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "private": true,
   "description": "问墨桌面端（Electron + 内嵌后端 sidecar）",
   "main": "main.js",

@@ -11,6 +11,22 @@ export const isDesktop = (): boolean => Boolean((window as any).psbDesktop?.isDe
 /** 桌面端走本地代理转发到云端，网页端直连 */
 const base = () => (isDesktop() ? '/api/v1/cloud-proxy/forward' : '/api/v1');
 
+// ---------- 云端绑定状态（localStorage 标记，供同步读取） ----------
+
+const CLOUD_BOUND_KEY = 'psb-cloud-bound';
+
+export const markCloudBound = (bound: boolean) => {
+  if (bound) localStorage.setItem(CLOUD_BOUND_KEY, '1');
+  else localStorage.removeItem(CLOUD_BOUND_KEY);
+};
+
+export const cloudBound = (): boolean =>
+  isDesktop() && localStorage.getItem(CLOUD_BOUND_KEY) === '1';
+
+/** LLM 调用的 base：桌面端已绑定云端时走云端（用云端账号的模型），否则走本地 */
+export const llmBase = () =>
+  cloudBound() ? '/api/v1/cloud-proxy/forward' : '/api/v1';
+
 // ---------- 云账号绑定（仅桌面端使用；存于本地后端数据目录） ----------
 
 export interface CloudAccount {

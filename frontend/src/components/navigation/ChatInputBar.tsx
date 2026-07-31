@@ -11,6 +11,7 @@ import { useLLMBalance } from '@/hooks/useLLMBalance';
 import { usePlatformBilling } from '@/hooks/useSystemFeatures';
 import { BrainSide } from '@/types';
 import { LLM_MODEL_MAP, getBackendModelId, getModelIdByProviderModel } from '@/config/llmModels';
+import { llmBase } from '@/api/unifiedSync';
 
 function isLocalModel(modelId: string): boolean {
   return modelId.startsWith('ollama-') || modelId === 'ollama';
@@ -146,7 +147,7 @@ const ChatInputBar: FC<ChatInputBarProps> = ({ sidebarOpen = true, onLoginClick 
 
     try {
       const token = apiClient.getToken();
-      const response = await fetch('/api/v1/llm/chat', {
+      const response = await fetch(`${llmBase()}/llm/chat`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
