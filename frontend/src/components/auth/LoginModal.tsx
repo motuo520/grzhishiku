@@ -333,6 +333,14 @@ const LoginModal: FC<LoginModalProps> = ({ isOpen, onClose }) => {
                 onSubmit={handleRegister}
                 className="relative z-10 space-y-4"
               >
+                {/* 桌面端：讲清本机账号的边界 */}
+                {isDesktop() && (
+                  <div className="bg-info/10 border border-info/20 text-info rounded-[2px] px-4 py-3 text-xs leading-relaxed">
+                    这里注册的是<strong>本机账号</strong>：只存在这台电脑上，<strong>不能</strong>用于
+                    grzhishiku.com 网页端登录。想在多台设备间同步，请改用「登录」页的
+                    <strong>用云端账号登录</strong>（数据同样存在本机）。
+                  </div>
+                )}
                 <div>
                   <label className="block text-xs font-medium text-text-secondary mb-1.5">邮箱</label>
                   <div className="relative">
