@@ -452,6 +452,7 @@ export function useMenuData() {
 
 // ── 设置菜单：Sidebar 和 SettingsPage 共用（两版一致） ──
 export const SETTINGS_ITEMS: Pick<SubMenuItem, 'id' | 'label' | 'icon' | 'path'>[] = [
+  { id: 'desktop', label: '桌面端', icon: 'Monitor', path: '/settings/desktop' },
   { id: 'account', label: '账户', icon: 'User', path: '/settings/account' },
   { id: 'privacy', label: '隐私', icon: 'Lock', path: '/settings/privacy' },
   { id: 'ai', label: 'AI 设置', icon: 'Cpu', path: '/settings/ai' },
