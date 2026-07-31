@@ -2,7 +2,7 @@ import { FC } from 'react';
 import { Monitor, Download, Package, Shield, Zap, HardDrive, Cloud, Laptop, KeyRound, RefreshCw, Keyboard } from 'lucide-react';
 import { isDesktop } from '@/api/unifiedSync';
 
-const APP_VERSION = '0.1.4';
+const APP_VERSION = '0.1.5';
 
 const DOWNLOADS = [
   {
@@ -63,6 +63,21 @@ const DesktopGuide: FC = () => (
           用网页端账号登录桌面端，数据仍存在本机，但可通过端到端加密快照与网页端互通——服务器只存密文。
         </p>
       </div>
+    </div>
+
+    {/* 本地模型环境 */}
+    <div className="card !p-5 space-y-3 border-info/30">
+      <div className="text-sm font-semibold text-text-primary">本地模型环境（一次性准备）</div>
+      <p className="text-xs text-text-secondary leading-relaxed">
+        桌面端的本地模型依赖你电脑上的 Ollama。装好后保持 Ollama 运行，并拉取两个模型：
+      </p>
+      <div className="bg-bg-secondary rounded-[2px] px-3 py-2.5 font-mono text-[11px] text-text-secondary space-y-1">
+        <div>ollama pull qwen2.5:0.5b <span className="text-text-muted"># 对话模型</span></div>
+        <div>ollama pull nomic-embed-text <span className="text-text-muted"># 向量模型（检索用，缺了会静默降级）</span></div>
+      </div>
+      <p className="text-[11px] text-text-muted">
+        没装 Ollama？到 ollama.com 下载安装即可。不配也能用桌面端，只是 AI 问答需改用云端模型。
+      </p>
     </div>
 
     {/* 上手示例 */}

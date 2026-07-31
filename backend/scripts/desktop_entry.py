@@ -34,6 +34,11 @@ def _prepare_environment() -> int:
     os.environ.setdefault("ENV", "production")
     os.environ.setdefault("DEBUG", "false")
 
+    # 本地向量模型：默认用专用 embedding 模型（qwen2.5:0.5b 是聊天模型，
+    # Ollama 0.32+ 不支持它做 embedding，会静默降级成 mock 假向量）。
+    # 用户机器没拉取该模型时仍会回退 mock，指南页有拉取命令。
+    os.environ.setdefault("OLLAMA_EMBED_MODEL", "nomic-embed-text")
+
     # Generate secrets once, persist them so sessions survive restarts.
     secrets_file = data_dir / ".desktop-secrets.json"
     persisted: dict = {}
