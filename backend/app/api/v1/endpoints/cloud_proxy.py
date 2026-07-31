@@ -97,6 +97,61 @@ async def cloud_logout(current_user: User = Depends(get_current_user)):
     return {"success": True}
 
 
+@router.post("/login-session")
+async def cloud_login_session(req: CloudLoginRequest):
+    """桌面端用云端账号直接登录：云端验证通过后，在本机开通本地会话。
+
+    无需本地账号（这本身就是登录入口）：云端验证成功 → 本地不存在该邮箱
+    则自动创建本地账户（随机密码，数据完全存在本机）→ 签发本地 token。
+    """
+    import secrets
+    import uuid
+    from datetime import timedelta
+
+    from app.core.database import SessionLocal
+    from app.core.security import create_access_token, get_password_hash
+
+    server_url = _validate_server_url(req.server_url)
+    try:
+        async with httpx.AsyncClient(timeout=20) as client:
+            resp = await client.post(
+                f"{server_url}/api/v1/auth/login",
+                json={"email": req.email, "password": req.password},
+            )
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=502, detail=f"无法连接云端服务器：{e}") from e
+    if resp.status_code == 401:
+        raise HTTPException(status_code=401, detail="云端邮箱或密码错误")
+    if resp.status_code != 200:
+        raise HTTPException(status_code=502, detail=f"云端响应异常（{resp.status_code}）")
+
+    cloud_token = resp.json().get("access_token")
+    if not cloud_token:
+        raise HTTPException(status_code=502, detail="云端响应格式不正确")
+
+    db = SessionLocal()
+    try:
+        user = db.query(User).filter(User.email == req.email).first()
+        if not user:
+            user = User(
+                id=str(uuid.uuid4()),
+                email=req.email,
+                name=req.email.split("@")[0][:50],
+                password_hash=get_password_hash(secrets.token_urlsafe(24)),
+                status="active",
+            )
+            db.add(user)
+            db.commit()
+        _save_binding({"server_url": server_url, "email": req.email, "token": cloud_token})
+        local_token = create_access_token(
+            data={"sub": user.id, "email": user.email},
+            expires_delta=timedelta(days=7),
+        )
+        return {"access_token": local_token, "token_type": "bearer", "email": user.email}
+    finally:
+        db.close()
+
+
 @router.api_route("/forward/{path:path}", methods=["GET", "POST", "DELETE", "PUT", "PATCH"])
 async def cloud_forward(path: str, request: Request, current_user: User = Depends(get_current_user)):
     if path not in _ALLOWED_EXACT and not any(path.startswith(p) for p in _ALLOWED_PREFIXES):
