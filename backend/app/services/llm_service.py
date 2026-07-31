@@ -1328,9 +1328,11 @@ class LLMService:
             ):
                 yield chunk
         elif provider == ModelProvider.OPENCODE and api_key:
-            async for chunk in self._chat_openai_compatible(
-                message, history, model, system_prompt, api_key=api_key, base_url=base_url,
-                provider_name="OpenCode"
+            # MODEL_CONFIGS 里的 model_id 带 opencode/ 前缀（OpenCode 客户端约定），
+            # 直连 zen API 时传裸模型 ID；若实测要带前缀，改回直接传 model 即可
+            api_model = model.split("/", 1)[-1] if model.startswith("opencode/") else model
+            async for chunk in self._chat_opencode(
+                message, history, api_model, system_prompt, api_key=api_key, base_url=base_url
             ):
                 yield chunk
         else:
@@ -1467,6 +1469,159 @@ class LLMService:
                                 continue
         except Exception as e:
             yield f"[Error: DeepSeek connection failed - {str(e)}]"
+
+    # ─────────────────────── OpenCode zen 多形态适配 ───────────────────────
+    # opencode.ai/zen 按模型家族暴露不同 API 形态（见供应商文档）：
+    #   gpt-*          → POST {base}/v1/responses          (OpenAI Responses)
+    #   claude-*/qwen* → POST {base}/v1/messages           (Anthropic Messages)
+    #   gemini-*       → POST {base}/v1/models/{m}:streamGenerateContent (Google)
+    #   其余           → POST {base}/v1/chat/completions   (OpenAI 兼容)
+
+    @staticmethod
+    def _opencode_api_type(model_id: str) -> str:
+        mid = model_id.split("/", 1)[-1].lower()
+        if mid.startswith("gpt-"):
+            return "responses"
+        if mid.startswith("claude-") or mid.startswith("qwen"):
+            return "messages"
+        if mid.startswith("gemini-"):
+            return "gemini"
+        return "chat"
+
+    def _build_messages(self, message, history, system_prompt):
+        messages = []
+        if system_prompt:
+            messages.append({"role": "system", "content": system_prompt})
+        if history:
+            messages.extend(history)
+        messages.append({"role": "user", "content": message})
+        return messages
+
+    async def _chat_opencode_responses(
+        self, message, history, model, system_prompt, api_key, base_url
+    ) -> AsyncGenerator[str, None]:
+        """OpenAI Responses API（GPT 家族），SSE 事件流。"""
+        base = base_url.rstrip("/")
+        payload = {"model": model, "input": self._build_messages(message, history, None), "stream": True}
+        if system_prompt:
+            payload["instructions"] = system_prompt
+        try:
+            async with httpx.AsyncClient(timeout=180.0) as client:
+                async with client.stream(
+                    "POST", f"{base}/v1/responses",
+                    headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+                    json=payload,
+                ) as response:
+                    async for line in response.aiter_lines():
+                        line = line.strip()
+                        if not line.startswith("data: "):
+                            continue
+                        data_str = line[6:]
+                        if data_str == "[DONE]":
+                            break
+                        try:
+                            data = json.loads(data_str)
+                            if data.get("type") == "response.output_text.delta":
+                                yield data.get("delta", "")
+                        except json.JSONDecodeError:
+                            continue
+        except Exception as e:
+            yield f"[Error: OpenCode(responses) connection failed - {str(e)}]"
+
+    async def _chat_opencode_messages(
+        self, message, history, model, system_prompt, api_key, base_url
+    ) -> AsyncGenerator[str, None]:
+        """Anthropic Messages API（Claude / Qwen 家族），SSE 事件流。"""
+        base = base_url.rstrip("/")
+        payload = {
+            "model": model,
+            "max_tokens": 4096,
+            "messages": [m for m in self._build_messages(message, history, None)],
+            "stream": True,
+        }
+        if system_prompt:
+            payload["system"] = system_prompt
+        try:
+            async with httpx.AsyncClient(timeout=180.0) as client:
+                async with client.stream(
+                    "POST", f"{base}/v1/messages",
+                    headers={
+                        "x-api-key": api_key,
+                        "anthropic-version": "2023-06-01",
+                        "Content-Type": "application/json",
+                    },
+                    json=payload,
+                ) as response:
+                    async for line in response.aiter_lines():
+                        line = line.strip()
+                        if not line.startswith("data: "):
+                            continue
+                        try:
+                            data = json.loads(line[6:])
+                            if data.get("type") == "content_block_delta":
+                                text = data.get("delta", {}).get("text")
+                                if text:
+                                    yield text
+                        except json.JSONDecodeError:
+                            continue
+        except Exception as e:
+            yield f"[Error: OpenCode(messages) connection failed - {str(e)}]"
+
+    async def _chat_opencode_gemini(
+        self, message, history, model, system_prompt, api_key, base_url
+    ) -> AsyncGenerator[str, None]:
+        """Google Gemini API（Gemini 家族），SSE 事件流。"""
+        base = base_url.rstrip("/")
+        role_map = {"user": "user", "assistant": "model", "system": "user"}
+        contents = [
+            {"role": role_map.get(m.get("role", "user"), "user"),
+             "parts": [{"text": m.get("content", "")}]}
+            for m in self._build_messages(message, history, None)
+        ]
+        payload = {"contents": contents}
+        if system_prompt:
+            payload["systemInstruction"] = {"parts": [{"text": system_prompt}]}
+        try:
+            async with httpx.AsyncClient(timeout=180.0) as client:
+                async with client.stream(
+                    "POST",
+                    f"{base}/v1/models/{model}:streamGenerateContent?alt=sse",
+                    headers={"x-goog-api-key": api_key, "Content-Type": "application/json"},
+                    json=payload,
+                ) as response:
+                    async for line in response.aiter_lines():
+                        line = line.strip()
+                        if not line.startswith("data: "):
+                            continue
+                        try:
+                            data = json.loads(line[6:])
+                            for cand in data.get("candidates", []):
+                                for part in cand.get("content", {}).get("parts", []):
+                                    if part.get("text"):
+                                        yield part["text"]
+                        except json.JSONDecodeError:
+                            continue
+        except Exception as e:
+            yield f"[Error: OpenCode(gemini) connection failed - {str(e)}]"
+
+    async def _chat_opencode(
+        self, message, history, model, system_prompt, api_key, base_url
+    ) -> AsyncGenerator[str, None]:
+        """按模型家族分发到对应的 zen API 形态。"""
+        api_type = self._opencode_api_type(model)
+        if api_type == "responses":
+            gen = self._chat_opencode_responses(message, history, model, system_prompt, api_key, base_url)
+        elif api_type == "messages":
+            gen = self._chat_opencode_messages(message, history, model, system_prompt, api_key, base_url)
+        elif api_type == "gemini":
+            gen = self._chat_opencode_gemini(message, history, model, system_prompt, api_key, base_url)
+        else:
+            gen = self._chat_openai_compatible(
+                message, history, model, system_prompt,
+                api_key=api_key, base_url=base_url, provider_name="OpenCode"
+            )
+        async for chunk in gen:
+            yield chunk
 
     # ─────────────────────────── Summarize ───────────────────────────
 

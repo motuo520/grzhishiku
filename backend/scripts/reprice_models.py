@@ -2,9 +2,9 @@
 """按供应商原价+倍率重定 llm_models 价格，并精简激活列表。
 
 规则（用户拍板，2026-07-18）：
-- opencode：原价(USD/1M tokens) × 7.3 → RMB/1M，售价 = 成本 × 2.5
+- opencode：原价(USD/1M tokens) × 7.3 → RMB/1M，售价 = 成本 × 3
 - deepseek：原价已是 RMB/1M（缓存未命中档），售价 = 成本 × 3
-- kimi：同 opencode 规则 × 2.5
+- kimi：同 opencode 规则 × 3
 - cost_* = 供应商成本(RMB/1K)，price_* = 对用户售价(RMB/1K)
 """
 import sqlite3
@@ -12,9 +12,9 @@ import sys
 
 sys.stdout.reconfigure(encoding='utf-8')
 RATE = 7.3          # USD -> RMB
-OPENCODE_MARKUP = 2.5
+OPENCODE_MARKUP = 3.0
 DEEPSEEK_MARKUP = 3.0
-KIMI_MARKUP = 2.5
+KIMI_MARKUP = 3.0
 
 # (id, 原价输入 USD/1M, 原价输出 USD/1M)
 OPENCODE_USD = {
@@ -107,7 +107,7 @@ ACTIVE = [
     'kimi-k2-7-code', 'kimi-k2-6', 'kimi-k2-5',
 ]
 
-con = sqlite3.connect('psb.db')
+con = sqlite3.connect('data/psb.db' if __import__('os').path.exists('data/psb.db') else 'psb.db')
 cur = con.cursor()
 
 updated = 0
@@ -139,11 +139,9 @@ for mid, (i_rmb, o_rmb) in FREE_AS_FLASH.items():
     )
     updated += cur.rowcount
 
-# 精简激活 + 重排 sort_order
-cur.execute('UPDATE llm_models SET is_active=0')
-for idx, mid in enumerate(ACTIVE):
-    cur.execute('UPDATE llm_models SET is_active=1, sort_order=? WHERE id=?', (idx + 1, mid))
-    updated += cur.rowcount
+# 全量激活（2026-07-31 用户拍板：全部上架，各自带开关，后台可单独关）
+cur.execute('UPDATE llm_models SET is_active=1')
+updated += cur.rowcount
 
 con.commit()
 

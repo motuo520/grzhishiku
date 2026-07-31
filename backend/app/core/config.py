@@ -49,7 +49,7 @@ class Settings(BaseSettings):
     # 负责 GLM / MiMo / MiniMax / Qwen 等模型。
     KIMI_BASE_URL: str = "https://api.moonshot.cn"
     DEEPSEEK_BASE_URL: str = "https://api.deepseek.com"
-    OPENCODE_BASE_URL: str = "https://api.opencode.ai"
+    OPENCODE_BASE_URL: str = "https://opencode.ai/zen"
 
     # API Keys
     DEEPSEEK_API_KEY: str = ""
