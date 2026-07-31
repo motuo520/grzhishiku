@@ -301,6 +301,54 @@ const WelcomePage: FC = () => {
         </div>
       </section>
 
+      {/* 桌面端 */}
+      <section className="relative z-10 bg-[#161311]/95 border-t border-[rgba(232,226,216,0.06)]">
+        <div className="max-w-6xl mx-auto px-6 py-24">
+          <div className="grid md:grid-cols-2 gap-12 items-center">
+            <div>
+              <p className="text-[11px] tracking-[0.3em] uppercase text-[#e0704f] mb-3">桌面端</p>
+              <h2 className="text-3xl sm:text-4xl font-bold text-[#f0ebe2] mb-6 leading-snug">
+                真桌面端，
+                <br />
+                不是套壳网页
+              </h2>
+              <p className="text-[#b8b0a4] leading-relaxed mb-4">
+                安装包内嵌完整后端服务，打开就在你自己的电脑上启动——不连我们的服务器，断网也照常用。笔记、知识库、本地模型问答，全部离线运行。
+              </p>
+              <p className="text-[#b8b0a4] leading-relaxed mb-8">
+                需要多设备时，再绑定云端账号：同步走端到端加密，服务器只存密文，读不懂你的内容。
+              </p>
+              <a
+                href="/download/PSB-Setup-0.1.2.exe"
+                className="inline-flex items-center gap-2 px-6 py-3 rounded-[2px] bg-[#bd4a2e] hover:bg-[#a83c22] text-[#f6ece6] text-sm font-medium transition-colors duration-200"
+              >
+                <Download className="w-4 h-4" />
+                下载 Windows 桌面端
+              </a>
+            </div>
+            <div className="glass-card p-8">
+              <div className="space-y-6">
+                {[
+                  { icon: Server, title: '内嵌完整后端', desc: '无需装 Python、Docker 或任何环境，双击即用，打开自动在本机启动服务。' },
+                  { icon: Lock, title: '数据只在你电脑上', desc: '本地 SQLite 存储，断网白屏？不存在的——拔了网线照样记、照样问。' },
+                  { icon: Cloud, title: '可选端到端加密同步', desc: '绑定网页端账号后多设备互通，同步内容全程密文，密码只在你手里。' },
+                ].map((item) => (
+                  <div key={item.title} className="flex gap-4">
+                    <div className="w-10 h-10 rounded-[2px] bg-[#bd4a2e]/10 flex items-center justify-center shrink-0">
+                      <item.icon className="w-5 h-5 text-[#e0704f]" />
+                    </div>
+                    <div>
+                      <h4 className="text-base font-bold text-[#f0ebe2] mb-1">{item.title}</h4>
+                      <p className="text-sm text-[#9a9286]">{item.desc}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* 价格 */}
       <section className="relative z-10 bg-[#161311]/95 border-t border-[rgba(232,226,216,0.06)]">
         <div className="max-w-5xl mx-auto px-6 py-24">
