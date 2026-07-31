@@ -5,7 +5,7 @@ const DOWNLOADS = [
   {
     id: 'setup',
     label: '安装版',
-    file: 'PSB-Setup-0.1.1.exe',
+    file: 'PSB-Setup-0.1.2.exe',
     size: '约 139 MB',
     desc: '推荐。向导安装，自动创建桌面与开始菜单快捷方式。',
     primary: true,
@@ -13,7 +13,7 @@ const DOWNLOADS = [
   {
     id: 'portable',
     label: '便携版',
-    file: 'PSB-Portable-0.1.1.exe',
+    file: 'PSB-Portable-0.1.2.exe',
     size: '约 139 MB',
     desc: '免安装，下载即用，可放 U 盘随身携带。',
     primary: false,

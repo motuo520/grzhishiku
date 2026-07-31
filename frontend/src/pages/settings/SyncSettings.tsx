@@ -1,12 +1,14 @@
 import { FC, useState, useEffect, useCallback } from 'react';
-import { RefreshCw, Loader2, CheckCircle, XCircle, HardDrive, Info, Trash2, Download, Upload, KeyRound, Smartphone } from 'lucide-react';
+import { RefreshCw, Loader2, CheckCircle, XCircle, HardDrive, Info, Trash2, Download, Upload, KeyRound, Smartphone, Cloud, Link2, Unlink } from 'lucide-react';
 import { settingsApi } from '@/api/settings';
 import { useAuth } from '@/hooks/useAuth';
 import { useSubscription } from '@/hooks/useSubscription';
 import ProFeatureGate from '@/components/billing/ProFeatureGate';
-import { syncApi, getFingerprint, SyncDevice } from '@/api/sync';
+import { unifiedSyncApi, cloudAccountApi, isDesktop, getFingerprint } from '@/api/unifiedSync';
+import type { SyncDevice } from '@/api/sync';
 import { encryptSnapshot, decryptSnapshot } from '@/services/syncCrypto';
-import { notesApi } from '@/api/notes';
+
+const SYNC_FORMAT = 'psb-sync-v1';
 
 interface SyncConfig {
   frequency: 'realtime' | 'hourly' | 'daily' | 'manual';
@@ -64,7 +66,11 @@ const SYNC_PASSWORD_KEY = 'psb-sync-password';
 const SyncSettingsContent: FC = () => {
   const { user } = useAuth();
   const { checkFeature } = useSubscription();
-  const hasSync = checkFeature('cloud_sync');
+  const desktop = isDesktop();
+  // 桌面端的功能门看云端账号订阅；绑定后即可用
+  const [cloudBound, setCloudBound] = useState(false);
+  const [cloudEmail, setCloudEmail] = useState('');
+  const hasSync = desktop ? cloudBound : checkFeature('cloud_sync');
 
   const [settings, setSettings] = useState<SyncConfig>(defaultSync);
   const [password, setPassword] = useState(() => sessionStorage.getItem(SYNC_PASSWORD_KEY) || '');
@@ -74,6 +80,12 @@ const SyncSettingsContent: FC = () => {
   const [syncing, setSyncing] = useState(false);
   const [pulling, setPulling] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+
+  // 云端账号绑定（仅桌面端）
+  const [serverUrl, setServerUrl] = useState('https://grzhishiku.com');
+  const [loginEmail, setLoginEmail] = useState('');
+  const [loginPassword, setLoginPassword] = useState('');
+  const [binding, setBinding] = useState(false);
 
   const showToast = useCallback((message: string, type: 'success' | 'error') => {
     setToast({ message, type });
@@ -92,15 +104,58 @@ const SyncSettingsContent: FC = () => {
           });
         }
       }),
-      loadDevices(),
+      // 桌面端未绑定云端时设备列表会 404/失败，先查绑定状态
+      desktop
+        ? cloudAccountApi.status().then(res => {
+            const bound = res.data.bound && res.data.account;
+            setCloudBound(!!bound);
+            if (bound) {
+              setCloudEmail(res.data.account!.email);
+              setServerUrl(res.data.account!.server_url);
+              return loadDevices();
+            }
+          })
+        : loadDevices(),
     ])
       .catch(() => showToast('加载设置失败', 'error'))
       .finally(() => setLoading(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showToast]);
 
+  const handleCloudBind = async () => {
+    if (!serverUrl.trim() || !loginEmail.trim() || !loginPassword) {
+      showToast('请填写服务器地址、邮箱和密码', 'error');
+      return;
+    }
+    setBinding(true);
+    try {
+      const res = await cloudAccountApi.login(serverUrl.trim().replace(/\/+$/, ''), loginEmail.trim(), loginPassword);
+      setCloudBound(true);
+      setCloudEmail(res.data.email);
+      setLoginPassword('');
+      showToast(`已绑定云端账号 ${res.data.email}`, 'success');
+      await loadDevices();
+    } catch (err: any) {
+      showToast(err?.response?.data?.detail || err?.message || '绑定失败，请检查账号密码', 'error');
+    } finally {
+      setBinding(false);
+    }
+  };
+
+  const handleCloudUnbind = async () => {
+    try {
+      await cloudAccountApi.logout();
+      setCloudBound(false);
+      setCloudEmail('');
+      setDevices([]);
+      showToast('已解绑云端账号', 'success');
+    } catch (err: any) {
+      showToast(err?.message || '解绑失败', 'error');
+    }
+  };
+
   async function loadDevices() {
-    const { data } = await syncApi.listDevices();
+    const { data } = await unifiedSyncApi.listDevices();
     setDevices(data || []);
   }
 
@@ -133,13 +188,10 @@ const SyncSettingsContent: FC = () => {
     setSyncing(true);
     try {
       const fp = getFingerprint();
-      await syncApi.registerDevice({ name: getDeviceName(), fingerprint: fp });
-      const notesRes = await notesApi.list({ limit: 1000 });
-      const payload = {
-        generatedAt: new Date().toISOString(),
-        noteCount: notesRes.data.length,
-        noteTitles: notesRes.data.slice(0, 100).map(n => n.title),
-      };
+      await unifiedSyncApi.registerDevice(desktop ? '问墨桌面端' : getDeviceName());
+      // 真快照：全量导出内容数据（笔记/剪藏/知识单元/胶囊/标签等）
+      const exportRes = await unifiedSyncApi.exportJson();
+      const payload = { format: SYNC_FORMAT, ...exportRes.data };
       const encrypted = await encryptSnapshot(payload, password);
       const blob = new Blob([JSON.stringify(encrypted)], { type: 'application/octet-stream' });
       const formData = new FormData();
@@ -147,10 +199,10 @@ const SyncSettingsContent: FC = () => {
       formData.append('fingerprint', fp);
       formData.append('salt', encrypted.salt);
       formData.append('iv', encrypted.iv);
-      formData.append('entity_count', String(payload.noteCount));
-      await syncApi.uploadSnapshot(formData);
+      formData.append('entity_count', String(exportRes.data.total_records ?? 0));
+      await unifiedSyncApi.uploadSnapshot(formData);
       await loadDevices();
-      showToast(`已上传加密快照（${payload.noteCount} 条笔记）`, 'success');
+      showToast(`已上传加密快照（${exportRes.data.total_records ?? 0} 条记录）`, 'success');
     } catch (err: any) {
       showToast(err?.message || '同步失败', 'error');
     } finally {
@@ -165,20 +217,22 @@ const SyncSettingsContent: FC = () => {
     }
     setPulling(true);
     try {
-      const { data: snapshot } = await syncApi.getLatestSnapshot();
+      const { data: snapshot } = await unifiedSyncApi.getLatestSnapshot();
       if (!snapshot) {
         showToast('云端暂无快照', 'error');
         return;
       }
-      const res = await fetch(snapshot.download_url);
-      const encrypted = await res.json();
-      const payload = await decryptSnapshot<{
-        generatedAt: string;
-        noteCount: number;
-        noteTitles: string[];
-      }>(encrypted, password);
+      // 经后端（桌面端为云端代理）下载密文，不依赖 S3 公网可达
+      const dl = await unifiedSyncApi.downloadLatestSnapshot();
+      const encrypted = typeof dl.data === 'string' ? JSON.parse(dl.data) : dl.data;
+      const payload = await decryptSnapshot<any>(encrypted, password);
+      if (payload?.format !== SYNC_FORMAT || !payload?.data) {
+        showToast('旧格式快照不支持恢复，请先在另一端重新上传', 'error');
+        return;
+      }
+      const { data: stats } = await unifiedSyncApi.importJson(payload);
       showToast(
-        `已恢复 ${payload.noteCount} 条笔记（快照生成于 ${new Date(payload.generatedAt).toLocaleString()}）`,
+        `恢复完成：新增 ${stats.inserted} 条、更新 ${stats.updated} 条、跳过 ${stats.skipped} 条`,
         'success'
       );
     } catch (err: any) {
@@ -190,7 +244,7 @@ const SyncSettingsContent: FC = () => {
 
   const handleRemoveDevice = async (id: string) => {
     try {
-      await syncApi.removeDevice(id);
+      await unifiedSyncApi.removeDevice(id);
       await loadDevices();
       showToast('设备已移除', 'success');
     } catch (err: any) {
@@ -215,8 +269,71 @@ const SyncSettingsContent: FC = () => {
         <Info size={16} className="text-info shrink-0 mt-0.5" />
         <p className="text-xs text-text-secondary">
           云同步采用端到端加密：同步密码不会上传到服务器，丢失后无法恢复数据，请务必牢记。
+          当前版本同步新增与修改的内容，删除操作不会同步。
         </p>
       </div>
+
+      {/* 云端账号（仅桌面端）：绑定后同步走云端服务器 */}
+      {desktop && (
+        <div className="glass-card p-6 border-accent/30">
+          <h3 className="text-lg font-medium text-text-primary mb-4 flex items-center gap-2">
+            <Cloud size={18} className="text-accent" />
+            云端账号
+          </h3>
+          {cloudBound ? (
+            <div className="flex items-center justify-between">
+              <div className="text-sm text-text-secondary">
+                已绑定 <span className="text-text-primary font-medium">{cloudEmail}</span>
+                <span className="text-text-muted">（{serverUrl}）</span>
+              </div>
+              <button
+                className="btn-secondary flex items-center gap-2 px-3 py-1.5 text-sm"
+                onClick={handleCloudUnbind}
+              >
+                <Unlink size={14} />
+                解绑
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <p className="text-xs text-text-secondary">
+                绑定网页端账号后，桌面端的同步将连接到云端服务器，与网页端互通。账号仅保存在本机。
+              </p>
+              <input
+                type="text"
+                value={serverUrl}
+                onChange={(e) => setServerUrl(e.target.value)}
+                placeholder="服务器地址，如 https://grzhishiku.com"
+                className="w-full bg-bg-secondary border border-white/[0.06] rounded-[2px] px-3 py-2 text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:border-info/40"
+              />
+              <div className="flex gap-3">
+                <input
+                  type="email"
+                  value={loginEmail}
+                  onChange={(e) => setLoginEmail(e.target.value)}
+                  placeholder="邮箱"
+                  className="flex-1 bg-bg-secondary border border-white/[0.06] rounded-[2px] px-3 py-2 text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:border-info/40"
+                />
+                <input
+                  type="password"
+                  value={loginPassword}
+                  onChange={(e) => setLoginPassword(e.target.value)}
+                  placeholder="密码"
+                  className="flex-1 bg-bg-secondary border border-white/[0.06] rounded-[2px] px-3 py-2 text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:border-info/40"
+                />
+                <button
+                  className="btn-primary flex items-center gap-2 px-4 py-2 text-sm"
+                  onClick={handleCloudBind}
+                  disabled={binding}
+                >
+                  {binding ? <Loader2 size={14} className="animate-spin" /> : <Link2 size={14} />}
+                  绑定
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Sync password */}
       <div className="glass-card p-6">
@@ -357,6 +474,10 @@ const SyncSettingsContent: FC = () => {
 };
 
 const SyncSettings: FC = () => {
+  // 桌面端：功能门在云端账号订阅上，本地实例不拦截
+  if (isDesktop()) {
+    return <SyncSettingsContent />;
+  }
   return (
     <ProFeatureGate
       minTier="storage"

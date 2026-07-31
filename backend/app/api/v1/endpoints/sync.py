@@ -135,6 +135,21 @@ def upload_snapshot(
     )
 
 
+@router.get("/snapshots/latest/download")
+def download_latest_snapshot(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    _: User = Depends(require_feature("cloud_sync")),
+):
+    """直接经后端下载最新快照密文（不走预签名 URL，S3 可完全保持内网）。"""
+    snapshot = sync_service.get_latest_snapshot(db, current_user.id)
+    if not snapshot:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="云端暂无快照")
+    from fastapi import Response as _Response
+    data = sync_storage_service.download_encrypted_blob(snapshot.s3_key)
+    return _Response(content=data, media_type="application/octet-stream")
+
+
 @router.get("/snapshots/latest", response_model=Optional[SnapshotOut])
 def get_latest_snapshot(
     db: Session = Depends(get_db),

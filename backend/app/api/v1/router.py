@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends
-from app.api.v1.endpoints import auth, users, capsules, attention, knowledge, graph, graphify, llm, brain, billing, notes, clips, tags, cognitive, emergence, support, rss, email, social, read_later, documents, jianghu, pipeline, plugins, storage, system, embodied, community, sticky_notes, sync
+from app.api.v1.endpoints import auth, cloud_proxy, users, capsules, attention, knowledge, graph, graphify, llm, brain, billing, notes, clips, tags, cognitive, emergence, support, rss, email, social, read_later, documents, jianghu, pipeline, plugins, storage, system, embodied, community, sticky_notes, sync
 from app.core.feature_guard import require_module
 
 api_router = APIRouter()
@@ -34,3 +34,4 @@ api_router.include_router(system.router, prefix="/system", tags=["System"])
 api_router.include_router(community.router, prefix="/community", tags=["Community"])
 api_router.include_router(sticky_notes.router, prefix="/sticky", tags=["Sticky Notes & Reminders"])
 api_router.include_router(sync.router, prefix="/sync", tags=["Sync"])
+api_router.include_router(cloud_proxy.router, prefix="/cloud-proxy", tags=["Cloud Proxy"])

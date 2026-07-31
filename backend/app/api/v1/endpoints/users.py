@@ -230,31 +230,14 @@ def _row_to_dict(row: Any) -> Dict[str, Any]:
     return data
 
 
-# 导出范围：用户核心内容数据（不含 settings，避免泄露密钥）
-EXPORT_TABLES = (
-    ("notes", Note),
-    ("capsules", Capsule),
-    ("clips", BrowserClip),
-    ("knowledge_units", KnowledgeUnit),
-    ("sticky_notes", StickyNote),
-    ("tags", Tag),
-    ("read_later", ReadLaterItem),
-    ("rss_feeds", RssFeed),
-    ("documents", Document),
-)
-
-
 @router.post("/me/export", summary="Export user data", description="Synchronously export the user's content data as a downloadable JSON file.")
 async def export_user_data(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    data: Dict[str, Any] = {}
-    total = 0
-    for name, model in EXPORT_TABLES:
-        rows = db.query(model).filter(model.user_id == current_user.id).all()
-        data[name] = [_row_to_dict(r) for r in rows]
-        total += len(rows)
+    from app.services.data_transfer_service import export_user_data_dict
+    data = export_user_data_dict(db, current_user.id)
+    total = sum(len(v) for v in data.values())
 
     payload = {
         "exported_at": datetime.utcnow().isoformat() + "Z",
@@ -269,6 +252,20 @@ async def export_user_data(
         media_type="application/json",
         headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )
+
+
+@router.post("/me/import", summary="Import user data", description="Merge-import content data produced by /me/export (or an encrypted-sync snapshot). Rows are merged by id; newer updated_at wins; nothing is deleted.")
+async def import_user_data_endpoint(
+    payload: Dict[str, Any],
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    from app.services.data_transfer_service import import_user_data
+    data = payload.get("data") if isinstance(payload, dict) else None
+    if not isinstance(data, dict):
+        raise HTTPException(status_code=400, detail="格式不正确：缺少 data 字段")
+    stats = import_user_data(db, current_user.id, data)
+    return {"success": True, **stats}
 
 
 @router.delete("/me/data", summary="Clear user data", description="Delete all user-generated content (notes, capsules, clips, knowledge units, sticky notes, reminders, tags, read-later, RSS, documents) while keeping the account and subscription intact.")
