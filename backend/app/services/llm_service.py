@@ -1587,12 +1587,13 @@ class LLMService:
     # ─────────────────────────── Embeddings ───────────────────────────
 
     async def embed(self, text: str) -> List[float]:
-        """Generate text embedding via Ollama (qwen2.5:0.5b) or fallback."""
+        """Generate text embedding via Ollama（可用 OLLAMA_EMBED_MODEL 配置专用模型）or fallback."""
+        model = getattr(settings, "OLLAMA_EMBED_MODEL", "") or "qwen2.5:0.5b"
         try:
             async with httpx.AsyncClient(timeout=30.0) as client:
                 response = await client.post(
                     f"{self.ollama_url}/api/embeddings",
-                    json={"model": "qwen2.5:0.5b", "prompt": text}
+                    json={"model": model, "prompt": text}
                 )
                 data = response.json()
                 embedding = data.get("embedding", [])

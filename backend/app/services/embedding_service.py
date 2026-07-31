@@ -24,7 +24,9 @@ class EmbeddingService:
 
     def __init__(self):
         self.ollama_url = settings.OLLAMA_BASE_URL
-        self.model = self.DEFAULT_MODEL
+        # 优先用配置里的专用 embedding 模型（如 nomic-embed-text）；
+        # 未配置时退回轻量聊天模型（部分 Ollama 版本不支持其做 embedding）
+        self.model = getattr(settings, "OLLAMA_EMBED_MODEL", "") or self.DEFAULT_MODEL
 
     async def embed(self, text: str, store: bool = False, content_type: str = "query", content_id: str = "", user_id: str = "") -> dict:
         """
