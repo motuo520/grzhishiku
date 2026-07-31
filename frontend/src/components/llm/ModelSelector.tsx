@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef } from 'react';
 import { ChevronDown, Server, Cloud, Cpu, Wallet, AlertCircle } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { getModelCatalog, LLMModelCatalogItem } from '@/api/llm';
+import { llmPriceTier } from '@/utils/llmTier';
 import { useSettings } from '@/store/settings';
 import { useAuth } from '@/hooks/useAuth';
 import { useLLMBalance } from '@/hooks/useLLMBalance';
@@ -172,13 +173,10 @@ export function ModelSelector({
               <optgroup label="🌐 系统模型（按量计费）">
                 {systemModels.map((m) => {
                   const isRec = m.id === recommendedId;
-                  const symbol = m.currency === 'USD' ? '$' : '¥';
-                  const priceLabel = showPrice
-                    ? `${symbol}${m.price_input_per_1k?.toFixed(3) || '0'}/${symbol}${m.price_output_per_1k?.toFixed(3) || '0'} per 1K`
-                    : '';
+                  const priceLabel = showPrice ? `· ${llmPriceTier(m).label}` : '';
                   return (
                     <option key={m.id} value={m.id}>
-                      {m.name} {priceLabel} {isRec ? '· 推荐' : ''}
+                      {m.name}{priceLabel} {isRec ? '· 推荐' : ''}
                     </option>
                   );
                 })}

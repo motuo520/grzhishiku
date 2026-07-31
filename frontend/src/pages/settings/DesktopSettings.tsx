@@ -2,7 +2,7 @@ import { FC } from 'react';
 import { Monitor, Download, Package, Shield, Zap, HardDrive, Cloud, Laptop, KeyRound, RefreshCw, Keyboard } from 'lucide-react';
 import { isDesktop } from '@/api/unifiedSync';
 
-const APP_VERSION = '0.1.6';
+const APP_VERSION = '0.1.7';
 
 const DOWNLOADS = [
   {

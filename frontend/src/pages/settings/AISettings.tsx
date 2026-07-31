@@ -2,6 +2,7 @@ import { FC, useState, useEffect, useCallback } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { settingsApi, UserSettings } from '@/api/settings';
 import { testProvider, getLLMStatus, getOllamaModels, getModelCatalog, LLMModelCatalogItem } from '@/api/llm';
+import { llmPriceTier } from '@/utils/llmTier';
 import {
   Brain, Eye, EyeOff, Loader2, Check, AlertTriangle, Wifi, WifiOff,
   Server, KeyRound, Sparkles, Globe, Zap,
@@ -308,9 +309,9 @@ const AISettings: FC = () => {
                       <div className="text-sm font-medium text-text-primary">{m.name}</div>
                     </div>
                     {m.price_input_per_1k > 0 && (
-                      <div className="text-xs text-text-secondary">
-                        {(m.currency === 'USD' ? '$' : '¥') + m.price_input_per_1k.toFixed(4)} / {(m.currency === 'USD' ? '$' : '¥') + m.price_output_per_1k.toFixed(4)} per 1K tokens
-                      </div>
+                      <span className={`text-[10px] px-1.5 py-0.5 rounded-[2px] border ${llmPriceTier(m).className}`}>
+                        {llmPriceTier(m).label}
+                      </span>
                     )}
                   </div>
                   <div className="text-xs text-text-secondary mt-0.5">{m.description}</div>

@@ -5,6 +5,7 @@ import {
   Zap, RefreshCw, X, Settings, Sparkles, Activity, Loader2, Server, Cloud, Cpu, Wallet, AlertCircle, ChevronRight,
 } from 'lucide-react';
 import { getLLMStatus, testProvider, LLMProvider, getModelCatalog, LLMModelCatalogItem } from '@/api/llm';
+import { llmPriceTier } from '@/utils/llmTier';
 import { useSettings } from '@/store/settings';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
@@ -293,9 +294,8 @@ const LLMConnectionStatus: FC<LLMConnectionStatusProps> = ({ placement = 'bottom
                       {models.map((model) => {
                         const isActive = model.provider.toLowerCase() === activeProviderName.toLowerCase() && model.provider_model_id === displayModel;
                         const isSetting = setMutation.isPending && setMutation.variables?.provider === model.provider && setMutation.variables?.model === model.provider_model_id;
-                        const priceLabel = model.price_input_per_1k > 0
-                          ? `${model.currency === 'USD' ? '$' : '¥'}${model.price_input_per_1k.toFixed(4)} / 1K tokens`
-                          : '免费';
+                        const tier = llmPriceTier(model);
+                        const priceLabel = tier.label;
 
                         return (
                           <button
