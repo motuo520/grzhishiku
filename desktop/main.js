@@ -31,6 +31,11 @@ let tray = null;
 let isQuitting = false;
 let backend = null; // { proc, port, logStream }
 let backendRestarting = false;
+// 后端意外退出时自动重启：连续失败 3 次才展示错误页
+let backendCrashCount = 0;
+let backendLastCrashAt = 0;
+const BACKEND_MAX_AUTO_RESTARTS = 3;
+const BACKEND_CRASH_WINDOW_MS = 10 * 60 * 1000;
 
 // ---------- sidecar ----------
 
@@ -91,7 +96,7 @@ async function startBackend() {
     logStream.write(`backend exited with code ${code}\n`);
     logStream.end();
     if (backend && backend.proc === proc) backend = null;
-    if (!isQuitting && !backendRestarting) showBackendError('后端进程意外退出（代码 ' + code + '）。');
+    if (!isQuitting && !backendRestarting) handleUnexpectedBackendExit(code);
   });
 
   backend = { proc, port, logStream };
@@ -139,6 +144,27 @@ async function restartBackend() {
   } finally {
     backendRestarting = false;
   }
+}
+
+// 意外退出：短时间窗内自动重启（最多 3 次），仍失败才打扰用户
+async function handleUnexpectedBackendExit(code) {
+  const now = Date.now();
+  if (now - backendLastCrashAt > BACKEND_CRASH_WINDOW_MS) backendCrashCount = 0;
+  backendLastCrashAt = now;
+  backendCrashCount += 1;
+
+  if (backendCrashCount <= BACKEND_MAX_AUTO_RESTARTS) {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.loadURL(loadingPage(`后端服务意外停止，正在自动重启（第 ${backendCrashCount} 次）…`));
+    }
+    await new Promise((r) => setTimeout(r, 2000 * backendCrashCount)); // 退避
+    const port = await restartBackend();
+    if (port && mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.loadURL(`http://127.0.0.1:${port}`);
+      return;
+    }
+  }
+  showBackendError('后端进程意外退出（代码 ' + code + '），自动重启未成功。');
 }
 
 // ---------- 窗口 ----------
