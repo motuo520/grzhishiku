@@ -281,6 +281,28 @@ async def lifespan(app: FastAPI):
                         1, 0, 1, :ctx, 100, 0, 0, 0, 0, 'CNY', datetime('now'), datetime('now'))
                 """), {"id": mid, "name": mname, "provider": mprov, "pmid": mpmid, "desc": mdesc, "ctx": mctx})
 
+        # 厂商账户补齐（后台「模型管理 → 厂商」列表来源；key 为空，管理员后填）
+        from app.models.llm_billing import ModelProviderAccount
+        provider_accounts = [
+            ('prov_opencode_default', 'opencode', 'https://opencode.ai/zen'),
+            ('prov_kimi_default', 'kimi', 'https://api.moonshot.cn'),
+            ('prov_glm_default', 'glm', 'https://open.bigmodel.cn/api/paas/v4'),
+            ('prov_dashscope_default', 'dashscope', 'https://dashscope.aliyuncs.com/compatible-mode/v1'),
+            ('prov_openai_default', 'openai', 'https://api.openai.com/v1'),
+            ('prov_anthropic_default', 'anthropic', 'https://api.anthropic.com/v1'),
+            ('prov_google_default', 'google', 'https://generativelanguage.googleapis.com/v1beta'),
+        ]
+        for pid, prov, purl in provider_accounts:
+            exists = conn.execute(
+                sa_select(ModelProviderAccount).where(ModelProviderAccount.id == pid)
+            ).first()
+            if not exists:
+                conn.execute(text("""
+                    INSERT INTO model_provider_accounts (id, provider, name, api_key, base_url,
+                        balance_cny, balance_usd, is_active, priority, failure_count, created_at, updated_at)
+                    VALUES (:id, :provider, 'default', '', :url, 0, 0, 1, 0, 0, datetime('now'), datetime('now'))
+                """), {"id": pid, "provider": prov, "url": purl})
+
     # Load and initialize plugins, then mount the MCP SSE server
     from app.mcp.server import mcp, mount_mcp
     from app.plugins.manager import plugin_manager
