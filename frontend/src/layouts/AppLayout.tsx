@@ -11,6 +11,7 @@ import ChatInputBar from '@/components/navigation/ChatInputBar';
 
 import AnnouncementBanner from '@/components/common/AnnouncementBanner';
 import LoginModal from '@/components/auth/LoginModal';
+import OllamaSetupWizard from '@/components/setup/OllamaSetupWizard';
 import MascotWidget from '@/components/mascot/MascotWidget';
 
 const AppLayout: FC = () => {
@@ -113,6 +114,7 @@ const AppLayout: FC = () => {
 
       {/* Login modal: triggered by guest notice or protected actions */}
       <LoginModal isOpen={loginOpen} onClose={() => setLoginOpen(false)} />
+      <OllamaSetupWizard />
 
       {/* Cute mascot assistant */}
       <MascotWidget />
