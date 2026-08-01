@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Settings, ToggleLeft, ToggleRight, AlertTriangle, Save, RefreshCw,
-  Globe, Lock, Unlock, Megaphone, UserPlus, Mail
+  Globe, Lock, Unlock, Megaphone, UserPlus
 } from 'lucide-react';
 import adminApi from '../../services/adminApi';
 
@@ -20,38 +20,12 @@ interface Announcement {
   effective_at: string;
 }
 
-interface EmailConfig {
-  enabled: boolean;
-  smtp_host: string;
-  smtp_port: number;
-  username: string;
-  password: string;
-  sender_email: string;
-  sender_name: string;
-  use_tls: boolean;
-  use_ssl: boolean;
-}
-
 interface SystemConfig {
   feature_flags: FeatureFlag[];
   announcement: Announcement;
   maintenance_mode: { enabled: boolean; resume_at: string };
   registration_open: boolean;
-  default_plan: string;
-  email_config: EmailConfig;
 }
-
-const DEFAULT_EMAIL_CONFIG: EmailConfig = {
-  enabled: false,
-  smtp_host: '',
-  smtp_port: 587,
-  username: '',
-  password: '',
-  sender_email: '',
-  sender_name: '',
-  use_tls: true,
-  use_ssl: false,
-};
 
 function ShimmerCard() {
   return (
@@ -123,21 +97,6 @@ export default function AdminSystem() {
     setConfig((prev) => {
       if (!prev) return prev;
       return { ...prev, maintenance_mode: { ...prev.maintenance_mode, [field]: value } };
-    });
-  };
-
-  const updateEmailConfig = (field: keyof EmailConfig, value: string | number | boolean) => {
-    setConfig((prev) => {
-      if (!prev) return prev;
-      const next: EmailConfig = { ...(prev.email_config || DEFAULT_EMAIL_CONFIG), [field]: value };
-      // STARTTLS and SSL are mutually exclusive
-      if (field === 'use_tls' && value === true) {
-        next.use_ssl = false;
-      }
-      if (field === 'use_ssl' && value === true) {
-        next.use_tls = false;
-      }
-      return { ...prev, email_config: next };
     });
   };
 
@@ -367,154 +326,6 @@ export default function AdminSystem() {
                 <ToggleLeft className="w-6 h-6 text-admin-muted" />
               )}
             </button>
-          </div>
-        </div>
-      </motion.div>
-
-      {/* Email Service */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.18 }}
-        className="bg-admin-sidebar rounded-xl border border-admin-border p-6"
-      >
-        <div className="flex items-center gap-3 mb-6">
-          <Mail className="w-5 h-5 text-info" />
-          <h2 className="text-lg font-semibold text-white">邮件服务</h2>
-        </div>
-        <div className="space-y-4">
-          <div className="flex items-center justify-between py-3 px-4 bg-admin-bg rounded-lg border border-admin-border">
-            <div className="flex items-center gap-3">
-              {config?.email_config?.enabled ? <Mail className="w-4 h-4 text-success" /> : <Mail className="w-4 h-4 text-admin-muted" />}
-              <div>
-                <div className="text-sm font-medium text-white">启用邮件发送</div>
-                <div className="text-xs text-admin-muted">开启后注册验证码将通过 SMTP 真实发送</div>
-              </div>
-            </div>
-            <button
-              onClick={() => updateEmailConfig('enabled', !(config?.email_config?.enabled ?? false))}
-              className="p-1 transition-transform active:scale-95"
-            >
-              {config?.email_config?.enabled ? (
-                <ToggleRight className="w-6 h-6 text-success" />
-              ) : (
-                <ToggleLeft className="w-6 h-6 text-admin-muted" />
-              )}
-            </button>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm text-admin-muted mb-1.5">SMTP 服务器</label>
-              <input
-                type="text"
-                value={config?.email_config?.smtp_host || ''}
-                onChange={(e) => updateEmailConfig('smtp_host', e.target.value)}
-                placeholder="smtp.example.com"
-                className="w-full px-4 py-2.5 bg-admin-bg border border-admin-border rounded-lg text-white placeholder-admin-muted focus:outline-none focus:border-admin-primary"
-              />
-            </div>
-            <div>
-              <label className="block text-sm text-admin-muted mb-1.5">SMTP 端口</label>
-              <input
-                type="number"
-                value={config?.email_config?.smtp_port || 587}
-                onChange={(e) => updateEmailConfig('smtp_port', parseInt(e.target.value || '0', 10))}
-                placeholder="587"
-                className="w-full px-4 py-2.5 bg-admin-bg border border-admin-border rounded-lg text-white placeholder-admin-muted focus:outline-none focus:border-admin-primary"
-              />
-            </div>
-            <div>
-              <label className="block text-sm text-admin-muted mb-1.5">用户名</label>
-              <input
-                type="text"
-                value={config?.email_config?.username || ''}
-                onChange={(e) => updateEmailConfig('username', e.target.value)}
-                placeholder="邮箱账号"
-                className="w-full px-4 py-2.5 bg-admin-bg border border-admin-border rounded-lg text-white placeholder-admin-muted focus:outline-none focus:border-admin-primary"
-              />
-            </div>
-            <div>
-              <label className="block text-sm text-admin-muted mb-1.5">密码</label>
-              <input
-                type="password"
-                value={config?.email_config?.password || ''}
-                onChange={(e) => updateEmailConfig('password', e.target.value)}
-                placeholder="SMTP 密码或授权码"
-                className="w-full px-4 py-2.5 bg-admin-bg border border-admin-border rounded-lg text-white placeholder-admin-muted focus:outline-none focus:border-admin-primary"
-              />
-            </div>
-            <div>
-              <label className="block text-sm text-admin-muted mb-1.5">发件人邮箱</label>
-              <input
-                type="email"
-                value={config?.email_config?.sender_email || ''}
-                onChange={(e) => updateEmailConfig('sender_email', e.target.value)}
-                placeholder="noreply@example.com"
-                className="w-full px-4 py-2.5 bg-admin-bg border border-admin-border rounded-lg text-white placeholder-admin-muted focus:outline-none focus:border-admin-primary"
-              />
-            </div>
-            <div>
-              <label className="block text-sm text-admin-muted mb-1.5">发件人名称</label>
-              <input
-                type="text"
-                value={config?.email_config?.sender_name || ''}
-                onChange={(e) => updateEmailConfig('sender_name', e.target.value)}
-                placeholder="问墨"
-                className="w-full px-4 py-2.5 bg-admin-bg border border-admin-border rounded-lg text-white placeholder-admin-muted focus:outline-none focus:border-admin-primary"
-              />
-            </div>
-          </div>
-
-          <div className="py-3 px-4 bg-admin-bg rounded-lg border border-admin-border">
-            <label className="block text-sm text-admin-muted mb-2">加密方式</label>
-            <div className="flex items-center gap-6">
-              <label className="flex items-center gap-2 text-sm text-white cursor-pointer">
-                <input
-                  type="radio"
-                  name="email_tls"
-                  checked={!!config?.email_config?.use_tls}
-                  onChange={() => {
-                    updateEmailConfig('use_tls', true);
-                    updateEmailConfig('use_ssl', false);
-                  }}
-                  className="accent-admin-primary"
-                />
-                STARTTLS (推荐，端口 587)
-              </label>
-              <label className="flex items-center gap-2 text-sm text-white cursor-pointer">
-                <input
-                  type="radio"
-                  name="email_tls"
-                  checked={!!config?.email_config?.use_ssl}
-                  onChange={() => {
-                    updateEmailConfig('use_ssl', true);
-                    updateEmailConfig('use_tls', false);
-                  }}
-                  className="accent-admin-primary"
-                />
-                SSL (端口 465)
-              </label>
-              <label className="flex items-center gap-2 text-sm text-white cursor-pointer">
-                <input
-                  type="radio"
-                  name="email_tls"
-                  checked={!config?.email_config?.use_tls && !config?.email_config?.use_ssl}
-                  onChange={() => {
-                    updateEmailConfig('use_tls', false);
-                    updateEmailConfig('use_ssl', false);
-                  }}
-                  className="accent-admin-primary"
-                />
-                无
-              </label>
-            </div>
-          </div>
-
-          <div className="px-4 py-3 bg-info/5 rounded-lg border border-info/10">
-            <p className="text-xs text-info">
-              保存后生效。未启用或配置不完整时，注册验证码将继续以开发模式输出到后端日志。
-            </p>
           </div>
         </div>
       </motion.div>

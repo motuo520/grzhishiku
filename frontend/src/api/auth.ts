@@ -1,8 +1,7 @@
 import api, { apiClient } from './client';
 
 export interface LoginData { email: string; password: string; }
-export interface RegisterData { email: string; password: string; verification_code: string; }
-export interface SendCodeData { email: string; }
+export interface RegisterData { email: string; password: string; }
 export interface TokenResponse { access_token: string; token_type: string; expires_in: number; }
 export interface User {
   id: string; email: string; name: string | null; avatar: string | null;
@@ -39,7 +38,6 @@ export const isTokenExpiringSoon = (thresholdMinutes = 30): boolean => {
 export const authApi = {
   login: (data: LoginData) => api.post<TokenResponse>('/api/v1/auth/login', data),
   register: (data: RegisterData) => api.post<TokenResponse>('/api/v1/auth/register', data),
-  sendVerificationCode: (data: SendCodeData) => api.post<{ email: string; message: string }>('/api/v1/auth/send-verification-code', data),
   refresh: () => api.post<TokenResponse>('/api/v1/auth/refresh'),
   logout: () => api.post('/api/v1/auth/logout'),
   me: () => api.get<User>('/api/v1/users/me'),

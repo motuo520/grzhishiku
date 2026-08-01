@@ -40,23 +40,11 @@ app.dependency_overrides[get_db] = override_get_db
 client = TestClient(app)
 
 
-def _get_verification_code(email: str) -> str:
-    """Request a real verification code via the API and read it from the
-    in-memory verification store (dev mode)."""
-    from app.services import verification_service
-    resp = client.post("/api/v1/auth/send-verification-code", json={"email": email})
-    assert resp.status_code == 200
-    record = verification_service._store.get(email.strip().lower())
-    assert record, f"no verification code stored for {email}"
-    return record["code"]
-
-
 def _register(email: str, password: str):
-    """Register through the real verification-code flow."""
+    """Register a user directly (no email verification in the open-source edition)."""
     return client.post("/api/v1/auth/register", json={
         "email": email,
         "password": password,
-        "verification_code": _get_verification_code(email),
     })
 
 

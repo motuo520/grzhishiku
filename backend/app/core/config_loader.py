@@ -14,7 +14,6 @@ from typing import Any, Dict, List, Optional
 from sqlalchemy.orm import Session
 
 from app.models.base import SystemConfig as SysConfigModel
-from app.services.email_sender import EmailConfig
 
 
 class SystemConfigSnapshot:
@@ -70,22 +69,6 @@ class SystemConfigSnapshot:
             except json.JSONDecodeError:
                 val = []
         return list(val) if isinstance(val, list) else []
-
-    @property
-    def email_config(self) -> EmailConfig:
-        val = self._get("email_config", {})
-        if isinstance(val, str):
-            try:
-                val = json.loads(val)
-            except json.JSONDecodeError:
-                val = {}
-        if not isinstance(val, dict):
-            val = {}
-        return EmailConfig(**val)
-
-    @property
-    def email_enabled(self) -> bool:
-        return self.email_config.is_configured
 
     @property
     def announcement(self) -> Dict[str, Any]:

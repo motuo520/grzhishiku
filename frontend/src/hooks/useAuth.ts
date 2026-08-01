@@ -67,10 +67,6 @@ export const useAuth = () => {
     },
   });
 
-  const sendCodeMutation = useMutation({
-    mutationFn: authApi.sendVerificationCode,
-  });
-
   const logout = useCallback(() => {
     authApi.logout().catch(() => {}); // best-effort server-side logout
     clearToken();
@@ -87,14 +83,11 @@ export const useAuth = () => {
     isLoadingUser,
     login: loginMutation.mutateAsync,
     register: registerMutation.mutateAsync,
-    sendCode: sendCodeMutation.mutateAsync,
     logout,
     loginError: loginMutation.error,
     registerError: registerMutation.error,
-    sendCodeError: sendCodeMutation.error,
     isLoggingIn: loginMutation.isPending,
     isRegistering: registerMutation.isPending,
-    isSendingCode: sendCodeMutation.isPending,
     refreshUser: useCallback(() => {
       queryClient.invalidateQueries({ queryKey: ['user'] });
     }, [queryClient]),

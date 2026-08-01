@@ -33,43 +33,13 @@ def setup_test_database():
     Base.metadata.drop_all(bind=engine)
 
 
-@pytest.fixture(autouse=True)
-def reset_verification_store():
-    """Clear the in-memory email-verification store before each test.
-
-    The store enforces a 60s resend cooldown per email; without a reset,
-    tests that re-register the same email would hit 429s from shared state."""
-    from app.services import verification_service
-
-    with verification_service._lock:
-        verification_service._store.clear()
-    yield
-
-
 @pytest.fixture
-def get_verification_code(client):
-    """Return a factory that requests a real email verification code through the
-    API and reads it back from the in-memory verification store."""
-    from app.services import verification_service
-
-    def _get_code(email: str) -> str:
-        resp = client.post("/api/v1/auth/send-verification-code", json={"email": email})
-        assert resp.status_code == 200
-        record = verification_service._store.get(email.strip().lower())
-        assert record, f"no verification code stored for {email}"
-        return record["code"]
-
-    return _get_code
-
-
-@pytest.fixture
-def register_user(client, get_verification_code):
-    """Register a user through the real verification-code flow; returns the response."""
+def register_user(client):
+    """Register a user directly (no email verification in the open-source edition)."""
     def _register(email: str, password: str = "TestPass123"):
         return client.post("/api/v1/auth/register", json={
             "email": email,
             "password": password,
-            "verification_code": get_verification_code(email),
         })
 
     return _register

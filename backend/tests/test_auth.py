@@ -10,21 +10,19 @@ class TestAuth:
         assert "access_token" in data
         assert data["token_type"] == "bearer"
 
-    def test_register_weak_password(self, client: TestClient, get_verification_code):
+    def test_register_weak_password(self, client: TestClient):
         resp = client.post("/api/v1/auth/register", json={
             "email": "weak@example.com",
             "password": "weak",
             "name": "Weak",
-            "verification_code": get_verification_code("weak@example.com"),
         })
         assert resp.status_code == 422
 
-    def test_register_missing_uppercase(self, client: TestClient, get_verification_code):
+    def test_register_missing_uppercase(self, client: TestClient):
         resp = client.post("/api/v1/auth/register", json={
             "email": "weak2@example.com",
             "password": "weakpass123",
             "name": "Weak",
-            "verification_code": get_verification_code("weak2@example.com"),
         })
         assert resp.status_code == 422
 

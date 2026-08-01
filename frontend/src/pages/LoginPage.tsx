@@ -12,21 +12,17 @@ type Tab = 'login' | 'register';
 const LoginPage: FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { login, register, sendCode, isLoggingIn, isRegistering, isSendingCode, loginError, registerError, sendCodeError } = useAuth();
+  const { login, register, isLoggingIn, isRegistering, loginError, registerError } = useAuth();
 
   const [tab, setTab] = useState<Tab>((location.state as any)?.tab === 'register' ? 'register' : 'login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [verificationCode, setVerificationCode] = useState('');
-  const [countdown, setCountdown] = useState(0);
   const [showPassword, setShowPassword] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
 
   const resetForm = () => {
     setFormError(null);
     setPassword('');
-    setVerificationCode('');
-    setCountdown(0);
   };
 
   const switchTab = (t: Tab) => {
@@ -42,7 +38,6 @@ const LoginPage: FC = () => {
 
   const validateRegister = (): boolean => {
     if (!email.trim()) { setFormError('请输入邮箱'); return false; }
-    if (!verificationCode.trim()) { setFormError('请输入邮箱验证码'); return false; }
     if (!password) { setFormError('请输入密码'); return false; }
     if (password.length < 8) { setFormError('密码长度至少 8 位'); return false; }
     return true;
@@ -98,7 +93,7 @@ const LoginPage: FC = () => {
     setFormError(null);
     if (!validateRegister()) return;
     try {
-      await register({ email, password, verification_code: verificationCode });
+      await register({ email, password });
       await login({ email, password });
       navigate('/');
     } catch (err: any) {
@@ -106,31 +101,8 @@ const LoginPage: FC = () => {
     }
   };
 
-  const handleSendCode = async () => {
-    setFormError(null);
-    if (!email.trim()) {
-      setFormError('请先输入邮箱');
-      return;
-    }
-    try {
-      await sendCode({ email });
-      setCountdown(60);
-      const timer = setInterval(() => {
-        setCountdown((prev) => {
-          if (prev <= 1) {
-            clearInterval(timer);
-            return 0;
-          }
-          return prev - 1;
-        });
-      }, 1000);
-    } catch (err: any) {
-      setFormError(formatError(err));
-    }
-  };
-
   const isLoading = isLoggingIn || isRegistering;
-  const errorMessage = formError || (loginError as any)?.message || (registerError as any)?.message || (sendCodeError as any)?.message || null;
+  const errorMessage = formError || (loginError as any)?.message || (registerError as any)?.message || null;
 
   const inputClass =
     'w-full pl-10 pr-4 py-2.5 bg-[var(--input-bg)] border border-[var(--input-border)] rounded-[2px] text-text-primary placeholder-text-muted focus:border-accent/50 outline-none transition-colors text-sm';
@@ -285,33 +257,6 @@ const LoginPage: FC = () => {
                       disabled={isLoading}
                     />
                   </div>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-medium text-text-secondary mb-1.5">邮箱验证码</label>
-                  <div className="flex gap-2">
-                    <div className="relative flex-1">
-                      <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" />
-                      <input
-                        type="text"
-                        inputMode="numeric"
-                        value={verificationCode}
-                        onChange={(e) => setVerificationCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                        placeholder="6 位验证码"
-                        className={inputClass}
-                        disabled={isLoading}
-                      />
-                    </div>
-                    <button
-                      type="button"
-                      onClick={handleSendCode}
-                      disabled={isSendingCode || countdown > 0 || !email.trim()}
-                      className="shrink-0 px-3 py-2.5 bg-bg-tertiary hover:bg-bg-hover border border-border-color rounded-[2px] text-xs text-text-secondary transition-colors disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
-                    >
-                      {isSendingCode ? '发送中...' : countdown > 0 ? `${countdown}s` : '获取验证码'}
-                    </button>
-                  </div>
-                  <p className="text-[10px] text-text-muted mt-1.5">验证码将发送至您的邮箱，请查收</p>
                 </div>
 
                 <div>

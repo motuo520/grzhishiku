@@ -5,22 +5,16 @@ from app.core.database import get_db
 from app.core.security import verify_password, get_password_hash, create_access_token, decode_token
 from app.core.config_loader import get_system_config
 from app.models.base import User
-from app.services import verification_service
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 import uuid
-import asyncio
 from datetime import timedelta
 
 router = APIRouter()
 security = HTTPBearer(auto_error=False)
 
-class SendCodeRequest(BaseModel):
-    email: EmailStr
-
 class UserRegister(BaseModel):
     email: EmailStr
     password: str = Field(..., min_length=8, max_length=128)
-    verification_code: str = Field(..., min_length=6, max_length=6)
 
     @field_validator('password')
     @classmethod
@@ -62,20 +56,7 @@ class ChangePasswordRequest(BaseModel):
             raise ValueError('密码必须包含至少一个数字')
         return v
 
-@router.post("/send-verification-code", summary="Send email verification code", description="Send a numeric verification code to the given email. Uses real SMTP when configured in SystemConfig, otherwise logs locally for development.")
-async def send_verification_code(req: SendCodeRequest, db: Session = Depends(get_db)):
-    try:
-        result = await asyncio.to_thread(verification_service.send_code, req.email, db)
-        return result
-    except ValueError as e:
-        raise HTTPException(status_code=429, detail=str(e))
-    except RuntimeError as e:
-        raise HTTPException(status_code=502, detail=str(e))
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"发送验证码失败: {e}")
-
-
-@router.post("/register", response_model=TokenResponse, summary="User registration", description="Register a new user with email, password and a verified email verification code.")
+@router.post("/register", response_model=TokenResponse, summary="User registration", description="Register a new user with email and password.")
 async def register(user_data: UserRegister, db: Session = Depends(get_db)):
     # Check whether registration is open
     sys_config = get_system_config(db)
@@ -86,9 +67,6 @@ async def register(user_data: UserRegister, db: Session = Depends(get_db)):
     if existing:
         raise HTTPException(status_code=400, detail="Email already registered")
 
-    if not verification_service.verify_code(user_data.email, user_data.verification_code, consume=True):
-        raise HTTPException(status_code=400, detail="验证码错误或已过期")
-
     user = User(
         id=str(uuid.uuid4()),
         email=user_data.email,
@@ -98,8 +76,6 @@ async def register(user_data: UserRegister, db: Session = Depends(get_db)):
     db.add(user)
     db.commit()
     db.refresh(user)
-
-    verification_service.clear_code(user_data.email)
 
     access_token = create_access_token(
         data={"sub": user.id, "email": user.email},

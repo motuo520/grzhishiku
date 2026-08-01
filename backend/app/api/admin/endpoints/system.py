@@ -15,7 +15,6 @@ from app.core.config_loader import invalidate_system_config_cache
 from app.core.admin_permissions import Permission, require_permission
 from app.models.base import AdminUser, SystemConfig as SysConfigModel
 from app.api.admin.endpoints.auth import get_current_admin
-from app.services.email_sender import EmailConfig
 
 router = APIRouter()
 
@@ -96,7 +95,6 @@ class SystemConfigUpdate(BaseModel):
     max_upload_size: Optional[int] = None
     allowed_file_types: Optional[list] = None
     default_llm_provider: Optional[str] = None
-    email_config: Optional[EmailConfig] = None
 
 
 class SystemConfig(BaseModel):
@@ -107,7 +105,6 @@ class SystemConfig(BaseModel):
     max_upload_size: int = 10 * 1024 * 1024
     allowed_file_types: list = [".jpg", ".png", ".pdf", ".md"]
     default_llm_provider: str = "ollama"
-    email_config: EmailConfig = Field(default_factory=EmailConfig)
 
 
 def _load_config_from_db(db: Session) -> Dict[str, Any]:
@@ -193,7 +190,6 @@ def get_system_config(db: Session) -> SystemConfig:
         max_upload_size=get("max_upload_size", 10 * 1024 * 1024),
         allowed_file_types=get("allowed_file_types", [".jpg", ".png", ".pdf", ".md"]),
         default_llm_provider=get("default_llm_provider", "ollama"),
-        email_config=EmailConfig(**raw.get("email_config", {})) if isinstance(raw.get("email_config"), dict) else EmailConfig(),
     )
 
 
