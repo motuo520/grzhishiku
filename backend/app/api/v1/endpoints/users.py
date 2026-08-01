@@ -110,6 +110,15 @@ async def update_me(
     }
 
 
+@router.post("/me/seed-samples", summary="Seed sample content", description="Insert 1-2 sample items per feature (notes, sticky notes, clips, read-later, knowledge, capsule) for the current user. Entity types that already have content are skipped.")
+async def seed_samples(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    from app.services.sample_data_service import seed_sample_data
+    return {"seeded": seed_sample_data(db, current_user.id)}
+
+
 @router.get("/me/settings", summary="Get user settings", description="Get the current user's settings JSON. Secret fields (API keys) are masked.")
 async def get_user_settings(current_user: User = Depends(get_current_user)):
     try:

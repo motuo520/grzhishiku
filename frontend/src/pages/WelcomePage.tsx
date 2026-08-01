@@ -295,7 +295,7 @@ const WelcomePage: FC = () => {
           <p className="text-[11px] tracking-[0.3em] uppercase text-[#e0704f] mb-3">开始</p>
           <h2 className="text-3xl sm:text-4xl font-bold text-[#f0ebe2] mb-6">一行命令跑起来</h2>
           <p className="text-[#b8b0a4] mb-8 max-w-2xl mx-auto">
-            克隆仓库，执行 docker-compose，30 秒后你就能导入示例大脑并问出第一个问题。
+            克隆仓库，执行 docker-compose，30 秒后注册账号，每个功能就有示例内容可玩了。
           </p>
 
           <div className="glass-card p-4 mb-8 text-left overflow-x-auto">

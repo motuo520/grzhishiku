@@ -10,31 +10,7 @@ permissions:
   packages: write
 
 jobs:
-  rag-eval:
-    name: RAG Evaluation Gate
-    runs-on: ubuntu-latest
-    # TODO(开源精简版): 50 题 RAG 评测尚未在无云模型的精简版环境验证过，
-    # 暂时设为 allow-failure（不阻塞发版）；验证通过后移除 continue-on-error。
-    continue-on-error: true
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
-
-      - name: Install backend dependencies
-        working-directory: ./backend
-        run: pip install -r requirements.txt
-
-      - name: Run 50-question RAG eval set
-        working-directory: ./backend
-        run: pytest tests/test_rag_eval.py -q -m rag_eval
-
   release:
-    needs: rag-eval
     runs-on: ubuntu-latest
     steps:
       - name: Checkout

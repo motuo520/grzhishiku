@@ -7,6 +7,7 @@ import { brainApi } from '@/api/brain';
 import { attentionApi } from '@/api/attention';
 import { knowledgeApi } from '@/api/knowledge';
 import { capsulesApi } from '@/api/capsules';
+import { authApi } from '@/api/auth';
 
 const Dashboard: FC = () => {
   const navigate = useNavigate();
@@ -55,9 +56,10 @@ const Dashboard: FC = () => {
   });
 
   const seedMutation = useMutation({
-    mutationFn: () => knowledgeApi.seedDemo(),
+    mutationFn: () => authApi.seedSamples(),
     onSuccess: (response) => {
-      setSeedMessage(response.data.message);
+      const total = Object.values(response.data.seeded).reduce((a, b) => a + b, 0);
+      setSeedMessage(total > 0 ? `已为 ${Object.keys(response.data.seeded).length} 个功能补齐 ${total} 条示例内容，去各页面看看吧` : '各功能已有内容，无需补充示例');
       queryClient.invalidateQueries({ queryKey: ['knowledge'] });
       queryClient.invalidateQueries({ queryKey: ['tags'] });
       queryClient.invalidateQueries({ queryKey: ['brain', 'status'] });
@@ -143,9 +145,9 @@ const Dashboard: FC = () => {
                 <Sparkles className="w-4 h-4 text-accent" />
                 <span className="text-sm font-semibold text-accent">首次使用</span>
               </div>
-              <h3 className="text-xl font-bold text-text-primary mb-2">导入示例大脑，30 秒内问出第一个问题</h3>
+              <h3 className="text-xl font-bold text-text-primary mb-2">每个功能导入 1-2 条示例，快速上手</h3>
               <p className="text-sm text-text-secondary leading-relaxed">
-                我们准备了 200 条预置笔记：读书笔记、菜谱、工作记录。导入后，你就可以直接向 AI 提问，比如"番茄炒蛋怎么做"或"原子习惯的核心观点"。
+                我们会在笔记、便签墙、剪藏、稍后读、知识库、时间胶囊里各放一两条示例内容，让你一眼看到每个功能的用法。随时可编辑或删除。
               </p>
               {seedMessage && (
                 <p className="text-sm text-accent mt-3">{seedMessage}</p>
@@ -161,7 +163,7 @@ const Dashboard: FC = () => {
               ) : (
                 <Download className="w-4 h-4" />
               )}
-              {seedMutation.isPending ? '导入中…' : '导入示例大脑'}
+              {seedMutation.isPending ? '导入中…' : '导入示例内容'}
             </button>
           </div>
         </div>
@@ -175,8 +177,8 @@ const Dashboard: FC = () => {
               {
                 step: '1',
                 icon: Download,
-                title: isEmpty ? '导入示例大脑（或自己存一条）' : '继续存资料',
-                desc: isEmpty ? '点击上方按钮，体验 200 条预置笔记。' : '用剪藏、笔记、导入继续丰富知识库。',
+                title: isEmpty ? '导入示例内容（或自己存一条）' : '继续存资料',
+                desc: isEmpty ? '点击上方按钮，每个功能获得 1-2 条示例。' : '用剪藏、笔记、导入继续丰富知识库。',
                 action: isEmpty ? () => seedMutation.mutate() : () => navigate('/ingest'),
                 actionLabel: isEmpty ? '导入' : '去存资料',
               },
@@ -184,7 +186,7 @@ const Dashboard: FC = () => {
                 step: '2',
                 icon: MessageCircle,
                 title: '问一句话',
-                desc: '打开右下角 AI 助手，提问并选择本地或云端模型。',
+                desc: '打开右下角 AI 助手，用本地模型向你的知识库提问。',
                 action: () => window.dispatchEvent(new CustomEvent('psb:chat:open')),
                 actionLabel: '打开 AI 助手',
               },

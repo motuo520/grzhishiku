@@ -6,11 +6,13 @@ from app.core.security import verify_password, get_password_hash, create_access_
 from app.core.config_loader import get_system_config
 from app.models.base import User
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+import logging
 import uuid
 from datetime import timedelta
 
 router = APIRouter()
 security = HTTPBearer(auto_error=False)
+logger = logging.getLogger(__name__)
 
 class UserRegister(BaseModel):
     email: EmailStr
@@ -76,6 +78,13 @@ async def register(user_data: UserRegister, db: Session = Depends(get_db)):
     db.add(user)
     db.commit()
     db.refresh(user)
+
+    # 新账号播种轻量示例数据（每个功能 1-2 条），失败不阻断注册
+    try:
+        from app.services.sample_data_service import seed_sample_data
+        seed_sample_data(db, user.id)
+    except Exception as e:
+        logger.warning("sample data seeding failed for user %s: %s", user.id, e)
 
     access_token = create_access_token(
         data={"sub": user.id, "email": user.email},
