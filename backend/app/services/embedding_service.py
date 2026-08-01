@@ -13,14 +13,14 @@ from sqlalchemy.orm import Session
 
 class EmbeddingService:
     """
-    Generate text embeddings via local Ollama (qwen2.5:0.5b)
-    with fallback to external API. Supports batch embedding and
-    persistence to SQLite (via Embedding model).
+    Generate text embeddings via local Ollama (nomic-embed-text by
+    default, configurable via OLLAMA_EMBED_MODEL). Supports batch
+    embedding and persistence to SQLite (via Embedding model).
     """
 
-    DEFAULT_MODEL = "qwen2.5:0.5b"
-    FALLBACK_MODEL = "qwen2.5:0.5b"  # Use the same lightweight local model
-    DIMENSIONS = 896  # qwen2.5:0.5b embedding dimensions
+    DEFAULT_MODEL = "nomic-embed-text"
+    FALLBACK_MODEL = "nomic-embed-text"  # dedicated local embedding model
+    DIMENSIONS = 768  # nomic-embed-text embedding dimensions
 
     def __init__(self):
         self.ollama_url = settings.OLLAMA_BASE_URL

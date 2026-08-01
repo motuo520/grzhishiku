@@ -14,7 +14,7 @@ interface Ticket {
   description: string;
   status: 'open' | 'closed' | 'pending';
   priority: 'low' | 'medium' | 'high' | 'urgent';
-  category: 'bug' | 'feature' | 'feedback' | 'billing' | 'account';
+  category: 'bug' | 'feature' | 'feedback' | 'account';
   assigned_to?: string;
   assigned_name?: string;
   satisfaction?: number;
@@ -57,7 +57,6 @@ const CATEGORY_BADGES: Record<string, { label: string; class: string }> = {
   bug: { label: 'Bug', class: 'bg-danger/10 text-danger' },
   feature: { label: '功能', class: 'bg-admin-primary/10 text-admin-primary' },
   feedback: { label: '反馈', class: 'bg-success/10 text-success' },
-  billing: { label: '计费', class: 'bg-personal-primary/10 text-personal-primary' },
   account: { label: '账号', class: 'bg-network-primary/10 text-network-primary' },
 };
 
@@ -283,7 +282,6 @@ export default function AdminSupport() {
             <option value="bug">Bug</option>
             <option value="feature">功能</option>
             <option value="feedback">反馈</option>
-            <option value="billing">计费</option>
             <option value="account">账号</option>
           </select>
           <select

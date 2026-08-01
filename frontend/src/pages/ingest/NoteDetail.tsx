@@ -11,7 +11,6 @@ import { useTags } from '@/hooks/useTags';
 import { useNotes } from '@/hooks/useNotes';
 import TagSelector from '@/components/TagSelector';
 import ModelSelector from '@/components/llm/ModelSelector';
-import LLMCostBadge from '@/components/llm/LLMCostBadge';
 import { summarizeText, extractTags, completeText } from '@/api/llm';
 
 const NoteDetail: FC = () => {
@@ -386,7 +385,6 @@ const NoteDetail: FC = () => {
             </div>
             <div className="w-px h-5 bg-white/[0.08] mx-1" />
             <ModelSelector value={modelId} onChange={setModelId} taskType="creative" className="w-44" />
-            <LLMCostBadge modelId={modelId} inputText={content} outputTokenEstimate={200} />
           </div>
         )}
 

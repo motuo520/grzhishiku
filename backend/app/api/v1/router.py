@@ -1,6 +1,5 @@
-from fastapi import APIRouter, Depends
-from app.api.v1.endpoints import auth, cloud_proxy, desktop_setup, users, capsules, attention, knowledge, graph, graphify, llm, brain, billing, notes, clips, tags, cognitive, emergence, support, rss, email, social, read_later, documents, jianghu, pipeline, plugins, storage, system, embodied, community, sticky_notes, sync
-from app.core.feature_guard import require_module
+from fastapi import APIRouter
+from app.api.v1.endpoints import auth, users, capsules, attention, knowledge, graph, graphify, llm, brain, notes, clips, tags, cognitive, emergence, support, rss, email, social, read_later, documents, jianghu, pipeline, plugins, storage, system, embodied, community, sticky_notes, sync
 
 api_router = APIRouter()
 
@@ -13,26 +12,23 @@ api_router.include_router(graph.router, prefix="/graph", tags=["Graph"])
 api_router.include_router(graphify.router, prefix="/graphify", tags=["Graphify"])
 api_router.include_router(llm.router, prefix="/llm", tags=["LLM"])
 api_router.include_router(brain.router, prefix="/brain", tags=["Brain"])
-api_router.include_router(billing.router, prefix="/billing", tags=["Billing"])
 api_router.include_router(notes.router, prefix="/notes", tags=["Notes"])
 api_router.include_router(clips.router, prefix="/clips", tags=["Clips"])
 api_router.include_router(tags.router, prefix="/tags", tags=["Tags"])
-api_router.include_router(cognitive.router, prefix="/cognitive", tags=["Cognitive"], dependencies=[Depends(require_module("cognitive"))])
-api_router.include_router(emergence.router, prefix="/emergence", tags=["Emergence"], dependencies=[Depends(require_module("emergence"))])
+api_router.include_router(cognitive.router, prefix="/cognitive", tags=["Cognitive"])
+api_router.include_router(emergence.router, prefix="/emergence", tags=["Emergence"])
 api_router.include_router(support.router, prefix="/support", tags=["Support"])
 api_router.include_router(rss.router, prefix="/rss", tags=["RSS"])
 api_router.include_router(email.router, prefix="/email", tags=["Email"])
 api_router.include_router(social.router, prefix="/social", tags=["Social"])
 api_router.include_router(read_later.router, prefix="/read-later", tags=["Read Later"])
 api_router.include_router(documents.router, prefix="/documents", tags=["Documents"])
-api_router.include_router(jianghu.router, prefix="/jianghu", tags=["Jianghu"], dependencies=[Depends(require_module("social_brain"))])
-api_router.include_router(embodied.router, prefix="/embodied", tags=["Embodied Cognition"], dependencies=[Depends(require_module("embodied_cognition"))])
-api_router.include_router(pipeline.router, prefix="/pipeline", tags=["Pipeline"], dependencies=[Depends(require_module("pipeline"))])
-api_router.include_router(plugins.router, prefix="/plugins", tags=["Plugins"], dependencies=[Depends(require_module("plugins"))])
+api_router.include_router(jianghu.router, prefix="/jianghu", tags=["Jianghu"])
+api_router.include_router(embodied.router, prefix="/embodied", tags=["Embodied Cognition"])
+api_router.include_router(pipeline.router, prefix="/pipeline", tags=["Pipeline"])
+api_router.include_router(plugins.router, prefix="/plugins", tags=["Plugins"])
 api_router.include_router(storage.router, prefix="/storage", tags=["Storage"])
 api_router.include_router(system.router, prefix="/system", tags=["System"])
 api_router.include_router(community.router, prefix="/community", tags=["Community"])
 api_router.include_router(sticky_notes.router, prefix="/sticky", tags=["Sticky Notes & Reminders"])
 api_router.include_router(sync.router, prefix="/sync", tags=["Sync"])
-api_router.include_router(cloud_proxy.router, prefix="/cloud-proxy", tags=["Cloud Proxy"])
-api_router.include_router(desktop_setup.router, prefix="/setup", tags=["Desktop Setup"])

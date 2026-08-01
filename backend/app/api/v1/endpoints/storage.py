@@ -7,7 +7,6 @@ import os
 
 from app.core.database import get_db
 from app.core.security import get_current_user
-from app.core.feature_guard import require_feature
 from app.models.base import User
 from app.services.storage_service import StorageService, get_provider, NetdiskError
 
@@ -76,7 +75,7 @@ async def list_packages(
 
 @router.post("/packages", response_model=PackageOut, summary="Create data package")
 async def create_package(
-    current_user: User = Depends(require_feature("cloud_backup")),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     svc = StorageService(db)
@@ -218,7 +217,7 @@ async def oauth_callback(
 async def upload_to_drive(
     provider: str,
     package_id: str,
-    current_user: User = Depends(require_feature("cloud_backup")),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     svc = StorageService(db)

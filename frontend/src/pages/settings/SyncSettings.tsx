@@ -1,10 +1,8 @@
 import { FC, useState, useEffect, useCallback } from 'react';
-import { RefreshCw, Loader2, CheckCircle, XCircle, HardDrive, Info, Trash2, Download, Upload, KeyRound, Smartphone, Cloud, Link2, Unlink } from 'lucide-react';
+import { RefreshCw, Loader2, CheckCircle, XCircle, HardDrive, Info, Trash2, Download, Upload, KeyRound, Smartphone } from 'lucide-react';
 import { settingsApi } from '@/api/settings';
 import { useAuth } from '@/hooks/useAuth';
-import { useSubscription } from '@/hooks/useSubscription';
-import ProFeatureGate from '@/components/billing/ProFeatureGate';
-import { unifiedSyncApi, cloudAccountApi, isDesktop, getFingerprint, markCloudBound } from '@/api/unifiedSync';
+import { unifiedSyncApi, getFingerprint } from '@/api/unifiedSync';
 import type { SyncDevice } from '@/api/sync';
 import { encryptSnapshot, decryptSnapshot } from '@/services/syncCrypto';
 
@@ -63,14 +61,8 @@ const getDeviceName = () => {
 
 const SYNC_PASSWORD_KEY = 'psb-sync-password';
 
-const SyncSettingsContent: FC = () => {
+const SyncSettings: FC = () => {
   const { user } = useAuth();
-  const { checkFeature } = useSubscription();
-  const desktop = isDesktop();
-  // 桌面端的功能门看云端账号订阅；绑定后即可用
-  const [cloudBound, setCloudBound] = useState(false);
-  const [cloudEmail, setCloudEmail] = useState('');
-  const hasSync = desktop ? cloudBound : checkFeature('cloud_sync');
 
   const [settings, setSettings] = useState<SyncConfig>(defaultSync);
   const [password, setPassword] = useState(() => sessionStorage.getItem(SYNC_PASSWORD_KEY) || '');
@@ -80,12 +72,6 @@ const SyncSettingsContent: FC = () => {
   const [syncing, setSyncing] = useState(false);
   const [pulling, setPulling] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
-
-  // 云端账号绑定（仅桌面端）
-  const [serverUrl, setServerUrl] = useState('https://grzhishiku.com');
-  const [loginEmail, setLoginEmail] = useState('');
-  const [loginPassword, setLoginPassword] = useState('');
-  const [binding, setBinding] = useState(false);
 
   const showToast = useCallback((message: string, type: 'success' | 'error') => {
     setToast({ message, type });
@@ -104,58 +90,12 @@ const SyncSettingsContent: FC = () => {
           });
         }
       }),
-      // 桌面端未绑定云端时设备列表会 404/失败，先查绑定状态
-      desktop
-        ? cloudAccountApi.status().then(res => {
-            const bound = res.data.bound && res.data.account;
-            setCloudBound(!!bound);
-            markCloudBound(!!bound);
-            if (bound) {
-              setCloudEmail(res.data.account!.email);
-              setServerUrl(res.data.account!.server_url);
-              return loadDevices();
-            }
-          })
-        : loadDevices(),
+      loadDevices(),
     ])
       .catch(() => showToast('加载设置失败', 'error'))
       .finally(() => setLoading(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showToast]);
-
-  const handleCloudBind = async () => {
-    if (!serverUrl.trim() || !loginEmail.trim() || !loginPassword) {
-      showToast('请填写服务器地址、邮箱和密码', 'error');
-      return;
-    }
-    setBinding(true);
-    try {
-      const res = await cloudAccountApi.login(serverUrl.trim().replace(/\/+$/, ''), loginEmail.trim(), loginPassword);
-      setCloudBound(true);
-      markCloudBound(true);
-      setCloudEmail(res.data.email);
-      setLoginPassword('');
-      showToast(`已绑定云端账号 ${res.data.email}`, 'success');
-      await loadDevices();
-    } catch (err: any) {
-      showToast(err?.response?.data?.detail || err?.message || '绑定失败，请检查账号密码', 'error');
-    } finally {
-      setBinding(false);
-    }
-  };
-
-  const handleCloudUnbind = async () => {
-    try {
-      await cloudAccountApi.logout();
-      markCloudBound(false);
-      setCloudBound(false);
-      setCloudEmail('');
-      setDevices([]);
-      showToast('已解绑云端账号', 'success');
-    } catch (err: any) {
-      showToast(err?.message || '解绑失败', 'error');
-    }
-  };
 
   async function loadDevices() {
     const { data } = await unifiedSyncApi.listDevices();
@@ -191,7 +131,7 @@ const SyncSettingsContent: FC = () => {
     setSyncing(true);
     try {
       const fp = getFingerprint();
-      await unifiedSyncApi.registerDevice(desktop ? '问墨桌面端' : getDeviceName());
+      await unifiedSyncApi.registerDevice(getDeviceName());
       // 真快照：全量导出内容数据（笔记/剪藏/知识单元/胶囊/标签等）
       const exportRes = await unifiedSyncApi.exportJson();
       const payload = { format: SYNC_FORMAT, ...exportRes.data };
@@ -225,7 +165,7 @@ const SyncSettingsContent: FC = () => {
         showToast('云端暂无快照', 'error');
         return;
       }
-      // 经后端（桌面端为云端代理）下载密文，不依赖 S3 公网可达
+      // 经后端下载密文，不依赖 S3 公网可达
       const dl = await unifiedSyncApi.downloadLatestSnapshot();
       const encrypted = typeof dl.data === 'string' ? JSON.parse(dl.data) : dl.data;
       const payload = await decryptSnapshot<any>(encrypted, password);
@@ -276,67 +216,6 @@ const SyncSettingsContent: FC = () => {
         </p>
       </div>
 
-      {/* 云端账号（仅桌面端）：绑定后同步走云端服务器 */}
-      {desktop && (
-        <div className="glass-card p-6 border-accent/30">
-          <h3 className="text-lg font-medium text-text-primary mb-4 flex items-center gap-2">
-            <Cloud size={18} className="text-accent" />
-            云端账号
-          </h3>
-          {cloudBound ? (
-            <div className="flex items-center justify-between">
-              <div className="text-sm text-text-secondary">
-                已绑定 <span className="text-text-primary font-medium">{cloudEmail}</span>
-                <span className="text-text-muted">（{serverUrl}）</span>
-              </div>
-              <button
-                className="btn-secondary flex items-center gap-2 px-3 py-1.5 text-sm"
-                onClick={handleCloudUnbind}
-              >
-                <Unlink size={14} />
-                解绑
-              </button>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              <p className="text-xs text-text-secondary">
-                绑定网页端账号后，桌面端的同步将连接到云端服务器，与网页端互通。账号仅保存在本机。
-              </p>
-              <input
-                type="text"
-                value={serverUrl}
-                onChange={(e) => setServerUrl(e.target.value)}
-                placeholder="服务器地址，如 https://grzhishiku.com"
-                className="w-full bg-bg-secondary border border-white/[0.06] rounded-[2px] px-3 py-2 text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:border-info/40"
-              />
-              <div className="flex gap-3">
-                <input
-                  type="email"
-                  value={loginEmail}
-                  onChange={(e) => setLoginEmail(e.target.value)}
-                  placeholder="邮箱"
-                  className="flex-1 bg-bg-secondary border border-white/[0.06] rounded-[2px] px-3 py-2 text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:border-info/40"
-                />
-                <input
-                  type="password"
-                  value={loginPassword}
-                  onChange={(e) => setLoginPassword(e.target.value)}
-                  placeholder="密码"
-                  className="flex-1 bg-bg-secondary border border-white/[0.06] rounded-[2px] px-3 py-2 text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:border-info/40"
-                />
-                <button
-                  className="btn-primary flex items-center gap-2 px-4 py-2 text-sm"
-                  onClick={handleCloudBind}
-                  disabled={binding}
-                >
-                  {binding ? <Loader2 size={14} className="animate-spin" /> : <Link2 size={14} />}
-                  绑定
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
-      )}
 
       {/* Sync password */}
       <div className="glass-card p-6">
@@ -375,7 +254,7 @@ const SyncSettingsContent: FC = () => {
           <button
             className="btn-primary flex items-center gap-2 px-4 py-2"
             onClick={handlePush}
-            disabled={syncing || !hasSync}
+            disabled={syncing}
           >
             {syncing && <Loader2 size={16} className="animate-spin" />}
             <Upload size={16} />
@@ -384,7 +263,7 @@ const SyncSettingsContent: FC = () => {
           <button
             className="btn-secondary flex items-center gap-2 px-4 py-2"
             onClick={handlePull}
-            disabled={pulling || !hasSync}
+            disabled={pulling}
           >
             {pulling && <Loader2 size={16} className="animate-spin" />}
             <Download size={16} />
@@ -473,22 +352,6 @@ const SyncSettingsContent: FC = () => {
         </button>
       </div>
     </div>
-  );
-};
-
-const SyncSettings: FC = () => {
-  // 桌面端：功能门在云端账号订阅上，本地实例不拦截
-  if (isDesktop()) {
-    return <SyncSettingsContent />;
-  }
-  return (
-    <ProFeatureGate
-      minTier="storage"
-      title="云同步功能"
-      description="此功能需要订阅存储会员（9.9 元/月）后方可使用。数据端到端加密，服务器无法读取。"
-    >
-      <SyncSettingsContent />
-    </ProFeatureGate>
   );
 };
 

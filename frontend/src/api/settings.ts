@@ -12,14 +12,6 @@ export interface UserSettings {
     model_routing_enabled?: boolean;
     ollama_url?: string;
     ollama_model?: string;
-    kimi_api_key?: string;
-    deepseek_api_key?: string;
-    opencode_api_key?: string;
-    glm_api_key?: string;
-    dashscope_api_key?: string;
-    openai_api_key?: string;
-    anthropic_api_key?: string;
-    google_api_key?: string;
   };
   privacy?: {
     localEncryption?: boolean;

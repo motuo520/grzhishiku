@@ -9,7 +9,6 @@ import { cognitiveApi, ConflictItem, BrainSide } from '@/api/cognitive';
 import CognitiveHero from '@/components/brain/CognitiveHero';
 import BrainContrastCard from '@/components/brain/BrainContrastCard';
 import ModelSelector from '@/components/llm/ModelSelector';
-import LLMCostBadge from '@/components/llm/LLMCostBadge';
 import AiErrorNotice from '@/components/llm/AiErrorNotice';
 
 const SEVERITY_CONFIG: Record<number, { color: string; bg: string; border: string; label: string }> = {
@@ -33,9 +32,6 @@ const BRAIN_SIDE_OPTIONS: { value: BrainSide; label: string; icon: typeof Brain 
   { value: 'personal', label: '个人脑', icon: Brain },
   { value: 'network', label: '网络脑', icon: Globe },
 ];
-
-/** 冲突发现输入文本约 4000 tokens，用于费用估算。 */
-const CONFLICT_INPUT_TEXT = Array(4000).fill('辨').join('');
 
 const CognitiveConflictPage: FC = () => {
   const [scanning, setScanning] = useState(false);
@@ -104,7 +100,6 @@ const CognitiveConflictPage: FC = () => {
         <div className="flex flex-col items-end gap-2">
           <div className="flex items-center gap-3">
             <ModelSelector value={modelId} onChange={setModelId} taskType="creative" className="w-48" />
-            <LLMCostBadge modelId={modelId} inputText={CONFLICT_INPUT_TEXT} outputTokenEstimate={800} />
           </div>
           <div className="flex flex-wrap items-center gap-3">
             <div className="flex items-center p-1 rounded-xl bg-white/[0.03] border border-white/[0.08]">

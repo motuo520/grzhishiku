@@ -6,7 +6,6 @@ from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.core.security import get_current_user
-from app.core.feature_guard import require_feature
 from app.models.base import User
 from app.schemas.sync import (
     DeviceRegisterRequest,
@@ -33,7 +32,6 @@ def register_device(
     req: DeviceRegisterRequest,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    _: User = Depends(require_feature("cloud_sync")),
 ):
     return sync_service.register_device(
         db, current_user.id, req.name, req.fingerprint
@@ -44,7 +42,6 @@ def register_device(
 def list_devices(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    _: User = Depends(require_feature("cloud_sync")),
 ):
     return sync_service.list_devices(db, current_user.id)
 
@@ -54,7 +51,6 @@ def remove_device(
     device_id: str,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    _: User = Depends(require_feature("cloud_sync")),
 ):
     if not sync_service.remove_device(db, current_user.id, device_id):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="设备不存在")
@@ -67,7 +63,6 @@ def push_operations(
     fingerprint: str,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    _: User = Depends(require_feature("cloud_sync")),
 ):
     device = sync_service.get_or_create_device(
         db, current_user.id, fingerprint=fingerprint
@@ -82,7 +77,6 @@ def get_pending_operations(
     since: Optional[datetime] = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    _: User = Depends(require_feature("cloud_sync")),
 ):
     device = sync_service.get_or_create_device(
         db, current_user.id, fingerprint=fingerprint
@@ -101,7 +95,6 @@ def upload_snapshot(
     file: UploadFile = File(...),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    _: User = Depends(require_feature("cloud_sync")),
 ):
     device = sync_service.get_or_create_device(
         db, current_user.id, fingerprint=fingerprint
@@ -139,7 +132,6 @@ def upload_snapshot(
 def download_latest_snapshot(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    _: User = Depends(require_feature("cloud_sync")),
 ):
     """直接经后端下载最新快照密文（不走预签名 URL，S3 可完全保持内网）。"""
     snapshot = sync_service.get_latest_snapshot(db, current_user.id)
@@ -154,7 +146,6 @@ def download_latest_snapshot(
 def get_latest_snapshot(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    _: User = Depends(require_feature("cloud_sync")),
 ):
     snapshot = sync_service.get_latest_snapshot(db, current_user.id)
     if not snapshot:

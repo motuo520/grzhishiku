@@ -8,15 +8,13 @@ import re
 
 from app.core.database import get_db
 from app.core.security import get_current_user
-# NOTE: emergence endpoints are billed via LLM prepaid balance, not subscription tier.
 from app.models.base import (
     User, EmergenceResult, EmergenceIdea, EmergenceCanvas,
     Note, Capsule, BrowserClip, KnowledgeUnit,
     RssEntry, EmailMessage, SocialMessage,
     ReadLaterItem, Document, Tag,
 )
-from app.services.llm_service import LLMRouterService
-from app.services.llm_billing_service import billed_chat_completion, ConcurrentModificationError
+from app.services.llm_service import LLMRouterService, chat_completion
 from app.schemas.emergence import (
     AssociateRequest,
     CollisionRequest,
@@ -184,21 +182,12 @@ async def _call_llm_text(
     brain_side: str = "both",
     preferred_model: Optional[str] = None,
 ) -> str:
-    """Call LLM chat through the billing-aware completion helper."""
-    route = LLMRouterService.route(prompt, preferred_model=preferred_model)
-    model_id = (
-        route.get("model_name")
-        or route.get("model")
-        or preferred_model
-        or "ollama-qwen2.5-0.5b"
-    )
-    return await billed_chat_completion(
-        db=db,
-        user_id=user_id,
-        model_id=model_id,
-        task_type=task_type,
+    """Call LLM chat through the non-streaming completion helper."""
+    return await chat_completion(
         prompt=prompt,
+        task_type=task_type,
         system_prompt="You are a creative cross-domain thinking assistant. Answer in the format requested by the user.",
+        preferred_model=preferred_model,
     )
 
 
@@ -213,8 +202,7 @@ async def _call_llm_json(
 ) -> Dict[str, Any]:
     """Call the LLM and parse a strict JSON object response.
 
-    Billing errors are translated to HTTP errors (402/409); provider
-    failures become 503; unparseable output is retried once and then
+    Provider failures become 503; unparseable output is retried once and then
     surfaced as 502 instead of being replaced by fake template data.
     """
     for _attempt in range(2):
@@ -227,11 +215,7 @@ async def _call_llm_json(
                 brain_side=brain_side,
                 preferred_model=preferred_model,
             )
-        except ConcurrentModificationError:
-            raise HTTPException(status_code=409, detail="余额被并发修改，请重试")
         except ValueError as e:
-            if "余额不足" in str(e):
-                raise HTTPException(status_code=402, detail=str(e))
             raise HTTPException(status_code=500, detail=str(e))
         except HTTPException:
             raise
@@ -1085,11 +1069,7 @@ async def generate_canvas_report(
             brain_side=canvas.brain_side,
             preferred_model=req.preferred_model,
         )
-    except ConcurrentModificationError as e:
-        raise HTTPException(status_code=409, detail="余额被并发修改，请重试")
     except ValueError as e:
-        if "余额不足" in str(e):
-            raise HTTPException(status_code=402, detail=str(e))
         raise HTTPException(status_code=503, detail=f"LLM generation failed: {str(e)}")
     except Exception as exc:
         raise HTTPException(status_code=503, detail=f"LLM generation failed: {str(exc)}")

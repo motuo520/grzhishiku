@@ -14,7 +14,6 @@ import {
   type BrainSide, type EmergenceSource, type CanvasReportRequest,
 } from '@/api/emergence';
 import ModelSelector from '@/components/llm/ModelSelector';
-import { LLMCostBadge } from '@/components/llm/LLMCostBadge';
 import AiErrorNotice from '@/components/llm/AiErrorNotice';
 
 const BRAIN_SIDE_COLORS: Record<string, string> = {
@@ -1371,17 +1370,6 @@ const CanvasEditor: FC<CanvasEditorProps> = ({ canvasId, onBack }) => {
                       onChange={setReportModelId}
                       taskType="creative"
                       className="w-full md:w-64"
-                    />
-                    <LLMCostBadge
-                      modelId={reportModelId}
-                      inputText={[
-                        title,
-                        description,
-                        '节点：',
-                        ...nodes.map((n) => `- ${n.label}${n.content ? `：${n.content}` : ''}`),
-                        ...(selectedIds.length ? [`聚焦节点：${selectedIds.map((id) => nodeById.get(id)?.label).filter(Boolean).join('、')}`] : []),
-                      ].join('\n')}
-                      outputTokenEstimate={800}
                     />
                   </div>
 

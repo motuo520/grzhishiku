@@ -10,13 +10,9 @@ import type { BrainSide } from '@/types';
 import BrainSideToggle from '@/components/brain/BrainSideToggle';
 import CognitiveHero from '@/components/brain/CognitiveHero';
 import ModelSelector from '@/components/llm/ModelSelector';
-import LLMCostBadge from '@/components/llm/LLMCostBadge';
 import AiErrorNotice from '@/components/llm/AiErrorNotice';
 
 const BIAS_TYPES = ['确认偏误', '锚定效应', '幸存者偏差', '归因错误', '可得性启发', '达克效应'];
-
-/** 偏差检测输入文本约 4000 tokens，用于费用估算。 */
-const BIAS_INPUT_TEXT = Array(4000).fill('思').join('');
 
 const BIAS_TYPE_ICONS: Record<string, typeof AlertTriangle> = {
   '确认偏误': Eye,
@@ -125,7 +121,6 @@ const BiasPage: FC = () => {
         <div className="flex flex-col items-end gap-2">
           <div className="flex items-center gap-3">
             <ModelSelector value={modelId} onChange={setModelId} taskType="analysis" className="w-48" />
-            <LLMCostBadge modelId={modelId} inputText={BIAS_INPUT_TEXT} outputTokenEstimate={600} />
           </div>
           <div className="flex items-center gap-3">
             <BrainSideToggle value={brainSide} onChange={setBrainSide} />

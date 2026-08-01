@@ -7,7 +7,6 @@ import CognitiveHero from '@/components/brain/CognitiveHero';
 import DecisionAuditForm from '@/components/brain/DecisionAuditForm';
 import DecisionAuditCard from '@/components/brain/DecisionAuditCard';
 import ModelSelector from '@/components/llm/ModelSelector';
-import LLMCostBadge from '@/components/llm/LLMCostBadge';
 import AiErrorNotice from '@/components/llm/AiErrorNotice';
 
 const DecisionAuditPage: FC = () => {
@@ -83,16 +82,6 @@ const DecisionAuditPage: FC = () => {
 
   const audits: DecisionAudit[] = data?.items || [];
 
-  const auditInputText = audits.length
-    ? audits
-        .map(
-          (a) =>
-            `决策：${a.title}\n背景：${a.context}\n选项：${a.options.map((o) => o.text).join('，')}\n预期：${a.expected_outcome || ''}\n实际：${a.actual_outcome || ''}`
-        )
-        .join('\n---\n')
-        .slice(0, 6000)
-    : '基于已记录的决策背景、选项与结果进行 AI 决策审计分析。';
-
   const initialFormData: Partial<DecisionAuditCreateRequest> = editingAudit
     ? {
         title: editingAudit.title,
@@ -123,7 +112,6 @@ const DecisionAuditPage: FC = () => {
         <div className="flex flex-col items-end gap-2">
           <div className="flex items-center gap-3">
             <ModelSelector value={modelId} onChange={setModelId} taskType="creative" className="w-48" />
-            <LLMCostBadge modelId={modelId} inputText={auditInputText} outputTokenEstimate={800} />
           </div>
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/[0.03] border border-white/[0.08]">

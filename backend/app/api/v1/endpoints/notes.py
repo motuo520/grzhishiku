@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
-from sqlalchemy import or_, and_, func
+from sqlalchemy import or_, and_
 from typing import List, Optional
 from datetime import datetime, timedelta
 import uuid
@@ -9,7 +9,6 @@ import json
 from app.core.database import get_db
 from app.core.security import get_current_user
 from app.core.xss_sanitizer import sanitize_note_input
-from app.core.feature_guard import FeatureGuard
 from app.services.quota_service import QuotaService
 from app.models.base import User, Note, Tag, content_tags
 from app.schemas.note import NoteCreate, NoteUpdate, NoteResponse
@@ -134,18 +133,9 @@ async def create_note(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    # Feature & quota checks
-    guard = FeatureGuard(db, current_user)
-
-    note_count = db.query(func.count(Note.id)).filter(
-        Note.user_id == current_user.id, Note.status == "active"
-    ).scalar() or 0
-    guard.check_limit("notes", note_count)
-
     quota = QuotaService(db)
     safe_title, safe_content = sanitize_note_input(note_data.title, note_data.content)
     additional_bytes = quota.estimate_storage_bytes(safe_title or "") + quota.estimate_storage_bytes(safe_content or "")
-    quota.check_storage_before_create(current_user.id, additional_bytes)
 
     note = Note(
         id=str(uuid.uuid4()),

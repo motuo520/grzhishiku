@@ -1,6 +1,5 @@
 import { FC } from 'react';
 import ModelSelector from '@/components/llm/ModelSelector';
-import LLMCostBadge from '@/components/llm/LLMCostBadge';
 import type { BrainSide } from '@/api/emergence';
 
 interface ToolOptionsProps {
@@ -67,7 +66,6 @@ export const ToolOptionsBar: FC<ToolOptionsProps> = ({
           taskType={taskType}
           showPrice
         />
-        <LLMCostBadge modelId={preferredModel} inputText={inputText} outputTokenEstimate={250} />
       </div>
     </div>
   );

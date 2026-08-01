@@ -2,27 +2,15 @@ import { FC, useEffect, useRef, useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Zap, RefreshCw, X, Settings, Sparkles, Activity, Loader2, Server, Cloud, Cpu, Wallet, AlertCircle, ChevronRight,
+  Zap, RefreshCw, X, Settings, Sparkles, Activity, Loader2, ChevronRight,
 } from 'lucide-react';
 import { getLLMStatus, testProvider, LLMProvider, getModelCatalog, LLMModelCatalogItem } from '@/api/llm';
-import { llmPriceTier } from '@/utils/llmTier';
 import { useSettings } from '@/store/settings';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
-import { useLLMBalance } from '@/hooks/useLLMBalance';
-
-const PROVIDER_ICONS: Record<string, React.ElementType> = {
-  ollama: Server,
-  kimi: Cloud,
-  deepseek: Zap,
-  opencode: Cpu,
-};
 
 const PROVIDER_COLORS: Record<string, string> = {
   ollama: 'bg-success',
-  kimi: 'bg-fusion-primary',
-  deepseek: 'bg-danger',
-  opencode: 'bg-network-primary',
 };
 
 interface LLMConnectionStatusProps {
@@ -48,8 +36,6 @@ const LLMConnectionStatus: FC<LLMConnectionStatusProps> = ({ placement = 'bottom
     queryFn: getModelCatalog,
     staleTime: 5 * 60 * 1000,
   });
-
-  const { balance: balanceSummary } = useLLMBalance();
 
   const { data: status, isLoading, refetch } = useQuery({
     queryKey: ['llmStatus'],
@@ -130,15 +116,7 @@ const LLMConnectionStatus: FC<LLMConnectionStatusProps> = ({ placement = 'bottom
       setIsOpen(false);
       return;
     }
-    // Check balance for paid models - if balance not loaded yet, block to be safe
-    if (!isLocalModel(model.provider)) {
-      if (!balanceSummary || balanceSummary.balance < 0.1) {
-        setIsOpen(false);
-        navigate('/topup');
-        return;
-      }
-    }
-    const activeModelName = model.provider === 'ollama' ? model.provider_model_id : model.provider_model_id;
+    const activeModelName = model.provider_model_id;
     setMutation.mutate({ provider: model.provider, model: activeModelName });
   };
 
@@ -167,8 +145,6 @@ const LLMConnectionStatus: FC<LLMConnectionStatusProps> = ({ placement = 'bottom
     });
     return groups;
   }, [catalog]);
-
-  const isLocalModel = (provider: string) => provider.toLowerCase() === 'ollama';
 
   return (
     <div ref={containerRef} className="relative">
@@ -270,14 +246,6 @@ const LLMConnectionStatus: FC<LLMConnectionStatusProps> = ({ placement = 'bottom
               </div>
             </div>
 
-            {/* Balance display - only show when sufficient, hide warning */}
-            {!isLocalModel(activeProviderName) && balanceSummary && balanceSummary.balance >= 0.1 && (
-              <div className="mb-3 flex items-center gap-1.5 text-xs text-text-muted bg-bg-secondary/50 rounded-[2px] px-3 py-2">
-                <Wallet className="w-3 h-3 text-success" />
-                <span>可用余额 ¥{balanceSummary.balance.toFixed(2)}</span>
-              </div>
-            )}
-
             {/* Model List by Provider */}
             <div className="space-y-3 max-h-72 overflow-y-auto pr-0.5">
               {Object.entries(modelsByProvider).map(([provider, models]) => {
@@ -294,8 +262,6 @@ const LLMConnectionStatus: FC<LLMConnectionStatusProps> = ({ placement = 'bottom
                       {models.map((model) => {
                         const isActive = model.provider.toLowerCase() === activeProviderName.toLowerCase() && model.provider_model_id === displayModel;
                         const isSetting = setMutation.isPending && setMutation.variables?.provider === model.provider && setMutation.variables?.model === model.provider_model_id;
-                        const tier = llmPriceTier(model);
-                        const priceLabel = tier.label;
 
                         return (
                           <button
@@ -318,7 +284,6 @@ const LLMConnectionStatus: FC<LLMConnectionStatusProps> = ({ placement = 'bottom
                               <div className="text-xs text-text-muted truncate">{model.description}</div>
                             </div>
                             <div className="flex items-center gap-2 flex-shrink-0">
-                              <span className="text-[10px] text-text-muted">{priceLabel}</span>
                               {isSetting ? (
                                 <Loader2 className="w-3.5 h-3.5 animate-spin text-info" />
                               ) : (

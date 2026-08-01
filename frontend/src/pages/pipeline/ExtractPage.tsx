@@ -13,7 +13,6 @@ import { usePipelineStats, usePipelineItems, useCollideConcept, useExtractConcep
 import type { PipelineItem } from '@/api/pipeline';
 import StageContextBanner from './components/StageContextBanner';
 import ModelSelector from '@/components/llm/ModelSelector';
-import LLMCostBadge from '@/components/llm/LLMCostBadge';
 import { BrainSideBadge, SourceLink } from './components/PipelineHelpers';
 import ErrorState from '@/components/ErrorState';
 import PipelineItemActions from './components/PipelineItemActions';
@@ -81,25 +80,6 @@ const ExtractPage: FC = () => {
     }
     return data;
   }, [items, subtypeFilter, searchQuery]);
-
-  const extractInputText = useMemo(() => {
-    return (
-      cardItems
-        ?.slice(0, 5)
-        .map((item) => `标题：${item.title || '无标题'}\n内容：${item.content_raw || ''}`)
-        .join('\n---\n')
-        .slice(0, 4000) || '从卡片化阶段拉取卡片并抽取核心概念、思维模型与可执行行动建议。'
-    );
-  }, [cardItems]);
-
-  const collideInputText = useMemo(() => {
-    const selected = filteredItems.filter((item) => selectedIds.has(item.id) && item.content_subtype === 'concept');
-    const source = selected.length > 0 ? selected : filteredItems.filter((item) => item.content_subtype === 'concept').slice(0, 5);
-    return source
-      .map((item) => `概念：${item.content_raw || item.title || ''}`)
-      .join('\n---\n')
-      .slice(0, 4000) || '对核心概念进行跨领域碰撞，生成跨界洞见。';
-  }, [filteredItems, selectedIds]);
 
   const toggleSelect = (id: string) => {
     setSelectedIds((prev) => {
@@ -292,7 +272,6 @@ const ExtractPage: FC = () => {
       <div className="space-y-2">
         <div className="flex items-center justify-end gap-3">
           <ModelSelector value={extractModelId} onChange={setExtractModelId} taskType="analysis" className="w-48" />
-          <LLMCostBadge modelId={extractModelId} inputText={extractInputText} outputTokenEstimate={300} />
         </div>
         <StageContextBanner
           currentStage="extract"
@@ -370,7 +349,6 @@ const ExtractPage: FC = () => {
           <div className="flex flex-col items-end gap-2">
             <div className="flex items-center gap-3">
               <ModelSelector value={collideModelId} onChange={setCollideModelId} taskType="creative" className="w-48" />
-              <LLMCostBadge modelId={collideModelId} inputText={collideInputText} outputTokenEstimate={800} />
             </div>
             <button
               onClick={handleBatchCollide}

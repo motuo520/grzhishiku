@@ -1,22 +1,60 @@
-# 个人第二大脑 — 内测部署
+# 个人第二大脑 — 开源精简版（Ollama 本地模型）
 # 用法：
-#   1. 在服务器上放好 backend/.env（从本地复制，按需改 ALLOWED_ORIGINS）
-#   2. docker compose up -d --build
-#   3. 访问 http://服务器IP/  （前端 80 端口，/api 由 nginx 代理到 backend:8000）
+#   1. docker compose up -d
+#   2. 首次启动会自动拉取模型 qwen2.5:0.5b 与 nomic-embed-text（需联网，约几百 MB）
+#   3. 访问 http://localhost/  （前端 80 端口，/api 由 nginx 代理到 backend:8000）
+# 所有配置均有默认值，fresh clone 即可启动，不依赖任何 .env 文件。
+# 如需覆盖，可在仓库根目录自建 .env（compose 会自动读取其中的变量用于 ${VAR:-default} 插值），
+# 或用 docker compose up -d 前 export 对应环境变量。
 # 数据持久化在 ./server-data/（SQLite 库 + graphify 图谱数据），直接打包该目录即备份。
 
 name: psb
 
 services:
+  ollama:
+    image: ollama/ollama:latest
+    volumes:
+      - ollama-data:/root/.ollama
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+    # 如需在宿主机直接使用 Ollama，取消注释：
+    # ports:
+    #   - "11434:11434"
+
+  # 一次性容器：首次启动时拉取所需模型，完成后退出
+  ollama-init:
+    image: ollama/ollama:latest
+    depends_on:
+      ollama:
+        condition: service_healthy
+    entrypoint: >
+      /bin/sh -c "
+      OLLAMA_HOST=http://ollama:11434 ollama pull qwen2.5:0.5b &&
+      OLLAMA_HOST=http://ollama:11434 ollama pull nomic-embed-text
+      "
+    restart: "no"
+
   backend:
     build: ./backend
-    env_file: ./backend/.env
     environment:
-      # 数据统一放 /data（挂载 ./server-data），覆盖 .env 里的相对路径
+      # 本地模型（compose 内部走 ollama 服务，请勿改为 localhost）
+      OLLAMA_BASE_URL: http://ollama:11434
+      OLLAMA_MODEL: qwen2.5:0.5b
+      OLLAMA_EMBED_MODEL: nomic-embed-text
+      # 数据统一放 /data（挂载 ./server-data）
       DATABASE_URL: sqlite:////data/psb.db
       GRAPHIFY_DATA_DIR: /data/graphify_data
       # 浏览器直连 API 的允许来源，上线改成服务器域名/IP，逗号分隔
       ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost}
+      # 以下为开发默认值，生产环境务必修改（可在根目录 .env 中覆盖）
+      SECRET_KEY: ${SECRET_KEY:-dev-secret-key-change-me-in-production}
+      ADMIN_SECRET_KEY: ${ADMIN_SECRET_KEY:-dev-admin-secret-key-change-me}
+      DATABASE_ENCRYPT_KEY: ${DATABASE_ENCRYPT_KEY:-dev-db-encrypt-key-change-me}
       # 对象存储（MinIO）配置
       S3_ENDPOINT: http://minio:9000
       S3_ACCESS_KEY: ${MINIO_ROOT_USER:-psbminio}
@@ -29,6 +67,8 @@ services:
       - ./server-data:/data
     restart: unless-stopped
     depends_on:
+      ollama-init:
+        condition: service_completed_successfully
       minio:
         condition: service_healthy
     # 不直接对外暴露，全部走前端 nginx 代理；调试时取消注释：
@@ -80,3 +120,4 @@ services:
 
 volumes:
   minio-data:
+  ollama-data:

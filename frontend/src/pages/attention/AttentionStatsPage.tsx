@@ -2,7 +2,6 @@ import { FC, useState } from 'react';
 import { TrendingUp, Brain, Clock, Shield, Target, User, Globe, Layers, Sparkles, Loader2, AlertCircle } from 'lucide-react';
 import { useAttention } from '@/hooks/useAttention';
 import ModelSelector from '@/components/llm/ModelSelector';
-import LLMCostBadge from '@/components/llm/LLMCostBadge';
 import AiErrorNotice from '@/components/llm/AiErrorNotice';
 import { completeText } from '@/api/llm';
 import { attentionApi, AttentionWeeklyReport } from '@/api/attention';
@@ -124,7 +123,6 @@ const AttentionStatsPage: FC = () => {
         </div>
         <div className="flex flex-wrap items-center gap-3">
           <ModelSelector value={modelId} onChange={setModelId} taskType="analysis" className="w-48" />
-          <LLMCostBadge modelId={modelId} inputText={insightPrompt} outputTokenEstimate={300} />
           <button
             onClick={handleGenerateInsight}
             disabled={aiLoading}

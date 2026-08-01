@@ -16,9 +16,6 @@ class User(Base):
     avatar = Column(String)
     password_hash = Column(String)
     status = Column(String, default="active")
-    subscription_tier = Column(String, default="free")
-    subscription_status = Column(String, default="active")
-    subscription_expires_at = Column(DateTime)
     storage_used = Column(Integer, default=0)
     storage_limit = Column(Integer, default=1073741824)
     last_login_at = Column(DateTime)
@@ -26,12 +23,10 @@ class User(Base):
     mfa_enabled = Column(Boolean, default=False)
     settings = Column(Text, default='{}')
     active_brain = Column(String, default="personal")
-    trial_credit_given = Column(Boolean, default=False)
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
     tenant_id = Column(String)
 
     __table_args__ = (
         Index('ix_users_email_status', 'email', 'status'),
-        Index('ix_users_subscription', 'id', 'subscription_status'),
     )

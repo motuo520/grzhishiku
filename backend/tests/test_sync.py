@@ -36,40 +36,35 @@ def sync_s3_stub():
         yield blobs
 
 
-def test_sync_devices_forbidden_for_free_user(client, auth_headers):
-    resp = client.get("/api/v1/sync/devices", headers=auth_headers)
-    assert resp.status_code == 403
-
-
-def test_register_and_list_devices(client, storage_auth_headers, sync_s3_stub):
+def test_register_and_list_devices(client, auth_headers, sync_s3_stub):
     resp = client.post(
         "/api/v1/sync/devices",
         json={"name": "Test Device", "fingerprint": "fp-1"},
-        headers=storage_auth_headers,
+        headers=auth_headers,
     )
     assert resp.status_code == 200
     data = resp.json()
     assert data["name"] == "Test Device"
     assert data["fingerprint"] == "fp-1"
 
-    resp = client.get("/api/v1/sync/devices", headers=storage_auth_headers)
+    resp = client.get("/api/v1/sync/devices", headers=auth_headers)
     assert resp.status_code == 200
     devices = resp.json()
     assert len(devices) == 1
     assert devices[0]["fingerprint"] == "fp-1"
 
 
-def test_push_and_pull_operations(client, storage_auth_headers, sync_s3_stub):
+def test_push_and_pull_operations(client, auth_headers, sync_s3_stub):
     # Register two devices
     client.post(
         "/api/v1/sync/devices",
         json={"name": "Device A", "fingerprint": "fp-a"},
-        headers=storage_auth_headers,
+        headers=auth_headers,
     )
     client.post(
         "/api/v1/sync/devices",
         json={"name": "Device B", "fingerprint": "fp-b"},
-        headers=storage_auth_headers,
+        headers=auth_headers,
     )
 
     now = datetime.now(timezone.utc).isoformat()
@@ -85,7 +80,7 @@ def test_push_and_pull_operations(client, storage_auth_headers, sync_s3_stub):
             }
         ],
         params={"fingerprint": "fp-a"},
-        headers=storage_auth_headers,
+        headers=auth_headers,
     )
     assert resp.status_code == 200
     ops = resp.json()
@@ -95,7 +90,7 @@ def test_push_and_pull_operations(client, storage_auth_headers, sync_s3_stub):
     resp = client.get(
         "/api/v1/sync/operations",
         params={"fingerprint": "fp-b"},
-        headers=storage_auth_headers,
+        headers=auth_headers,
     )
     assert resp.status_code == 200
     pending = resp.json()
@@ -103,12 +98,12 @@ def test_push_and_pull_operations(client, storage_auth_headers, sync_s3_stub):
     assert pending[0]["entity_id"] == "note-1"
 
 
-def test_upload_and_latest_snapshot(client, storage_auth_headers, sync_s3_stub):
+def test_upload_and_latest_snapshot(client, auth_headers, sync_s3_stub):
     fp = "fp-snapshot"
     client.post(
         "/api/v1/sync/devices",
         json={"name": "Snap Device", "fingerprint": fp},
-        headers=storage_auth_headers,
+        headers=auth_headers,
     )
 
     form = {
@@ -122,7 +117,7 @@ def test_upload_and_latest_snapshot(client, storage_auth_headers, sync_s3_stub):
         "/api/v1/sync/snapshots",
         data=form,
         files=files,
-        headers=storage_auth_headers,
+        headers=auth_headers,
     )
     assert resp.status_code == 200
     snap = resp.json()
@@ -130,18 +125,18 @@ def test_upload_and_latest_snapshot(client, storage_auth_headers, sync_s3_stub):
     assert snap["entity_count"] == 3
     assert snap["download_url"].startswith("http://test-server/sync-download/")
 
-    resp = client.get("/api/v1/sync/snapshots/latest", headers=storage_auth_headers)
+    resp = client.get("/api/v1/sync/snapshots/latest", headers=auth_headers)
     assert resp.status_code == 200
     latest = resp.json()
     assert latest["id"] == snap["id"]
 
 
-def test_admin_users_includes_sync_stats(client, storage_auth_headers, admin_user, sync_s3_stub):
-    # Create a storage user device + snapshot so sync stats are non-zero.
+def test_admin_users_includes_sync_stats(client, auth_headers, admin_user, sync_s3_stub):
+    # Create a user device + snapshot so sync stats are non-zero.
     client.post(
         "/api/v1/sync/devices",
         json={"name": "Admin Test Device", "fingerprint": "fp-admin"},
-        headers=storage_auth_headers,
+        headers=auth_headers,
     )
     form = {
         "fingerprint": "fp-admin",
@@ -154,7 +149,7 @@ def test_admin_users_includes_sync_stats(client, storage_auth_headers, admin_use
         "/api/v1/sync/snapshots",
         data=form,
         files=files,
-        headers=storage_auth_headers,
+        headers=auth_headers,
     )
 
     from app.core.security import create_access_token
@@ -167,6 +162,6 @@ def test_admin_users_includes_sync_stats(client, storage_auth_headers, admin_use
     resp = client.get("/api/admin/users", headers=headers)
     assert resp.status_code == 200
     data = resp.json()
-    storage_user = next(u for u in data["items"] if u["email"] == "storage@example.com")
-    assert storage_user["sync_devices_count"] == 1
-    assert storage_user["last_sync_at"] is not None
+    test_user = next(u for u in data["items"] if u["email"] == "test@example.com")
+    assert test_user["sync_devices_count"] == 1
+    assert test_user["last_sync_at"] is not None

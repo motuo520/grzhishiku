@@ -5,26 +5,14 @@ import hashlib
 import time
 from typing import AsyncGenerator, Dict, Any, Optional, List
 from enum import Enum
-from datetime import datetime
-
-from sqlalchemy import func
 
 from app.core.config import settings
 from app.core.database import SessionLocal
 from app.models.base import Embedding
-from app.services.llm_provider_router import LLMProviderRouter
 
 
 class ModelProvider(str, Enum):
     OLLAMA = "ollama"
-    DEEPSEEK = "deepseek"
-    KIMI = "kimi"
-    OPENCODE = "opencode"
-    GLM = "glm"
-    DASHSCOPE = "dashscope"
-    OPENAI = "openai"
-    ANTHROPIC = "anthropic"
-    GOOGLE = "google"
 
 
 class SENSITIVE_PATTERNS:
@@ -93,591 +81,6 @@ class ModelConfig:
             "model_id": "smollm2:135m",
             "available": True,
         },
-
-        # ─── Supplier models (auto-generated from 模型接口和价格供应商.md) ───
-        "opencode-gpt-5-6-sol": {
-            "provider": ModelProvider.OPENCODE,
-            "name": "GPT 5.6 Sol",
-            "description": "GPT 5.6 Sol via opencode",
-            "capabilities": ['cloud', 'reasoning'],
-            "context_length": 128000,
-            "temperature": 0.7,
-            "endpoint": settings.OPENCODE_BASE_URL,
-            "model_id": "opencode/gpt-5.6-sol",
-            "available": bool(settings.OPENCODE_API_KEY),
-        },
-        "opencode-gpt-5-6-terra": {
-            "provider": ModelProvider.OPENCODE,
-            "name": "GPT 5.6 Terra",
-            "description": "GPT 5.6 Terra via opencode",
-            "capabilities": ['cloud'],
-            "context_length": 128000,
-            "temperature": 0.7,
-            "endpoint": settings.OPENCODE_BASE_URL,
-            "model_id": "opencode/gpt-5.6-terra",
-            "available": bool(settings.OPENCODE_API_KEY),
-        },
-        "opencode-gpt-5-6-luna": {
-            "provider": ModelProvider.OPENCODE,
-            "name": "GPT 5.6 Luna",
-            "description": "GPT 5.6 Luna via opencode",
-            "capabilities": ['cloud'],
-            "context_length": 128000,
-            "temperature": 0.7,
-            "endpoint": settings.OPENCODE_BASE_URL,
-            "model_id": "opencode/gpt-5.6-luna",
-            "available": bool(settings.OPENCODE_API_KEY),
-        },
-        "opencode-gpt-5-5": {
-            "provider": ModelProvider.OPENCODE,
-            "name": "GPT 5.5",
-            "description": "GPT 5.5 via opencode",
-            "capabilities": ['cloud'],
-            "context_length": 128000,
-            "temperature": 0.7,
-            "endpoint": settings.OPENCODE_BASE_URL,
-            "model_id": "opencode/gpt-5.5",
-            "available": bool(settings.OPENCODE_API_KEY),
-        },
-        "opencode-gpt-5-5-pro": {
-            "provider": ModelProvider.OPENCODE,
-            "name": "GPT 5.5 Pro",
-            "description": "GPT 5.5 Pro via opencode",
-            "capabilities": ['cloud', 'reasoning'],
-            "context_length": 128000,
-            "temperature": 0.7,
-            "endpoint": settings.OPENCODE_BASE_URL,
-            "model_id": "opencode/gpt-5.5-pro",
-            "available": bool(settings.OPENCODE_API_KEY),
-        },
-        "opencode-gpt-5-4": {
-            "provider": ModelProvider.OPENCODE,
-            "name": "GPT 5.4",
-            "description": "GPT 5.4 via opencode",
-            "capabilities": ['cloud'],
-            "context_length": 128000,
-            "temperature": 0.7,
-            "endpoint": settings.OPENCODE_BASE_URL,
-            "model_id": "opencode/gpt-5.4",
-            "available": bool(settings.OPENCODE_API_KEY),
-        },
-        "opencode-gpt-5-4-pro": {
-            "provider": ModelProvider.OPENCODE,
-            "name": "GPT 5.4 Pro",
-            "description": "GPT 5.4 Pro via opencode",
-            "capabilities": ['cloud', 'reasoning'],
-            "context_length": 128000,
-            "temperature": 0.7,
-            "endpoint": settings.OPENCODE_BASE_URL,
-            "model_id": "opencode/gpt-5.4-pro",
-            "available": bool(settings.OPENCODE_API_KEY),
-        },
-        "opencode-gpt-5-4-mini": {
-            "provider": ModelProvider.OPENCODE,
-            "name": "GPT 5.4 Mini",
-            "description": "GPT 5.4 Mini via opencode",
-            "capabilities": ['cloud', 'fast'],
-            "context_length": 128000,
-            "temperature": 0.7,
-            "endpoint": settings.OPENCODE_BASE_URL,
-            "model_id": "opencode/gpt-5.4-mini",
-            "available": bool(settings.OPENCODE_API_KEY),
-        },
-        "opencode-gpt-5-4-nano": {
-            "provider": ModelProvider.OPENCODE,
-            "name": "GPT 5.4 Nano",
-            "description": "GPT 5.4 Nano via opencode",
-            "capabilities": ['cloud', 'fast'],
-            "context_length": 128000,
-            "temperature": 0.7,
-            "endpoint": settings.OPENCODE_BASE_URL,
-            "model_id": "opencode/gpt-5.4-nano",
-            "available": bool(settings.OPENCODE_API_KEY),
-        },
-        "opencode-gpt-5-3-codex": {
-            "provider": ModelProvider.OPENCODE,
-            "name": "GPT 5.3 Codex",
-            "description": "GPT 5.3 Codex via opencode",
-            "capabilities": ['cloud', 'coding'],
-            "context_length": 128000,
-            "temperature": 0.7,
-            "endpoint": settings.OPENCODE_BASE_URL,
-            "model_id": "opencode/gpt-5.3-codex",
-            "available": bool(settings.OPENCODE_API_KEY),
-        },
-        "opencode-gpt-5-3-codex-spark": {
-            "provider": ModelProvider.OPENCODE,
-            "name": "GPT 5.3 Codex Spark",
-            "description": "GPT 5.3 Codex Spark via opencode",
-            "capabilities": ['cloud', 'coding'],
-            "context_length": 128000,
-            "temperature": 0.7,
-            "endpoint": settings.OPENCODE_BASE_URL,
-            "model_id": "opencode/gpt-5.3-codex-spark",
-            "available": bool(settings.OPENCODE_API_KEY),
-        },
-        "opencode-gpt-5-2": {
-            "provider": ModelProvider.OPENCODE,
-            "name": "GPT 5.2",
-            "description": "GPT 5.2 via opencode",
-            "capabilities": ['cloud'],
-            "context_length": 128000,
-            "temperature": 0.7,
-            "endpoint": settings.OPENCODE_BASE_URL,
-            "model_id": "opencode/gpt-5.2",
-            "available": bool(settings.OPENCODE_API_KEY),
-        },
-        "opencode-gpt-5-2-codex": {
-            "provider": ModelProvider.OPENCODE,
-            "name": "GPT 5.2 Codex",
-            "description": "GPT 5.2 Codex via opencode",
-            "capabilities": ['cloud', 'coding'],
-            "context_length": 128000,
-            "temperature": 0.7,
-            "endpoint": settings.OPENCODE_BASE_URL,
-            "model_id": "opencode/gpt-5.2-codex",
-            "available": bool(settings.OPENCODE_API_KEY),
-        },
-        "opencode-gpt-5-1": {
-            "provider": ModelProvider.OPENCODE,
-            "name": "GPT 5.1",
-            "description": "GPT 5.1 via opencode",
-            "capabilities": ['cloud'],
-            "context_length": 128000,
-            "temperature": 0.7,
-            "endpoint": settings.OPENCODE_BASE_URL,
-            "model_id": "opencode/gpt-5.1",
-            "available": bool(settings.OPENCODE_API_KEY),
-        },
-        "opencode-gpt-5-1-codex": {
-            "provider": ModelProvider.OPENCODE,
-            "name": "GPT 5.1 Codex",
-            "description": "GPT 5.1 Codex via opencode",
-            "capabilities": ['cloud', 'coding'],
-            "context_length": 128000,
-            "temperature": 0.7,
-            "endpoint": settings.OPENCODE_BASE_URL,
-            "model_id": "opencode/gpt-5.1-codex",
-            "available": bool(settings.OPENCODE_API_KEY),
-        },
-        "opencode-gpt-5-1-codex-max": {
-            "provider": ModelProvider.OPENCODE,
-            "name": "GPT 5.1 Codex Max",
-            "description": "GPT 5.1 Codex Max via opencode",
-            "capabilities": ['cloud', 'coding', 'reasoning'],
-            "context_length": 128000,
-            "temperature": 0.7,
-            "endpoint": settings.OPENCODE_BASE_URL,
-            "model_id": "opencode/gpt-5.1-codex-max",
-            "available": bool(settings.OPENCODE_API_KEY),
-        },
-        "opencode-gpt-5-1-codex-mini": {
-            "provider": ModelProvider.OPENCODE,
-            "name": "GPT 5.1 Codex Mini",
-            "description": "GPT 5.1 Codex Mini via opencode",
-            "capabilities": ['cloud', 'coding', 'fast'],
-            "context_length": 128000,
-            "temperature": 0.7,
-            "endpoint": settings.OPENCODE_BASE_URL,
-            "model_id": "opencode/gpt-5.1-codex-mini",
-            "available": bool(settings.OPENCODE_API_KEY),
-        },
-        "opencode-gpt-5": {
-            "provider": ModelProvider.OPENCODE,
-            "name": "GPT 5",
-            "description": "GPT 5 via opencode",
-            "capabilities": ['cloud'],
-            "context_length": 128000,
-            "temperature": 0.7,
-            "endpoint": settings.OPENCODE_BASE_URL,
-            "model_id": "opencode/gpt-5",
-            "available": bool(settings.OPENCODE_API_KEY),
-        },
-        "opencode-gpt-5-codex": {
-            "provider": ModelProvider.OPENCODE,
-            "name": "GPT 5 Codex",
-            "description": "GPT 5 Codex via opencode",
-            "capabilities": ['cloud', 'coding'],
-            "context_length": 128000,
-            "temperature": 0.7,
-            "endpoint": settings.OPENCODE_BASE_URL,
-            "model_id": "opencode/gpt-5-codex",
-            "available": bool(settings.OPENCODE_API_KEY),
-        },
-        "opencode-gpt-5-nano": {
-            "provider": ModelProvider.OPENCODE,
-            "name": "GPT 5 Nano",
-            "description": "GPT 5 Nano via opencode",
-            "capabilities": ['cloud', 'fast'],
-            "context_length": 128000,
-            "temperature": 0.7,
-            "endpoint": settings.OPENCODE_BASE_URL,
-            "model_id": "opencode/gpt-5-nano",
-            "available": bool(settings.OPENCODE_API_KEY),
-        },
-        "opencode-claude-fable-5": {
-            "provider": ModelProvider.OPENCODE,
-            "name": "Claude Fable 5",
-            "description": "Claude Fable 5 via opencode",
-            "capabilities": ['cloud', 'reasoning'],
-            "context_length": 128000,
-            "temperature": 0.7,
-            "endpoint": settings.OPENCODE_BASE_URL,
-            "model_id": "opencode/claude-fable-5",
-            "available": bool(settings.OPENCODE_API_KEY),
-        },
-        "opencode-claude-opus-4-8": {
-            "provider": ModelProvider.OPENCODE,
-            "name": "Claude Opus 4.8",
-            "description": "Claude Opus 4.8 via opencode",
-            "capabilities": ['cloud', 'reasoning'],
-            "context_length": 128000,
-            "temperature": 0.7,
-            "endpoint": settings.OPENCODE_BASE_URL,
-            "model_id": "opencode/claude-opus-4-8",
-            "available": bool(settings.OPENCODE_API_KEY),
-        },
-        "opencode-claude-opus-4-7": {
-            "provider": ModelProvider.OPENCODE,
-            "name": "Claude Opus 4.7",
-            "description": "Claude Opus 4.7 via opencode",
-            "capabilities": ['cloud', 'reasoning'],
-            "context_length": 128000,
-            "temperature": 0.7,
-            "endpoint": settings.OPENCODE_BASE_URL,
-            "model_id": "opencode/claude-opus-4-7",
-            "available": bool(settings.OPENCODE_API_KEY),
-        },
-        "opencode-claude-opus-4-6": {
-            "provider": ModelProvider.OPENCODE,
-            "name": "Claude Opus 4.6",
-            "description": "Claude Opus 4.6 via opencode",
-            "capabilities": ['cloud', 'reasoning'],
-            "context_length": 128000,
-            "temperature": 0.7,
-            "endpoint": settings.OPENCODE_BASE_URL,
-            "model_id": "opencode/claude-opus-4-6",
-            "available": bool(settings.OPENCODE_API_KEY),
-        },
-        "opencode-claude-opus-4-5": {
-            "provider": ModelProvider.OPENCODE,
-            "name": "Claude Opus 4.5",
-            "description": "Claude Opus 4.5 via opencode",
-            "capabilities": ['cloud', 'reasoning'],
-            "context_length": 128000,
-            "temperature": 0.7,
-            "endpoint": settings.OPENCODE_BASE_URL,
-            "model_id": "opencode/claude-opus-4-5",
-            "available": bool(settings.OPENCODE_API_KEY),
-        },
-        "opencode-claude-sonnet-5": {
-            "provider": ModelProvider.OPENCODE,
-            "name": "Claude Sonnet 5",
-            "description": "Claude Sonnet 5 via opencode",
-            "capabilities": ['cloud'],
-            "context_length": 128000,
-            "temperature": 0.7,
-            "endpoint": settings.OPENCODE_BASE_URL,
-            "model_id": "opencode/claude-sonnet-5",
-            "available": bool(settings.OPENCODE_API_KEY),
-        },
-        "opencode-claude-sonnet-4-6": {
-            "provider": ModelProvider.OPENCODE,
-            "name": "Claude Sonnet 4.6",
-            "description": "Claude Sonnet 4.6 via opencode",
-            "capabilities": ['cloud'],
-            "context_length": 128000,
-            "temperature": 0.7,
-            "endpoint": settings.OPENCODE_BASE_URL,
-            "model_id": "opencode/claude-sonnet-4-6",
-            "available": bool(settings.OPENCODE_API_KEY),
-        },
-        "opencode-claude-sonnet-4-5": {
-            "provider": ModelProvider.OPENCODE,
-            "name": "Claude Sonnet 4.5",
-            "description": "Claude Sonnet 4.5 via opencode",
-            "capabilities": ['cloud'],
-            "context_length": 128000,
-            "temperature": 0.7,
-            "endpoint": settings.OPENCODE_BASE_URL,
-            "model_id": "opencode/claude-sonnet-4-5",
-            "available": bool(settings.OPENCODE_API_KEY),
-        },
-        "opencode-claude-haiku-4-5": {
-            "provider": ModelProvider.OPENCODE,
-            "name": "Claude Haiku 4.5",
-            "description": "Claude Haiku 4.5 via opencode",
-            "capabilities": ['cloud'],
-            "context_length": 128000,
-            "temperature": 0.7,
-            "endpoint": settings.OPENCODE_BASE_URL,
-            "model_id": "opencode/claude-haiku-4-5",
-            "available": bool(settings.OPENCODE_API_KEY),
-        },
-        "opencode-gemini-3-5-flash": {
-            "provider": ModelProvider.OPENCODE,
-            "name": "Gemini 3.5 Flash",
-            "description": "Gemini 3.5 Flash via opencode",
-            "capabilities": ['cloud', 'fast'],
-            "context_length": 128000,
-            "temperature": 0.7,
-            "endpoint": settings.OPENCODE_BASE_URL,
-            "model_id": "opencode/gemini-3.5-flash",
-            "available": bool(settings.OPENCODE_API_KEY),
-        },
-        "opencode-gemini-3-1-pro": {
-            "provider": ModelProvider.OPENCODE,
-            "name": "Gemini 3.1 Pro",
-            "description": "Gemini 3.1 Pro via opencode",
-            "capabilities": ['cloud', 'fast', 'reasoning'],
-            "context_length": 128000,
-            "temperature": 0.7,
-            "endpoint": settings.OPENCODE_BASE_URL,
-            "model_id": "opencode/gemini-3.1-pro",
-            "available": bool(settings.OPENCODE_API_KEY),
-        },
-        "opencode-gemini-3-flash": {
-            "provider": ModelProvider.OPENCODE,
-            "name": "Gemini 3 Flash",
-            "description": "Gemini 3 Flash via opencode",
-            "capabilities": ['cloud', 'fast'],
-            "context_length": 128000,
-            "temperature": 0.7,
-            "endpoint": settings.OPENCODE_BASE_URL,
-            "model_id": "opencode/gemini-3-flash",
-            "available": bool(settings.OPENCODE_API_KEY),
-        },
-        "opencode-qwen3-7-max": {
-            "provider": ModelProvider.OPENCODE,
-            "name": "Qwen3.7 Max",
-            "description": "Qwen3.7 Max via opencode",
-            "capabilities": ['cloud', 'chinese', 'reasoning'],
-            "context_length": 128000,
-            "temperature": 0.7,
-            "endpoint": settings.OPENCODE_BASE_URL,
-            "model_id": "opencode/qwen3.7-max",
-            "available": bool(settings.OPENCODE_API_KEY),
-        },
-        "opencode-qwen3-7-plus": {
-            "provider": ModelProvider.OPENCODE,
-            "name": "Qwen3.7 Plus",
-            "description": "Qwen3.7 Plus via opencode",
-            "capabilities": ['cloud', 'chinese'],
-            "context_length": 128000,
-            "temperature": 0.7,
-            "endpoint": settings.OPENCODE_BASE_URL,
-            "model_id": "opencode/qwen3.7-plus",
-            "available": bool(settings.OPENCODE_API_KEY),
-        },
-        "opencode-qwen3-6-plus": {
-            "provider": ModelProvider.OPENCODE,
-            "name": "Qwen3.6 Plus",
-            "description": "Qwen3.6 Plus via opencode",
-            "capabilities": ['cloud', 'chinese'],
-            "context_length": 128000,
-            "temperature": 0.7,
-            "endpoint": settings.OPENCODE_BASE_URL,
-            "model_id": "opencode/qwen3.6-plus",
-            "available": bool(settings.OPENCODE_API_KEY),
-        },
-        "opencode-qwen3-5-plus": {
-            "provider": ModelProvider.OPENCODE,
-            "name": "Qwen3.5 Plus",
-            "description": "Qwen3.5 Plus via opencode",
-            "capabilities": ['cloud', 'chinese'],
-            "context_length": 128000,
-            "temperature": 0.7,
-            "endpoint": settings.OPENCODE_BASE_URL,
-            "model_id": "opencode/qwen3.5-plus",
-            "available": bool(settings.OPENCODE_API_KEY),
-        },
-        "opencode-minimax-m3": {
-            "provider": ModelProvider.OPENCODE,
-            "name": "MiniMax M3",
-            "description": "MiniMax M3 via opencode",
-            "capabilities": ['cloud', 'fast', 'reasoning'],
-            "context_length": 128000,
-            "temperature": 0.7,
-            "endpoint": settings.OPENCODE_BASE_URL,
-            "model_id": "opencode/minimax-m3",
-            "available": bool(settings.OPENCODE_API_KEY),
-        },
-        "opencode-minimax-m2-7": {
-            "provider": ModelProvider.OPENCODE,
-            "name": "MiniMax M2.7",
-            "description": "MiniMax M2.7 via opencode",
-            "capabilities": ['cloud', 'fast', 'reasoning'],
-            "context_length": 128000,
-            "temperature": 0.7,
-            "endpoint": settings.OPENCODE_BASE_URL,
-            "model_id": "opencode/minimax-m2.7",
-            "available": bool(settings.OPENCODE_API_KEY),
-        },
-        "opencode-minimax-m2-5": {
-            "provider": ModelProvider.OPENCODE,
-            "name": "MiniMax M2.5",
-            "description": "MiniMax M2.5 via opencode",
-            "capabilities": ['cloud', 'fast', 'reasoning'],
-            "context_length": 128000,
-            "temperature": 0.7,
-            "endpoint": settings.OPENCODE_BASE_URL,
-            "model_id": "opencode/minimax-m2.5",
-            "available": bool(settings.OPENCODE_API_KEY),
-        },
-        "opencode-glm-5-2": {
-            "provider": ModelProvider.OPENCODE,
-            "name": "GLM 5.2",
-            "description": "GLM 5.2 via opencode",
-            "capabilities": ['cloud', 'chinese'],
-            "context_length": 128000,
-            "temperature": 0.7,
-            "endpoint": settings.OPENCODE_BASE_URL,
-            "model_id": "opencode/glm-5.2",
-            "available": bool(settings.OPENCODE_API_KEY),
-        },
-        "opencode-glm-5-1": {
-            "provider": ModelProvider.OPENCODE,
-            "name": "GLM 5.1",
-            "description": "GLM 5.1 via opencode",
-            "capabilities": ['cloud', 'chinese'],
-            "context_length": 128000,
-            "temperature": 0.7,
-            "endpoint": settings.OPENCODE_BASE_URL,
-            "model_id": "opencode/glm-5.1",
-            "available": bool(settings.OPENCODE_API_KEY),
-        },
-        "opencode-glm-5": {
-            "provider": ModelProvider.OPENCODE,
-            "name": "GLM 5",
-            "description": "GLM 5 via opencode",
-            "capabilities": ['cloud', 'chinese'],
-            "context_length": 128000,
-            "temperature": 0.7,
-            "endpoint": settings.OPENCODE_BASE_URL,
-            "model_id": "opencode/glm-5",
-            "available": bool(settings.OPENCODE_API_KEY),
-        },
-        "opencode-grok-4-5": {
-            "provider": ModelProvider.OPENCODE,
-            "name": "Grok 4.5",
-            "description": "Grok 4.5 via opencode",
-            "capabilities": ['cloud'],
-            "context_length": 128000,
-            "temperature": 0.7,
-            "endpoint": settings.OPENCODE_BASE_URL,
-            "model_id": "opencode/grok-4.5",
-            "available": bool(settings.OPENCODE_API_KEY),
-        },
-        "opencode-grok-build-0-1": {
-            "provider": ModelProvider.OPENCODE,
-            "name": "Grok Build 0.1",
-            "description": "Grok Build 0.1 via opencode",
-            "capabilities": ['cloud'],
-            "context_length": 128000,
-            "temperature": 0.7,
-            "endpoint": settings.OPENCODE_BASE_URL,
-            "model_id": "opencode/grok-build-0.1",
-            "available": bool(settings.OPENCODE_API_KEY),
-        },
-        "opencode-big-pickle": {
-            "provider": ModelProvider.OPENCODE,
-            "name": "Big Pickle",
-            "description": "Big Pickle via opencode",
-            "capabilities": ['cloud'],
-            "context_length": 128000,
-            "temperature": 0.7,
-            "endpoint": settings.OPENCODE_BASE_URL,
-            "model_id": "opencode/big-pickle",
-            "available": bool(settings.OPENCODE_API_KEY),
-        },
-        "opencode-mimo-v2-5-free": {
-            "provider": ModelProvider.OPENCODE,
-            "name": "MiMo-V2.5 Free",
-            "description": "MiMo-V2.5 Free via opencode",
-            "capabilities": ['cloud', 'fast'],
-            "context_length": 128000,
-            "temperature": 0.7,
-            "endpoint": settings.OPENCODE_BASE_URL,
-            "model_id": "opencode/mimo-v2.5-free",
-            "available": bool(settings.OPENCODE_API_KEY),
-        },
-        "opencode-north-mini-code-free": {
-            "provider": ModelProvider.OPENCODE,
-            "name": "North Mini Code Free",
-            "description": "North Mini Code Free via opencode",
-            "capabilities": ['cloud', 'coding', 'fast'],
-            "context_length": 128000,
-            "temperature": 0.7,
-            "endpoint": settings.OPENCODE_BASE_URL,
-            "model_id": "opencode/north-mini-code-free",
-            "available": bool(settings.OPENCODE_API_KEY),
-        },
-        "opencode-nemotron-3-ultra-free": {
-            "provider": ModelProvider.OPENCODE,
-            "name": "Nemotron 3 Ultra Free",
-            "description": "Nemotron 3 Ultra Free via opencode",
-            "capabilities": ['cloud', 'fast'],
-            "context_length": 128000,
-            "temperature": 0.7,
-            "endpoint": settings.OPENCODE_BASE_URL,
-            "model_id": "opencode/nemotron-3-ultra-free",
-            "available": bool(settings.OPENCODE_API_KEY),
-        },
-        "kimi-k2-7-code": {
-            "provider": ModelProvider.KIMI,
-            "name": "Kimi K2.7 Code",
-            "description": "Kimi K2.7 Code via kimi",
-            "capabilities": ['cloud', 'coding', 'chinese', 'long_context'],
-            "context_length": 256000,
-            "temperature": 0.7,
-            "endpoint": settings.KIMI_BASE_URL,
-            "model_id": "kimi-k2-7-code",
-            "available": bool(settings.KIMI_API_KEY),
-        },
-        "kimi-k2-6": {
-            "provider": ModelProvider.KIMI,
-            "name": "Kimi K2.6",
-            "description": "Kimi K2.6 via kimi",
-            "capabilities": ['cloud', 'chinese', 'long_context'],
-            "context_length": 256000,
-            "temperature": 0.7,
-            "endpoint": settings.KIMI_BASE_URL,
-            "model_id": "kimi-k2-6",
-            "available": bool(settings.KIMI_API_KEY),
-        },
-        "kimi-k2-5": {
-            "provider": ModelProvider.KIMI,
-            "name": "Kimi K2.5",
-            "description": "Kimi K2.5 via kimi",
-            "capabilities": ['cloud', 'chinese', 'long_context'],
-            "context_length": 256000,
-            "temperature": 0.7,
-            "endpoint": settings.KIMI_BASE_URL,
-            "model_id": "kimi-k2-5",
-            "available": bool(settings.KIMI_API_KEY),
-        },
-        "deepseek-v4-pro": {
-            "provider": ModelProvider.DEEPSEEK,
-            "name": "DeepSeek V4 Pro",
-            "description": "DeepSeek V4 Pro via deepseek",
-            "capabilities": ['cloud', 'reasoning'],
-            "context_length": 128000,
-            "temperature": 0.7,
-            "endpoint": settings.DEEPSEEK_BASE_URL,
-            "model_id": "deepseek-v4-pro",
-            "available": bool(settings.DEEPSEEK_API_KEY),
-        },
-        "deepseek-v4-flash": {
-            "provider": ModelProvider.DEEPSEEK,
-            "name": "DeepSeek V4 Flash",
-            "description": "DeepSeek V4 Flash via deepseek",
-            "capabilities": ['cloud', 'fast'],
-            "context_length": 128000,
-            "temperature": 0.7,
-            "endpoint": settings.DEEPSEEK_BASE_URL,
-            "model_id": "deepseek-v4-flash",
-            "available": bool(settings.DEEPSEEK_API_KEY),
-        },
     }
 
     @classmethod
@@ -700,22 +103,6 @@ class ModelConfig:
         ]
 
 
-# ─── 直供厂商 BYOK 模型（用户自填 Key，平台不计费） ───
-ModelConfig.MODELS.update({
-    "glm-4.6": {"provider": ModelProvider.GLM, "name": "GLM 4.6（智谱）", "description": "智谱旗舰，BYOK 自付", "capabilities": ["cloud", "chinese"], "context_length": 128000, "temperature": 0.7, "endpoint": settings.GLM_BASE_URL, "model_id": "glm-4.6", "available": True},
-    "glm-4.5-air": {"provider": ModelProvider.GLM, "name": "GLM 4.5 Air（智谱）", "description": "智谱轻量款，BYOK 自付", "capabilities": ["cloud", "chinese", "fast"], "context_length": 128000, "temperature": 0.7, "endpoint": settings.GLM_BASE_URL, "model_id": "glm-4.5-air", "available": True},
-    "dashscope-qwen-max": {"provider": ModelProvider.DASHSCOPE, "name": "Qwen Max（阿里）", "description": "通义旗舰，BYOK 自付", "capabilities": ["cloud", "chinese"], "context_length": 131072, "temperature": 0.7, "endpoint": settings.DASHSCOPE_BASE_URL, "model_id": "qwen-max", "available": True},
-    "dashscope-qwen-plus": {"provider": ModelProvider.DASHSCOPE, "name": "Qwen Plus（阿里）", "description": "通义均衡款，BYOK 自付", "capabilities": ["cloud", "chinese", "fast"], "context_length": 131072, "temperature": 0.7, "endpoint": settings.DASHSCOPE_BASE_URL, "model_id": "qwen-plus", "available": True},
-    "dashscope-qwen-flash": {"provider": ModelProvider.DASHSCOPE, "name": "Qwen Flash（阿里）", "description": "通义极速款，BYOK 自付", "capabilities": ["cloud", "chinese", "fast"], "context_length": 131072, "temperature": 0.7, "endpoint": settings.DASHSCOPE_BASE_URL, "model_id": "qwen-flash", "available": True},
-    "openai-gpt-4o": {"provider": ModelProvider.OPENAI, "name": "GPT-4o（OpenAI）", "description": "OpenAI 主力，BYOK 自付", "capabilities": ["cloud"], "context_length": 128000, "temperature": 0.7, "endpoint": settings.OPENAI_BASE_URL, "model_id": "gpt-4o", "available": True},
-    "openai-gpt-4o-mini": {"provider": ModelProvider.OPENAI, "name": "GPT-4o mini（OpenAI）", "description": "OpenAI 轻量款，BYOK 自付", "capabilities": ["cloud", "fast"], "context_length": 128000, "temperature": 0.7, "endpoint": settings.OPENAI_BASE_URL, "model_id": "gpt-4o-mini", "available": True},
-    "anthropic-claude-sonnet-4-5": {"provider": ModelProvider.ANTHROPIC, "name": "Claude Sonnet 4.5", "description": "Anthropic 均衡款，BYOK 自付", "capabilities": ["cloud", "reasoning"], "context_length": 200000, "temperature": 0.7, "endpoint": settings.ANTHROPIC_BASE_URL, "model_id": "claude-sonnet-4-5", "available": True},
-    "anthropic-claude-haiku-4-5": {"provider": ModelProvider.ANTHROPIC, "name": "Claude Haiku 4.5", "description": "Anthropic 轻量款，BYOK 自付", "capabilities": ["cloud", "fast"], "context_length": 200000, "temperature": 0.7, "endpoint": settings.ANTHROPIC_BASE_URL, "model_id": "claude-haiku-4-5", "available": True},
-    "google-gemini-2.5-flash": {"provider": ModelProvider.GOOGLE, "name": "Gemini 2.5 Flash（Google）", "description": "Google 快速款，BYOK 自付", "capabilities": ["cloud", "fast"], "context_length": 1000000, "temperature": 0.7, "endpoint": settings.GOOGLE_BASE_URL, "model_id": "gemini-2.5-flash", "available": True},
-    "google-gemini-2.5-pro": {"provider": ModelProvider.GOOGLE, "name": "Gemini 2.5 Pro（Google）", "description": "Google 旗舰，BYOK 自付", "capabilities": ["cloud", "reasoning", "long_context"], "context_length": 1000000, "temperature": 0.7, "endpoint": settings.GOOGLE_BASE_URL, "model_id": "gemini-2.5-pro", "available": True},
-})
-
-
 class ProviderStatus:
     """Health status for each LLM provider"""
 
@@ -726,27 +113,6 @@ class ProviderStatus:
             "health_endpoint": "/api/tags",
             "default_model": "qwen2.5:0.5b",
             "icon_color": "from-emerald-400 to-teal-500",
-        },
-        ModelProvider.DEEPSEEK: {
-            "name": "DeepSeek",
-            "base_url": settings.DEEPSEEK_BASE_URL,
-            "health_endpoint": "/models",
-            "default_model": "deepseek-v4-pro",
-            "icon_color": "from-rose-400 to-pink-500",
-        },
-        ModelProvider.KIMI: {
-            "name": "Kimi",
-            "base_url": settings.KIMI_BASE_URL,
-            "health_endpoint": "/v1/models",
-            "default_model": "kimi-k2-7-code",
-            "icon_color": "from-violet-400 to-purple-500",
-        },
-        ModelProvider.OPENCODE: {
-            "name": "OpenCode",
-            "base_url": settings.OPENCODE_BASE_URL,
-            "health_endpoint": "/v1/models",
-            "default_model": "glm-5",
-            "icon_color": "from-cyan-400 to-blue-500",
         },
     }
 
@@ -785,16 +151,9 @@ class LLMRouterService:
 
         Rules (priority order):
         1. User override -> preferred_model
-        2. Sensitive content -> local Ollama (privacy)
-        3. Code/technical -> Kimi K2.7 Code
-        4. Chinese content -> available cloud Chinese-capable provider
-        5. Long text (>4000 tokens) -> Kimi K2.6
-        6. Short query (<100 tokens) -> local Ollama (speed)
-        7. Complex reasoning -> DeepSeek V4 Pro
-        8. Default -> local Ollama
+        2. Default -> local Ollama (only provider in this build; sensitive
+           content therefore always stays on-device)
         """
-        context = context or {}
-
         # 1. User override
         if preferred_model and preferred_model in ModelConfig.MODELS:
             cfg = ModelConfig.get(preferred_model)
@@ -805,116 +164,14 @@ class LLMRouterService:
                 "reason": "user_override",
             }
 
-        # 2. Sensitive content detection -> local Ollama (offline)
-        sensitive = SENSITIVE_PATTERNS.detect(content)
-        if sensitive["has_sensitive"] and sensitive["severity"] == "high":
-            return {
-                "model_name": "ollama-qwen2.5-0.5b",
-                "provider": ModelProvider.OLLAMA,
-                "model_id": "qwen2.5:0.5b",
-                "reason": "sensitive_content_detected",
-                "findings": sensitive["findings"],
-            }
-
-        # 3. Code/technical content -> Kimi K2.7 Code
-        code_keywords = [
-            "code", "programming", "debug", "function", "class", "api", "error",
-            "bug", "编译", "代码", "函数", "调试", "class", "def ", "import ",
-            "javascript", "python", "typescript", "rust", "go", "java", "c++",
-            "react", "vue", "angular", "sql", "database", "算法", "leetcode",
-        ]
-        lower = content.lower()
-        if any(kw in lower for kw in code_keywords):
-            if ModelConfig.get("kimi-k2-7-code")["available"]:
-                return {
-                    "model_name": "kimi-k2-7-code",
-                    "provider": ModelProvider.KIMI,
-                    "model_id": "kimi-k2-7-code",
-                    "reason": "coding_task",
-                }
-
-        # 4. Chinese content -> prefer available cloud Chinese-capable providers,
-        #    fallback to local Ollama only when no cloud key is configured.
-        is_chinese = any("\u4e00" <= c <= "\u9fff" for c in content)
-        if is_chinese:
-            chinese_cloud_candidates = [
-                "kimi-k2-6",
-                "kimi-k2-7-code",
-                "deepseek-v4-pro",
-                "opencode-qwen-3-7-max",
-                "opencode-qwen-3-7-plus-256k",
-                "opencode-qwen-3-6-plus-256k",
-                "opencode-glm-5",
-                "opencode-glm-5-1",
-            ]
-            for model_name in chinese_cloud_candidates:
-                cfg = ModelConfig.get(model_name)
-                if cfg and cfg["available"]:
-                    return {
-                        "model_name": model_name,
-                        "provider": cfg["provider"],
-                        "model_id": cfg["model_id"],
-                        "reason": "chinese_content_cloud",
-                    }
-            return {
-                "model_name": "ollama-qwen2.5-0.5b",
-                "provider": ModelProvider.OLLAMA,
-                "model_id": "qwen2.5:0.5b",
-                "reason": "chinese_content_local_fallback",
-            }
-
-        # 5. Long text (>4000 tokens) -> Kimi K2.6
-        token_count = LLMRouterService.estimate_tokens(content)
-        if token_count > 4000:
-            if ModelConfig.get("kimi-k2-6")["available"]:
-                return {
-                    "model_name": "kimi-k2-6",
-                    "provider": ModelProvider.KIMI,
-                    "model_id": "kimi-k2-6",
-                    "reason": "long_context",
-                    "token_count": token_count,
-                }
-            elif ModelConfig.get("deepseek-v4-pro")["available"]:
-                return {
-                    "model_name": "deepseek-v4-pro",
-                    "provider": ModelProvider.DEEPSEEK,
-                    "model_id": "deepseek-v4-pro",
-                    "reason": "long_context_fallback",
-                    "token_count": token_count,
-                }
-
-        # 6. Short query (<100 tokens) -> local Ollama (speed)
-        if token_count < 100:
-            return {
-                "model_name": "ollama-qwen2.5-0.5b",
-                "provider": ModelProvider.OLLAMA,
-                "model_id": "qwen2.5:0.5b",
-                "reason": "fast_short_query",
-                "token_count": token_count,
-            }
-
-        # 7. Complex reasoning / multi-step -> DeepSeek V4 Pro
-        reasoning_keywords = [
-            "analyze", "compare", "evaluate", "reason", "step by step", "explain",
-            "why", "how to", "what if", "分析", "比较", "评估", "推理",
-            "步骤", "详细解释", "深入研究", "总结", "归纳", "演绎",
-        ]
-        if any(kw in lower for kw in reasoning_keywords):
-            if ModelConfig.get("deepseek-v4-pro")["available"]:
-                return {
-                    "model_name": "deepseek-v4-pro",
-                    "provider": ModelProvider.DEEPSEEK,
-                    "model_id": "deepseek-v4-pro",
-                    "reason": "complex_reasoning",
-                }
-
-        # 8. Default -> local Ollama
+        # 2. Default -> local Ollama. Sensitive content is kept local by
+        # construction, since Ollama is the only provider available.
         return {
             "model_name": "ollama-qwen2.5-0.5b",
             "provider": ModelProvider.OLLAMA,
             "model_id": "qwen2.5:0.5b",
             "reason": "default",
-            "token_count": token_count,
+            "token_count": LLMRouterService.estimate_tokens(content),
         }
 
 
@@ -947,9 +204,6 @@ class SummaryCache:
 class LLMService:
     def __init__(self):
         self.ollama_url = settings.OLLAMA_BASE_URL
-        self.deepseek_key = settings.DEEPSEEK_API_KEY
-        self.kimi_key = settings.KIMI_API_KEY
-        self.opencode_key = settings.OPENCODE_API_KEY
         self.summary_cache = SummaryCache()
         self.tags_cache = SummaryCache(max_size=2000)  # Re-use cache structure for tags
 
@@ -961,9 +215,6 @@ class LLMService:
         return {
             "active_provider": ai.get("active_provider"),
             "active_model": ai.get("active_model"),
-            "kimi_api_key": ai.get("kimi_api_key"),
-            "deepseek_api_key": ai.get("deepseek_api_key"),
-            "opencode_api_key": ai.get("opencode_api_key"),
             "ollama_url": ai.get("ollama_url"),
         }
 
@@ -989,35 +240,26 @@ class LLMService:
                     "reason": "user_active_setting",
                 }
 
-        # Fallback: treat the saved values as a custom route if provider is known
-        try:
-            provider_enum = ModelProvider(provider)
+        # Fallback: treat the saved values as a custom Ollama route
+        if provider == ModelProvider.OLLAMA.value:
             return {
                 "model_name": model,
-                "provider": provider_enum,
+                "provider": ModelProvider.OLLAMA,
                 "model_id": model,
                 "reason": "user_active_setting",
             }
-        except ValueError:
-            return None
+        return None
 
     # ─────────────────────────── Health Checks ───────────────────────────
 
     async def health_check(self, user_settings: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
-        """Check health status of all configured LLM providers.
+        """Check health status of the configured Ollama server.
 
-        Uses API keys / Ollama URL from ``user_settings`` when present, falling back
-        to environment-level keys configured at startup.
+        Uses the Ollama URL from ``user_settings`` when present, falling back
+        to the environment-level URL configured at startup.
         """
         cfg = self._get_user_llm_config(user_settings)
         ollama_url = cfg.get("ollama_url") or self.ollama_url
-        keys = {
-            ModelProvider.DEEPSEEK: cfg.get("deepseek_api_key") or self.deepseek_key,
-            ModelProvider.KIMI: cfg.get("kimi_api_key") or self.kimi_key,
-            ModelProvider.OPENCODE: cfg.get("opencode_api_key") or self.opencode_key,
-        }
-
-        results = []
 
         # Check Ollama - local default service
         ollama_status = ProviderStatus.get_status(ModelProvider.OLLAMA, available=True)
@@ -1034,57 +276,12 @@ class LLMService:
         except Exception:
             ollama_status["latency"] = -1
             ollama_status["connected"] = False
-        results.append(ollama_status)
+        results = [ollama_status]
 
-        # Check cloud providers
-        for provider in (
-            ModelProvider.DEEPSEEK,
-            ModelProvider.KIMI,
-            ModelProvider.OPENCODE,
-        ):
-            api_key = keys.get(provider, "")
-            status = ProviderStatus.get_status(provider, available=bool(api_key))
-            if api_key:
-                try:
-                    start = time.time()
-                    config = ProviderStatus.PROVIDER_CONFIG[provider]
-                    headers = {"Authorization": f"Bearer {api_key}"}
-                    async with httpx.AsyncClient(timeout=5.0) as client:
-                        resp = await client.get(
-                            f"{config['base_url']}{config['health_endpoint']}",
-                            headers=headers,
-                        )
-                        status["connected"] = resp.status_code == 200
-                        status["latency"] = round((time.time() - start) * 1000)
-                except Exception:
-                    status["connected"] = False
-            results.append(status)
-
-        # Pick active provider/model: user setting first, then Ollama default
-        user_active_provider = cfg.get("active_provider")
-        if user_active_provider:
-            active = next(
-                (r for r in results if r["provider"].lower() == user_active_provider.lower()),
-                None,
-            )
-            if not active:
-                try:
-                    active_cfg = ProviderStatus.PROVIDER_CONFIG.get(
-                        ModelProvider(user_active_provider), {}
-                    )
-                except ValueError:
-                    active_cfg = {}
-                active = {
-                    "provider": active_cfg.get("name", user_active_provider),
-                    "model": cfg.get("active_model") or active_cfg.get("default_model", "unknown"),
-                    "connected": False,
-                    "latency": -1,
-                }
-            if cfg.get("active_model"):
-                active["model"] = cfg["active_model"]
-        else:
-            ollama_result = next((r for r in results if r["provider"] == "Ollama"), None)
-            active = ollama_result if ollama_result else (results[0] if results else None)
+        # Active model: user setting first, then Ollama default
+        active = ollama_status
+        if cfg.get("active_model"):
+            active = {**ollama_status, "model": cfg["active_model"]}
 
         return {
             "active_provider": active["provider"] if active else None,
@@ -1135,31 +332,6 @@ class LLMService:
                         result["latency"] = round((time.time() - start) * 1000)
             except Exception:
                 result["connected"] = False
-            return result
-
-        key_map = {
-            ModelProvider.DEEPSEEK: cfg.get("deepseek_api_key") or self.deepseek_key,
-            ModelProvider.KIMI: cfg.get("kimi_api_key") or self.kimi_key,
-            ModelProvider.OPENCODE: cfg.get("opencode_api_key") or self.opencode_key,
-        }
-        api_key = key_map.get(provider, "")
-        if not api_key:
-            return result
-
-        headers = {"Authorization": f"Bearer {api_key}"}
-
-        try:
-            start = time.time()
-            async with httpx.AsyncClient(timeout=5.0) as client:
-                resp = await client.get(
-                    f"{config['base_url']}{config['health_endpoint']}",
-                    headers=headers,
-                )
-                result["connected"] = resp.status_code == 200
-                if result["connected"]:
-                    result["latency"] = round((time.time() - start) * 1000)
-        except Exception:
-            result["connected"] = False
 
         return result
 
@@ -1223,7 +395,6 @@ class LLMService:
         system_prompt: Optional[str] = None,
         context: Optional[Dict[str, Any]] = None,
         user_settings: Optional[Dict[str, Any]] = None,
-        db: Optional[Any] = None,
     ) -> AsyncGenerator[str, None]:
         """Stream chat response from the routed LLM.
 
@@ -1232,8 +403,8 @@ class LLMService:
         2. User's active provider/model from ``user_settings``.
         3. Intelligent routing via ``LLMRouterService``.
 
-        API keys / Ollama URL from ``user_settings`` take precedence over platform
-        accounts, which in turn take precedence over environment variables.
+        The Ollama URL from ``user_settings`` takes precedence over the
+        environment-level URL.
         """
         route = self.resolve_route(
             message=message,
@@ -1246,178 +417,17 @@ class LLMService:
         cfg = self._get_user_llm_config(user_settings)
         history = self._normalize_history(history)
 
-        provider = route["provider"]
         model = route["model_id"]
+        ollama_url = cfg.get("ollama_url") or self.ollama_url
 
         import logging
         logger = logging.getLogger(__name__)
-        logger.info(f"LLM chat routed to provider={provider.value} model={model} reason={route.get('reason', 'unknown')}")
+        logger.info(f"LLM chat routed to provider=ollama model={model} reason={route.get('reason', 'unknown')}")
 
-        creds = self._resolve_credentials(provider, cfg, db)
-        api_key = creds.get("api_key")
-        base_url = creds.get("base_url")
-        account_id = creds.get("account_id")
-        ollama_url = base_url or (cfg.get("ollama_url") or self.ollama_url)
-
-        chat_generator = self._route_chat(
-            provider=provider,
-            message=message,
-            history=history,
-            model=model,
-            system_prompt=system_prompt,
-            api_key=api_key,
-            base_url=base_url,
-            ollama_url=ollama_url,
-        )
-
-        if account_id and db is not None:
-            chat_generator = self._track_provider_health(chat_generator, account_id, db)
-
-        async for chunk in chat_generator:
+        async for chunk in self._chat_ollama(
+            message, history, model, system_prompt, base_url=ollama_url
+        ):
             yield chunk
-
-    def _resolve_credentials(
-        self,
-        provider: ModelProvider,
-        cfg: Dict[str, Any],
-        db: Optional[Any],
-    ) -> Dict[str, Any]:
-        """Resolve API key and base_url for a provider.
-
-        Priority:
-        1. User-provided key in settings.
-        2. Active platform account (if db session available).
-        3. Environment / default key.
-        """
-        user_key = None
-        env_key = None
-        default_base_url = None
-
-        if provider == ModelProvider.KIMI:
-            user_key = cfg.get("kimi_api_key")
-            env_key = self.kimi_key
-            default_base_url = settings.KIMI_BASE_URL
-        elif provider == ModelProvider.DEEPSEEK:
-            user_key = cfg.get("deepseek_api_key")
-            env_key = self.deepseek_key
-            default_base_url = settings.DEEPSEEK_BASE_URL
-        elif provider == ModelProvider.OPENCODE:
-            user_key = cfg.get("opencode_api_key")
-            env_key = self.opencode_key
-            default_base_url = settings.OPENCODE_BASE_URL
-        elif provider == ModelProvider.GLM:
-            user_key = cfg.get("glm_api_key")
-            env_key = settings.GLM_API_KEY
-            default_base_url = settings.GLM_BASE_URL
-        elif provider == ModelProvider.DASHSCOPE:
-            user_key = cfg.get("dashscope_api_key")
-            env_key = settings.DASHSCOPE_API_KEY
-            default_base_url = settings.DASHSCOPE_BASE_URL
-        elif provider == ModelProvider.OPENAI:
-            user_key = cfg.get("openai_api_key")
-            env_key = settings.OPENAI_API_KEY
-            default_base_url = settings.OPENAI_BASE_URL
-        elif provider == ModelProvider.ANTHROPIC:
-            user_key = cfg.get("anthropic_api_key")
-            env_key = settings.ANTHROPIC_API_KEY
-            default_base_url = settings.ANTHROPIC_BASE_URL
-        elif provider == ModelProvider.GOOGLE:
-            user_key = cfg.get("google_api_key")
-            env_key = settings.GOOGLE_API_KEY
-            default_base_url = settings.GOOGLE_BASE_URL
-
-        if user_key:
-            return {"api_key": user_key, "base_url": default_base_url}
-
-        if db is not None:
-            try:
-                router = LLMProviderRouter(db)
-                account_creds = router.get_credentials(provider.value, default_base_url=default_base_url)
-                if account_creds and account_creds.get("api_key"):
-                    return account_creds
-            except Exception:
-                # Don't let account lookup break the chat flow
-                pass
-
-        return {"api_key": env_key, "base_url": default_base_url}
-
-    async def _route_chat(
-        self,
-        provider: ModelProvider,
-        message: str,
-        history: Optional[List[Dict[str, str]]],
-        model: str,
-        system_prompt: Optional[str],
-        api_key: Optional[str],
-        base_url: Optional[str],
-        ollama_url: Optional[str],
-    ) -> AsyncGenerator[str, None]:
-        if provider == ModelProvider.OLLAMA:
-            async for chunk in self._chat_ollama(
-                message, history, model, system_prompt, base_url=ollama_url
-            ):
-                yield chunk
-        elif provider == ModelProvider.DEEPSEEK and api_key:
-            async for chunk in self._chat_deepseek(
-                message, history, model, system_prompt, api_key=api_key, base_url=base_url
-            ):
-                yield chunk
-        elif provider == ModelProvider.KIMI and api_key:
-            async for chunk in self._chat_openai_compatible(
-                message, history, model, system_prompt, api_key=api_key, base_url=base_url,
-                provider_name="Kimi"
-            ):
-                yield chunk
-        elif provider in (ModelProvider.GLM, ModelProvider.DASHSCOPE, ModelProvider.OPENAI) and api_key:
-            async for chunk in self._chat_openai_compatible(
-                message, history, model, system_prompt, api_key=api_key, base_url=base_url,
-                provider_name=provider.value
-            ):
-                yield chunk
-        elif provider == ModelProvider.ANTHROPIC and api_key:
-            async for chunk in self._chat_opencode_messages(
-                message, history, model, system_prompt, api_key=api_key, base_url=base_url
-            ):
-                yield chunk
-        elif provider == ModelProvider.GOOGLE and api_key:
-            async for chunk in self._chat_opencode_gemini(
-                message, history, model, system_prompt, api_key=api_key, base_url=base_url
-            ):
-                yield chunk
-        elif provider == ModelProvider.OPENCODE and api_key:
-            # MODEL_CONFIGS 里的 model_id 带 opencode/ 前缀（OpenCode 客户端约定），
-            # 直连 zen API 时传裸模型 ID；若实测要带前缀，改回直接传 model 即可
-            api_model = model.split("/", 1)[-1] if model.startswith("opencode/") else model
-            async for chunk in self._chat_opencode(
-                message, history, api_model, system_prompt, api_key=api_key, base_url=base_url
-            ):
-                yield chunk
-        else:
-            async for chunk in self._chat_ollama(
-                message, history, model, system_prompt, base_url=ollama_url
-            ):
-                yield chunk
-
-    async def _track_provider_health(
-        self,
-        generator: AsyncGenerator[str, None],
-        account_id: str,
-        db: Any,
-    ) -> AsyncGenerator[str, None]:
-        """Wrap a chat generator to record success/failure on platform accounts."""
-        try:
-            async for chunk in generator:
-                yield chunk
-            try:
-                LLMProviderRouter(db).touch_success(account_id)
-            except Exception:
-                pass
-        except Exception:
-            try:
-                LLMProviderRouter(db).touch_failure(account_id)
-            except Exception:
-                pass
-            raise
 
     async def _chat_ollama(
         self, message, history, model, system_prompt, base_url: Optional[str] = None
@@ -1447,248 +457,6 @@ class LLMService:
                                 continue
         except Exception as e:
             yield f"[Error: Ollama connection failed - {str(e)}]"
-
-    async def _chat_openai_compatible(
-        self, message, history, model, system_prompt, api_key: Optional[str] = None,
-        base_url: Optional[str] = None, provider_name: str = "OpenAI-compatible"
-    ) -> AsyncGenerator[str, None]:
-        messages = []
-        if system_prompt:
-            messages.append({"role": "system", "content": system_prompt})
-        if history:
-            messages.extend(history)
-        messages.append({"role": "user", "content": message})
-        payload = {"model": model, "messages": messages, "stream": True}
-        key = api_key
-        base = (base_url or "https://api.openai.com").rstrip("/")
-        try:
-            async with httpx.AsyncClient(timeout=120.0) as client:
-                async with client.stream(
-                    "POST",
-                    self._join_api(base, "/chat/completions"),
-                    headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"},
-                    json=payload,
-                ) as response:
-                    async for line in response.aiter_lines():
-                        if line.strip().startswith("data: "):
-                            data_str = line[6:]
-                            if data_str == "[DONE]":
-                                break
-                            try:
-                                data = json.loads(data_str)
-                                if "choices" in data and len(data["choices"]) > 0:
-                                    delta = data["choices"][0].get("delta", {})
-                                    if "content" in delta:
-                                        yield delta["content"]
-                            except json.JSONDecodeError:
-                                continue
-        except Exception as e:
-            yield f"[Error: {provider_name} connection failed - {str(e)}]"
-
-    async def _chat_deepseek(
-        self, message, history, model, system_prompt, api_key: Optional[str] = None, base_url: Optional[str] = None
-    ) -> AsyncGenerator[str, None]:
-        messages = []
-        if system_prompt:
-            messages.append({"role": "system", "content": system_prompt})
-        if history:
-            messages.extend(history)
-        messages.append({"role": "user", "content": message})
-        # deepseek-v4 默认开启思考，reasoning 散文会污染所有 JSON 消费方
-        # （验证/摘要/标签/管线抽取），按官方参数关闭思考输出
-        payload = {"model": model, "messages": messages, "stream": True, "thinking": {"type": "disabled"}}
-        key = api_key or self.deepseek_key
-        base = (base_url or settings.DEEPSEEK_BASE_URL or "https://api.deepseek.com").rstrip("/")
-        try:
-            async with httpx.AsyncClient(timeout=60.0) as client:
-                async with client.stream(
-                    "POST",
-                    f"{base}/chat/completions",
-                    headers={
-                        "Authorization": f"Bearer {key}",
-                        "Content-Type": "application/json",
-                    },
-                    json=payload,
-                ) as response:
-                    async for line in response.aiter_lines():
-                        if line.strip().startswith("data: "):
-                            data_str = line[6:]
-                            if data_str == "[DONE]":
-                                break
-                            try:
-                                data = json.loads(data_str)
-                                if "choices" in data and len(data["choices"]) > 0:
-                                    delta = data["choices"][0].get("delta", {})
-                                    if delta.get("content"):
-                                        yield delta["content"]
-                                    # reasoning_content 不再混入正文流（见上方 thinking 开关）
-                            except json.JSONDecodeError:
-                                continue
-        except Exception as e:
-            yield f"[Error: DeepSeek connection failed - {str(e)}]"
-
-    # ─────────────────────── OpenCode zen 多形态适配 ───────────────────────
-    # opencode.ai/zen 按模型家族暴露不同 API 形态（见供应商文档）：
-    #   gpt-*          → POST {base}/v1/responses          (OpenAI Responses)
-    #   claude-*/qwen* → POST {base}/v1/messages           (Anthropic Messages)
-    #   gemini-*       → POST {base}/v1/models/{m}:streamGenerateContent (Google)
-    #   其余           → POST {base}/v1/chat/completions   (OpenAI 兼容)
-
-    @staticmethod
-    def _opencode_api_type(model_id: str) -> str:
-        mid = model_id.split("/", 1)[-1].lower()
-        if mid.startswith("gpt-"):
-            return "responses"
-        if mid.startswith("claude-") or mid.startswith("qwen"):
-            return "messages"
-        if mid.startswith("gemini-"):
-            return "gemini"
-        return "chat"
-
-    @staticmethod
-    def _join_api(base: str, path: str) -> str:
-        """拼接 API 路径：base 已含版本段（/v1、/v4、/v1beta 等）则直接拼，
-        否则补 /v1（opencode zen 约定）。"""
-        import re as _re
-        base = base.rstrip("/")
-        if _re.search(r"/v\d", base):
-            return base + path
-        return base + "/v1" + path
-
-    def _build_messages(self, message, history, system_prompt):
-        messages = []
-        if system_prompt:
-            messages.append({"role": "system", "content": system_prompt})
-        if history:
-            messages.extend(history)
-        messages.append({"role": "user", "content": message})
-        return messages
-
-    async def _chat_opencode_responses(
-        self, message, history, model, system_prompt, api_key, base_url
-    ) -> AsyncGenerator[str, None]:
-        """OpenAI Responses API（GPT 家族），SSE 事件流。"""
-        base = base_url.rstrip("/")
-        payload = {"model": model, "input": self._build_messages(message, history, None), "stream": True}
-        if system_prompt:
-            payload["instructions"] = system_prompt
-        try:
-            async with httpx.AsyncClient(timeout=180.0) as client:
-                async with client.stream(
-                    "POST", self._join_api(base, "/responses"),
-                    headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
-                    json=payload,
-                ) as response:
-                    async for line in response.aiter_lines():
-                        line = line.strip()
-                        if not line.startswith("data: "):
-                            continue
-                        data_str = line[6:]
-                        if data_str == "[DONE]":
-                            break
-                        try:
-                            data = json.loads(data_str)
-                            if data.get("type") == "response.output_text.delta":
-                                yield data.get("delta", "")
-                        except json.JSONDecodeError:
-                            continue
-        except Exception as e:
-            yield f"[Error: OpenCode(responses) connection failed - {str(e)}]"
-
-    async def _chat_opencode_messages(
-        self, message, history, model, system_prompt, api_key, base_url
-    ) -> AsyncGenerator[str, None]:
-        """Anthropic Messages API（Claude / Qwen 家族），SSE 事件流。"""
-        base = base_url.rstrip("/")
-        payload = {
-            "model": model,
-            "max_tokens": 4096,
-            "messages": [m for m in self._build_messages(message, history, None)],
-            "stream": True,
-        }
-        if system_prompt:
-            payload["system"] = system_prompt
-        try:
-            async with httpx.AsyncClient(timeout=180.0) as client:
-                async with client.stream(
-                    "POST", self._join_api(base, "/messages"),
-                    headers={
-                        "x-api-key": api_key,
-                        "anthropic-version": "2023-06-01",
-                        "Content-Type": "application/json",
-                    },
-                    json=payload,
-                ) as response:
-                    async for line in response.aiter_lines():
-                        line = line.strip()
-                        if not line.startswith("data: "):
-                            continue
-                        try:
-                            data = json.loads(line[6:])
-                            if data.get("type") == "content_block_delta":
-                                text = data.get("delta", {}).get("text")
-                                if text:
-                                    yield text
-                        except json.JSONDecodeError:
-                            continue
-        except Exception as e:
-            yield f"[Error: OpenCode(messages) connection failed - {str(e)}]"
-
-    async def _chat_opencode_gemini(
-        self, message, history, model, system_prompt, api_key, base_url
-    ) -> AsyncGenerator[str, None]:
-        """Google Gemini API（Gemini 家族），SSE 事件流。"""
-        base = base_url.rstrip("/")
-        role_map = {"user": "user", "assistant": "model", "system": "user"}
-        contents = [
-            {"role": role_map.get(m.get("role", "user"), "user"),
-             "parts": [{"text": m.get("content", "")}]}
-            for m in self._build_messages(message, history, None)
-        ]
-        payload = {"contents": contents}
-        if system_prompt:
-            payload["systemInstruction"] = {"parts": [{"text": system_prompt}]}
-        try:
-            async with httpx.AsyncClient(timeout=180.0) as client:
-                async with client.stream(
-                    "POST",
-                    self._join_api(base, f"/models/{model}:streamGenerateContent?alt=sse"),
-                    headers={"x-goog-api-key": api_key, "Content-Type": "application/json"},
-                    json=payload,
-                ) as response:
-                    async for line in response.aiter_lines():
-                        line = line.strip()
-                        if not line.startswith("data: "):
-                            continue
-                        try:
-                            data = json.loads(line[6:])
-                            for cand in data.get("candidates", []):
-                                for part in cand.get("content", {}).get("parts", []):
-                                    if part.get("text"):
-                                        yield part["text"]
-                        except json.JSONDecodeError:
-                            continue
-        except Exception as e:
-            yield f"[Error: OpenCode(gemini) connection failed - {str(e)}]"
-
-    async def _chat_opencode(
-        self, message, history, model, system_prompt, api_key, base_url
-    ) -> AsyncGenerator[str, None]:
-        """按模型家族分发到对应的 zen API 形态。"""
-        api_type = self._opencode_api_type(model)
-        if api_type == "responses":
-            gen = self._chat_opencode_responses(message, history, model, system_prompt, api_key, base_url)
-        elif api_type == "messages":
-            gen = self._chat_opencode_messages(message, history, model, system_prompt, api_key, base_url)
-        elif api_type == "gemini":
-            gen = self._chat_opencode_gemini(message, history, model, system_prompt, api_key, base_url)
-        else:
-            gen = self._chat_openai_compatible(
-                message, history, model, system_prompt,
-                api_key=api_key, base_url=base_url, provider_name="OpenCode"
-            )
-        async for chunk in gen:
-            yield chunk
 
     # ─────────────────────────── Summarize ───────────────────────────
 
@@ -1722,7 +490,7 @@ class LLMService:
         prompt = f"{length_prompts[length]}\n\n{text}"
 
         result = []
-        async for chunk in self.chat(prompt, task_type="summarize", preferred_model="deepseek-v4-flash"):
+        async for chunk in self.chat(prompt, task_type="summarize", preferred_model="ollama-qwen2.5-0.5b"):
             result.append(chunk)
         summary = "".join(result).strip()
 
@@ -1764,7 +532,7 @@ class LLMService:
             f"文本：\n{text}"
         )
         result = []
-        async for chunk in self.chat(prompt, task_type="tag_extraction", preferred_model="deepseek-v4-flash"):
+        async for chunk in self.chat(prompt, task_type="tag_extraction", preferred_model="ollama-qwen2.5-0.5b"):
             result.append(chunk)
         raw = "".join(result).strip()
 
@@ -1810,7 +578,7 @@ class LLMService:
 
     async def embed(self, text: str) -> List[float]:
         """Generate text embedding via Ollama（可用 OLLAMA_EMBED_MODEL 配置专用模型）or fallback."""
-        model = getattr(settings, "OLLAMA_EMBED_MODEL", "") or "qwen2.5:0.5b"
+        model = getattr(settings, "OLLAMA_EMBED_MODEL", "") or "nomic-embed-text"
         try:
             async with httpx.AsyncClient(timeout=30.0) as client:
                 response = await client.post(
@@ -1910,3 +678,21 @@ class LLMService:
 
 
 llm_service = LLMService()
+
+
+async def chat_completion(
+    prompt: str,
+    task_type: str = "chat",
+    system_prompt: Optional[str] = None,
+    preferred_model: Optional[str] = None,
+) -> str:
+    """Non-streaming helper: run a single chat call and return the full text."""
+    chunks: List[str] = []
+    async for chunk in llm_service.chat(
+        message=prompt,
+        task_type=task_type,
+        system_prompt=system_prompt,
+        preferred_model=preferred_model,
+    ):
+        chunks.append(chunk)
+    return "".join(chunks)

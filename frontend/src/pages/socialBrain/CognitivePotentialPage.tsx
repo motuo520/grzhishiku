@@ -4,7 +4,6 @@ import { useQuery } from '@tanstack/react-query';
 import { useNavigation } from '@/store/navigation';
 import { jianghuApi } from '@/api/jianghu';
 import ModelSelector from '@/components/llm/ModelSelector';
-import LLMCostBadge from '@/components/llm/LLMCostBadge';
 import {
   Zap, Loader2, Sparkles, ArrowDownToLine, FileOutput, Coins,
   TrendingUp, Lightbulb, ChevronRight
@@ -84,7 +83,6 @@ const CognitivePotentialPage: FC = () => {
         <div className="flex items-center gap-3">
           <div className="flex flex-col items-end gap-1.5">
             <ModelSelector value={modelId} onChange={setModelId} taskType="analysis" className="w-48" />
-            <LLMCostBadge modelId={modelId} inputText="最近高价值笔记与知识单元" outputTokenEstimate={1500} />
           </div>
           <button
             onClick={handleAnalyze}

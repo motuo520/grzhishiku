@@ -6,7 +6,6 @@ import { useEmbodied } from '@/hooks/useEmbodied';
 import { useNotes } from '@/hooks/useNotes';
 import { useKnowledge } from '@/hooks/useKnowledge';
 import ModelSelector from '@/components/llm/ModelSelector';
-import LLMCostBadge from '@/components/llm/LLMCostBadge';
 import {
   ShieldAlert, Sparkles, Loader2, CheckCircle2, XCircle,
   History, ChevronRight, AlertTriangle
@@ -49,7 +48,7 @@ const DepthCheckPage: FC = () => {
   } | null>(null);
   const [modelId, setModelId] = useState<string>();
   const [sourceType, setSourceType] = useState<'text' | 'note' | 'knowledge_unit'>('text');
-  // 默认免费规则评估，不消耗余额；用户显式切到 AI 深度评估才计费
+  // 默认使用规则评估；用户可显式切到 AI 深度评估
   const [useAi, setUseAi] = useState(false);
 
   const { notes } = useNotes({ brain_side: brainSide === 'unknown' ? undefined : brainSide });
@@ -119,7 +118,6 @@ const DepthCheckPage: FC = () => {
         {useAi && (
           <div className="flex flex-col items-end gap-2">
             <ModelSelector value={modelId} onChange={setModelId} taskType="analysis" className="w-48" />
-            <LLMCostBadge modelId={modelId} inputText={form.content} outputTokenEstimate={200} />
           </div>
         )}
       </div>

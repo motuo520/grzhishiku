@@ -15,7 +15,7 @@ def test_depth_check_requires_content(client, auth_headers):
     assert response.status_code == 422
 
 
-@patch("app.api.v1.endpoints.embodied.billed_chat_completion")
+@patch("app.api.v1.endpoints.embodied.chat_completion")
 def test_depth_check_success(mock_llm, client, auth_headers, db_session):
     mock_llm.return_value = '{"depth_score": 0.8, "is_passed": true, "feedback": "有深度", "suggestions": ["继续保持"]}'
     response = client.post(
@@ -34,7 +34,7 @@ def test_depth_check_success(mock_llm, client, auth_headers, db_session):
     assert logs[0].content_type == "note"
 
 
-@patch("app.api.v1.endpoints.embodied.billed_chat_completion")
+@patch("app.api.v1.endpoints.embodied.chat_completion")
 def test_depth_check_success_with_chinese_preamble(mock_llm, client, auth_headers, db_session):
     """模型返回中文解释 + JSON 时，应能正确提取并解析。"""
     mock_llm.return_value = (
@@ -54,7 +54,7 @@ def test_depth_check_success_with_chinese_preamble(mock_llm, client, auth_header
     assert data["suggestions"] == ["补充案例", "加入反证思考"]
 
 
-@patch("app.api.v1.endpoints.embodied.billed_chat_completion")
+@patch("app.api.v1.endpoints.embodied.chat_completion")
 def test_depth_check_error_on_failure(mock_llm, client, auth_headers):
     mock_llm.side_effect = Exception("LLM failed")
     response = client.post(
@@ -127,7 +127,7 @@ def test_evolution_reflection_brain_side_filter(client, auth_headers):
     assert items[0]["brain_side"] == "personal"
 
 
-@patch("app.api.v1.endpoints.embodied.billed_chat_completion")
+@patch("app.api.v1.endpoints.embodied.chat_completion")
 def test_evolution_analysis(mock_llm, client, auth_headers):
     mock_llm.return_value = '{"summary": "整体在进化", "patterns": ["持续复盘"], "warnings": [], "next_steps": ["保持"]}'
     client.post(
@@ -146,7 +146,7 @@ def test_evolution_analysis(mock_llm, client, auth_headers):
     assert data["true_evolution_ratio"] == 1.0
 
 
-@patch("app.api.v1.endpoints.embodied.billed_chat_completion")
+@patch("app.api.v1.endpoints.embodied.chat_completion")
 def test_evolution_analysis_error_on_failure(mock_llm, client, auth_headers):
     mock_llm.side_effect = Exception("LLM failed")
     response = client.post(

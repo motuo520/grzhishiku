@@ -11,7 +11,6 @@ import { usePipelineStats, usePipelineItems, useReviewCollision, useCollideConce
 import type { PipelineItem } from '@/api/pipeline';
 import StageContextBanner from './components/StageContextBanner';
 import ModelSelector from '@/components/llm/ModelSelector';
-import LLMCostBadge from '@/components/llm/LLMCostBadge';
 import ErrorState from '@/components/ErrorState';
 import PipelineItemActions from './components/PipelineItemActions';
 
@@ -55,17 +54,6 @@ const CollisionPage: FC = () => {
     }
     return data;
   }, [items, searchQuery]);
-
-  const collideInputText = useMemo(() => {
-    return (
-      conceptItems
-        ?.filter((item) => item.content_subtype === 'concept')
-        .slice(0, 5)
-        .map((item) => `概念：${item.content_raw || item.title || ''}`)
-        .join('\n---\n')
-        .slice(0, 4000) || '对上一阶段核心概念执行跨领域碰撞，生成跨界洞见。'
-    );
-  }, [conceptItems]);
 
   const toggleSelect = (id: string) => {
     setSelectedIds((prev) => {
@@ -213,7 +201,6 @@ const CollisionPage: FC = () => {
       <div className="space-y-2">
         <div className="flex items-center justify-end gap-3">
           <ModelSelector value={modelId} onChange={setModelId} taskType="creative" className="w-48" />
-          <LLMCostBadge modelId={modelId} inputText={collideInputText} outputTokenEstimate={800} />
         </div>
         <StageContextBanner
           currentStage="collision"

@@ -18,7 +18,7 @@ from app.schemas.jianghu import (
     CognitivePotentialRequest, CognitivePotentialResponse, CognitivePotentialItem,
     ExperimentLogCreate, ExperimentLogUpdate, ExperimentLogResponse
 )
-from app.services.llm_billing_service import billed_chat_completion
+from app.services.llm_service import chat_completion
 
 router = APIRouter()
 
@@ -325,13 +325,11 @@ async def generate_daily_review(
         system_prompt = "You are a personal knowledge management coach. Always return valid JSON."
         if guide_ctx:
             system_prompt += "\n\n" + guide_ctx
-        raw = await billed_chat_completion(
-            db=db,
-            user_id=current_user.id,
-            model_id=request.preferred_model or "deepseek-v4-pro",
-            task_type="analysis",
+        raw = await chat_completion(
             prompt=prompt,
+            task_type="analysis",
             system_prompt=system_prompt,
+            preferred_model=request.preferred_model,
         )
 
         # Extract JSON from possible markdown code block
@@ -343,8 +341,6 @@ async def generate_daily_review(
 
         result = json.loads(json_str)
     except ValueError as e:
-        if "余额不足" in str(e):
-            raise HTTPException(status_code=402, detail=str(e))
         raise HTTPException(status_code=500, detail=f"AI 复盘生成失败：{str(e)}")
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"AI 复盘生成失败：{str(e)}")
@@ -486,13 +482,11 @@ async def check_relevance(
         system_prompt = "You are a personal knowledge filter. Always return valid JSON."
         if guide_ctx:
             system_prompt += "\n\n" + guide_ctx
-        raw = await billed_chat_completion(
-            db=db,
-            user_id=current_user.id,
-            model_id=request.preferred_model or "deepseek-v4-pro",
-            task_type="analysis",
+        raw = await chat_completion(
             prompt=prompt,
+            task_type="analysis",
             system_prompt=system_prompt,
+            preferred_model=request.preferred_model,
         )
 
         json_str = raw
@@ -515,8 +509,6 @@ async def check_relevance(
             suggested_action=action,
         )
     except ValueError as e:
-        if "余额不足" in str(e):
-            raise HTTPException(status_code=402, detail=str(e))
         raise HTTPException(status_code=500, detail=f"AI 关联度分析失败：{str(e)}")
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"AI 关联度分析失败：{str(e)}")
@@ -742,17 +734,13 @@ async def generate_context_guide(
 """
 
     try:
-        raw = await billed_chat_completion(
-            db=db,
-            user_id=current_user.id,
-            model_id=request.preferred_model or "deepseek-v4-pro",
-            task_type="analysis",
+        raw = await chat_completion(
             prompt=prompt,
+            task_type="analysis",
             system_prompt="You are a personal knowledge base context generator. Return concise, well-structured markdown without code fences.",
+            preferred_model=request.preferred_model,
         )
     except ValueError as e:
-        if "余额不足" in str(e):
-            raise HTTPException(status_code=402, detail=str(e))
         raise HTTPException(status_code=500, detail=f"AI 生成失败：{str(e)}")
 
     content = raw.strip()
@@ -846,13 +834,11 @@ async def analyze_cognitive_potential(
         system_prompt = "You are a cognitive asset analyst. Always return valid JSON with keys summary, sinkable, outputable, monetizable."
         if guide_ctx:
             system_prompt += "\n\n" + guide_ctx
-        raw = await billed_chat_completion(
-            db=db,
-            user_id=current_user.id,
-            model_id=request.preferred_model or "deepseek-v4-pro",
-            task_type="analysis",
+        raw = await chat_completion(
             prompt=prompt,
+            task_type="analysis",
             system_prompt=system_prompt,
+            preferred_model=request.preferred_model,
         )
 
         json_str = raw
@@ -863,8 +849,6 @@ async def analyze_cognitive_potential(
 
         result = json.loads(json_str)
     except ValueError as e:
-        if "余额不足" in str(e):
-            raise HTTPException(status_code=402, detail=str(e))
         raise HTTPException(status_code=500, detail=f"AI 分析失败：{str(e)}")
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"AI 分析失败：{str(e)}")

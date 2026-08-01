@@ -2,7 +2,6 @@ import { FC, useState } from 'react';
 import { useDailyReviews, useGenerateDailyReview, useUpdateDailyReview } from '@/hooks/useJianghu';
 import { useNavigation } from '@/store/navigation';
 import ModelSelector from '@/components/llm/ModelSelector';
-import LLMCostBadge from '@/components/llm/LLMCostBadge';
 import { Calendar, Loader2, Sparkles, CheckCircle2, AlertCircle, Lightbulb, Star, ChevronDown, ChevronUp } from 'lucide-react';
 
 const DailyReviewPage: FC = () => {
@@ -55,11 +54,6 @@ const DailyReviewPage: FC = () => {
               onChange={setModelId}
               taskType="analysis"
               className="w-48"
-            />
-            <LLMCostBadge
-              modelId={modelId}
-              inputText="今日输入内容汇总"
-              outputTokenEstimate={600}
             />
           </div>
           <button

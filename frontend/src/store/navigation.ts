@@ -161,7 +161,6 @@ export const MENU_DATA_SIMPLE: Record<SimpleMenuId, MenuData> = {
     description: '系统配置与个性化',
     defaultBrainSide: 'both',
     items: [
-      { id: 'desktop', label: '桌面端', description: 'Windows 客户端下载，数据不出本机', icon: 'Monitor', path: '/settings/desktop', brainSide: 'both' },
       { id: 'account', label: '账户', description: '个人信息与密码', icon: 'User', path: '/settings/account', brainSide: 'both' },
       { id: 'privacy', label: '隐私', description: '数据安全设置', icon: 'Lock', path: '/settings/privacy', brainSide: 'both' },
       { id: 'ai', label: 'AI 设置', description: '模型与偏好配置', icon: 'Cpu', path: '/settings/ai', brainSide: 'both' },
@@ -186,7 +185,7 @@ export const QUICK_ACTIONS_SIMPLE: Pick<SubMenuItem, 'id' | 'label' | 'icon' | '
 // ================================================================
 
 // ── 一级导航桶：把 12+ 个模块收敛成 4 个可理解的入口 ──
-// “我/设置/会员/账单”统一放在左侧边栏底部菜单，不再占用顶部导航
+// “我/设置”统一放在左侧边栏底部菜单，不再占用顶部导航
 export const TOP_NAV_BUCKETS_CLASSIC: TopNavBucket[] = [
   {
     id: 'inbox',
@@ -401,7 +400,6 @@ export const MENU_DATA_CLASSIC: Record<ClassicMenuId, MenuData> = {
     description: '系统配置与个性化',
     defaultBrainSide: 'both',
     items: [
-      { id: 'desktop', label: '桌面端', description: 'Windows 客户端下载，数据不出本机', icon: 'Monitor', path: '/settings/desktop', brainSide: 'both' },
       { id: 'account', label: '账户', description: '个人信息与密码', icon: 'User', path: '/settings/account', brainSide: 'both' },
       { id: 'privacy', label: '隐私', description: '数据安全设置', icon: 'Lock', path: '/settings/privacy', brainSide: 'both' },
       { id: 'ai', label: 'AI 设置', description: '模型与偏好配置', icon: 'Cpu', path: '/settings/ai', brainSide: 'both' },
@@ -452,7 +450,6 @@ export function useMenuData() {
 
 // ── 设置菜单：Sidebar 和 SettingsPage 共用（两版一致） ──
 export const SETTINGS_ITEMS: Pick<SubMenuItem, 'id' | 'label' | 'icon' | 'path'>[] = [
-  { id: 'desktop', label: '桌面端', icon: 'Monitor', path: '/settings/desktop' },
   { id: 'account', label: '账户', icon: 'User', path: '/settings/account' },
   { id: 'privacy', label: '隐私', icon: 'Lock', path: '/settings/privacy' },
   { id: 'ai', label: 'AI 设置', icon: 'Cpu', path: '/settings/ai' },
@@ -471,8 +468,6 @@ export function getMenuIdByPath(
   const segments = pathname.toLowerCase().split('/').filter(Boolean);
   const first = segments[0] as MenuId | string;
   if (menuData[first as MenuId]) return first as MenuId;
-  // 个人中心相关独立页面统一归入 settings 桶
-  if (['payment', 'topup', 'billing', 'business-plan'].includes(first)) return 'settings';
   return null;
 }
 

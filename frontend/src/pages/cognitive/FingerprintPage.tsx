@@ -15,14 +15,10 @@ import type { BrainSide } from '@/types';
 import BrainSideToggle from '@/components/brain/BrainSideToggle';
 import CognitiveHero from '@/components/brain/CognitiveHero';
 import ModelSelector from '@/components/llm/ModelSelector';
-import LLMCostBadge from '@/components/llm/LLMCostBadge';
 import AiErrorNotice from '@/components/llm/AiErrorNotice';
 
 
 const RADAR_COLORS = ['#58a6ff', '#3fb950', '#d29922', '#f85149', '#a371f7', '#39c5cf'];
-
-/** 指纹分析输入文本约 4000 tokens，用于费用估算。 */
-const FINGERPRINT_INPUT_TEXT = Array(4000).fill('文').join('');
 
 const DECISION_STYLE_CONFIG: Record<string, { color: string; icon: typeof Shield; label: string }> = {
   '谨慎型': { color: 'text-success', icon: Shield, label: '谨慎稳健' },
@@ -102,7 +98,6 @@ const FingerprintPage: FC = () => {
         <div className="flex flex-col items-end gap-2">
           <div className="flex items-center gap-3">
             <ModelSelector value={modelId} onChange={setModelId} taskType="analysis" className="w-48" />
-            <LLMCostBadge modelId={modelId} inputText={FINGERPRINT_INPUT_TEXT} outputTokenEstimate={600} />
           </div>
           <div className="flex items-center gap-3">
             <BrainSideToggle value={brainSide} onChange={setBrainSide} />

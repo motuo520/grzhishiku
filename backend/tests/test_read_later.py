@@ -14,8 +14,6 @@ def _make_user(db: Session, email: str) -> User:
         name="Test User",
         password_hash=get_password_hash("TestPass123"),
         status="active",
-        subscription_tier="free",
-        subscription_status="active",
     )
     db.add(user)
     db.commit()

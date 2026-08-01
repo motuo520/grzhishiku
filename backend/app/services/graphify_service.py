@@ -118,28 +118,13 @@ def export_user_corpus(db: Session, user_id: str) -> Dict[str, int]:
 
 
 def _graphify_env() -> Dict[str, str]:
-    from app.core.config import settings as app_settings
     env = dict(os.environ)
-    # graphify reads its own env var names; map server-level keys from app config
-    if app_settings.DEEPSEEK_API_KEY and "DEEPSEEK_API_KEY" not in env:
-        env["DEEPSEEK_API_KEY"] = app_settings.DEEPSEEK_API_KEY
-    if app_settings.KIMI_API_KEY:
-        env.setdefault("MOONSHOT_API_KEY", app_settings.KIMI_API_KEY)
-    # deepseek-v4-flash is a reasoning model; thinking prose breaks JSON extraction
+    # Reasoning-model thinking prose breaks JSON extraction; keep it disabled.
     env.setdefault("GRAPHIFY_DISABLE_THINKING", "1")
     return env
 
 
 def _pick_backend() -> str:
-    from app.core.config import settings as app_settings
-    if app_settings.DEEPSEEK_API_KEY:
-        return "deepseek"
-    if app_settings.KIMI_API_KEY:
-        return "kimi"
-    if os.environ.get("OPENAI_API_KEY"):
-        return "openai"
-    if os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY"):
-        return "gemini"
     return "ollama"
 
 
@@ -339,7 +324,7 @@ def _ground_hub_concepts(user_id: str, nodes: List[Dict[str, Any]]) -> Dict[str,
 
 def sync_edges_from_build(db: Session, user_id: str) -> Dict[str, int]:
     """Write the built graphify graph back into graph_edges so the rest of the
-    product (collision pairing, brain stats, graph APIs) can use deepseek's
+    product (collision pairing, brain stats, graph APIs) can use graphify's
     semantic relations instead of only keyword/embedding heuristics.
 
     graphify links connect concept nodes; both endpoints are resolved back to
@@ -444,8 +429,7 @@ async def query_graph(user_id: str, question: str) -> Dict[str, Any]:
 
     # graphify CLI 的 query 只做检索（节点/边列表），自然语言答案由这里
     # 用 LLM 基于检索结果组织——要求引用具体条目，不允许编造
-    from app.services.llm_billing_service import billed_chat_completion
-    from app.core.database import SessionLocal
+    from app.services.llm_service import chat_completion
 
     prompt = (
         f"用户问题：{question}\n\n"
@@ -457,18 +441,11 @@ async def query_graph(user_id: str, question: str) -> Dict[str, Any]:
         "- 若检索结果与问题无关，如实说明知识库中暂未找到相关内容\n"
         "- 回答控制在 300 字以内，条理清晰\n"
     )
-    db = SessionLocal()
-    try:
-        answer = await billed_chat_completion(
-            db=db,
-            user_id=user_id,
-            model_id="deepseek-v4-flash",
-            task_type="graph_query",
-            prompt=prompt,
-            system_prompt="你是个人知识库问答助手，只根据给定的检索结果回答，答案必须带条目引用。",
-        )
-    finally:
-        db.close()
+    answer = await chat_completion(
+        prompt=prompt,
+        task_type="graph_query",
+        system_prompt="你是个人知识库问答助手，只根据给定的检索结果回答，答案必须带条目引用。",
+    )
     answer = answer.strip() or "暂时无法生成回答，请重试。"
     return {"ok": True, "result": answer, "evidence": trace}
 

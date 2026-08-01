@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
-from sqlalchemy import or_, func
+from sqlalchemy import or_
 from typing import List, Optional
 from datetime import datetime
 import uuid
@@ -8,7 +8,6 @@ import uuid
 from app.core.database import get_db
 from app.core.security import get_current_user
 from app.core.xss_sanitizer import sanitize_clip_input, sanitize_knowledge_input
-from app.core.feature_guard import FeatureGuard
 from app.services.quota_service import QuotaService
 from app.models.base import User, BrowserClip, KnowledgeUnit, content_tags
 from app.schemas.clip import ClipCreate, ClipResponse, ClipUpdate
@@ -100,18 +99,6 @@ async def create_clip(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    # Feature & quota checks
-    guard = FeatureGuard(db, current_user)
-
-    now = datetime.utcnow()
-    month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-    clip_month_count = db.query(func.count(BrowserClip.id)).filter(
-        BrowserClip.user_id == current_user.id,
-        BrowserClip.status == "active",
-        BrowserClip.created_at >= month_start,
-    ).scalar() or 0
-    guard.check_limit("clips_per_month", clip_month_count)
-
     quota = QuotaService(db)
     safe_title, safe_excerpt, safe_full_text, safe_url = sanitize_clip_input(
         clip_data.title, clip_data.excerpt, clip_data.full_text, clip_data.url
@@ -121,7 +108,6 @@ async def create_clip(
         + quota.estimate_storage_bytes(safe_excerpt or "")
         + quota.estimate_storage_bytes(safe_full_text or "")
     )
-    quota.check_storage_before_create(current_user.id, additional_bytes)
 
     clip = BrowserClip(
         id=str(uuid.uuid4()),

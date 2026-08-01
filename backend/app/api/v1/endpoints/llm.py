@@ -5,14 +5,9 @@ from typing import Optional, List
 from sqlalchemy.orm import Session
 import json
 
-from app.services.llm_service import llm_service, LLMRouterService, ModelProvider
-from app.services.llm_billing_service import (
-    billed_stream, billed_chat_completion, billed_embed, billed_embed_batch,
-    get_balance_summary, ConcurrentModificationError,
-)
-from app.services.llm_cost_service import LLMCostService
+from app.services.llm_service import llm_service, chat_completion, LLMRouterService, ModelProvider
+from app.core.config import settings
 from app.core.security import get_current_user, get_current_user_optional
-from app.core.feature_guard import FeatureGuard
 from app.models.base import User, KnowledgeUnit
 from app.core.database import get_db
 from app.schemas.llm import (
@@ -276,56 +271,20 @@ async def chat(
     # User-supplied system prompt takes precedence if provided.
     final_system_prompt = request.system_prompt or rag_system_prompt
 
-    route = llm_service.resolve_route(
-        message=request.message,
-        history=request.history,
-        preferred_model=request.preferred_model,
-        user_settings=user_settings,
-    )
-    model_id = route.get("model_name") or route.get("model_id") or request.preferred_model or "ollama-qwen2.5-0.5b"
-
-    # 桌面端：外部模型（非 ollama）需云端存储会员
-    from app.core.desktop_gate import require_external_models_member
-    from app.models.llm_billing import LLMModel as _LLMModel
-    _model_row = db.query(_LLMModel).filter(_LLMModel.id == model_id).first()
-    _provider = (_model_row.provider if _model_row else None) or route.get("provider") or (
-        model_id.split("-", 1)[0] if model_id else "ollama"
-    )
-    await require_external_models_member(str(_provider), db=db, user_id=current_user.id)
-
-    input_messages = []
-    if final_system_prompt:
-        input_messages.append({"role": "system", "content": final_system_prompt})
-    if request.history:
-        input_messages.extend(request.history)
-    input_messages.append({"role": "user", "content": request.message})
-
     async def event_generator():
         yield "data: " + '{"type": "start"}' + "\n\n"
         try:
-            async with billed_stream(
-                db=db,
-                user_id=current_user.id,
-                model_id=model_id,
-                task_type=request.task_type or "chat",
-                input_messages=input_messages,
-            ) as streamer:
-                async for chunk in streamer.wrap(
-                    llm_service.chat(
-                        message=request.message,
-                        history=request.history,
-                        brain_side=request.brain_side,
-                        sensitivity=request.sensitivity,
-                        task_type=request.task_type,
-                        preferred_model=request.preferred_model,
-                        system_prompt=final_system_prompt,
-                        user_settings=user_settings,
-                        db=db,
-                    )
-                ):
-                    yield "data: " + json.dumps({"type": "chunk", "content": chunk}) + "\n\n"
-        except ValueError as e:
-            yield "data: " + json.dumps({"type": "error", "message": str(e)}) + "\n\n"
+            async for chunk in llm_service.chat(
+                message=request.message,
+                history=request.history,
+                brain_side=request.brain_side,
+                sensitivity=request.sensitivity,
+                task_type=request.task_type,
+                preferred_model=request.preferred_model,
+                system_prompt=final_system_prompt,
+                user_settings=user_settings,
+            ):
+                yield "data: " + json.dumps({"type": "chunk", "content": chunk}) + "\n\n"
         except Exception as e:
             yield "data: " + json.dumps({"type": "error", "message": str(e)}) + "\n\n"
 
@@ -345,7 +304,7 @@ async def chat(
     )
 
 
-@router.post("/complete", summary="Complete prompt", description="Non-streaming text completion with billing.")
+@router.post("/complete", summary="Complete prompt", description="Non-streaming text completion.")
 async def complete(
     request: CompleteRequest,
     current_user: User = Depends(get_current_user),
@@ -354,32 +313,24 @@ async def complete(
     route = LLMRouterService.route(request.prompt, preferred_model=request.model)
     model_id = route.get("model_name") or route.get("model") or request.model or "ollama-qwen2.5-0.5b"
     try:
-        text = await billed_chat_completion(
-            db=db,
-            user_id=current_user.id,
-            model_id=model_id,
-            task_type=request.task_type,
+        text = await chat_completion(
             prompt=request.prompt,
+            task_type=request.task_type,
             system_prompt=request.system_prompt,
+            preferred_model=request.model,
         )
-    except ConcurrentModificationError as e:
-        raise HTTPException(status_code=409, detail="余额被并发修改，请重试")
     except ValueError as e:
-        if "余额不足" in str(e):
-            raise HTTPException(status_code=402, detail=str(e))
         raise HTTPException(status_code=500, detail=str(e))
 
     return CompleteResponse(text=text.strip(), model_used=model_id)
 
 
-@router.post("/summarize", summary="Summarize text", description="Summarize text using the LLM with billing.")
+@router.post("/summarize", summary="Summarize text", description="Summarize text using the LLM.")
 async def summarize(
     request: SummarizeRequest,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    FeatureGuard(db, current_user).require_feature("ai_summary")
-
     length_hint = {
         "short": "100字以内",
         "medium": "200-300字",
@@ -392,18 +343,12 @@ async def summarize(
     route = LLMRouterService.route(prompt, preferred_model=request.model)
     model_id = route.get("model_name") or route.get("model") or request.model or "ollama-qwen2.5-0.5b"
     try:
-        summary = await billed_chat_completion(
-            db=db,
-            user_id=current_user.id,
-            model_id=model_id,
-            task_type="summarize",
+        summary = await chat_completion(
             prompt=prompt,
+            task_type="summarize",
+            preferred_model=request.model,
         )
-    except ConcurrentModificationError as e:
-        raise HTTPException(status_code=409, detail="余额被并发修改，请重试")
     except ValueError as e:
-        if "余额不足" in str(e):
-            raise HTTPException(status_code=402, detail=str(e))
         raise HTTPException(status_code=500, detail=str(e))
 
     summary = summary.strip()
@@ -417,14 +362,12 @@ async def summarize(
     )
 
 
-@router.post("/extract-tags", summary="Extract tags", description="Extract tags and suggest categories from text with billing.")
+@router.post("/extract-tags", summary="Extract tags", description="Extract tags and suggest categories from text.")
 async def extract_tags(
     request: ExtractTagsRequest,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    FeatureGuard(db, current_user).require_feature("ai_summary")
-
     categories_hint = "并给出每个标签所属的类别" if request.suggest_categories else ""
     prompt = (
         f"请从以下文本中提取最多 {request.max_tags} 个关键词作为标签{categories_hint}。"
@@ -433,18 +376,12 @@ async def extract_tags(
     route = LLMRouterService.route(prompt, preferred_model=request.model)
     model_id = route.get("model_name") or route.get("model") or request.model or "ollama-qwen2.5-0.5b"
     try:
-        raw = await billed_chat_completion(
-            db=db,
-            user_id=current_user.id,
-            model_id=model_id,
-            task_type="tag_extraction",
+        raw = await chat_completion(
             prompt=prompt,
+            task_type="tag_extraction",
+            preferred_model=request.model,
         )
-    except ConcurrentModificationError as e:
-        raise HTTPException(status_code=409, detail="余额被并发修改，请重试")
     except ValueError as e:
-        if "余额不足" in str(e):
-            raise HTTPException(status_code=402, detail=str(e))
         raise HTTPException(status_code=500, detail=str(e))
 
     lines = [line.strip() for line in raw.strip().split("\n") if line.strip()]
@@ -455,26 +392,14 @@ async def extract_tags(
     return ExtractTagsResponse(tags=tags, categories=categories, model_used=model_id)
 
 
-@router.post("/embed", summary="Generate embedding", description="Generate text embedding with per-token billing.")
+@router.post("/embed", summary="Generate embedding", description="Generate text embedding.")
 async def embed(
     request: EmbedRequest,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    model_id = request.model or "ollama-qwen2.5-0.5b"
-    try:
-        embedding = await billed_embed(
-            db=db,
-            user_id=current_user.id,
-            model_id=model_id,
-            text=request.text,
-        )
-    except ConcurrentModificationError as e:
-        raise HTTPException(status_code=409, detail="余额被并发修改，请重试")
-    except ValueError as e:
-        if "余额不足" in str(e):
-            raise HTTPException(status_code=402, detail=str(e))
-        raise HTTPException(status_code=500, detail=str(e))
+    model_id = request.model or f"ollama-{getattr(settings, 'OLLAMA_EMBED_MODEL', 'nomic-embed-text')}"
+    embedding = await llm_service.embed(request.text)
 
     dimensions = len(embedding)
 
@@ -500,26 +425,14 @@ async def embed(
     }
 
 
-@router.post("/embed-batch", summary="Batch embedding", description="Generate embeddings for multiple texts with billing.")
+@router.post("/embed-batch", summary="Batch embedding", description="Generate embeddings for multiple texts.")
 async def embed_batch(
     request: EmbedBatchRequest,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    model_id = request.model or "ollama-qwen2.5-0.5b"
-    try:
-        embeddings = await billed_embed_batch(
-            db=db,
-            user_id=current_user.id,
-            model_id=model_id,
-            texts=request.texts,
-        )
-    except ConcurrentModificationError as e:
-        raise HTTPException(status_code=409, detail="余额被并发修改，请重试")
-    except ValueError as e:
-        if "余额不足" in str(e):
-            raise HTTPException(status_code=402, detail=str(e))
-        raise HTTPException(status_code=500, detail=str(e))
+    model_id = request.model or f"ollama-{getattr(settings, 'OLLAMA_EMBED_MODEL', 'nomic-embed-text')}"
+    embeddings = await llm_service.batch_embed(request.texts)
 
     dimensions = len(embeddings[0]) if embeddings else 0
     return {
@@ -576,33 +489,27 @@ async def list_models(current_user: User = Depends(get_current_user)):
     return {"models": models}
 
 
-@router.get("/models/catalog", summary="Model catalog", description="List active LLM models from the billing catalog with pricing.")
+@router.get("/models/catalog", summary="Model catalog", description="List available local (Ollama) models.")
 async def model_catalog(
     current_user: User = Depends(get_current_user_optional),
-    db: Session = Depends(get_db),
 ):
-    """Return the active model catalog managed by admins."""
-    from app.core.config_loader import get_system_config
-    cost_svc = LLMCostService(db)
-    models = cost_svc.get_active_models()
-    # 平台计费开关关闭时（开源/自托管默认），不展示平台计价模型，只留本地/BYOK
-    if not get_system_config(db).is_feature_enabled("platform_billing_enabled", default=False):
-        models = [m for m in models if not m.is_system]
+    """Return the catalog of local Ollama models."""
+    from app.services.llm_service import ModelConfig
     return {
         "models": [
             {
-                "id": m.id,
-                "name": m.name,
-                "provider": m.provider,
-                "provider_model_id": m.provider_model_id,
-                "description": m.description,
-                "is_system": m.is_system,
-                "supports_streaming": m.supports_streaming,
-                "context_length": m.context_length,
-                "price_input_per_1k": float(m.price_input_per_1k or 0),
-                "price_output_per_1k": float(m.price_output_per_1k or 0),
-                "currency": m.currency,
+                "id": model_id,
+                "name": cfg["name"],
+                "provider": cfg["provider"].value,
+                "provider_model_id": cfg["model_id"],
+                "description": cfg["description"],
+                "is_system": False,
+                "supports_streaming": True,
+                "context_length": cfg["context_length"],
+                "price_input_per_1k": 0.0,
+                "price_output_per_1k": 0.0,
+                "currency": "CNY",
             }
-            for m in models
+            for model_id, cfg in ModelConfig.MODELS.items()
         ]
     }

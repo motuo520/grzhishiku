@@ -1,57 +1,22 @@
 import { FC, useState, useEffect, useCallback } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { settingsApi, UserSettings } from '@/api/settings';
-import { testProvider, getLLMStatus, getOllamaModels, getModelCatalog, LLMModelCatalogItem } from '@/api/llm';
-import { llmPriceTier } from '@/utils/llmTier';
-import { cloudAccountApi, isDesktop } from '@/api/unifiedSync';
+import { getLLMStatus, getOllamaModels, getModelCatalog } from '@/api/llm';
 import {
-  Brain, Eye, EyeOff, Loader2, Check, AlertTriangle, Wifi, WifiOff,
-  Server, KeyRound, Sparkles, Globe, Zap,
+  Brain, Loader2, Check, AlertTriangle,
+  Server,
   Bot, TestTube, ArrowRightCircle
 } from 'lucide-react';
-import api, { apiClient } from '@/api/client';
+import { apiClient } from '@/api/client';
 import { useSettings } from '@/store/settings';
 
 const PROVIDER_ICONS: Record<string, React.ElementType> = {
   ollama: Server,
-  kimi: Globe,
-  deepseek: Sparkles,
-  opencode: Brain,
 };
-
-const EXTERNAL_PROVIDERS = [
-  { slug: 'kimi', name: 'Kimi (Moonshot)', keyLabel: 'Kimi API Key', field: 'kimi_api_key', icon: Globe },
-  { slug: 'deepseek', name: 'DeepSeek', keyLabel: 'DeepSeek API Key', field: 'deepseek_api_key', icon: Sparkles },
-  { slug: 'opencode', name: 'OpenCode', keyLabel: 'OpenCode API Key', field: 'opencode_api_key', icon: Brain },
-  { slug: 'glm', name: 'GLM (智谱)', keyLabel: 'GLM API Key', field: 'glm_api_key', icon: Sparkles },
-  { slug: 'dashscope', name: '阿里 DashScope', keyLabel: 'DashScope API Key', field: 'dashscope_api_key', icon: Globe },
-  { slug: 'openai', name: 'OpenAI', keyLabel: 'OpenAI API Key', field: 'openai_api_key', icon: Brain },
-  { slug: 'anthropic', name: 'Anthropic', keyLabel: 'Anthropic API Key', field: 'anthropic_api_key', icon: Brain },
-  { slug: 'google', name: 'Google (Gemini)', keyLabel: 'Google API Key', field: 'google_api_key', icon: Globe },
-];
 
 const FALLBACK_OLLAMA_MODELS = ['qwen2.5:0.5b'];
 
-const MEMBER_TIERS = ['storage', 'pro', 'team', 'enterprise'];
-
 const AISettings: FC = () => {
-  // 桌面端外部模型会员门：BYOK 需云端存储会员
-  const desktop = isDesktop();
-  const [cloudTier, setCloudTier] = useState<string | null>(null);
-  useEffect(() => {
-    if (!desktop) return;
-    cloudAccountApi.status()
-      .then((res) => setCloudTier(res.data.account?.tier || null))
-      .catch(() => setCloudTier(null));
-  }, [desktop]);
-  const [localMember, setLocalMember] = useState(false);
-  useEffect(() => {
-    if (!desktop) return;
-    api.get('/api/v1/billing/check-feature/cloud_sync')
-      .then((res: any) => setLocalMember(Boolean(res.data?.has_access)))
-      .catch(() => setLocalMember(false));
-  }, [desktop]);
-  const externalLocked = desktop && !localMember && !(cloudTier && MEMBER_TIERS.includes(cloudTier));
   const [selectedModel, setSelectedModel] = useState('ollama');
   const [temperature, setTemperature] = useState(0.7);
   const [maxTokens, setMaxTokens] = useState(2048);
@@ -59,19 +24,12 @@ const AISettings: FC = () => {
   const [modelRoutingEnabled, setModelRoutingEnabled] = useState(true);
   const [ollamaUrl, setOllamaUrl] = useState('http://localhost:11434');
   const [ollamaModel, setOllamaModel] = useState('qwen2.5:0.5b');
-  const [apiKeys, setApiKeys] = useState<Record<string, string>>({
-    kimi: '',
-    deepseek: '',
-    opencode: '',
-  });
 
   const setActiveProvider = useSettings((state) => state.setActiveProvider);
   const queryClient = useQueryClient();
 
   // UI state
-  const [showKeyMap, setShowKeyMap] = useState<Record<string, boolean>>({});
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
-  const [testResults, setTestResults] = useState<Record<string, { status: 'loading' | 'success' | 'error'; message?: string }>>({});
 
   // Routing preview
   const [previewText, setPreviewText] = useState('');
@@ -133,16 +91,6 @@ const AISettings: FC = () => {
       setModelRoutingEnabled(settings.ai.model_routing_enabled ?? true);
       setOllamaUrl(settings.ai.ollama_url || 'http://localhost:11434');
       setOllamaModel(settings.ai.ollama_model || 'qwen2.5:0.5b');
-      setApiKeys({
-        kimi: settings.ai.kimi_api_key || '',
-        deepseek: settings.ai.deepseek_api_key || '',
-        opencode: settings.ai.opencode_api_key || '',
-        glm: settings.ai.glm_api_key || '',
-        dashscope: settings.ai.dashscope_api_key || '',
-        openai: settings.ai.openai_api_key || '',
-        anthropic: settings.ai.anthropic_api_key || '',
-        google: settings.ai.google_api_key || '',
-      });
     }
   }, [settings, catalog]);
 
@@ -169,13 +117,6 @@ const AISettings: FC = () => {
       return;
     }
 
-    const requiresKey = selectedConfig.provider !== 'ollama';
-    if (requiresKey && !apiKeys[selectedConfig.provider]?.trim()) {
-      const providerName = EXTERNAL_PROVIDERS.find((p) => p.slug === selectedConfig.provider)?.name || selectedConfig.provider;
-      showToast(`请填写 ${providerName} 的 API Key`, 'error');
-      return;
-    }
-
     if (temperature < 0 || temperature > 1) {
       showToast('Temperature 必须在 0 到 1 之间', 'error');
       return;
@@ -189,13 +130,6 @@ const AISettings: FC = () => {
     const provider = selectedConfig.provider;
     const activeModel = provider === 'ollama' ? ollamaModel : selectedConfig.provider_model_id;
 
-    // 密钥处理：掩码值（****...）或留空表示不改动，由后端保留原值；仅输入新值才提交
-    const keyPayload = (slug: string) => {
-      const v = apiKeys[slug]?.trim();
-      if (!v || v.startsWith('****')) return undefined;
-      return v;
-    };
-
     saveMutation.mutate({
       ai: {
         model: selectedModel,
@@ -207,58 +141,8 @@ const AISettings: FC = () => {
         model_routing_enabled: modelRoutingEnabled,
         ollama_url: ollamaUrl,
         ollama_model: ollamaModel,
-        kimi_api_key: keyPayload('kimi'),
-        deepseek_api_key: keyPayload('deepseek'),
-        opencode_api_key: keyPayload('opencode'),
-        glm_api_key: keyPayload('glm'),
-        dashscope_api_key: keyPayload('dashscope'),
-        openai_api_key: keyPayload('openai'),
-        anthropic_api_key: keyPayload('anthropic'),
-        google_api_key: keyPayload('google'),
       },
     });
-  };
-
-  const handleClearKey = async (slug: string, field: string, name: string) => {
-    try {
-      await settingsApi.updateSettings({ ai: { [field]: '' } as Partial<UserSettings['ai']> });
-      updateApiKey(slug, '');
-      queryClient.invalidateQueries({ queryKey: ['settings', 'ai'] });
-      showToast(`${name} 的 API Key 已清除`, 'success');
-    } catch (err: any) {
-      showToast(err?.message || '清除失败', 'error');
-    }
-  };
-
-  const toggleKeyVisibility = (slug: string) => {
-    setShowKeyMap((prev) => ({ ...prev, [slug]: !prev[slug] }));
-  };
-
-  const updateApiKey = (slug: string, value: string) => {
-    setApiKeys((prev) => ({ ...prev, [slug]: value }));
-  };
-
-  const handleTest = async (providerSlug: string) => {
-    setTestResults((prev) => ({ ...prev, [providerSlug]: { status: 'loading' } }));
-    try {
-      const result = await testProvider(providerSlug);
-      if (result.connected) {
-        setTestResults((prev) => ({
-          ...prev,
-          [providerSlug]: { status: 'success', message: `已连接 · 延迟 ${result.latency}ms` },
-        }));
-      } else {
-        setTestResults((prev) => ({
-          ...prev,
-          [providerSlug]: { status: 'error', message: '未连接（请检查 API Key）' },
-        }));
-      }
-    } catch (e: any) {
-      setTestResults((prev) => ({
-        ...prev,
-        [providerSlug]: { status: 'error', message: e?.message || '测试失败' },
-      }));
-    }
   };
 
   const runRoutePreview = useCallback(async () => {
@@ -343,11 +227,6 @@ const AISettings: FC = () => {
                       <Icon size={16} className={isSelected ? 'text-fusion-primary' : 'text-text-secondary'} />
                       <div className="text-sm font-medium text-text-primary">{m.name}</div>
                     </div>
-                    {m.price_input_per_1k > 0 && (
-                      <span className={`text-[10px] px-1.5 py-0.5 rounded-[2px] border ${llmPriceTier(m).className}`}>
-                        {llmPriceTier(m).label}
-                      </span>
-                    )}
                   </div>
                   <div className="text-xs text-text-secondary mt-0.5">{m.description}</div>
                 </div>
@@ -455,107 +334,6 @@ const AISettings: FC = () => {
         </div>
       </section>
 
-      {/* API Key Configuration */}
-      <section className="glass-card p-6">
-        <h2 className="text-lg font-semibold text-text-primary mb-4 flex items-center gap-2">
-          <KeyRound size={18} className="text-warning" />
-          API Key 配置
-        </h2>
-        <p className="text-xs text-text-secondary mb-4">
-          API Key 保存在服务端用户设置中，仅用于后端调用外部 AI 服务，不会在前端页面暴露。
-        </p>
-
-        {externalLocked && (
-          <div className="border border-warning/30 bg-warning/5 rounded-[2px] p-5 mb-4">
-            <div className="text-sm font-semibold text-text-primary mb-1.5">外部模型为存储会员功能（¥9.9/月）</div>
-            <p className="text-xs text-text-secondary leading-relaxed mb-3">
-              在桌面端使用 DeepSeek / Kimi / OpenCode 等外部模型（含自填 Key），需要存储会员。
-              token 用量走你自己的 Key 另计。本地模型（Ollama）不受限制，可继续免费使用。
-            </p>
-            <div className="flex flex-wrap gap-2.5">
-              <a href="/payment" className="btn-primary inline-flex items-center gap-2 px-4 py-2 text-xs">
-                本机开通会员 ¥9.9/月
-              </a>
-              <a href="/settings/sync" className="btn-secondary inline-flex items-center gap-2 px-4 py-2 text-xs">
-                已是云端会员？绑定云端账号
-              </a>
-            </div>
-          </div>
-        )}
-
-        <div className={externalLocked ? 'space-y-4 opacity-40 pointer-events-none select-none' : 'space-y-4'}>
-          {EXTERNAL_PROVIDERS.map((p) => {
-            const Icon = p.icon;
-            const keyValue = apiKeys[p.slug] || '';
-            const testResult = testResults[p.slug];
-            const isVisible = showKeyMap[p.slug] || false;
-
-            return (
-              <div key={p.slug} className="border border-border-color rounded-[2px] p-4 bg-bg-primary/50">
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-2">
-                    <Icon size={16} className="text-text-secondary" />
-                    <span className="text-sm font-medium text-text-primary">{p.name}</span>
-                  </div>
-                  <button
-                    onClick={() => handleTest(p.slug)}
-                    disabled={testResult?.status === 'loading'}
-                    className="text-xs px-2.5 py-1 rounded bg-bg-tertiary border border-border-color text-text-primary hover:bg-bg-tertiary transition-colors flex items-center gap-1 disabled:opacity-50"
-                  >
-                    {testResult?.status === 'loading' ? (
-                      <Loader2 size={12} className="animate-spin" />
-                    ) : testResult?.status === 'success' ? (
-                      <Wifi size={12} className="text-success" />
-                    ) : testResult?.status === 'error' ? (
-                      <WifiOff size={12} className="text-danger" />
-                    ) : (
-                      <TestTube size={12} />
-                    )}
-                    测试连接
-                  </button>
-                </div>
-
-                {testResult?.message && (
-                  <div className={`text-xs mb-2 px-2 py-1 rounded ${
-                    testResult.status === 'success'
-                      ? 'bg-success/10 text-success'
-                      : 'bg-danger/10 text-danger'
-                  }`}>
-                    {testResult.message}
-                  </div>
-                )}
-
-                <div className="relative max-w-md">
-                  <input
-                    type={isVisible ? 'text' : 'password'}
-                    className="w-full bg-bg-tertiary border border-border-color rounded-[2px] px-3 py-2 pr-10 text-sm text-text-primary placeholder-text-secondary focus:outline-none focus:border-info"
-                    value={keyValue}
-                    onChange={(e) => updateApiKey(p.slug, e.target.value)}
-                    placeholder={p.keyLabel}
-                  />
-                  <button
-                    onClick={() => toggleKeyVisibility(p.slug)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-text-secondary hover:text-text-primary"
-                  >
-                    {isVisible ? <EyeOff size={16} /> : <Eye size={16} />}
-                  </button>
-                </div>
-                {keyValue.startsWith('****') && (
-                  <div className="flex items-center justify-between max-w-md mt-1.5">
-                    <p className="text-xs text-text-muted">已保存（掩码显示），输入新 Key 以更换</p>
-                    <button
-                      onClick={() => handleClearKey(p.slug, p.field, p.name)}
-                      className="text-xs text-danger hover:underline shrink-0 ml-3"
-                    >
-                      清除 Key
-                    </button>
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      </section>
 
       {/* Temperature & Max Tokens */}
       <section className="glass-card p-6">
@@ -625,7 +403,7 @@ const AISettings: FC = () => {
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-sm font-semibold text-text-primary">启用智能路由</h2>
-            <p className="text-xs text-text-secondary mt-1">根据内容特征自动选择最合适的模型（如敏感内容用本地模型、代码用 Kimi、推理用 DeepSeek）</p>
+            <p className="text-xs text-text-secondary mt-1">根据内容特征自动选择最合适的模型（如敏感内容优先用本地模型）</p>
           </div>
           <button
             onClick={() => setModelRoutingEnabled(!modelRoutingEnabled)}

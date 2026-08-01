@@ -16,8 +16,7 @@ from app.models.base import (
 )
 from app.schemas.note import NoteResponse
 from app.schemas.knowledge import KnowledgeUnitResponse
-from app.services.llm_service import llm_service, LLMRouterService
-from app.services.llm_billing_service import billed_chat_completion, ConcurrentModificationError
+from app.services.llm_service import chat_completion
 from app.services import tag_service
 from pydantic import BaseModel, Field
 
@@ -835,16 +834,11 @@ async def extract_concepts(
     user_settings = json.loads(current_user.settings or '{}')
 
     try:
-        route = LLMRouterService.route(prompt, preferred_model=request.preferred_model)
-        model_id = route.get("model_name") or route.get("model") or "ollama-qwen2.5-0.5b"
-
-        raw = await billed_chat_completion(
-            db=db,
-            user_id=current_user.id,
-            model_id=model_id,
-            task_type="analysis",
+        raw = await chat_completion(
             prompt=prompt,
+            task_type="analysis",
             system_prompt="You are a knowledge extraction engine. Respond with ONLY a raw JSON array like [{\"concept\": \"...\", \"definition\": \"...\", \"discipline\": \"...\"}]. No markdown, no code fences, no commentary, no numbered lists. If nothing qualifies, return [].",
+            preferred_model=request.preferred_model,
         )
         raw = raw.strip()
         logger.info(f"Extract concepts LLM raw response length={len(raw)} preview={raw[:200]!r}")
@@ -952,13 +946,8 @@ async def extract_concepts(
                 logger.exception(f"Failed to generate embedding for concept {c['id']}")
 
         return ExtractResponse(source_id=content_id, source_content_type=content_type, concepts=created)
-    except ConcurrentModificationError as e:
-        db.rollback()
-        raise HTTPException(status_code=409, detail="余额被并发修改，请重试")
     except ValueError as e:
         db.rollback()
-        if "余额不足" in str(e):
-            raise HTTPException(status_code=402, detail=str(e))
         raise HTTPException(
             status_code=500,
             detail=f"Concept extraction failed: {str(e)} | raw_preview={raw[:500] if 'raw' in locals() and raw else '<empty response>'}",
@@ -1030,7 +1019,7 @@ async def collide_concepts(
         except Exception:
             pass
 
-    # Prefer graphify semantic partners: deepseek-judged "related but distinct"
+    # Prefer graphify semantic partners: LLM-judged "related but distinct"
     # pairs are better collision material than raw embedding similarity. Falls
     # back to embedding candidates when the user has no synced graphify edges
     # (e.g. knowledge graph never built).
@@ -1107,16 +1096,11 @@ async def collide_concepts(
     user_settings = json.loads(current_user.settings or '{}')
 
     try:
-        route = LLMRouterService.route(prompt, preferred_model=request.preferred_model)
-        model_id = route.get("model_name") or route.get("model") or "ollama-qwen2.5-0.5b"
-
-        raw = await billed_chat_completion(
-            db=db,
-            user_id=current_user.id,
-            model_id=model_id,
-            task_type="creative",
+        raw = await chat_completion(
             prompt=prompt,
+            task_type="creative",
             system_prompt="You are a cross-domain insight generator. Always return valid JSON.",
+            preferred_model=request.preferred_model,
         )
         raw = raw.strip()
 
@@ -1209,13 +1193,8 @@ async def collide_concepts(
             derivation=result.get("derivation", ""),
             pairing=pairing,
         )
-    except ConcurrentModificationError as e:
-        db.rollback()
-        raise HTTPException(status_code=409, detail="余额被并发修改，请重试")
     except ValueError as e:
         db.rollback()
-        if "余额不足" in str(e):
-            raise HTTPException(status_code=402, detail=str(e))
         raise HTTPException(
             status_code=500,
             detail=f"Concept collision failed: {str(e)} | raw_preview={raw[:500] if 'raw' in locals() and raw else '<empty response>'}",

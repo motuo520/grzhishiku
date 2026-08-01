@@ -16,7 +16,6 @@ from app.core.admin_permissions import Permission, require_permission
 from app.models.base import AdminUser, SystemConfig as SysConfigModel
 from app.api.admin.endpoints.auth import get_current_admin
 from app.services.email_sender import EmailConfig
-from app.services.payment_providers.factory import init_payment_factory
 
 router = APIRouter()
 
@@ -89,34 +88,6 @@ class MaintenanceMode(BaseModel):
     resume_at: Optional[str] = None  # alias for frontend compatibility
 
 
-class PaymentProviderConfig(BaseModel):
-    enabled: bool = False
-    # Alipay
-    app_id: str = ""
-    private_key: str = ""
-    public_key: str = ""
-    sandbox: bool = True
-    # WeChat
-    mchid: str = ""
-    appid: str = ""
-    api_key: str = ""
-    cert_serial_no: str = ""
-    cert_private_key: str = ""
-    # Stripe
-    secret_key: str = ""
-    webhook_secret: str = ""
-    # Xorpay
-    aid: str = ""
-    app_secret: str = ""
-
-
-class PaymentConfig(BaseModel):
-    alipay: PaymentProviderConfig = Field(default_factory=PaymentProviderConfig)
-    wechat: PaymentProviderConfig = Field(default_factory=PaymentProviderConfig)
-    stripe: PaymentProviderConfig = Field(default_factory=PaymentProviderConfig)
-    xorpay: PaymentProviderConfig = Field(default_factory=PaymentProviderConfig)
-
-
 class SystemConfigUpdate(BaseModel):
     feature_flags: Optional[Any] = None
     announcement: Optional[Announcement] = None
@@ -125,9 +96,7 @@ class SystemConfigUpdate(BaseModel):
     max_upload_size: Optional[int] = None
     allowed_file_types: Optional[list] = None
     default_llm_provider: Optional[str] = None
-    enable_signup_bonus: Optional[bool] = None
     email_config: Optional[EmailConfig] = None
-    payment_config: Optional[PaymentConfig] = None
 
 
 class SystemConfig(BaseModel):
@@ -138,10 +107,7 @@ class SystemConfig(BaseModel):
     max_upload_size: int = 10 * 1024 * 1024
     allowed_file_types: list = [".jpg", ".png", ".pdf", ".md"]
     default_llm_provider: str = "ollama"
-    enable_signup_bonus: bool = False
-    default_plan: str = "free"
     email_config: EmailConfig = Field(default_factory=EmailConfig)
-    payment_config: PaymentConfig = Field(default_factory=PaymentConfig)
 
 
 def _load_config_from_db(db: Session) -> Dict[str, Any]:
@@ -219,15 +185,6 @@ def get_system_config(db: Session) -> SystemConfig:
     if maintenance_mode.estimated_recovery and not maintenance_mode.resume_at:
         maintenance_mode.resume_at = maintenance_mode.estimated_recovery
 
-    payment_raw = raw.get("payment_config", {})
-    if isinstance(payment_raw, str):
-        try:
-            payment_raw = json.loads(payment_raw)
-        except json.JSONDecodeError:
-            payment_raw = {}
-    if not isinstance(payment_raw, dict):
-        payment_raw = {}
-
     return SystemConfig(
         feature_flags=feature_flag_items,
         announcement=Announcement(**{**Announcement().dict(), **announcement}),
@@ -236,10 +193,7 @@ def get_system_config(db: Session) -> SystemConfig:
         max_upload_size=get("max_upload_size", 10 * 1024 * 1024),
         allowed_file_types=get("allowed_file_types", [".jpg", ".png", ".pdf", ".md"]),
         default_llm_provider=get("default_llm_provider", "ollama"),
-        enable_signup_bonus=get("enable_signup_bonus", False),
-        default_plan=get("default_plan", "free"),
         email_config=EmailConfig(**raw.get("email_config", {})) if isinstance(raw.get("email_config"), dict) else EmailConfig(),
-        payment_config=PaymentConfig(**payment_raw) if isinstance(payment_raw, dict) else PaymentConfig(),
     )
 
 
@@ -410,41 +364,6 @@ async def update_system_config(
         _set_config(db, key, value, current_admin.id)
 
     invalidate_config_cache()
-
-    # Re-initialize payment factory when payment config changes so changes take effect immediately
-    if "payment_config" in updates:
-        from app.core.config_loader import get_system_config as _get_fresh_config
-        from app.core.config import settings
-        fresh_cfg = _get_fresh_config(db, force_refresh=True)
-        payment_config = fresh_cfg.payment_config
-        api_base = settings.API_BASE_URL
-        frontend_base = settings.FRONTEND_URL
-        defaults = {
-            "alipay": {
-                "sandbox": settings.ENV != "production",
-                "notify_url": f"{api_base}/api/v1/billing/webhook/alipay",
-                "return_url": f"{frontend_base}/payment/success",
-            },
-            "wechat": {
-                "notify_url": f"{api_base}/api/v1/billing/webhook/wechat",
-            },
-            "stripe": {
-                "success_url": f"{frontend_base}/payment/success",
-                "cancel_url": f"{frontend_base}/payment",
-            },
-            "xorpay": {
-                "notify_url": f"{api_base}/api/v1/billing/webhook/xorpay",
-                "return_url": f"{frontend_base}/payment/success",
-            },
-        }
-        for provider in list(payment_config.keys()):
-            if provider in defaults:
-                for k, v in defaults[provider].items():
-                    payment_config[provider].setdefault(k, v)
-        try:
-            init_payment_factory(payment_config)
-        except Exception:
-            pass
 
     # Reload cache
     config = get_system_config(db)

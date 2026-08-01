@@ -1,5 +1,4 @@
 import api from './client';
-import { llmBase } from './unifiedSync';
 
 export interface LLMProvider {
   provider: string;
@@ -48,21 +47,17 @@ export interface LLMModelCatalogItem {
   is_system: boolean;
   supports_streaming: boolean;
   context_length: number;
-  price_input_per_1k: number;
-  price_output_per_1k: number;
-  currency: string;
 }
 
 export interface LLMModelCatalogResponse {
   models: LLMModelCatalogItem[];
 }
 
-export const getLLMStatus = () => api.get<LLMStatusResponse>(`${llmBase()}/llm/status`).then((res) => res.data);
+export const getLLMStatus = () => api.get<LLMStatusResponse>(`/api/v1/llm/status`).then((res) => res.data);
 
 export const getModelCatalog = () =>
-  api.get<LLMModelCatalogResponse>(`${llmBase()}/llm/models/catalog`).then((res) => res.data);
+  api.get<LLMModelCatalogResponse>(`/api/v1/llm/models/catalog`).then((res) => res.data);
 
-// Ollama 模型列表始终查本机（桌面端用自己的 Ollama，与云端无关）
 export const getOllamaModels = () =>
   api.get<OllamaModelsResponse>('/api/v1/llm/providers/ollama/models').then((res) => res.data);
 

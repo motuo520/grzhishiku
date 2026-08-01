@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Settings, ToggleLeft, ToggleRight, AlertTriangle, Save, RefreshCw,
-  Globe, Lock, Unlock, Megaphone, UserPlus, Mail, CreditCard
+  Globe, Lock, Unlock, Megaphone, UserPlus, Mail
 } from 'lucide-react';
 import adminApi from '../../services/adminApi';
 
@@ -32,30 +32,6 @@ interface EmailConfig {
   use_ssl: boolean;
 }
 
-interface PaymentProviderConfig {
-  enabled: boolean;
-  app_id: string;
-  private_key: string;
-  public_key: string;
-  sandbox: boolean;
-  mchid: string;
-  appid: string;
-  api_key: string;
-  cert_serial_no: string;
-  cert_private_key: string;
-  secret_key: string;
-  webhook_secret: string;
-  aid: string;
-  app_secret: string;
-}
-
-interface PaymentConfig {
-  alipay: PaymentProviderConfig;
-  wechat: PaymentProviderConfig;
-  stripe: PaymentProviderConfig;
-  xorpay: PaymentProviderConfig;
-}
-
 interface SystemConfig {
   feature_flags: FeatureFlag[];
   announcement: Announcement;
@@ -63,7 +39,6 @@ interface SystemConfig {
   registration_open: boolean;
   default_plan: string;
   email_config: EmailConfig;
-  payment_config: PaymentConfig;
 }
 
 const DEFAULT_EMAIL_CONFIG: EmailConfig = {
@@ -76,30 +51,6 @@ const DEFAULT_EMAIL_CONFIG: EmailConfig = {
   sender_name: '',
   use_tls: true,
   use_ssl: false,
-};
-
-const DEFAULT_PAYMENT_PROVIDER_CONFIG: PaymentProviderConfig = {
-  enabled: false,
-  app_id: '',
-  private_key: '',
-  public_key: '',
-  sandbox: true,
-  mchid: '',
-  appid: '',
-  api_key: '',
-  cert_serial_no: '',
-  cert_private_key: '',
-  secret_key: '',
-  webhook_secret: '',
-  aid: '',
-  app_secret: '',
-};
-
-const DEFAULT_PAYMENT_CONFIG: PaymentConfig = {
-  alipay: { ...DEFAULT_PAYMENT_PROVIDER_CONFIG },
-  wechat: { ...DEFAULT_PAYMENT_PROVIDER_CONFIG },
-  stripe: { ...DEFAULT_PAYMENT_PROVIDER_CONFIG },
-  xorpay: { ...DEFAULT_PAYMENT_PROVIDER_CONFIG },
 };
 
 function ShimmerCard() {
@@ -187,24 +138,6 @@ export default function AdminSystem() {
         next.use_tls = false;
       }
       return { ...prev, email_config: next };
-    });
-  };
-
-  const updatePaymentConfig = (
-    provider: keyof PaymentConfig,
-    field: keyof PaymentProviderConfig,
-    value: string | boolean
-  ) => {
-    setConfig((prev) => {
-      if (!prev) return prev;
-      const current = prev.payment_config || DEFAULT_PAYMENT_CONFIG;
-      return {
-        ...prev,
-        payment_config: {
-          ...current,
-          [provider]: { ...(current[provider] || DEFAULT_PAYMENT_PROVIDER_CONFIG), [field]: value },
-        },
-      };
     });
   };
 
@@ -435,18 +368,6 @@ export default function AdminSystem() {
               )}
             </button>
           </div>
-
-          <div className="py-3 px-4 bg-admin-bg rounded-lg border border-admin-border">
-            <label className="block text-sm text-admin-muted mb-1.5">默认订阅计划</label>
-            <select
-              value={config?.default_plan || 'free'}
-              onChange={(e) => setConfig((prev) => prev ? { ...prev, default_plan: e.target.value } : prev)}
-              className="px-4 py-2.5 bg-admin-hover border border-admin-border rounded-lg text-white focus:outline-none focus:border-admin-primary"
-            >
-              <option value="free">Free</option>
-              <option value="storage">Storage</option>
-            </select>
-          </div>
         </div>
       </motion.div>
 
@@ -598,12 +519,6 @@ export default function AdminSystem() {
         </div>
       </motion.div>
 
-      {/* Payment Providers */}
-      <PaymentConfigPanel
-        config={config?.payment_config || DEFAULT_PAYMENT_CONFIG}
-        onChange={updatePaymentConfig}
-      />
-
       {/* Danger Zone */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
@@ -626,138 +541,5 @@ export default function AdminSystem() {
         </div>
       </motion.div>
     </div>
-  );
-}
-
-interface PaymentConfigPanelProps {
-  config: PaymentConfig;
-  onChange: (provider: keyof PaymentConfig, field: keyof PaymentProviderConfig, value: string | boolean) => void;
-}
-
-function PaymentConfigPanel({ config, onChange }: PaymentConfigPanelProps) {
-  const providers: { key: keyof PaymentConfig; name: string; desc: string; fields: { key: keyof PaymentProviderConfig; label: string; type?: string; placeholder?: string; area?: boolean }[] }[] = [
-    {
-      key: 'alipay',
-      name: '支付宝',
-      desc: '官方支付宝接口（需企业/个体户或当面付）',
-      fields: [
-        { key: 'app_id', label: 'App ID', placeholder: '2024XXXXXXXXXXXX' },
-        { key: 'private_key', label: '应用私钥', area: true, placeholder: '-----BEGIN RSA PRIVATE KEY-----' },
-        { key: 'public_key', label: '支付宝公钥', area: true, placeholder: '-----BEGIN PUBLIC KEY-----' },
-      ],
-    },
-    {
-      key: 'wechat',
-      name: '微信支付',
-      desc: '官方微信支付接口（需企业/个体户商户号）',
-      fields: [
-        { key: 'mchid', label: '商户号', placeholder: '1230000001' },
-        { key: 'appid', label: 'App ID', placeholder: 'wxXXXXXXXXXXXXXXXX' },
-        { key: 'api_key', label: 'API v3 密钥', placeholder: '32 位密钥' },
-        { key: 'cert_serial_no', label: '证书序列号', placeholder: 'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX' },
-        { key: 'cert_private_key', label: '证书私钥', area: true, placeholder: '-----BEGIN PRIVATE KEY-----' },
-      ],
-    },
-    {
-      key: 'stripe',
-      name: 'Stripe',
-      desc: '国际信用卡支付（需海外主体）',
-      fields: [
-        { key: 'secret_key', label: 'Secret Key', placeholder: 'sk_live_... / sk_test_...' },
-        { key: 'webhook_secret', label: 'Webhook Secret', placeholder: 'whsec_...' },
-      ],
-    },
-    {
-      key: 'xorpay',
-      name: '虎皮椒 Xorpay',
-      desc: '个人可接入的微信/支付宝聚合通道',
-      fields: [
-        { key: 'aid', label: '商户号 AID', placeholder: 'Xorpay 商户号' },
-        { key: 'app_secret', label: 'App Secret', placeholder: 'Xorpay 密钥' },
-      ],
-    },
-  ];
-
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: 0.19 }}
-      className="bg-admin-sidebar rounded-xl border border-admin-border p-6"
-    >
-      <div className="flex items-center gap-3 mb-6">
-        <CreditCard className="w-5 h-5 text-success" />
-        <h2 className="text-lg font-semibold text-white">支付渠道</h2>
-      </div>
-
-      <div className="space-y-4">
-        {providers.map((provider) => {
-          const cfg = config[provider.key] || DEFAULT_PAYMENT_PROVIDER_CONFIG;
-          return (
-            <div key={provider.key} className="border border-admin-border rounded-lg overflow-hidden">
-              <div className="flex items-center justify-between px-4 py-3 bg-admin-bg">
-                <div>
-                  <div className="text-sm font-medium text-white">{provider.name}</div>
-                  <div className="text-xs text-admin-muted">{provider.desc}</div>
-                </div>
-                <button
-                  onClick={() => onChange(provider.key, 'enabled', !cfg.enabled)}
-                  className="p-1 transition-transform active:scale-95"
-                >
-                  {cfg.enabled ? (
-                    <ToggleRight className="w-6 h-6 text-success" />
-                  ) : (
-                    <ToggleLeft className="w-6 h-6 text-admin-muted" />
-                  )}
-                </button>
-              </div>
-              {cfg.enabled && (
-                <div className="p-4 grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {provider.fields.map((field) => (
-                    <div key={field.key} className={field.area ? 'md:col-span-2' : ''}>
-                      <label className="block text-xs text-admin-muted mb-1.5">{field.label}</label>
-                      {field.area ? (
-                        <textarea
-                          value={(cfg[field.key] as string) || ''}
-                          onChange={(e) => onChange(provider.key, field.key, e.target.value)}
-                          placeholder={field.placeholder}
-                          rows={3}
-                          className="w-full px-3 py-2 bg-admin-bg border border-admin-border rounded-lg text-sm text-white placeholder-admin-muted focus:outline-none focus:border-admin-primary font-mono resize-none"
-                        />
-                      ) : (
-                        <input
-                          type={field.type || 'text'}
-                          value={(cfg[field.key] as string) || ''}
-                          onChange={(e) => onChange(provider.key, field.key, e.target.value)}
-                          placeholder={field.placeholder}
-                          className="w-full px-3 py-2 bg-admin-bg border border-admin-border rounded-lg text-sm text-white placeholder-admin-muted focus:outline-none focus:border-admin-primary"
-                        />
-                      )}
-                    </div>
-                  ))}
-                  {provider.key === 'alipay' && (
-                    <label className="flex items-center gap-2 text-sm text-white cursor-pointer md:col-span-2">
-                      <input
-                        type="checkbox"
-                        checked={cfg.sandbox}
-                        onChange={(e) => onChange(provider.key, 'sandbox', e.target.checked)}
-                        className="rounded border-admin-border bg-admin-bg text-admin-primary"
-                      />
-                      沙箱模式
-                    </label>
-                  )}
-                </div>
-              )}
-            </div>
-          );
-        })}
-      </div>
-
-      <div className="mt-4 px-4 py-3 bg-warning/5 rounded-lg border border-warning/10">
-        <p className="text-xs text-warning">
-          所有渠道默认关闭。开启并填写真实密钥后，用户端才会显示对应支付方式。修改保存后约 30 秒内生效。
-        </p>
-      </div>
-    </motion.div>
   );
 }

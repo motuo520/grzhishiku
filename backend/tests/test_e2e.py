@@ -9,7 +9,6 @@ from app.main import app
 from app.core.database import Base, get_db
 from app.core.security import get_password_hash
 from app.models.base import User
-from app.models.llm_billing import LLMModel
 
 # Setup test database (in-memory, shared across connections via StaticPool)
 TEST_DATABASE_URL = "sqlite:///:memory:"
@@ -28,39 +27,6 @@ def set_sqlite_pragma(dbapi_conn, connection_record):
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 Base.metadata.create_all(bind=engine)
-
-# Seed system LLM models so billed AI endpoints have valid catalog rows.
-def _seed_test_models():
-    session = TestingSessionLocal(bind=engine.connect())
-    try:
-        models = [
-            LLMModel(id="gpt-4", name="GPT-4", provider="openai", provider_model_id="gpt-4",
-                     is_active=True, is_system=True, supports_streaming=True, context_length=8192,
-                     cost_input_per_1k=0, cost_output_per_1k=0, price_input_per_1k=0, price_output_per_1k=0, currency="CNY"),
-            LLMModel(id="ollama-qwen2.5", name="Ollama Qwen2.5", provider="ollama", provider_model_id="qwen2.5",
-                     is_active=True, is_system=True, supports_streaming=True, context_length=8192,
-                     cost_input_per_1k=0, cost_output_per_1k=0, price_input_per_1k=0, price_output_per_1k=0, currency="CNY"),
-            LLMModel(id="ollama-nomic", name="Ollama Nomic Embed", provider="ollama", provider_model_id="nomic-embed-text",
-                     is_active=True, is_system=True, supports_streaming=False, context_length=2048,
-                     cost_input_per_1k=0, cost_output_per_1k=0, price_input_per_1k=0, price_output_per_1k=0, currency="CNY"),
-            LLMModel(id="deepseek-v4-pro", name="DeepSeek V4 Pro", provider="deepseek", provider_model_id="deepseek-v4-pro",
-                     is_active=True, is_system=True, supports_streaming=True, context_length=128000,
-                     cost_input_per_1k=0, cost_output_per_1k=0, price_input_per_1k=0, price_output_per_1k=0, currency="CNY"),
-            LLMModel(id="deepseek-v4-flash", name="DeepSeek V4 Flash", provider="deepseek", provider_model_id="deepseek-v4-flash",
-                     is_active=True, is_system=True, supports_streaming=True, context_length=128000,
-                     cost_input_per_1k=0, cost_output_per_1k=0, price_input_per_1k=0, price_output_per_1k=0, currency="CNY"),
-        ]
-        existing = {m.id for m in session.query(LLMModel.id).filter(
-            LLMModel.id.in_(["gpt-4", "ollama-qwen2.5", "ollama-nomic", "deepseek-v4-pro", "deepseek-v4-flash"])
-        ).all()}
-        for model in models:
-            if model.id not in existing:
-                session.add(model)
-        session.commit()
-    finally:
-        session.close()
-
-_seed_test_models()
 
 def override_get_db():
     try:
@@ -253,4 +219,4 @@ class TestHealth:
     def test_root(self):
         response = client.get("/")
         assert response.status_code == 200
-        assert "Personal Second Brain" in response.json()["message"]
+        assert "Wenmo API" in response.json()["message"]

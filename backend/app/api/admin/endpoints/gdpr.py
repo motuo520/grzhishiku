@@ -106,7 +106,6 @@ async def gdpr_export_user(
             "email": user.email,
             "name": user.name,
             "created_at": user.created_at.isoformat() if user.created_at else None,
-            "subscription_tier": user.subscription_tier,
         },
         "notes": [{"id": n.id, "title": n.title, "content": n.content, "created_at": n.created_at.isoformat()} for n in notes],
         "capsules": [{"id": c.id, "content": c.content_body, "created_at": c.created_at.isoformat()} for c in capsules],

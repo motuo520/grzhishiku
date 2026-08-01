@@ -26,8 +26,8 @@ os.makedirs(UPLOAD_DIR, exist_ok=True)
 ALLOWED_IMAGE_TYPES = {"image/png", "image/jpeg", "image/jpg", "image/webp"}
 MAX_FILE_SIZE = 2 * 1024 * 1024  # 2MB
 
-# settings.ai 中的密钥字段：GET 时掩码返回，PUT 时掩码回传不覆盖
-API_KEY_FIELDS = ("kimi_api_key", "deepseek_api_key", "opencode_api_key", "api_key")
+# settings.ai 中历史遗留的密钥字段：GET 时掩码返回，PUT 时掩码回传不覆盖
+API_KEY_FIELDS = ("api_key",)
 
 
 def _mask_secret(value: Any) -> Any:
@@ -74,8 +74,6 @@ async def get_me(current_user: User = Depends(get_current_user)):
         "username": current_user.username,
         "display_name": current_user.display_name,
         "avatar": current_user.avatar,
-        "subscription_tier": current_user.subscription_tier,
-        "subscription_status": current_user.subscription_status,
         "storage_used": current_user.storage_used,
         "storage_limit": current_user.storage_limit,
         "settings": json.loads(current_user.settings or '{}'),
@@ -108,7 +106,6 @@ async def update_me(
         "username": current_user.username,
         "display_name": current_user.display_name,
         "avatar": current_user.avatar,
-        "subscription_tier": current_user.subscription_tier,
         "updated_at": current_user.updated_at,
     }
 
@@ -268,7 +265,7 @@ async def import_user_data_endpoint(
     return {"success": True, **stats}
 
 
-@router.delete("/me/data", summary="Clear user data", description="Delete all user-generated content (notes, capsules, clips, knowledge units, sticky notes, reminders, tags, read-later, RSS, documents) while keeping the account and subscription intact.")
+@router.delete("/me/data", summary="Clear user data", description="Delete all user-generated content (notes, capsules, clips, knowledge units, sticky notes, reminders, tags, read-later, RSS, documents) while keeping the account intact.")
 async def clear_user_data(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)

@@ -1,11 +1,9 @@
 import { FC, useEffect, useState, useCallback, useRef } from 'react';
 import {
   HardDrive, Cloud, Package, Download, Trash2, CheckCircle, AlertTriangle,
-  Loader2, Crown, ExternalLink, RefreshCw, Database, X
+  Loader2, ExternalLink, RefreshCw, Database, X
 } from 'lucide-react';
 import { storageApi, DataPackage, CloudDrive } from '@/api/storage';
-import { useSubscription } from '@/hooks/useSubscription';
-import { useNavigate } from 'react-router-dom';
 
 const PROVIDERS = [
   {
@@ -44,10 +42,6 @@ const formatDate = (s?: string) => {
 };
 
 const StorageSettings: FC = () => {
-  const navigate = useNavigate();
-  const { tier, currentSubscription } = useSubscription();
-  const isStorageMember = tier === 'storage';
-
   const [packages, setPackages] = useState<DataPackage[]>([]);
   const [drives, setDrives] = useState<CloudDrive[]>([]);
   const [loading, setLoading] = useState(true);
@@ -92,10 +86,6 @@ const StorageSettings: FC = () => {
   }, [fetchData]);
 
   const handlePackage = async () => {
-    if (!isStorageMember) {
-      showToast('一键打包为存储会员功能，请先订阅', 'error');
-      return;
-    }
     setPackaging(true);
     try {
       const res = await storageApi.createPackage();
@@ -109,11 +99,7 @@ const StorageSettings: FC = () => {
       await fetchData();
     } catch (err: any) {
       const detail = err?.response?.data?.detail;
-      if (detail?.includes('storage') || err?.response?.status === 403) {
-        showToast('该功能需要 9.9 元存储会员', 'error');
-      } else {
-        showToast(detail || '打包失败', 'error');
-      }
+      showToast(detail || '打包失败', 'error');
     } finally {
       setPackaging(false);
     }
@@ -151,10 +137,6 @@ const StorageSettings: FC = () => {
   };
 
   const handleConnect = async (providerKey: string) => {
-    if (!isStorageMember) {
-      showToast('绑定网盘为存储会员功能，请先订阅', 'error');
-      return;
-    }
     if (authPollRef.current) {
       clearInterval(authPollRef.current);
       authPollRef.current = null;
@@ -213,10 +195,6 @@ const StorageSettings: FC = () => {
   };
 
   const handleUpload = async (pkg: DataPackage, providerKey: string) => {
-    if (!isStorageMember) {
-      showToast('上传网盘为存储会员功能', 'error');
-      return;
-    }
     setUploadingId(`${pkg.id}-${providerKey}`);
     try {
       const res = await storageApi.uploadToDrive(providerKey, pkg.id);
@@ -263,33 +241,16 @@ const StorageSettings: FC = () => {
         </div>
       )}
 
-      {/* Membership status */}
-      <div className={`glass-card p-6 ${isStorageMember ? 'border-warning/20' : ''}`}>
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <div className={`w-10 h-10 rounded-[2px] flex items-center justify-center ${isStorageMember ? 'bg-warning/10' : 'bg-white/5'}`}>
-              {isStorageMember ? <Crown className="w-5 h-5 text-warning" /> : <HardDrive className="w-5 h-5 text-text-secondary" />}
-            </div>
-            <div>
-              <h2 className="text-lg font-semibold text-text-primary">
-                {isStorageMember ? '存储会员已生效' : 'Free 用户'}
-              </h2>
-              <p className="text-sm text-text-secondary">
-                {isStorageMember
-                  ? '已解锁一键打包 + 百度/阿里云盘直传'
-                  : '一键打包备份、网盘直传为 9.9 元/月存储会员专享'}
-              </p>
-            </div>
+      {/* Feature intro */}
+      <div className="glass-card p-6">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-[2px] bg-white/5 flex items-center justify-center">
+            <HardDrive className="w-5 h-5 text-text-secondary" />
           </div>
-          {!isStorageMember && (
-            <button
-              onClick={() => navigate('/payment')}
-              className="px-5 py-2.5 rounded-[2px] bg-accent text-white text-sm font-bold hover:bg-[var(--accent-hover)] transition-all flex items-center gap-2"
-            >
-              <Crown className="w-4 h-4" />
-              开通 9.9 元存储会员
-            </button>
-          )}
+          <div>
+            <h2 className="text-lg font-semibold text-text-primary">数据备份</h2>
+            <p className="text-sm text-text-secondary">一键打包备份，支持百度/阿里云盘直传</p>
+          </div>
         </div>
       </div>
 

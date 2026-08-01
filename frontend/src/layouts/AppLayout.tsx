@@ -1,6 +1,6 @@
-import { FC, useState, useEffect } from 'react';
+import { FC, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Outlet, useNavigate } from 'react-router-dom';
+import { Outlet } from 'react-router-dom';
 
 import { useAuth } from '@/hooks/useAuth';
 import TopNavigation from '@/components/navigation/TopNavigation';
@@ -11,7 +11,6 @@ import ChatInputBar from '@/components/navigation/ChatInputBar';
 
 import AnnouncementBanner from '@/components/common/AnnouncementBanner';
 import LoginModal from '@/components/auth/LoginModal';
-import OllamaSetupWizard from '@/components/setup/OllamaSetupWizard';
 import MascotWidget from '@/components/mascot/MascotWidget';
 
 const AppLayout: FC = () => {
@@ -19,12 +18,6 @@ const AppLayout: FC = () => {
   const [searchOpen, setSearchOpen] = useState(false);
   const [loginOpen, setLoginOpen] = useState(false);
   const { isLoggedIn, isLoading } = useAuth();
-  const navigate = useNavigate();
-
-  // 桌面端全局快捷键（Ctrl+Shift+N）：唤起快记
-  useEffect(() => {
-    return window.psbDesktop?.onQuickNote?.(() => navigate('/ingest/notes/new'));
-  }, [navigate]);
 
   if (isLoading) {
     return (
@@ -114,7 +107,6 @@ const AppLayout: FC = () => {
 
       {/* Login modal: triggered by guest notice or protected actions */}
       <LoginModal isOpen={loginOpen} onClose={() => setLoginOpen(false)} />
-      <OllamaSetupWizard />
 
       {/* Cute mascot assistant */}
       <MascotWidget />

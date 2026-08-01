@@ -7,18 +7,10 @@ import { useBrain } from '@/hooks/useBrain';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import apiClientInstance, { apiClient } from '@/api/client';
-import { useLLMBalance } from '@/hooks/useLLMBalance';
-import { usePlatformBilling } from '@/hooks/useSystemFeatures';
 import { BrainSide } from '@/types';
 import { LLM_MODEL_MAP, getBackendModelId, getModelIdByProviderModel } from '@/config/llmModels';
-import { llmBase, isDesktop } from '@/api/unifiedSync';
-
-function isLocalModel(modelId: string): boolean {
-  return modelId.startsWith('ollama-') || modelId === 'ollama';
-}
 import LLMConnectionStatus from '@/components/llm/LLMConnectionStatus';
 import ModelSelector from '@/components/llm/ModelSelector';
-import LLMCostBadge from '@/components/llm/LLMCostBadge';
 import {
   Brain, Globe,
   Download, Send, ChevronDown, ChevronUp,
@@ -55,8 +47,6 @@ const ChatInputBar: FC<ChatInputBarProps> = ({ sidebarOpen = true, onLoginClick 
   const { isLoggedIn } = useAuth();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { balance } = useLLMBalance();
-  const platformBilling = usePlatformBilling();
   const [message, setMessage] = useState('');
   const [isRecording, setIsRecording] = useState(false);
   const [attachments, setAttachments] = useState<string[]>([]);
@@ -121,16 +111,6 @@ const ChatInputBar: FC<ChatInputBarProps> = ({ sidebarOpen = true, onLoginClick 
   const handleSend = async () => {
     if (!message.trim() && attachments.length === 0) return;
 
-    // Check balance for non-local models before sending (use cached balance)
-    // 平台计费关闭（开源/自托管）时不做余额检查，模型走 BYOK/本地
-    if (platformBilling && !isLocalModel(currentModel)) {
-      const balanceAmount = balance?.balance ?? 0;
-      if (balanceAmount < 0.1) {
-        navigate('/topup');
-        return;
-      }
-    }
-
     const userMsg: ChatMessage = {
       id: Date.now().toString(),
       role: 'user',
@@ -147,7 +127,7 @@ const ChatInputBar: FC<ChatInputBarProps> = ({ sidebarOpen = true, onLoginClick 
 
     try {
       const token = apiClient.getToken();
-      const response = await fetch(`${llmBase()}/llm/chat`, {
+      const response = await fetch('/api/v1/llm/chat', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -355,10 +335,6 @@ const ChatInputBar: FC<ChatInputBarProps> = ({ sidebarOpen = true, onLoginClick 
       await setActiveProvider(config.provider, config.model);
     } else if (modelId.startsWith('ollama-')) {
       await setActiveProvider('ollama', modelId.replace('ollama-', ''));
-    } else if (modelId) {
-      // Fallback for catalog models not in local config
-      const provider = modelId.split('-')[0] || 'deepseek';
-      await setActiveProvider(provider, modelId);
     }
     queryClient.invalidateQueries({ queryKey: ['llmStatus'] });
   };
@@ -372,25 +348,6 @@ const ChatInputBar: FC<ChatInputBarProps> = ({ sidebarOpen = true, onLoginClick 
           taskType="chat"
           className="w-56"
           disabled={isStreaming}
-        />
-        <div className="hidden sm:block flex-1 min-w-0">
-          <LLMCostBadge
-            modelId={currentModel}
-            inputText={message}
-            outputTokenEstimate={200}
-          />
-        </div>
-      </div>
-      {/* 计费讲解：避免用户把会员门当作 BUG */}
-      <div className="mt-1 text-[10px] text-text-muted leading-relaxed">
-        本地模型免费；外部模型按 token 计费{isDesktop() ? '，需存储会员（¥9.9/月）' : ''}；标注「自付」的模型用你自己的 API Key，费用与供应商结算。
-      </div>
-      {/* Mobile cost badge */}
-      <div className="sm:hidden mt-2">
-        <LLMCostBadge
-          modelId={currentModel}
-          inputText={message}
-          outputTokenEstimate={200}
         />
       </div>
       {/* Model capability tags */}

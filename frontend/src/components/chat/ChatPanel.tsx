@@ -1,5 +1,4 @@
 import { FC, useState, useRef, useCallback, useEffect } from 'react';
-import { llmBase } from '@/api/unifiedSync';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Sparkles, X, BookOpen } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -67,7 +66,7 @@ const ChatPanel: FC<ChatPanelProps> = ({ isOpen, onClose }) => {
 
     try {
       const token = apiClient.getToken();
-      const response = await fetch(`${llmBase()}/llm/chat`, {
+      const response = await fetch('/api/v1/llm/chat', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -89,13 +88,6 @@ const ChatPanel: FC<ChatPanelProps> = ({ isOpen, onClose }) => {
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
         const errMsg = errorData?.error?.message || errorData?.detail || `HTTP ${response.status}`;
-        if (response.status === 402) {
-          window.dispatchEvent(
-            new CustomEvent('psb:llm:insufficient-balance', {
-              detail: { message: errMsg, url: '/topup' },
-            })
-          );
-        }
         throw new Error(errMsg);
       }
 

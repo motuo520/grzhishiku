@@ -27,11 +27,6 @@ class Permission(str, Enum):
     USERS_READ = "users:read"
     USERS_WRITE = "users:write"
     CONTENT_MODERATE = "content:moderate"
-    BILLING_READ = "billing:read"
-    BILLING_WRITE = "billing:write"
-    PLANS_MANAGE = "plans:manage"
-    COUPONS_MANAGE = "coupons:manage"
-    MODELS_MANAGE = "models:manage"
     SYSTEM_CONFIG = "system:config"
     SUPPORT_MANAGE = "support:manage"
     LOGS_READ = "logs:read"
@@ -46,22 +41,10 @@ ROLE_PERMISSIONS = {
         Permission.USERS_READ.value,
         Permission.USERS_WRITE.value,
         Permission.CONTENT_MODERATE.value,
-        Permission.BILLING_READ.value,
-        Permission.BILLING_WRITE.value,
-        Permission.PLANS_MANAGE.value,
-        Permission.COUPONS_MANAGE.value,
-        Permission.MODELS_MANAGE.value,
         Permission.SYSTEM_CONFIG.value,
         Permission.SUPPORT_MANAGE.value,
         Permission.LOGS_READ.value,
         Permission.TENANTS_MANAGE.value,
-    ],
-    "finance_admin": [
-        Permission.BILLING_READ.value,
-        Permission.BILLING_WRITE.value,
-        Permission.PLANS_MANAGE.value,
-        Permission.COUPONS_MANAGE.value,
-        Permission.LOGS_READ.value,
     ],
     "support": [
         Permission.USERS_READ.value,
@@ -76,11 +59,9 @@ ROLE_PERMISSIONS = {
     "auditor": [
         Permission.LOGS_READ.value,
         Permission.USERS_READ.value,
-        Permission.BILLING_READ.value,
     ],
     "readonly": [
         Permission.USERS_READ.value,
-        Permission.BILLING_READ.value,
         Permission.LOGS_READ.value,
     ],
 }

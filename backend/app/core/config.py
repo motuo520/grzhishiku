@@ -38,36 +38,14 @@ class Settings(BaseSettings):
     OLLAMA_BASE_URL: str = "http://localhost:11434"
     OLLAMA_MODEL: str = "qwen2.5:0.5b"
     OLLAMA_FALLBACK_MODEL: str = "qwen2.5:0.5b"
-    
+
     # Model routing configs
     DEFAULT_TEMPERATURE: float = 0.7
     MAX_TOKENS_DEFAULT: int = 2048
     MAX_TOKENS_LONG: int = 8192
-    
-    # Provider-specific endpoints (allow override)
-    # 仅保留 DeepSeek / Kimi / OpenCode 三家云厂商；OpenCode 为 OpenAI 兼容聚合接口，
-    # 负责 GLM / MiMo / MiniMax / Qwen 等模型。
-    KIMI_BASE_URL: str = "https://api.moonshot.cn"
-    GLM_BASE_URL: str = "https://open.bigmodel.cn/api/paas/v4"
-    DASHSCOPE_BASE_URL: str = "https://dashscope.aliyuncs.com/compatible-mode/v1"
-    OPENAI_BASE_URL: str = "https://api.openai.com/v1"
-    ANTHROPIC_BASE_URL: str = "https://api.anthropic.com/v1"
-    GOOGLE_BASE_URL: str = "https://generativelanguage.googleapis.com/v1beta"
-    DEEPSEEK_BASE_URL: str = "https://api.deepseek.com"
-    OPENCODE_BASE_URL: str = "https://opencode.ai/zen"
 
-    # API Keys
-    DEEPSEEK_API_KEY: str = ""
-    KIMI_API_KEY: str = ""
-    OPENCODE_API_KEY: str = ""
-    GLM_API_KEY: str = ""
-    DASHSCOPE_API_KEY: str = ""
-    OPENAI_API_KEY: str = ""
-    ANTHROPIC_API_KEY: str = ""
-    GOOGLE_API_KEY: str = ""
-    
     # Embeddings
-    OLLAMA_EMBED_MODEL: str = "qwen2.5:0.5b"
+    OLLAMA_EMBED_MODEL: str = "nomic-embed-text"
     CHROMADB_PERSIST_DIR: str = "./chroma_db"
     EMBEDDING_DIMENSION: int = 896
     EMBEDDING_FALLBACK_DIMENSION: int = 896
@@ -80,27 +58,9 @@ class Settings(BaseSettings):
     # LLM Model Configuration
     OLLAMA_DEFAULT_MODEL: str = "qwen2.5:0.5b"
     OLLAMA_QWEN_MODEL: str = "qwen2.5:0.5b"
-    KIMI_MODEL: str = "kimi-k2-7-code"
-    DEEPSEEK_MODEL: str = "deepseek-v4-pro"
-    
+
     # Summary Cache
     SUMMARY_CACHE_ENABLED: bool = True
-    
-    # Payment - Alipay
-    ALIPAY_APP_ID: str = ""
-    ALIPAY_PRIVATE_KEY: str = ""
-    ALIPAY_PUBLIC_KEY: str = ""
-    
-    # Payment - WeChat
-    WECHAT_MCHID: str = ""
-    WECHAT_APPID: str = ""
-    WECHAT_API_KEY: str = ""
-    WECHAT_CERT_SERIAL: str = ""
-    WECHAT_PRIVATE_KEY: str = ""
-    
-    # Payment - Stripe
-    STRIPE_SECRET_KEY: str = ""
-    STRIPE_WEBHOOK_SECRET: str = ""
 
     # Netdisk integrations
     BAIDU_NETDISK_CLIENT_ID: str = ""
@@ -110,10 +70,6 @@ class Settings(BaseSettings):
     ALIYUN_NETDISK_CLIENT_SECRET: str = ""
     ALIYUN_NETDISK_REDIRECT_URI: str = ""
 
-    # 迅虎支付（虎皮椒）
-    XUNHUPAY_APP_ID: str = ""
-    XUNHUPAY_APP_SECRET: str = ""
-    
     # Object storage (S3-compatible, e.g. MinIO)
     S3_ENDPOINT: str = "http://localhost:9000"
     S3_ACCESS_KEY: str = "psbminio"
@@ -126,14 +82,16 @@ class Settings(BaseSettings):
     # CORS
     ALLOWED_ORIGINS: str = "http://localhost:3000,http://127.0.0.1:3000"
 
-    # Desktop mode: directory of the built frontend (Vite dist). When set and
+    # SPA hosting: directory of the built frontend (Vite dist). When set and
     # the directory exists, the API server also serves the SPA at "/" with
-    # index.html fallback — the desktop app then loads everything same-origin.
+    # index.html fallback — the frontend then loads everything same-origin.
     SERVE_FRONTEND_DIR: str = ""
     
     class Config:
         env_file = ".env"
         case_sensitive = True
+        # 忽略 .env 中历史遗留的未知键（如已下线的云厂商/支付配置）
+        extra = "ignore"
     
     @model_validator(mode='after')
     def validate_production(self):

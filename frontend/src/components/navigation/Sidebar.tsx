@@ -2,7 +2,7 @@ import { FC, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import {
-  FileText, Globe, Package, BookOpen, Target, Tag, Brain, ChevronRight, Plus, Settings, User, Lock, Cpu,
+  FileText, Globe, Package, BookOpen, Target, Tag, Brain, Plus, Settings, User, Lock, Cpu,
   RefreshCw, Puzzle, Database, Palette, Crown, HardDrive, Menu, Home, List, BarChart2, Calendar,
   MessageCircle, CheckCircle, Rss, Upload, Share2, Search, Route, Link2, BarChart3, GitMerge, Clock,
   Fingerprint, AlertTriangle, Scale, ClipboardCheck, GitBranch, Gamepad2, Shuffle, Zap, Combine,
@@ -12,7 +12,6 @@ import {
 } from 'lucide-react';
 import { useBrain } from '@/hooks/useBrain';
 import { useAuth } from '@/hooks/useAuth';
-import { useSubscription } from '@/hooks/useSubscription';
 import {
   useMenuData,
   SETTINGS_ITEMS,
@@ -34,7 +33,6 @@ const ICON_MAP: Record<string, React.ElementType> = {
 const Sidebar: FC = () => {
   const { stats, activeBrain, switchBrain, isSwitching } = useBrain();
   const { user } = useAuth();
-  const { tier, currentSubscription, isLoading: subLoading } = useSubscription();
   const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -265,25 +263,6 @@ const Sidebar: FC = () => {
                 </AnimatePresence>
 
                 <div className="my-1.5 border-t border-border-color" />
-
-                {/* Membership */}
-                <button
-                  onClick={() => {
-                    navigate('/payment');
-                    setMenuOpen(false);
-                  }}
-                  className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-[2px] text-sm text-text-secondary hover:bg-bg-hover hover:text-text-primary transition-colors"
-                >
-                  <div className={`w-7 h-7 rounded-[2px] flex items-center justify-center ${
-                    tier === 'storage' ? 'bg-warning/10 text-warning' : 'bg-fusion-primary/10 text-fusion-primary'
-                  }`}>
-                    <Crown className="w-3.5 h-3.5" />
-                  </div>
-                  <span className="flex-1 text-left">
-                    {subLoading ? '加载中...' : tier === 'free' ? '免费版' : '存储会员'}
-                  </span>
-                  <ChevronRight className="w-3 h-3 text-text-muted" />
-                </button>
 
                 {/* Storage mini bar */}
                 {user && (

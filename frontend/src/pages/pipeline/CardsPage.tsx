@@ -12,7 +12,6 @@ import { usePipelineStats, usePipelineItems, useExtractConcepts, useTransitionIt
 import type { PipelineItem } from '@/api/pipeline';
 import StageContextBanner from './components/StageContextBanner';
 import ModelSelector from '@/components/llm/ModelSelector';
-import LLMCostBadge from '@/components/llm/LLMCostBadge';
 import { BrainSideBadge, SourceLink } from './components/PipelineHelpers';
 import ErrorState from '@/components/ErrorState';
 import PipelineItemActions from './components/PipelineItemActions';
@@ -78,15 +77,6 @@ const CardsPage: FC = () => {
     (items || []).forEach((item) => types.add(item.content_type));
     return Array.from(types);
   }, [items]);
-
-  const extractInputText = useMemo(() => {
-    const selected = filteredItems.filter((item) => selectedIds.has(item.id));
-    const source = selected.length > 0 ? selected : filteredItems.slice(0, 5);
-    return source
-      .map((item) => `标题：${item.title || '无标题'}\n内容：${item.content_raw || ''}`)
-      .join('\n---\n')
-      .slice(0, 4000);
-  }, [filteredItems, selectedIds]);
 
   const toggleSelect = (id: string) => {
     setSelectedIds((prev) => {
@@ -298,7 +288,6 @@ const CardsPage: FC = () => {
           <div className="flex flex-col items-end gap-2">
             <div className="flex items-center gap-3">
               <ModelSelector value={modelId} onChange={setModelId} taskType="analysis" className="w-48" />
-              <LLMCostBadge modelId={modelId} inputText={extractInputText} outputTokenEstimate={300} />
             </div>
             <button
               onClick={handleBatchExtract}

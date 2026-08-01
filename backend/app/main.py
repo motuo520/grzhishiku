@@ -19,7 +19,6 @@ from app.core.config import settings
 from app.core.database import engine, Base
 from app.core.exceptions import register_exception_handlers
 from app.core.metrics import get_metrics
-from app.services.payment_providers.factory import init_payment_factory
 
 class StaticFilesCacheMiddleware(BaseHTTPMiddleware):
     """Add cache-control headers to static files.
@@ -134,9 +133,7 @@ async def lifespan(app: FastAPI):
                 ("max_upload_size", str(10 * 1024 * 1024)),
                 ("allowed_file_types", '[".jpg", ".png", ".pdf", ".md"]'),
                 ("default_llm_provider", '"ollama"'),
-                ("enable_signup_bonus", "true"),
                 ("announcement", '{"title": "", "content": ""}'),
-                ("default_plan", '"free"'),
                 ("feature_flags", json.dumps({
                     "beta_features": False,
                     "ai_summary": True,
@@ -155,154 +152,6 @@ async def lifespan(app: FastAPI):
                     "INSERT INTO system_configs (id, key, value_json, updated_at) VALUES (:id, :key, :val, datetime('now'))"
                 ), {"id": str(uuid.uuid4()), "key": key, "val": val})
 
-    # Seed / update default subscription plans
-    from app.models.billing import Plan
-    from sqlalchemy import select as sa_select
-    with engine.begin() as conn:
-        from datetime import datetime as _dt
-        now = _dt.utcnow()
-
-        free_features = json.dumps({
-            "ai_summary": True,
-            "web_clipper": True,
-            "public_sharing": False,
-            "cloud_backup": False,
-            "cloud_sync": False,
-        })
-        free_limits = json.dumps({
-            "notes": 100,
-            "clips_per_month": 50,
-            "knowledge_units": 200,
-            "documents": 20,
-            "storage_bytes": 1073741824,
-            "llm_calls_per_day": 50,
-        })
-        free_exists = conn.execute(sa_select(Plan).where(Plan.slug == 'free')).first()
-        if free_exists:
-            conn.execute(text("""
-                UPDATE plans
-                SET name='免费版', description='适合个人入门：笔记、剪藏、知识库与基础 AI 功能，零成本开启你的 AI 知识库。', price_monthly=0, price_yearly=0,
-                    currency='CNY', billing_cycle='monthly', is_active=1, sort_order=0,
-                    features=:features, limits=:limits, updated_at=:now
-                WHERE slug='free'
-            """), {"features": free_features, "limits": free_limits, "now": now})
-        else:
-            conn.execute(text("""
-                INSERT INTO plans (id, name, slug, description, price_monthly, price_yearly, currency, billing_cycle, is_active, sort_order, features, limits, created_at, updated_at)
-                VALUES (:id, '免费版', 'free', '适合个人入门：笔记、剪藏、知识库与基础 AI 功能，零成本开启你的 AI 知识库。', 0, 0, 'CNY', 'monthly', 1, 0, :features, :limits, :now, :now)
-            """), {"id": str(uuid.uuid4()), "features": free_features, "limits": free_limits, "now": now})
-
-        storage_features = json.dumps({
-            "cloud_backup": True,
-            "cloud_sync": True,
-            "priority_support": True,
-            "ai_summary": True,
-            "web_clipper": True,
-            "public_sharing": True,
-        })
-        storage_limits = json.dumps({
-            "notes": -1,
-            "clips_per_month": -1,
-            "knowledge_units": -1,
-            "documents": -1,
-            "storage_bytes": 10737418240,
-            "llm_calls_per_day": -1,
-        })
-        storage_exists = conn.execute(sa_select(Plan).where(Plan.slug == 'storage')).first()
-        if storage_exists:
-            conn.execute(text("""
-                UPDATE plans
-                SET name='存储会员', description='云端备份、更大额度与优先支持，为认真沉淀知识的你而设。',
-                    price_monthly=990, price_yearly=9900, currency='CNY', billing_cycle='monthly',
-                    is_active=1, sort_order=1, features=:features, limits=:limits, updated_at=:now
-                WHERE slug='storage'
-            """), {"features": storage_features, "limits": storage_limits, "now": now})
-        else:
-            conn.execute(text("""
-                INSERT INTO plans (id, name, slug, description, price_monthly, price_yearly, currency, billing_cycle, is_active, sort_order, features, limits, created_at, updated_at)
-                VALUES (:id, '存储会员', 'storage', '云端备份、更大额度与优先支持，为认真沉淀知识的你而设。', 990, 9900, 'CNY', 'monthly', 1, 1, :features, :limits, :now, :now)
-            """), {"id": str(uuid.uuid4()), "features": storage_features, "limits": storage_limits, "now": now})
-
-    # Seed default embedding model into the billing catalog if missing.
-    # /llm/embed 的默认计费模型；不在 catalog 时调用会被放行但不产生用量记录。
-    # 本地模型价格为 0：正常记录用量，不计费用。
-    from app.models.llm_billing import LLMModel
-    with engine.begin() as conn:
-        embed_model_exists = conn.execute(
-            sa_select(LLMModel).where(LLMModel.id == 'ollama-qwen2.5-0.5b')
-        ).first()
-        if not embed_model_exists:
-            conn.execute(text("""
-                INSERT INTO llm_models (id, name, provider, provider_model_id, description,
-                    is_active, is_system, supports_streaming, context_length, sort_order,
-                    cost_input_per_1k, cost_output_per_1k, price_input_per_1k, price_output_per_1k,
-                    currency, created_at, updated_at)
-                VALUES ('ollama-qwen2.5-0.5b', '本地 / Qwen 2.5 0.5B', 'ollama', 'qwen2.5:0.5b',
-                    '本地嵌入模型，记录用量但免计费，适合个人知识库与检索场景',
-                    1, 0, 0, 32768, 1, 0, 0, 0, 0, 'CNY', datetime('now'), datetime('now'))
-            """))
-        smollm2_exists = conn.execute(
-            sa_select(LLMModel).where(LLMModel.id == 'ollama-smollm2')
-        ).first()
-        if not smollm2_exists:
-            conn.execute(text("""
-                INSERT INTO llm_models (id, name, provider, provider_model_id, description,
-                    is_active, is_system, supports_streaming, context_length, sort_order,
-                    cost_input_per_1k, cost_output_per_1k, price_input_per_1k, price_output_per_1k,
-                    currency, created_at, updated_at)
-                VALUES ('ollama-smollm2', '本地 / SmolLM2 135M', 'ollama', 'smollm2:135m',
-                    '本地玩具级小模型，免计费，适合离线体验与调试',
-                    1, 0, 1, 8192, 2, 0, 0, 0, 0, 'CNY', datetime('now'), datetime('now'))
-            """))
-
-        # 直供厂商 BYOK 模型目录（用户自填 Key 直连，平台价为 0 不计费）
-        byok_models = [
-            ('glm-4.6', 'GLM 4.6（智谱）', 'glm', 'glm-4.6', '智谱旗舰，BYOK 自付', 128000),
-            ('glm-4.5-air', 'GLM 4.5 Air（智谱）', 'glm', 'glm-4.5-air', '智谱轻量款，BYOK 自付', 128000),
-            ('dashscope-qwen-max', 'Qwen Max（阿里）', 'dashscope', 'qwen-max', '通义旗舰，BYOK 自付', 131072),
-            ('dashscope-qwen-plus', 'Qwen Plus（阿里）', 'dashscope', 'qwen-plus', '通义均衡款，BYOK 自付', 131072),
-            ('dashscope-qwen-flash', 'Qwen Flash（阿里）', 'dashscope', 'qwen-flash', '通义极速款，BYOK 自付', 131072),
-            ('openai-gpt-4o', 'GPT-4o（OpenAI）', 'openai', 'gpt-4o', 'OpenAI 主力，BYOK 自付', 128000),
-            ('openai-gpt-4o-mini', 'GPT-4o mini（OpenAI）', 'openai', 'gpt-4o-mini', 'OpenAI 轻量款，BYOK 自付', 128000),
-            ('anthropic-claude-sonnet-4-5', 'Claude Sonnet 4.5', 'anthropic', 'claude-sonnet-4-5', 'Anthropic 均衡款，BYOK 自付', 200000),
-            ('anthropic-claude-haiku-4-5', 'Claude Haiku 4.5', 'anthropic', 'claude-haiku-4-5', 'Anthropic 轻量款，BYOK 自付', 200000),
-            ('google-gemini-2.5-flash', 'Gemini 2.5 Flash（Google）', 'google', 'gemini-2.5-flash', 'Google 快速款，BYOK 自付', 1000000),
-            ('google-gemini-2.5-pro', 'Gemini 2.5 Pro（Google）', 'google', 'gemini-2.5-pro', 'Google 旗舰，BYOK 自付', 1000000),
-        ]
-        for mid, mname, mprov, mpmid, mdesc, mctx in byok_models:
-            exists = conn.execute(sa_select(LLMModel).where(LLMModel.id == mid)).first()
-            if not exists:
-                conn.execute(text("""
-                    INSERT INTO llm_models (id, name, provider, provider_model_id, description,
-                        is_active, is_system, supports_streaming, context_length, sort_order,
-                        cost_input_per_1k, cost_output_per_1k, price_input_per_1k, price_output_per_1k,
-                        currency, created_at, updated_at)
-                    VALUES (:id, :name, :provider, :pmid, :desc,
-                        1, 0, 1, :ctx, 100, 0, 0, 0, 0, 'CNY', datetime('now'), datetime('now'))
-                """), {"id": mid, "name": mname, "provider": mprov, "pmid": mpmid, "desc": mdesc, "ctx": mctx})
-
-        # 厂商账户补齐（后台「模型管理 → 厂商」列表来源；key 为空，管理员后填）
-        from app.models.llm_billing import ModelProviderAccount
-        provider_accounts = [
-            ('prov_opencode_default', 'opencode', 'https://opencode.ai/zen'),
-            ('prov_kimi_default', 'kimi', 'https://api.moonshot.cn'),
-            ('prov_glm_default', 'glm', 'https://open.bigmodel.cn/api/paas/v4'),
-            ('prov_dashscope_default', 'dashscope', 'https://dashscope.aliyuncs.com/compatible-mode/v1'),
-            ('prov_openai_default', 'openai', 'https://api.openai.com/v1'),
-            ('prov_anthropic_default', 'anthropic', 'https://api.anthropic.com/v1'),
-            ('prov_google_default', 'google', 'https://generativelanguage.googleapis.com/v1beta'),
-        ]
-        for pid, prov, purl in provider_accounts:
-            exists = conn.execute(
-                sa_select(ModelProviderAccount).where(ModelProviderAccount.id == pid)
-            ).first()
-            if not exists:
-                conn.execute(text("""
-                    INSERT INTO model_provider_accounts (id, provider, name, api_key, base_url,
-                        balance_cny, balance_usd, is_active, priority, failure_count, created_at, updated_at)
-                    VALUES (:id, :provider, 'default', '', :url, 0, 0, 1, 0, 0, datetime('now'), datetime('now'))
-                """), {"id": pid, "provider": prov, "url": purl})
-
     # Load and initialize plugins, then mount the MCP SSE server
     from app.mcp.server import mcp, mount_mcp
     from app.plugins.manager import plugin_manager
@@ -314,69 +163,10 @@ async def lifespan(app: FastAPI):
     from app.services.plugin_scheduler import initialize_scheduler
     await initialize_scheduler()
 
-    # Initialize billing scheduler for subscription expiry and auto-renewal
-    from app.core.billing_scheduler import initialize_billing_scheduler
-    await initialize_billing_scheduler()
-
-    # 初始化支付工厂（从 system_configs 读取，支持后台动态配置）
-    from app.core.config_loader import get_system_config
-    from app.core.database import SessionLocal
-    payment_config = {"alipay": {}, "wechat": {}, "stripe": {}, "xorpay": {}, "xunhupay": {}}
-    try:
-        with SessionLocal() as db:
-            sys_cfg = get_system_config(db)
-            payment_config = sys_cfg.payment_config
-    except Exception:
-        pass
-
-    # 兜底/补全：若系统配置未设置 notify_url/return_url，使用环境变量默认值
-    api_base = settings.API_BASE_URL
-    frontend_base = settings.FRONTEND_URL
-    defaults = {
-        "alipay": {
-            "sandbox": settings.ENV != "production",
-            "notify_url": f"{api_base}/api/v1/billing/webhook/alipay",
-            "return_url": f"{frontend_base}/payment/success",
-        },
-        "wechat": {
-            "notify_url": f"{api_base}/api/v1/billing/webhook/wechat",
-        },
-        "stripe": {
-            "success_url": f"{frontend_base}/payment/success",
-            "cancel_url": f"{frontend_base}/payment",
-        },
-        "xorpay": {
-            "notify_url": f"{api_base}/api/v1/billing/webhook/xorpay",
-            "return_url": f"{frontend_base}/payment/success",
-        },
-        "xunhupay": {
-            "notify_url": f"{api_base}/api/v1/billing/webhook/xunhupay",
-            "return_url": f"{frontend_base}/payment/success",
-        },
-    }
-    for provider in payment_config:
-        if provider in defaults:
-            for key, val in defaults[provider].items():
-                payment_config[provider].setdefault(key, val)
-
-    # 迅虎支付（虎皮椒）：DB 未配置时回落到环境变量凭证
-    if settings.XUNHUPAY_APP_ID and settings.XUNHUPAY_APP_SECRET:
-        xh = payment_config.setdefault("xunhupay", {})
-        if not xh.get("appid"):
-            xh["appid"] = settings.XUNHUPAY_APP_ID
-            xh["app_secret"] = settings.XUNHUPAY_APP_SECRET
-            for key, val in defaults["xunhupay"].items():
-                xh.setdefault(key, val)
-            xh.setdefault("enabled", True)
-
-    init_payment_factory(payment_config)
     yield
     # Shutdown
     from app.services.plugin_scheduler import shutdown_scheduler
     await shutdown_scheduler()
-
-    from app.core.billing_scheduler import shutdown_billing_scheduler
-    await shutdown_billing_scheduler()
 
 app = FastAPI(
     title="Wenmo API",
@@ -387,7 +177,7 @@ app = FastAPI(
 
 register_exception_handlers(app)
 
-# Desktop mode: when SERVE_FRONTEND_DIR points to an existing Vite dist, the API
+# SPA hosting: when SERVE_FRONTEND_DIR points to an existing Vite dist, the API
 # server also hosts the SPA at "/" (mounted last, after API routes) and the
 # JSON root route is skipped so "/" serves index.html.
 _serve_frontend_dir = (
@@ -537,7 +327,7 @@ class SPAStaticFiles(StaticFiles):
             raise
 
 
-# Desktop mode: serve the built SPA from "/". Mounted last so API routes,
+# SPA hosting: serve the built SPA from "/". Mounted last so API routes,
 # /uploads and /health always win.
 if _serve_frontend_dir:
     app.mount("/", SPAStaticFiles(directory=_serve_frontend_dir, html=True), name="spa")

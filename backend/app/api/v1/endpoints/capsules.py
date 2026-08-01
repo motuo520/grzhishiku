@@ -14,7 +14,7 @@ from app.schemas.capsule import (
     CapsuleCreate, CapsuleResponse, CapsuleDialogueCreate, CapsuleDialogueResponse,
     CapsuleDialogueMessage,
 )
-from app.services.llm_billing_service import billed_chat_completion
+from app.services.llm_service import chat_completion
 
 router = APIRouter()
 
@@ -422,20 +422,14 @@ async def capsule_dialogue(
         + "4. 不要泄露你是 AI，也不要跳出角色。"
     )
 
-    # Call LLM with billing
+    # Call LLM
     try:
-        ai_reply = await billed_chat_completion(
-            db=db,
-            user_id=current_user.id,
-            model_id=dialogue_data.preferred_model or "deepseek-v4-flash",
-            task_type="capsule_dialogue",
+        ai_reply = await chat_completion(
             prompt=dialogue_data.message,
+            task_type="capsule_dialogue",
             system_prompt=system_prompt,
-            request_id=dialogue.id,
+            preferred_model=dialogue_data.preferred_model,
         )
-    except ValueError as e:
-        # Insufficient balance — surface it instead of faking a reply
-        raise HTTPException(status_code=status.HTTP_402_PAYMENT_REQUIRED, detail=str(e))
     except Exception:
         # Fallback to a safe message if LLM fails, preserving conversation
         ai_reply = "（过去的自己仿佛隔着时光点了点头，但声音有些模糊……AI 暂时不可用，请稍后重试）"

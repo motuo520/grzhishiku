@@ -4,14 +4,11 @@ import AppLayout from './layouts/AppLayout';
 import AdminRoute from './components/auth/AdminRoute';
 import ErrorBoundary from './components/ErrorBoundary';
 import ModuleLayout from './components/navigation/ModuleLayout';
-import InsufficientBalanceListener from './components/llm/InsufficientBalanceListener';
-import SubscriptionUpgradeListener from './components/billing/SubscriptionUpgradeListener';
 
 // ── Auth & Layout (not lazy: instant load for welcome) ──
 import WelcomePage from './pages/WelcomePage';
 import { useAuth } from '@/hooks/useAuth';
 import { useSettings } from '@/store/settings';
-import { usePlatformBilling } from '@/hooks/useSystemFeatures';
 import { getActiveProvider } from '@/api/llm';
 
 // ── Lazy-loaded pages ───────────────────────────────
@@ -69,12 +66,6 @@ const DecisionAuditPage = lazy(() => import('./pages/cognitive/DecisionAuditPage
 const FutureSimulationPage = lazy(() => import('./pages/cognitive/FutureSimulationPage'));
 const CognitiveChallengePage = lazy(() => import('./pages/cognitive/CognitiveChallengePage'));
 const CognitiveWeeklyReportPage = lazy(() => import('./pages/cognitive/CognitiveWeeklyReportPage'));
-const BusinessPlanPage = lazy(() => import('./pages/BusinessPlanPage'));
-const PaymentPage = lazy(() => import('./pages/PaymentPage'));
-const PaymentSuccessPage = lazy(() => import('./pages/PaymentSuccessPage'));
-const PaymentCancelPage = lazy(() => import('./pages/PaymentCancelPage'));
-const TopupPage = lazy(() => import('./pages/TopupPage'));
-const BillingPage = lazy(() => import('./pages/BillingPage'));
 const EmergencePage = lazy(() => import('./pages/emergence/EmergencePage'));
 const AssociatePage = lazy(() => import('./pages/emergence/AssociatePage'));
 const CollisionPage = lazy(() => import('./pages/emergence/CollisionPage'));
@@ -119,12 +110,9 @@ const AdminLogin = lazy(() => import('./pages/admin/AdminLogin'));
 const AdminDashboard = lazy(() => import('./pages/admin/AdminDashboard'));
 const AdminUsers = lazy(() => import('./pages/admin/AdminUsers'));
 const AdminContent = lazy(() => import('./pages/admin/AdminContent'));
-const AdminBilling = lazy(() => import('./pages/admin/AdminBilling'));
-const AdminModels = lazy(() => import('./pages/admin/AdminModels'));
 const AdminSystem = lazy(() => import('./pages/admin/AdminSystem'));
 const AdminLogs = lazy(() => import('./pages/admin/AdminLogs'));
 const AdminSupport = lazy(() => import('./pages/admin/AdminSupport'));
-const AdminTenants = lazy(() => import('./pages/admin/AdminTenants'));
 
 // ── Skeleton fallback ───────────────────────────────
 const PageSkeleton: FC = () => (
@@ -210,8 +198,6 @@ const App: FC = () => {
   // 界面版本：classic=旧版完整功能（默认），simple=简化版三动作
   const uiMode = useSettings((state) => state.uiMode);
   const isClassic = uiMode === 'classic';
-  // 平台模型计费开关（开源/自托管默认关闭）
-  const platformBilling = usePlatformBilling();
 
   useEffect(() => {
     if (!isLoggedIn) return;
@@ -229,12 +215,8 @@ const App: FC = () => {
   return (
     <ErrorBoundary>
       <Suspense fallback={<PageSkeleton />}>
-        <InsufficientBalanceListener />
-        <SubscriptionUpgradeListener />
         <Routes>
           <Route path="/welcome" element={<WelcomePage />} />
-          <Route path="/payment/success" element={<PaymentSuccessPage />} />
-          <Route path="/payment/cancel" element={<PaymentCancelPage />} />
           <Route
             path="/*"
             element={
@@ -428,7 +410,6 @@ const App: FC = () => {
             {/* Settings */}
             <Route path="settings" element={<ModuleLayout menuId="settings" showOverview={false} />}>
               <Route index element={<Navigate to="account" replace />} />
-              <Route path="desktop" element={<SettingsPage />} />
               <Route path="account" element={<SettingsPage />} />
               <Route path="ai" element={<SettingsPage />} />
               <Route path="privacy" element={<SettingsPage />} />
@@ -439,15 +420,6 @@ const App: FC = () => {
               <Route path="plugins" element={<SettingsPage />} />
             </Route>
 
-            {isClassic && <Route path="business-plan" element={<BusinessPlanPage />} />}
-            <Route path="payment" element={<PaymentPage />} />
-            {platformBilling ? (
-              <Route path="topup" element={<TopupPage />} />
-            ) : (
-              <Route path="topup" element={<Navigate to="/app" replace />} />
-            )}
-            <Route path="billing" element={<BillingPage />} />
-
             {/* 未匹配路由（含另一模式的专属路由）：提示后可一键切经典版 */}
             <Route path="*" element={<RouteFallback />} />
           </Route>
@@ -457,16 +429,9 @@ const App: FC = () => {
             <Route index element={<AdminDashboard />} />
             <Route path="users" element={<AdminUsers />} />
             <Route path="content" element={<AdminContent />} />
-            <Route path="billing" element={<AdminBilling />} />
-            {platformBilling ? (
-              <Route path="models" element={<AdminModels />} />
-            ) : (
-              <Route path="models" element={<Navigate to="/admin" replace />} />
-            )}
             <Route path="system" element={<AdminSystem />} />
             <Route path="logs" element={<AdminLogs />} />
             <Route path="support" element={<AdminSupport />} />
-            <Route path="tenants" element={<AdminTenants />} />
           </Route>
         </Routes>
       </Suspense>

@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v0.1.0 - 2026-08-01
+
+首个开源发布版（精简版）：
+
+- 仅支持 Ollama 本地模型（`qwen2.5:0.5b` 对话 + `nomic-embed-text` 向量化），免费、离线可用。
+- 剥离桌面端、外部 LLM 供应商（BYOK）、支付/会员体系（保留在 prod 分支）。
+- 云同步等原付费功能免费开放（快照存 MinIO，端到端加密不变）。
+- 一行 `docker compose up -d` 自托管：fresh clone 无需任何 .env 配置，首次启动自动拉取模型。
+
 ## [Unreleased]
 
 ### Added

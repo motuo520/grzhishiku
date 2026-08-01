@@ -10,7 +10,6 @@ import {
 import { useKnowledgeUnit } from '@/hooks/useKnowledge';
 import ErrorState from '@/components/ErrorState';
 import ModelSelector from '@/components/llm/ModelSelector';
-import LLMCostBadge from '@/components/llm/LLMCostBadge';
 
 const statusConfig: Record<string, { icon: React.ElementType; label: string; badgeClass: string; desc: string }> = {
   confirmed: {
@@ -331,7 +330,6 @@ const KnowledgeDetail: FC = () => {
             <h2 className="text-sm font-semibold text-text-primary">操作</h2>
             <div className="space-y-2">
               <ModelSelector value={modelId} onChange={setModelId} taskType="analysis" className="w-full" />
-              <LLMCostBadge modelId={modelId} inputText={unit.content_raw ?? ''} outputTokenEstimate={600} className="w-full" />
             </div>
             <button onClick={handleVerify} disabled={isVerifying}
               className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-accent text-white rounded-[2px] text-sm font-medium hover:bg-[var(--accent-hover)] transition-all disabled:opacity-60 disabled:cursor-not-allowed">

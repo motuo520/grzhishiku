@@ -8,7 +8,6 @@ import {
   useGenerateContextGuide,
 } from '@/hooks/useJianghu';
 import ModelSelector from '@/components/llm/ModelSelector';
-import LLMCostBadge from '@/components/llm/LLMCostBadge';
 import {
   BrainCircuit, Plus, Loader2, Trash2, Edit3, CheckCircle2, XCircle,
   Save, Sparkles, Eye, FileText, Home, Globe, Brain
@@ -211,7 +210,6 @@ const AiContextPage: FC = () => {
         <div className="flex items-center gap-3">
           <div className="flex flex-col items-end gap-1.5">
             <ModelSelector value={modelId} onChange={setModelId} taskType="analysis" className="w-48" />
-            <LLMCostBadge modelId={modelId} inputText="最近 30 条笔记 + 30 条知识单元" outputTokenEstimate={1200} />
           </div>
           <button
             onClick={handleGenerate}

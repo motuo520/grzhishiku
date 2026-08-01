@@ -28,10 +28,6 @@ frontend/node_modules/
 frontend/dist/
 browser-extension/node_modules/
 browser-extension/dist/
-desktop/node_modules/
-desktop/release/
-desktop/backend-build/
-desktop/backend-dist/
 frontend/shots-before/
 frontend/shots-after/
 
@@ -49,4 +45,3 @@ OllamaSetup*
 .DS_Store
 Thumbs.db
 cloud_account.json
-desktop/build-secrets.json

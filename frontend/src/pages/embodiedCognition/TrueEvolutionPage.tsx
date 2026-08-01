@@ -7,7 +7,6 @@ import { useNotes } from '@/hooks/useNotes';
 import { useKnowledge } from '@/hooks/useKnowledge';
 import { useExperimentLogs } from '@/hooks/useJianghu';
 import ModelSelector from '@/components/llm/ModelSelector';
-import LLMCostBadge from '@/components/llm/LLMCostBadge';
 import {
   TrendingUp, Plus, Loader2, Save, Trash2, Edit3, X, Sparkles,
   CheckCircle2, XCircle, ChevronRight, AlertTriangle, Lightbulb,
@@ -196,7 +195,6 @@ const TrueEvolutionPage: FC = () => {
         <div className="flex flex-col items-end gap-2">
           <div className="flex items-center gap-3">
             <ModelSelector value={modelId} onChange={setModelId} taskType="analysis" className="w-48" />
-            <LLMCostBadge modelId={modelId} inputText={evolutionReflections.map((r) => r.title + (r.pain_description || '')).join('\n')} outputTokenEstimate={400} />
           </div>
           <div className="flex items-center gap-3">
             <button

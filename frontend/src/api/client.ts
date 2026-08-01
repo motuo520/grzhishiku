@@ -55,28 +55,6 @@ class ApiClient {
           return Promise.reject(error);
         }
 
-        // 402: LLM balance insufficient -> broadcast global event so UI can show top-up / local-model hint
-        if (error.response?.status === 402) {
-          const detail = (error.response?.data as { detail?: string })?.detail || '余额不足，无法完成 AI 调用';
-          window.dispatchEvent(
-            new CustomEvent('psb:llm:insufficient-balance', {
-              detail: { message: detail, url: '/topup' },
-            })
-          );
-          return Promise.reject({ message: detail, code: 'INSUFFICIENT_BALANCE', status: 402 });
-        }
-
-        // 403: subscription tier insufficient -> broadcast global event so UI can show upgrade prompt
-        if (error.response?.status === 403) {
-          const detail = (error.response?.data as { detail?: string })?.detail || '当前订阅方案无权使用该功能';
-          window.dispatchEvent(
-            new CustomEvent('psb:subscription:upgrade-required', {
-              detail: { message: detail, url: '/payment' },
-            })
-          );
-          return Promise.reject({ message: detail, code: 'UPGRADE_REQUIRED', status: 403 });
-        }
-
         if (error.response?.status === 401 && !originalRequest._retry) {
           // 匿名（无 token）用户的 401：不刷新、不踢回欢迎页，交给调用方按空态处理
           if (!getToken()) {

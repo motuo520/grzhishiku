@@ -1,9 +1,7 @@
 import { FC, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Mail, Lock, Eye, EyeOff, Loader2, ArrowRight, Cloud } from 'lucide-react';
+import { X, Mail, Lock, Eye, EyeOff, Loader2, ArrowRight } from 'lucide-react';
 import { setToken } from '@/api/auth';
-import api from '@/api/client';
-import { isDesktop, markCloudBound } from '@/api/unifiedSync';
 import { useAuth } from '@/hooks/useAuth';
 import { SealMark } from '@/components/common/BrandLogo';
 
@@ -24,32 +22,8 @@ const LoginModal: FC<LoginModalProps> = ({ isOpen, onClose }) => {
   const [countdown, setCountdown] = useState(0);
   const [showPassword, setShowPassword] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
-  // 桌面端：云端账号直接登录（云端验证后自动开通本地会话）
-  const [cloudServerUrl, setCloudServerUrl] = useState('https://grzhishiku.com');
-  const [cloudLoading, setCloudLoading] = useState(false);
 
   if (!isOpen) return null;
-
-  const handleCloudLogin = async () => {
-    setFormError(null);
-    if (!email.trim()) { setFormError('请输入邮箱'); return; }
-    if (!password) { setFormError('请输入密码'); return; }
-    setCloudLoading(true);
-    try {
-      const { data } = await api.post('/api/v1/cloud-proxy/login-session', {
-        server_url: cloudServerUrl.trim().replace(/\/+$/, ''),
-        email: email.trim(),
-        password,
-      });
-      setToken(data.access_token);
-      markCloudBound(true);
-      window.location.reload();
-    } catch (err: any) {
-      setFormError(formatError(err));
-    } finally {
-      setCloudLoading(false);
-    }
-  };
 
   const resetForm = () => {
     setFormError(null);
@@ -290,36 +264,6 @@ const LoginModal: FC<LoginModalProps> = ({ isOpen, onClose }) => {
                     </>
                   )}
                 </button>
-
-                {/* 桌面端：云端账号直接登录（本机账号与网页端账号是两套） */}
-                {isDesktop() && (
-                  <div className="pt-3 mt-1 border-t border-border-color space-y-3">
-                    <p className="text-[11px] text-text-muted leading-relaxed">
-                      有网页端账号？用云端账号登录，首次会自动开通本地会话（数据仍存本机）
-                    </p>
-                    <input
-                      type="text"
-                      value={cloudServerUrl}
-                      onChange={(e) => setCloudServerUrl(e.target.value)}
-                      placeholder="云端服务器地址"
-                      className="w-full px-3.5 py-2 bg-bg-secondary border border-border-color rounded-[2px] text-text-primary placeholder-text-muted focus:border-info/40 outline-none transition-all text-xs"
-                      disabled={cloudLoading}
-                    />
-                    <button
-                      type="button"
-                      onClick={handleCloudLogin}
-                      disabled={cloudLoading}
-                      className="w-full bg-bg-tertiary hover:bg-bg-hover border border-accent/40 text-text-primary px-5 py-2.5 rounded-[2px] text-sm font-medium transition-all flex items-center justify-center gap-2 disabled:opacity-60"
-                    >
-                      {cloudLoading ? (
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                      ) : (
-                        <Cloud className="w-4 h-4 text-accent" />
-                      )}
-                      用云端账号登录
-                    </button>
-                  </div>
-                )}
               </motion.form>
             )}
 
@@ -334,14 +278,6 @@ const LoginModal: FC<LoginModalProps> = ({ isOpen, onClose }) => {
                 onSubmit={handleRegister}
                 className="relative z-10 space-y-4"
               >
-                {/* 桌面端：讲清本机账号的边界 */}
-                {isDesktop() && (
-                  <div className="bg-info/10 border border-info/20 text-info rounded-[2px] px-4 py-3 text-xs leading-relaxed">
-                    这里注册的是<strong>本机账号</strong>：只存在这台电脑上，<strong>不能</strong>用于
-                    grzhishiku.com 网页端登录。想在多台设备间同步，请改用「登录」页的
-                    <strong>用云端账号登录</strong>（数据同样存在本机）。
-                  </div>
-                )}
                 <div>
                   <label className="block text-xs font-medium text-text-secondary mb-1.5">邮箱</label>
                   <div className="relative">

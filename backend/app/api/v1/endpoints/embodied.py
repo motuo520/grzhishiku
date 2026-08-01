@@ -15,7 +15,7 @@ from app.schemas.embodied import (
     EvolutionAnalysisRequest, EvolutionAnalysisResponse,
     MoodLocationResponse, MoodLocationItem, MoodLocationStats
 )
-from app.services.llm_billing_service import billed_chat_completion
+from app.services.llm_service import chat_completion
 
 router = APIRouter()
 
@@ -139,13 +139,11 @@ async def evaluate_depth(
 """
 
     try:
-        raw = await billed_chat_completion(
-            db=db,
-            user_id=current_user.id,
-            model_id=request.preferred_model or "deepseek-v4-pro",
-            task_type="analysis",
+        raw = await chat_completion(
             prompt=prompt,
+            task_type="analysis",
             system_prompt="You are a content depth evaluator. Always return valid JSON with keys depth_score, is_passed, feedback, suggestions.",
+            preferred_model=request.preferred_model,
         )
     except HTTPException:
         raise
@@ -176,7 +174,7 @@ async def evaluate_depth(
         is_passed=passed,
         feedback=feedback,
         suggestions=json.dumps(suggestions, ensure_ascii=False),
-        model_used=request.preferred_model or "deepseek-v4-pro",
+        model_used=request.preferred_model or "ollama-qwen2.5-0.5b",
     )
     db.add(log)
     db.commit()
@@ -364,13 +362,11 @@ async def analyze_evolution_reflections(
 """
 
     try:
-        raw = await billed_chat_completion(
-            db=db,
-            user_id=current_user.id,
-            model_id=request.preferred_model or "deepseek-v4-pro",
-            task_type="analysis",
+        raw = await chat_completion(
             prompt=prompt,
+            task_type="analysis",
             system_prompt="You are a growth coach. Always return valid JSON with keys summary, patterns, warnings, next_steps.",
+            preferred_model=request.preferred_model,
         )
     except HTTPException:
         raise

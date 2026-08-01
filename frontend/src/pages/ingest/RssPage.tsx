@@ -6,7 +6,6 @@ import {
 } from 'lucide-react';
 import { useRssFeeds, useRssEntries } from '@/hooks/useRss';
 import ModelSelector from '@/components/llm/ModelSelector';
-import LLMCostBadge from '@/components/llm/LLMCostBadge';
 import { summarizeText } from '@/api/llm';
 
 const RssPage: FC = () => {
@@ -190,7 +189,6 @@ const RssPage: FC = () => {
         </div>
         <div className="flex items-center gap-3">
           <ModelSelector value={modelId} onChange={setModelId} taskType="analysis" className="w-48" />
-          <LLMCostBadge modelId={modelId} inputText="" outputTokenEstimate={150} />
           <span className="badge-network">Network Brain</span>
         </div>
       </div>

@@ -7,7 +7,6 @@ export interface TokenResponse { access_token: string; token_type: string; expir
 export interface User {
   id: string; email: string; name: string | null; avatar: string | null;
   display_name: string | null; username: string | null;
-  subscription_tier: string; subscription_status: string;
   storage_used: number; storage_limit: number; created_at: string;
 }
 

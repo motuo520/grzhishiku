@@ -17,8 +17,6 @@ import {
   Building2,
   Briefcase,
   LayoutGrid,
-  Laptop,
-  Download,
 } from 'lucide-react';
 import { SealMark } from '@/components/common/BrandLogo';
 import BrandLogo from '@/components/common/BrandLogo';
@@ -121,36 +119,25 @@ const WelcomePage: FC = () => {
               <LayoutGrid className="w-4 h-4 text-[#e0704f]" />
               经典版 ⇄ 简化版，两种界面随心切换
             </span>
-            <span className="inline-flex items-center gap-2 px-4 py-2 rounded-[2px] border border-[rgba(232,226,216,0.14)] text-[#b8b0a4]">
-              <Laptop className="w-4 h-4 text-[#e0704f]" />
-              桌面端本地使用，数据不出本机
-            </span>
           </div>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pointer-events-auto">
-            <button
-              onClick={handleEnter}
-              className="group inline-flex items-center gap-2 px-7 py-3.5 rounded-[2px] bg-[#bd4a2e] hover:bg-[#a83c22] text-[#f6ece6] text-base font-medium transition-colors duration-200"
-            >
-              免费试用
-              <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-            </button>
             <a
               href={GITHUB_URL}
               target="_blank"
               rel="noreferrer"
-              className="inline-flex items-center gap-2 px-7 py-3.5 rounded-[2px] border border-[rgba(232,226,216,0.18)] hover:border-[#bd4a2e]/60 text-[#e8e2d8] text-base font-medium transition-colors duration-200"
+              className="group inline-flex items-center gap-2 px-7 py-3.5 rounded-[2px] bg-[#bd4a2e] hover:bg-[#a83c22] text-[#f6ece6] text-base font-medium transition-colors duration-200"
             >
               <Github className="w-5 h-5" />
-              GitHub
+              快速开始
+              <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
             </a>
-            <a
-              href="/download/PSB-Setup-0.2.3.exe"
+            <button
+              onClick={handleEnter}
               className="inline-flex items-center gap-2 px-7 py-3.5 rounded-[2px] border border-[rgba(232,226,216,0.18)] hover:border-[#bd4a2e]/60 text-[#e8e2d8] text-base font-medium transition-colors duration-200"
             >
-              <Download className="w-5 h-5" />
-              下载桌面端
-            </a>
+              进入在线演示
+            </button>
           </div>
         </motion.div>
 
@@ -301,115 +288,6 @@ const WelcomePage: FC = () => {
         </div>
       </section>
 
-      {/* 桌面端 */}
-      <section className="relative z-10 bg-[#161311]/95 border-t border-[rgba(232,226,216,0.06)]">
-        <div className="max-w-6xl mx-auto px-6 py-24">
-          <div className="grid md:grid-cols-2 gap-12 items-center">
-            <div>
-              <p className="text-[11px] tracking-[0.3em] uppercase text-[#e0704f] mb-3">桌面端</p>
-              <h2 className="text-3xl sm:text-4xl font-bold text-[#f0ebe2] mb-6 leading-snug">
-                真桌面端，
-                <br />
-                不是套壳网页
-              </h2>
-              <p className="text-[#b8b0a4] leading-relaxed mb-4">
-                安装包内嵌完整后端服务，打开就在你自己的电脑上启动——不连我们的服务器，断网也照常用。笔记、知识库、本地模型问答，全部离线运行。
-              </p>
-              <p className="text-[#b8b0a4] leading-relaxed mb-8">
-                需要多设备时，再绑定云端账号：同步走端到端加密，服务器只存密文，读不懂你的内容。
-              </p>
-              <a
-                href="/download/PSB-Setup-0.2.3.exe"
-                className="inline-flex items-center gap-2 px-6 py-3 rounded-[2px] bg-[#bd4a2e] hover:bg-[#a83c22] text-[#f6ece6] text-sm font-medium transition-colors duration-200"
-              >
-                <Download className="w-4 h-4" />
-                下载 Windows 桌面端
-              </a>
-            </div>
-            <div className="glass-card p-8">
-              <div className="space-y-6">
-                {[
-                  { icon: Server, title: '内嵌完整后端', desc: '无需装 Python、Docker 或任何环境，双击即用，打开自动在本机启动服务。' },
-                  { icon: Lock, title: '数据只在你电脑上', desc: '本地 SQLite 存储，断网白屏？不存在的——拔了网线照样记、照样问。' },
-                  { icon: Cloud, title: '可选端到端加密同步', desc: '绑定网页端账号后多设备互通，同步内容全程密文，密码只在你手里。' },
-                ].map((item) => (
-                  <div key={item.title} className="flex gap-4">
-                    <div className="w-10 h-10 rounded-[2px] bg-[#bd4a2e]/10 flex items-center justify-center shrink-0">
-                      <item.icon className="w-5 h-5 text-[#e0704f]" />
-                    </div>
-                    <div>
-                      <h4 className="text-base font-bold text-[#f0ebe2] mb-1">{item.title}</h4>
-                      <p className="text-sm text-[#9a9286]">{item.desc}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* 价格 */}
-      <section className="relative z-10 bg-[#161311]/95 border-t border-[rgba(232,226,216,0.06)]">
-        <div className="max-w-5xl mx-auto px-6 py-24">
-          <div className="text-center mb-14">
-            <p className="text-[11px] tracking-[0.3em] uppercase text-[#e0704f] mb-3">定价</p>
-            <h2 className="text-3xl sm:text-4xl font-bold text-[#f0ebe2]">开源核心免费，付费的是同步与云</h2>
-          </div>
-          <div className="grid md:grid-cols-3 gap-6">
-            {[
-              {
-                name: 'L1 开源核心',
-                price: '免费',
-                desc: '笔记、知识库、本地模型问答、Docker 自托管。',
-                features: ['本地 Ollama 模型', 'RAG 问答 + 引用', '剪藏与导入', '无限笔记'],
-                highlight: false,
-              },
-              {
-                name: 'L2 云同步',
-                price: '¥9.9 / 月',
-                desc: '多设备同步、端到端加密、自动备份。',
-                features: ['多端实时同步', '端到端加密', '历史版本', '优先支持'],
-                highlight: true,
-              },
-              {
-                name: 'L3 云端模型包',
-                price: '按量计费',
-                desc: '外出或手机端使用顶级云端模型。',
-                features: ['DeepSeek / Kimi / OpenAI', '免配 key，开箱即用', '用多少算多少，小额起充', '与本地模型自由切换'],
-                highlight: false,
-              },
-            ].map((tier) => (
-              <div
-                key={tier.name}
-                className={`glass-card p-7 flex flex-col ${tier.highlight ? 'border-[#bd4a2e]/50' : ''}`}
-              >
-                <h3 className="text-lg font-bold text-[#f0ebe2] mb-2">{tier.name}</h3>
-                <div className="text-2xl font-bold text-[#e0704f] mb-3">{tier.price}</div>
-                <p className="text-sm text-[#9a9286] mb-5">{tier.desc}</p>
-                <ul className="space-y-2 mb-6 flex-1">
-                  {tier.features.map((f) => (
-                    <li key={f} className="flex items-center gap-2 text-sm text-[#b8b0a4]">
-                      <div className="w-1 h-1 rounded-full bg-[#e0704f]" />
-                      {f}
-                    </li>
-                  ))}
-                </ul>
-                <button
-                  onClick={handleEnter}
-                  className={`w-full py-2.5 rounded-[2px] text-sm font-medium transition-colors ${
-                    tier.highlight
-                      ? 'bg-[#bd4a2e] hover:bg-[#a83c22] text-[#f6ece6]'
-                      : 'border border-[rgba(232,226,216,0.14)] hover:border-[#bd4a2e]/60 text-[#e8e2d8]'
-                  }`}
-                >
-                  {tier.price === '免费' ? '立即开始' : '查看详情'}
-                </button>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
 
       {/* 快速开始 */}
       <section className="relative z-10 bg-[#161311]/90 border-t border-[rgba(232,226,216,0.06)]">

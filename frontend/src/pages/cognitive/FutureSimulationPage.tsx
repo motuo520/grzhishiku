@@ -7,7 +7,6 @@ import CognitiveHero from '@/components/brain/CognitiveHero';
 import FutureSimulationForm from '@/components/brain/FutureSimulationForm';
 import FutureSimulationCard from '@/components/brain/FutureSimulationCard';
 import ModelSelector from '@/components/llm/ModelSelector';
-import LLMCostBadge from '@/components/llm/LLMCostBadge';
 import AiErrorNotice from '@/components/llm/AiErrorNotice';
 
 const FutureSimulationPage: FC = () => {
@@ -92,18 +91,6 @@ const FutureSimulationPage: FC = () => {
   const simulations: FutureSimulation[] = data?.items || [];
   const audits = auditsData?.items || [];
 
-  const simulationInputText = simulations.length
-    ? simulations
-        .map(
-          (s) =>
-            `模拟：${s.title}\n背景：${s.context}\n变量：${s.variables.join('，')}\n情景：${s.scenarios
-              .map((sc) => `${sc.name}（概率 ${sc.probability}%）：${sc.assumptions.join('；')}`)
-              .join(' | ')}\n时间尺度：${s.timeframes.join('，')}`
-        )
-        .join('\n---\n')
-        .slice(0, 6000)
-    : '基于设定的决策、关键变量与情景，推演短期、中期、长期的可能未来。';
-
   const initialFormData: Partial<FutureSimulationCreateRequest> = editingSim
     ? {
         title: editingSim.title,
@@ -134,7 +121,6 @@ const FutureSimulationPage: FC = () => {
         <div className="flex flex-col items-end gap-2">
           <div className="flex items-center gap-3">
             <ModelSelector value={modelId} onChange={setModelId} taskType="creative" className="w-48" />
-            <LLMCostBadge modelId={modelId} inputText={simulationInputText} outputTokenEstimate={800} />
           </div>
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/[0.03] border border-white/[0.08]">

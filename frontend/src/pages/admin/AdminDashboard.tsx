@@ -1,14 +1,13 @@
 import { useEffect, useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Users, FileText, CreditCard,
-  TrendingUp, TrendingDown, Activity, BarChart3,
-  DollarSign, PieChart
+  Users, FileText,
+  TrendingUp, TrendingDown, Activity, BarChart3
 } from 'lucide-react';
 import adminApi from '../../services/adminApi';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  BarChart, Bar, PieChart as RePieChart, Pie, Cell, AreaChart, Area,
+  BarChart, Bar, Cell,
 } from 'recharts';
 
 interface DashboardStats {
@@ -23,10 +22,6 @@ interface DashboardStats {
   contentToday?: number;
   activeUsers7d?: number;
   activeToday?: number;
-  paidRatio?: number;
-  revenueThisMonth?: number;
-  revenueLastMonth?: number;
-  revenueGrowth?: number;
   totalStorage?: number;
   avgStorage?: number;
   userGrowth?: number;
@@ -36,18 +31,7 @@ interface DashboardStats {
     both: number;
   };
   userGrowthTrend?: { date: string; count: number }[];
-  revenueTrend?: { month: string; revenue: number }[];
-  subscriptionDistribution?: { name: string; value: number }[];
 }
-
-interface BillingStats {
-  totalFree: number;
-  totalStorage: number;
-  revenueThisMonth: number;
-  churnRate: number;
-}
-
-const PIE_COLORS = ['#8b949e', '#58a6ff', '#d29922'];
 
 const CHART_TOOLTIP_STYLE = {
   backgroundColor: '#161b22',
@@ -88,25 +72,19 @@ function SkeletonChart() {
 
 export default function AdminDashboard() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
-  const [billingStats, setBillingStats] = useState<BillingStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
   useEffect(() => {
-    Promise.allSettled([
-      adminApi.getStats().then((r: any) => r.data),
-      adminApi.getSubscriptionStats().then((r: any) => r.data),
-    ]).then(([statsRes, billingRes]) => {
-      if (statsRes.status === 'fulfilled') {
-        setStats(statsRes.value);
-      } else {
+    adminApi.getStats()
+      .then((r: any) => {
+        setStats(r.data);
+        setLoading(false);
+      })
+      .catch(() => {
         setError('仪表盘数据加载失败');
-      }
-      if (billingRes.status === 'fulfilled') {
-        setBillingStats(billingRes.value);
-      }
-      setLoading(false);
-    });
+        setLoading(false);
+      });
   }, []);
 
   const totalContent = useMemo(() => {
@@ -141,47 +119,6 @@ export default function AdminDashboard() {
       { name: '胶囊', value: stats.totalCapsules || 0, color: '#3fb950' },
     ].filter(d => d.value > 0);
   }, [stats]);
-
-  const subscriptionPie = useMemo(() => {
-    if (billingStats) {
-      return [
-        { name: 'Free', value: billingStats.totalFree },
-        { name: 'Storage', value: billingStats.totalStorage },
-      ].filter(d => d.value > 0);
-    }
-    if (stats?.subscriptionDistribution?.length) return stats.subscriptionDistribution;
-    return [
-      { name: 'Free', value: 80 },
-      { name: 'Storage', value: 15 },
-    ];
-  }, [billingStats, stats]);
-
-  const revenueTrend = useMemo(() => {
-    if (stats?.revenueTrend?.length) return stats.revenueTrend;
-    const months = ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月'];
-    const base = billingStats?.revenueThisMonth || 1000;
-    return months.map((m, i) => ({
-      month: m,
-      revenue: Math.round(base * (0.5 + i * 0.08 + Math.random() * 0.2)),
-    }));
-  }, [stats, billingStats]);
-
-  const paidRatio = useMemo(() => {
-    if (stats?.paidRatio !== undefined) return stats.paidRatio;
-    if (!billingStats || !stats) return 0;
-    const total = billingStats.totalFree + billingStats.totalStorage;
-    if (total === 0) return 0;
-    return ((total - billingStats.totalFree) / total) * 100;
-  }, [stats, billingStats]);
-
-  const revenueGrowth = useMemo(() => {
-    if (stats?.revenueGrowth !== undefined) return stats.revenueGrowth;
-    if (billingStats?.revenueThisMonth) {
-      const prev = billingStats.revenueThisMonth * 0.85;
-      return ((billingStats.revenueThisMonth - prev) / prev) * 100;
-    }
-    return 12.5;
-  }, [stats, billingStats]);
 
   const statCards = useMemo(() => {
     if (!stats) return [];
@@ -218,24 +155,8 @@ export default function AdminDashboard() {
         color: 'text-[#a371f7]',
         bg: 'bg-[#a371f7]/10',
       },
-      {
-        label: '付费比例',
-        value: `${paidRatio.toFixed(1)}%`,
-        icon: CreditCard,
-        change: 0,
-        color: 'text-info',
-        bg: 'bg-[#58a6ff]/10',
-      },
-      {
-        label: '本月收入',
-        value: `¥${(billingStats?.revenueThisMonth || stats.revenueThisMonth || 0).toLocaleString()}`,
-        icon: DollarSign,
-        change: revenueGrowth,
-        color: 'text-[#d29922]',
-        bg: 'bg-[#d29922]/10',
-      },
     ];
-  }, [stats, totalContent, paidRatio, billingStats, revenueGrowth]);
+  }, [stats, totalContent]);
 
   if (loading) {
     return (
@@ -244,8 +165,8 @@ export default function AdminDashboard() {
           <div className="w-32 h-8 bg-bg-tertiary rounded animate-pulse mb-2" />
           <div className="w-48 h-4 bg-bg-tertiary rounded animate-pulse" />
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {Array.from({ length: 6 }).map((_, i) => (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {Array.from({ length: 4 }).map((_, i) => (
             <SkeletonCard key={i} />
           ))}
         </div>
@@ -273,7 +194,7 @@ export default function AdminDashboard() {
       </div>
 
       {/* Stat Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <AnimatePresence>
           {statCards.map((card: typeof statCards[0], index: number) => (
             <motion.div
@@ -301,7 +222,7 @@ export default function AdminDashboard() {
         </AnimatePresence>
       </div>
 
-      {/* Charts Row 1 */}
+      {/* Charts Row */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* User Growth Line Chart */}
         <motion.div
@@ -355,76 +276,6 @@ export default function AdminDashboard() {
                 ))}
               </Bar>
             </BarChart>
-          </ResponsiveContainer>
-        </motion.div>
-      </div>
-
-      {/* Charts Row 2 */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Subscription Pie Chart */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.4 }}
-          className="bg-bg-tertiary rounded-xl border border-border-color p-6"
-        >
-          <div className="flex items-center gap-2 mb-4">
-            <PieChart className="w-5 h-5 text-[#a371f7]" />
-            <h2 className="text-lg font-semibold text-text-primary">订阅比例</h2>
-          </div>
-          <ResponsiveContainer width="100%" height={280}>
-            <RePieChart>
-              <Pie
-                data={subscriptionPie}
-                cx="50%"
-                cy="50%"
-                innerRadius={60}
-                outerRadius={100}
-                paddingAngle={4}
-                dataKey="value"
-                label={({ name, percent }: { name: string; percent: number }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                labelLine={{ stroke: '#8b949e' }}
-              >
-                {subscriptionPie.map((_: any, index: number) => (
-                  <Cell key={`cell-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />
-                ))}
-              </Pie>
-              <Tooltip contentStyle={CHART_TOOLTIP_STYLE} />
-            </RePieChart>
-          </ResponsiveContainer>
-        </motion.div>
-
-        {/* Revenue Trend Area Chart */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.45 }}
-          className="bg-bg-tertiary rounded-xl border border-border-color p-6"
-        >
-          <div className="flex items-center gap-2 mb-4">
-            <DollarSign className="w-5 h-5 text-[#3fb950]" />
-            <h2 className="text-lg font-semibold text-text-primary">收入趋势（最近12个月）</h2>
-          </div>
-          <ResponsiveContainer width="100%" height={280}>
-            <AreaChart data={revenueTrend}>
-              <defs>
-                <linearGradient id="revenueGradient" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#3fb950" stopOpacity={0.3} />
-                  <stop offset="95%" stopColor="#3fb950" stopOpacity={0} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="#21262d" />
-              <XAxis dataKey="month" {...CHART_AXIS_STYLE} />
-              <YAxis {...CHART_AXIS_STYLE} tickFormatter={(v: number) => `¥${v}`} />
-              <Tooltip contentStyle={CHART_TOOLTIP_STYLE} formatter={(v: number) => [`¥${v}`, '收入']} />
-              <Area
-                type="monotone"
-                dataKey="revenue"
-                stroke="#3fb950"
-                strokeWidth={2}
-                fill="url(#revenueGradient)"
-              />
-            </AreaChart>
           </ResponsiveContainer>
         </motion.div>
       </div>

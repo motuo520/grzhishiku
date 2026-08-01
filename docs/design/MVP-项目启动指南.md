@@ -273,9 +273,6 @@ npm run build:firefox  # Firefox 版本
 ├── Readability.js (内容提取)
 └── declarativeNetRequest (网络拦截)
 
-桌面端 (Desktop - 可选)
-└── Tauri (Rust + WebView) - 第三阶段
-
 基础设施
 ├── Docker + Docker Compose
 ├── Traefik (API 网关)
@@ -393,9 +390,6 @@ personal-second-brain/
 │   ├── package.json
 │   └── scripts/
 │       └── patch-manifest.js
-│
-├── desktop/                   # 桌面端 (Tauri - 第三阶段)
-│   └── src-tauri/
 │
 ├── docker-compose.yml         # Docker 编排
 ├── Makefile                   # 常用命令

@@ -58,14 +58,6 @@ class SystemConfigSnapshot:
         return mode.get("message") or mode.get("estimated_recovery")
 
     @property
-    def default_plan(self) -> str:
-        return str(self._get("default_plan", "free"))
-
-    @property
-    def enable_signup_bonus(self) -> bool:
-        return bool(self._get("enable_signup_bonus", False))
-
-    @property
     def max_upload_size(self) -> int:
         return int(self._get("max_upload_size", 10 * 1024 * 1024))
 
@@ -94,20 +86,6 @@ class SystemConfigSnapshot:
     @property
     def email_enabled(self) -> bool:
         return self.email_config.is_configured
-
-    @property
-    def payment_config(self) -> Dict[str, Any]:
-        val = self._get("payment_config", {})
-        if isinstance(val, str):
-            try:
-                val = json.loads(val)
-            except json.JSONDecodeError:
-                val = {}
-        return val if isinstance(val, dict) else {}
-
-    def payment_provider_enabled(self, provider: str) -> bool:
-        cfg = self.payment_config.get(provider, {})
-        return bool(cfg.get("enabled", False))
 
     @property
     def announcement(self) -> Dict[str, Any]:

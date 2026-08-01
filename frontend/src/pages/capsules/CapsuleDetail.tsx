@@ -9,7 +9,6 @@ import {
 import { useCapsules, useCapsuleDialogue } from '@/hooks/useCapsules';
 import type { CapsuleDialogueMessage } from '@/api/capsules';
 import ModelSelector from '@/components/llm/ModelSelector';
-import LLMCostBadge from '@/components/llm/LLMCostBadge';
 
 const MOOD_TAG_MAP: Record<string, { label: string; color: string; bg: string; border: string }> = {
   happy: { label: '开心', color: '#3fb950', bg: 'rgba(63,185,80,0.12)', border: 'rgba(63,185,80,0.3)' },
@@ -166,9 +165,8 @@ const CapsuleDetail: FC = () => {
       const msgs = response.data.messages || [];
       setDialogue(msgs);
     } catch (err: any) {
-      const status = err?.response?.status;
       const detail = err?.response?.data?.detail;
-      setDialogueError(status === 402 ? (detail || '余额不足，请先充值') : (detail || '发送失败，请稍后重试'));
+      setDialogueError(detail || '发送失败，请稍后重试');
     }
   };
 
@@ -438,9 +436,6 @@ const CapsuleDetail: FC = () => {
                   <div className="mb-3 p-2.5 rounded-[2px] bg-danger/10 border border-danger/20 text-danger text-xs flex items-center gap-1.5">
                     <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
                     <span>{dialogueError}</span>
-                    {dialogueError.includes('余额不足') && (
-                      <a href="/topup" className="underline ml-1 hover:opacity-80">去充值</a>
-                    )}
                   </div>
                 )}
 
@@ -451,11 +446,6 @@ const CapsuleDetail: FC = () => {
                     onChange={setModelId}
                     taskType="chat"
                     className="w-56"
-                  />
-                  <LLMCostBadge
-                    modelId={modelId}
-                    inputText={message}
-                    outputTokenEstimate={200}
                   />
                 </div>
 

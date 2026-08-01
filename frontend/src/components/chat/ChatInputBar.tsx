@@ -2,7 +2,6 @@ import { FC } from 'react';
 import { Send, Square } from 'lucide-react';
 import { LLM_MODEL_MAP } from '@/config/llmModels';
 import ModelSelector from '@/components/llm/ModelSelector';
-import LLMCostBadge from '@/components/llm/LLMCostBadge';
 
 interface ChatInputBarProps {
   message: string;
@@ -49,13 +48,6 @@ const ChatInputBar: FC<ChatInputBarProps> = ({
           className="w-56"
           disabled={disabled || isStreaming}
         />
-        <div className="hidden sm:block flex-1 min-w-0">
-          <LLMCostBadge
-            modelId={preferredModel}
-            inputText={message}
-            outputTokenEstimate={200}
-          />
-        </div>
       </div>
 
       {LLM_MODEL_MAP[preferredModel] && (

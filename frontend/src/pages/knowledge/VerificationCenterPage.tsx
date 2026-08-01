@@ -8,7 +8,6 @@ import {
 import { useKnowledge } from '@/hooks/useKnowledge';
 import ErrorState from '@/components/ErrorState';
 import ModelSelector from '@/components/llm/ModelSelector';
-import LLMCostBadge from '@/components/llm/LLMCostBadge';
 import type { KnowledgeUnit } from '@/types';
 
 const statusConfig: Record<string, { icon: React.ElementType; label: string; badgeClass: string }> = {
@@ -112,9 +111,7 @@ const VerificationCenterPage: FC = () => {
           </div>
           <div className="w-44 space-y-2">
             <ModelSelector value={modelId} onChange={setModelId} taskType="analysis" className="w-full" />
-            {pending.length > 0 ? (
-              <LLMCostBadge modelId={modelId} inputText={pending[0]?.content_raw || ''} outputTokenEstimate={600} className="w-full" />
-            ) : (
+            {pending.length === 0 && (
               <div className="text-[10px] text-text-muted text-center py-1">暂无待验证内容</div>
             )}
           </div>

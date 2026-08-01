@@ -17,7 +17,7 @@ from app.schemas.knowledge import (
     KnowledgeUnitCreate, KnowledgeUnitUpdate, KnowledgeUnitResponse, CounterEvidenceCreate,
     SourceInfoResponse, DomainCredibilityResponse
 )
-from app.services.llm_billing_service import billed_chat_completion
+from app.services.llm_service import chat_completion
 from app.services import tag_service
 from app.api.v1.endpoints.graph import auto_link_knowledge
 
@@ -195,13 +195,11 @@ Rules:
 '''
 
     try:
-        raw_result = await billed_chat_completion(
-            db=db,
-            user_id=user_id,
-            model_id=preferred_model or "deepseek-v4-pro",
-            task_type="verification",
+        raw_result = await chat_completion(
             prompt=prompt,
+            task_type="verification",
             system_prompt="You are a strict knowledge verification engine. Always return valid JSON.",
+            preferred_model=preferred_model,
         )
         
         # Extract JSON from response (handle markdown code blocks)

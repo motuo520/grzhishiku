@@ -6,8 +6,6 @@ from sqlalchemy.pool import StaticPool
 from app.core.database import Base, get_db
 from app.main import app
 from app.models.base import User, Note, BrowserClip, KnowledgeUnit, Capsule
-from app.models.llm_billing import LLMModel, ModelProviderAccount, UserBalance, BalanceTransaction, LLMUsageRecord
-from app.models.billing import Subscription, Plan
 from app.core.security import get_password_hash, create_access_token
 import uuid
 from datetime import datetime, timedelta, timezone
@@ -33,159 +31,6 @@ def setup_test_database():
     Base.metadata.create_all(bind=engine)
     yield
     Base.metadata.drop_all(bind=engine)
-
-
-@pytest.fixture(autouse=True)
-def seed_system_models(db_session):
-    """Ensure billed LLM endpoints have valid catalog rows in every test transaction."""
-    models = [
-        LLMModel(
-            id="gpt-4",
-            name="GPT-4",
-            provider="openai",
-            provider_model_id="gpt-4",
-            is_active=True,
-            is_system=True,
-            supports_streaming=True,
-            context_length=8192,
-            cost_input_per_1k=0,
-            cost_output_per_1k=0,
-            price_input_per_1k=0,
-            price_output_per_1k=0,
-            currency="CNY",
-        ),
-        LLMModel(
-            id="ollama-qwen2.5",
-            name="Ollama Qwen2.5",
-            provider="ollama",
-            provider_model_id="qwen2.5",
-            is_active=True,
-            is_system=True,
-            supports_streaming=True,
-            context_length=8192,
-            cost_input_per_1k=0,
-            cost_output_per_1k=0,
-            price_input_per_1k=0,
-            price_output_per_1k=0,
-            currency="CNY",
-        ),
-        LLMModel(
-            id="ollama-nomic",
-            name="Ollama Nomic Embed",
-            provider="ollama",
-            provider_model_id="nomic-embed-text",
-            is_active=True,
-            is_system=True,
-            supports_streaming=False,
-            context_length=2048,
-            cost_input_per_1k=0,
-            cost_output_per_1k=0,
-            price_input_per_1k=0,
-            price_output_per_1k=0,
-            currency="CNY",
-        ),
-        LLMModel(
-            id="deepseek-v4-pro",
-            name="DeepSeek V4 Pro",
-            provider="deepseek",
-            provider_model_id="deepseek-v4-pro",
-            is_active=True,
-            is_system=True,
-            supports_streaming=True,
-            context_length=128000,
-            cost_input_per_1k=0,
-            cost_output_per_1k=0,
-            price_input_per_1k=0,
-            price_output_per_1k=0,
-            currency="CNY",
-        ),
-        LLMModel(
-            id="deepseek-v4-flash",
-            name="DeepSeek V4 Flash",
-            provider="deepseek",
-            provider_model_id="deepseek-v4-flash",
-            is_active=True,
-            is_system=True,
-            supports_streaming=True,
-            context_length=128000,
-            cost_input_per_1k=0,
-            cost_output_per_1k=0,
-            price_input_per_1k=0,
-            price_output_per_1k=0,
-            currency="CNY",
-        ),
-    ]
-    existing = {
-        m.id for m in db_session.query(LLMModel.id).filter(
-            LLMModel.id.in_([
-                "gpt-4", "ollama-qwen2.5", "ollama-nomic",
-                "deepseek-v4-pro", "deepseek-v4-flash",
-            ])
-        ).all()
-    }
-    for model in models:
-        if model.id not in existing:
-            db_session.add(model)
-    db_session.commit()
-
-@pytest.fixture(autouse=True)
-def seed_default_plans(db_session):
-    """Seed the default free/storage subscription plans like app startup does,
-    so plan-based feature checks behave the same as in production."""
-    from app.models.billing import Plan
-    import json as _json
-
-    defaults = [
-        {
-            "slug": "free",
-            "name": "免费版",
-            "features": {"ai_summary": True, "web_clipper": True, "public_sharing": False, "cloud_backup": False, "cloud_sync": False},
-            "limits": {"notes": 100, "clips_per_month": 50, "knowledge_units": 200, "documents": 20,
-                       "storage_bytes": 1073741824, "llm_calls_per_day": 50},
-        },
-        {
-            "slug": "storage",
-            "name": "存储会员",
-            "features": {"cloud_backup": True, "cloud_sync": True, "priority_support": True, "ai_summary": True,
-                         "web_clipper": True, "public_sharing": True},
-            "limits": {"notes": -1, "clips_per_month": -1, "knowledge_units": -1, "documents": -1,
-                       "storage_bytes": 10737418240, "llm_calls_per_day": -1},
-        },
-    ]
-    existing = {p.slug for p in db_session.query(Plan.slug).filter(Plan.slug.in_(["free", "storage"])).all()}
-    for spec in defaults:
-        if spec["slug"] in existing:
-            continue
-        db_session.add(Plan(
-            id=f"plan_{spec['slug']}",
-            name=spec["name"],
-            slug=spec["slug"],
-            price_monthly=0 if spec["slug"] == "free" else 990,
-            price_yearly=0 if spec["slug"] == "free" else 9900,
-            currency="CNY",
-            billing_cycle="monthly",
-            is_active=True,
-            sort_order=0 if spec["slug"] == "free" else 1,
-            features=_json.dumps(spec["features"], ensure_ascii=False),
-            limits=_json.dumps(spec["limits"], ensure_ascii=False),
-        ))
-    db_session.commit()
-
-
-@pytest.fixture(autouse=True)
-def seed_system_configs(db_session):
-    """Seed production-parity system configs (app startup seeds these into the
-    real DB; tests run against an empty in-memory DB)."""
-    from app.models.base import SystemConfig
-    from app.core.config_loader import invalidate_system_config_cache
-
-    defaults = {"enable_signup_bonus": "true"}
-    existing = {c.key for c in db_session.query(SystemConfig.key).filter(SystemConfig.key.in_(list(defaults))).all()}
-    for key, val in defaults.items():
-        if key not in existing:
-            db_session.add(SystemConfig(id=str(uuid.uuid4()), key=key, value_json=val))
-    db_session.commit()
-    invalidate_system_config_cache()
 
 
 @pytest.fixture(autouse=True)
@@ -281,8 +126,6 @@ def test_user(db_session):
         name="Test User",
         password_hash=get_password_hash("TestPass123"),
         status="active",
-        subscription_tier="free",
-        subscription_status="active",
         created_at=datetime.now(timezone.utc),
     )
     db_session.add(user)
@@ -383,51 +226,3 @@ def admin_user(db_session):
     db_session.refresh(admin)
     return admin
 
-
-@pytest.fixture
-def test_storage_user(db_session):
-    user = User(
-        id=str(uuid.uuid4()),
-        email="storage@example.com",
-        name="Storage User",
-        password_hash=get_password_hash("TestPass123"),
-        status="active",
-        subscription_tier="storage",
-        subscription_status="active",
-        created_at=datetime.now(timezone.utc),
-    )
-    db_session.add(user)
-    db_session.commit()
-    db_session.refresh(user)
-
-    plan = db_session.query(Plan).filter(Plan.slug == "storage").first()
-    if plan:
-        sub = Subscription(
-            id=str(uuid.uuid4()),
-            user_id=user.id,
-            plan_id=plan.id,
-            status="active",
-            billing_cycle="monthly",
-            started_at=datetime.now(timezone.utc),
-            current_period_start=datetime.now(timezone.utc),
-            current_period_end=datetime.now(timezone.utc) + timedelta(days=30),
-            auto_renew=True,
-        )
-        db_session.add(sub)
-        db_session.commit()
-
-    return user
-
-
-@pytest.fixture
-def test_storage_user_token(test_storage_user):
-    token = create_access_token(
-        data={"sub": test_storage_user.id, "email": test_storage_user.email},
-        expires_delta=timedelta(days=1)
-    )
-    return token
-
-
-@pytest.fixture
-def storage_auth_headers(test_storage_user_token):
-    return {"Authorization": f"Bearer {test_storage_user_token}"}

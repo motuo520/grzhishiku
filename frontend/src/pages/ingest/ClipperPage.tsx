@@ -8,7 +8,6 @@ import { useClips } from '@/hooks/useClips';
 import { useTags } from '@/hooks/useTags';
 import TagSelector from '@/components/TagSelector';
 import ModelSelector from '@/components/llm/ModelSelector';
-import LLMCostBadge from '@/components/llm/LLMCostBadge';
 import { summarizeText, extractTags } from '@/api/llm';
 import type { ClipCreateData, ClipUpdateData } from '@/api/clips';
 import type { Clip } from '@/api/clips';
@@ -381,7 +380,6 @@ const ClipperPage: FC = () => {
         </div>
         <div className="flex items-center gap-3">
           <ModelSelector value={modelId} onChange={setModelId} taskType="analysis" className="w-48" />
-          <LLMCostBadge modelId={modelId} inputText="" outputTokenEstimate={150} />
           <span className="badge-network">Network Brain</span>
           {batchMode ? (
             <>

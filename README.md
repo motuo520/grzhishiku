@@ -22,21 +22,21 @@
 ```bash
 git clone https://github.com/motuo520/grzhishiku.git
 cd personal-second-brain
-cp backend/.env.example .env
 docker compose up -d
 ```
 
-- 前端：`http://localhost:3000`
-- API：`http://localhost:8000`
-- API 文档：`http://localhost:8000/docs`
+- 前端：`http://localhost`
+- API：由前端 nginx 代理到后端（`/api/` 前缀），无需额外配置
+- API 文档：调试时在 `docker-compose.yml` 中放开 backend 的 `8000:8000` 端口映射，访问 `http://localhost:8000/docs`
+
+首次启动会自动拉取 Ollama 模型 `qwen2.5:0.5b`（对话）与 `nomic-embed-text`（向量化），需要联网，请耐心等待。模型下载完成后后端才会就绪。
 
 打开就能用：默认进入「简化版」——只有三个动作，零学习成本。想要全部 12 个模块，点顶栏的版本图标切到「经典版」即可。
 
 首次启动后，注册一个普通账号，再通过以下命令将其设为管理员：
 
 ```bash
-cd backend
-./.venv/bin/python -m scripts.create_admin user@example.com
+docker compose exec backend python -m scripts.create_admin user@example.com
 ```
 
 ---
@@ -48,21 +48,21 @@ One command (Docker required):
 ```bash
 git clone https://github.com/motuo520/grzhishiku.git
 cd personal-second-brain
-cp backend/.env.example .env
 docker compose up -d
 ```
 
-- Web UI: `http://localhost:3000`
-- API: `http://localhost:8000`
-- API docs: `http://localhost:8000/docs`
+- Web UI: `http://localhost`
+- API: proxied to the backend by the frontend nginx under the `/api/` prefix — no extra setup needed
+- API docs: for debugging, uncomment the `8000:8000` port mapping of `backend` in `docker-compose.yml`, then visit `http://localhost:8000/docs`
+
+On first launch the Ollama models `qwen2.5:0.5b` (chat) and `nomic-embed-text` (embeddings) are pulled automatically — this requires internet access, please be patient. The backend becomes ready once the models are downloaded.
 
 It starts in **Simple Mode** — three actions, zero learning curve. Switch to **Classic Mode** (12 modules) anytime from the top bar.
 
 After the first launch, register a regular account, then promote it to admin:
 
 ```bash
-cd backend
-./.venv/bin/python -m scripts.create_admin user@example.com
+docker compose exec backend python -m scripts.create_admin user@example.com
 ```
 
 ---
@@ -80,7 +80,7 @@ cd backend
 核心设计原则：
 
 - **本地优先**：默认使用 SQLite + Ollama，数据不出本机。
-- **模型自由**：Ollama 本地模型免费跑；DeepSeek、Kimi 等自带 key 即可接入（BYOK）。
+- **模型自由**：默认使用 Ollama 本地模型，免费、离线可用，数据不出本机。
 - **中文优先**：界面、文档、默认提示词全部为中文设计。
 - **开源可审计**：AGPL-3.0 协议，服务端代码完全开放。
 
@@ -95,7 +95,7 @@ cd backend
 Core principles:
 
 - **Local-first**: SQLite + Ollama by default; data stays on your machine.
-- **Model freedom**: free local models via Ollama; bring your own key for DeepSeek, Kimi, and more.
+- **Model freedom**: free local models via Ollama — works offline, data never leaves your machine.
 - **Chinese-first**: UI, docs, and prompts are designed in Chinese (English UI works too).
 - **Open & auditable**: AGPL-3.0, server code fully open.
 
@@ -149,10 +149,9 @@ Both modes share the same data; only navigation and feature entries differ. Swit
 
 - **Frontend**: React 19 + Vite + TypeScript + Tailwind CSS + Zustand
 - **Backend**: FastAPI + Pydantic v2 + SQLAlchemy + Alembic
-- **Database**: SQLite（默认）/ PostgreSQL（生产）
+- **Database**: SQLite
 - **Vector DB**: ChromaDB
 - **Local LLM**: Ollama
-- **Desktop**: Electron + 内嵌后端 sidecar
 - **Deploy**: Docker Compose + Nginx
 
 ---
@@ -174,7 +173,7 @@ npm install
 npm run dev
 ```
 
-浏览器扩展与桌面端用法见 [docs/guide/getting-started.md](docs/guide/getting-started.md)。
+浏览器扩展用法见 [docs/guide/getting-started.md](docs/guide/getting-started.md)。
 
 ---
 
@@ -192,8 +191,7 @@ npm run dev
 
 - [x] 本地优先的笔记与剪藏
 - [x] RAG 对话与本地模型支持
-- [x] 多模型路由与按 token 计费
-- [x] 桌面端（Electron + 内嵌后端）
+- [x] 多模型路由（Ollama 本地模型）
 - [ ] 浏览器扩展上架
 - [ ] 移动端 PWA
 - [ ] 插件市场与公开 API

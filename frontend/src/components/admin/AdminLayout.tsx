@@ -2,20 +2,16 @@ import { useState } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import {
   Shield, LayoutDashboard, Users, FileText, LogOut, Menu, X,
-  CreditCard, Settings, MessageSquare, Building2, ScrollText, Cpu
+  Settings, MessageSquare, ScrollText
 } from 'lucide-react';
 import { useAdminStore } from '../../store/adminStore';
-import { usePlatformBilling } from '@/hooks/useSystemFeatures';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const sidebarItems = [
   { icon: LayoutDashboard, label: '仪表盘', path: '/admin', permission: null },
   { icon: Users, label: '用户管理', path: '/admin/users', permission: 'users:read' },
-  { icon: Building2, label: '租户管理', path: '/admin/tenants', permission: 'tenants:manage' },
   { icon: FileText, label: '内容审核', path: '/admin/content', permission: 'content:moderate' },
-  { icon: CreditCard, label: '订阅计费', path: '/admin/billing', permission: 'billing:read' },
-  { icon: Cpu, label: '模型配置', path: '/admin/models', permission: 'models:manage' },
   { icon: Settings, label: '系统配置', path: '/admin/system', permission: 'system:config' },
   { icon: MessageSquare, label: '客服工单', path: '/admin/support', permission: 'support:manage' },
   { icon: ScrollText, label: '审计日志', path: '/admin/logs', permission: 'logs:read' },
@@ -25,12 +21,8 @@ export default function AdminLayout() {
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const { admin, logout, hasPermission } = useAdminStore();
-  const platformBilling = usePlatformBilling();
   const visibleItems = sidebarItems.filter(
-    (item) =>
-      (!item.permission || hasPermission(item.permission)) &&
-      // 平台计费关闭（开源/自托管）时不显示外部模型控制台
-      (item.path !== '/admin/models' || platformBilling)
+    (item) => !item.permission || hasPermission(item.permission)
   );
   const navigate = useNavigate();
   const location = useLocation();

@@ -8,7 +8,6 @@ import WeeklyReportScore from '@/components/brain/WeeklyReportScore';
 import WeeklyReportInsights from '@/components/brain/WeeklyReportInsights';
 import WeeklyReportList from '@/components/brain/WeeklyReportList';
 import ModelSelector from '@/components/llm/ModelSelector';
-import LLMCostBadge from '@/components/llm/LLMCostBadge';
 import AiErrorNotice from '@/components/llm/AiErrorNotice';
 
 const CognitiveWeeklyReportPage: FC = () => {
@@ -41,9 +40,6 @@ const CognitiveWeeklyReportPage: FC = () => {
   });
 
   const displayReport = selectedReport || latestReport;
-  const reportInputText = displayReport?.summary
-    ? `生成本周认知健康周报。${displayReport.summary}`
-    : '基于本周的笔记、知识、挑战、审计与模拟数据生成首份认知健康周报。';
 
   return (
     <div className="p-6 max-w-6xl mx-auto space-y-6">
@@ -67,7 +63,6 @@ const CognitiveWeeklyReportPage: FC = () => {
         <div className="flex flex-col items-end gap-2">
           <div className="flex items-center gap-3">
             <ModelSelector value={modelId} onChange={setModelId} taskType="analysis" className="w-48" />
-            <LLMCostBadge modelId={modelId} inputText={reportInputText} outputTokenEstimate={600} />
           </div>
           <button
             onClick={() => generateMutation.mutate(modelId || undefined)}
@@ -126,7 +121,6 @@ const CognitiveWeeklyReportPage: FC = () => {
                 <div className="flex flex-col items-center gap-2">
                   <div className="flex items-center gap-3">
                     <ModelSelector value={modelId} onChange={setModelId} taskType="analysis" className="w-48" />
-                    <LLMCostBadge modelId={modelId} inputText={reportInputText} outputTokenEstimate={600} />
                   </div>
                   <button
                     onClick={() => generateMutation.mutate(modelId || undefined)}

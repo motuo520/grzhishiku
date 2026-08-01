@@ -16,8 +16,6 @@ class UserCreate(UserBase):
 class UserResponse(UserBase):
     id: str = Field(..., description="Unique user ID (UUID)")
     status: str = Field("active", description="Account status: active / suspended / deleted")
-    subscription_tier: str = Field("free", description="Subscription tier: free / pro / enterprise")
-    subscription_status: str = Field("active", description="Subscription status")
     storage_used: int = Field(0, description="Storage used in bytes")
     storage_limit: int = Field(1073741824, description="Storage limit in bytes (1GB default)")
     last_login_at: Optional[datetime] = Field(None, description="Last login timestamp")
@@ -50,22 +48,13 @@ class PasswordChangeRequest(BaseModel):
 class AISettings(BaseModel):
     active_provider: Optional[str] = Field(None, description="Active LLM provider slug")
     active_model: Optional[str] = Field(None, description="Active LLM model identifier")
-    model: Optional[str] = Field(None, description="Legacy selected model id, e.g. ollama, gpt-4")
+    model: Optional[str] = Field(None, description="Legacy selected model id, e.g. ollama")
     temperature: Optional[float] = Field(None, description="Sampling temperature (0.0 - 1.0)")
     max_tokens: Optional[int] = Field(None, description="Maximum tokens per generation")
     local_enabled: Optional[bool] = Field(None, description="Whether local/Ollama models are enabled")
     model_routing_enabled: Optional[bool] = Field(None, description="Whether intelligent model routing is enabled")
     ollama_url: Optional[str] = Field(None, description="User-level Ollama base URL")
     ollama_model: Optional[str] = Field(None, description="User-level selected Ollama model name")
-    kimi_api_key: Optional[str] = Field(None, description="User-level Kimi API key")
-    deepseek_api_key: Optional[str] = Field(None, description="User-level DeepSeek API key")
-    opencode_api_key: Optional[str] = Field(None, description="User-level OpenCode API key")
-    glm_api_key: Optional[str] = Field(None, description="User-level GLM (智谱) API key")
-    dashscope_api_key: Optional[str] = Field(None, description="User-level DashScope (阿里) API key")
-    openai_api_key: Optional[str] = Field(None, description="User-level OpenAI API key")
-    anthropic_api_key: Optional[str] = Field(None, description="User-level Anthropic API key")
-    google_api_key: Optional[str] = Field(None, description="User-level Google (Gemini) API key")
-    api_key: Optional[str] = Field(None, description="Legacy fallback API key")
 
 
 class SettingsUpdate(BaseModel):

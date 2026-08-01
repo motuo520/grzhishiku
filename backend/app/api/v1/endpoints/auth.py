@@ -5,8 +5,6 @@ from app.core.database import get_db
 from app.core.security import verify_password, get_password_hash, create_access_token, decode_token
 from app.core.config_loader import get_system_config
 from app.models.base import User
-from app.services.llm_billing_service import LLMBillingService
-from app.services.billing_service import BillingService
 from app.services import verification_service
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 import uuid
@@ -100,28 +98,6 @@ async def register(user_data: UserRegister, db: Session = Depends(get_db)):
     db.add(user)
     db.commit()
     db.refresh(user)
-
-    # Bind default subscription plan
-    try:
-        billing = BillingService(db)
-        default_slug = sys_config.default_plan or "free"
-        plan = billing.get_plan_by_slug(default_slug)
-        if plan:
-            billing.create_subscription(user.id, plan.id, billing_cycle="monthly")
-    except Exception:
-        # Don't fail registration if plan binding fails; user will be treated as free
-        pass
-
-    # One-time trial LLM credit for new users
-    try:
-        billing_svc = LLMBillingService(db)
-        if sys_config.enable_signup_bonus:
-            billing_svc.give_trial_credit(user.id)
-        elif not user.trial_credit_given:
-            user.trial_credit_given = True
-            db.commit()
-    except Exception:
-        pass
 
     verification_service.clear_code(user_data.email)
 

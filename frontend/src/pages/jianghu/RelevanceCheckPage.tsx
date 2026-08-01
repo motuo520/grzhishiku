@@ -3,7 +3,6 @@ import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useRelevanceCheck } from '@/hooks/useJianghu';
 import { useNavigation } from '@/store/navigation';
 import ModelSelector from '@/components/llm/ModelSelector';
-import LLMCostBadge from '@/components/llm/LLMCostBadge';
 import { Filter, Loader2, BookOpen, AlertCircle, CheckCircle2, XCircle, Sparkles, ArrowRight } from 'lucide-react';
 
 const ACTION_MAP: Record<string, { label: string; icon: React.ElementType; color: string; desc: string; path?: string }> = {
@@ -87,11 +86,6 @@ const RelevanceCheckPage: FC = () => {
               onChange={setModelId}
               taskType="analysis"
               className="w-48"
-            />
-            <LLMCostBadge
-              modelId={modelId}
-              inputText={`${content}\n\n上下文：${context}`}
-              outputTokenEstimate={600}
             />
           </div>
           <button

@@ -17,7 +17,6 @@ from app.models.base import (
     AttentionActivity, AdminUser,
     SupportTicket, SupportTicketReply, SystemConfig, Tenant,
 )
-from app.models.billing import Subscription, Payment
 from app.core.security import get_password_hash
 
 # 开发/测试环境管理员密码。生产环境请勿使用默认测试账号。
@@ -84,8 +83,6 @@ def generate_users(db, count=50):
             display_name=fake_name(),
             password_hash=get_password_hash('password123'),
             status=random.choice(statuses),
-            subscription_tier=random.choice(['free', 'free', 'free', 'pro', 'enterprise']),
-            subscription_status=random.choice(['active', 'active', 'cancelled']),
             storage_used=random.randint(0, 500 * 1024 * 1024),
             storage_limit=random.choice([1073741824, 10737418240, 107374182400]),
             last_login_at=random_date(datetime.utcnow() - timedelta(days=30), datetime.utcnow()) if random.random() > 0.3 else None,
@@ -220,68 +217,9 @@ def generate_attention_activities(db, users, count=100):
     db.commit()
 
 
-def generate_subscriptions(db, users, count=20):
-    """Generate subscription records for users."""
-    subs = []
-    plans = ['free', 'pro', 'enterprise']
-    for _ in range(count):
-        user = random.choice(users)
-        plan = random.choice(plans)
-        start = random_date(datetime.utcnow() - timedelta(days=180), datetime.utcnow())
-        end = start + timedelta(days=random.choice([30, 365]))
-        sub = Subscription(
-            id=str(uuid4()),
-            user_id=user.id,
-            plan_id=plan,
-            status=random.choice(['active', 'active', 'cancelled', 'expired']),
-            billing_cycle=random.choice(['monthly', 'yearly']),
-            price_paid=random.choice([0, 2900, 9900, 29900]),
-            currency='CNY',
-            started_at=start,
-            current_period_start=start,
-            current_period_end=end,
-            auto_renew=random.choice([True, False]),
-            created_at=start,
-            updated_at=end,
-        )
-        subs.append(sub)
-    db.add_all(subs)
-    db.commit()
-
-
-def generate_payments(db, users, count=50):
-    """Generate payment records for users."""
-    payments = []
-    statuses = ['success', 'success', 'success', 'failed', 'refunded']
-    for _ in range(count):
-        user = random.choice(users)
-        amount = random.choice([2900, 9900, 29900])
-        status = random.choice(statuses)
-        paid_at = random_date(datetime.utcnow() - timedelta(days=90), datetime.utcnow()) if status in ['success', 'refunded'] else None
-        refunded_at = random_date(datetime.utcnow() - timedelta(days=30), datetime.utcnow()) if status == 'refunded' else None
-        payment = Payment(
-            id=str(uuid4()),
-            user_id=user.id,
-            plan_id=random.choice(['pro', 'enterprise']),
-            amount=amount,
-            currency='CNY',
-            status=status,
-            payment_method=random.choice(['alipay', 'wechat', 'stripe']),
-            paid_at=paid_at,
-            refunded_at=refunded_at,
-            refund_amount=amount if status == 'refunded' else 0,
-            description=f'{random.choice(["Pro", "Enterprise"])} Plan - monthly',
-            created_at=random_date(datetime.utcnow() - timedelta(days=120), datetime.utcnow()),
-            updated_at=random_date(datetime.utcnow() - timedelta(days=30), datetime.utcnow()),
-        )
-        payments.append(payment)
-    db.add_all(payments)
-    db.commit()
-
-
 def generate_support_tickets(db, users, count=15):
     """Generate support tickets and replies."""
-    categories = ['bug', 'feature', 'feedback', 'account', 'billing']
+    categories = ['bug', 'feature', 'feedback', 'account']
     priorities = ['low', 'medium', 'high', 'urgent']
     statuses = ['open', 'in_progress', 'resolved', 'closed']
     for _ in range(count):
@@ -344,7 +282,6 @@ def ensure_base_users(db):
             display_name='Admin',
             password_hash=get_password_hash(DEV_ADMIN_PASSWORD),
             status='active',
-            subscription_tier='enterprise',
             created_at=datetime.utcnow() - timedelta(days=30),
         )
         db.add(admin)
@@ -377,11 +314,6 @@ def main():
                     conn.execute(text("ALTER TABLE graph_edges ADD COLUMN weight REAL DEFAULT 1.0"))
                 if 'auto_created' not in columns:
                     conn.execute(text("ALTER TABLE graph_edges ADD COLUMN auto_created INTEGER DEFAULT 0"))
-        if 'payments' in inspector.get_table_names():
-            columns = [c['name'] for c in inspector.get_columns('payments')]
-            with engine.begin() as conn:
-                if 'provider_order_id' not in columns:
-                    conn.execute(text("ALTER TABLE payments ADD COLUMN provider_order_id TEXT"))
         if 'support_tickets' in inspector.get_table_names():
             columns = [c['name'] for c in inspector.get_columns('support_tickets')]
             with engine.begin() as conn:
@@ -429,12 +361,6 @@ def main():
 
         print("Generating 100 attention activities...")
         generate_attention_activities(db, all_users, count=100)
-
-        print("Generating 20 subscriptions...")
-        generate_subscriptions(db, all_users, count=20)
-
-        print("Generating 50 payments...")
-        generate_payments(db, all_users, count=50)
 
         print("Generating 15 support tickets...")
         generate_support_tickets(db, all_users, count=15)

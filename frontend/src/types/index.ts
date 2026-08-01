@@ -7,8 +7,6 @@ export interface User {
   display_name: string | null;
   username: string | null;
   avatar: string | null;
-  subscription_tier: string;
-  subscription_status: string;
   storage_used: number;
   storage_limit: number;
   created_at: string;

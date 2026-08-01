@@ -1,16 +1,32 @@
 # syntax=docker/dockerfile:1
+#
+# 镜像源可通过 build-arg 覆盖（默认使用官方源）：
+#   国内用户加速示例：
+#   docker build \
+#     --build-arg APT_MIRROR=mirrors.aliyun.com \
+#     --build-arg PIP_INDEX_URL=https://mirrors.aliyun.com/pypi/simple/ \
+#     -t psb-backend ./backend
+#   或在 compose 中：
+#   docker compose build --build-arg APT_MIRROR=mirrors.aliyun.com \
+#     --build-arg PIP_INDEX_URL=https://mirrors.aliyun.com/pypi/simple/
 
 # Stage 1: Builder
 FROM python:3.11-slim AS builder
 
+# APT_MIRROR 为空则使用 Debian 官方源；PIP_INDEX_URL 默认为 PyPI 官方源
+ARG APT_MIRROR=""
+ARG PIP_INDEX_URL=https://pypi.org/simple
+
 WORKDIR /app
 
-# Install build dependencies（国内服务器走阿里云镜像源）
-RUN sed -i 's|deb.debian.org|mirrors.aliyun.com|g' /etc/apt/sources.list.d/debian.sources \
+# Install build dependencies
+RUN if [ -n "$APT_MIRROR" ]; then \
+      sed -i "s|deb.debian.org|$APT_MIRROR|g" /etc/apt/sources.list.d/debian.sources; \
+    fi \
     && apt-get update && apt-get install -y --no-install-recommends gcc && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt .
-RUN pip install --no-cache-dir --user -i https://mirrors.aliyun.com/pypi/simple/ -r requirements.txt
+RUN pip install --no-cache-dir --user -i "$PIP_INDEX_URL" -r requirements.txt
 
 # Stage 2: Runner
 FROM python:3.11-slim AS runner

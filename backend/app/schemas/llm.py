@@ -53,7 +53,7 @@ class CompleteRequest(BaseModel):
     prompt: str = Field(..., min_length=1, max_length=50000, description="Prompt text")
     system_prompt: Optional[str] = Field(None, max_length=50000, description="System prompt")
     model: Optional[str] = Field(None, description="Override model")
-    task_type: str = Field("chat", max_length=50, description="Task type for billing")
+    task_type: str = Field("chat", max_length=50, description="Task type")
 
 
 class CompleteResponse(BaseModel):
@@ -66,12 +66,12 @@ class EmbedRequest(BaseModel):
     store: bool = Field(False, description="Whether to store in database")
     content_type: str = Field("query", description="Content type for storage")
     content_id: Optional[str] = Field(None, description="Associated content ID")
-    model: Optional[str] = Field("ollama-qwen2.5-0.5b", description="Embedding model id to bill against")
+    model: Optional[str] = Field(None, description="Embedding model label override (defaults to configured Ollama embed model)")
 
 
 class EmbedBatchRequest(BaseModel):
     texts: List[str] = Field(..., min_length=1, max_length=50, description="List of texts to embed")
-    model: Optional[str] = Field("ollama-qwen2.5-0.5b", description="Embedding model id to bill against")
+    model: Optional[str] = Field(None, description="Embedding model label override (defaults to configured Ollama embed model)")
 
 
 class EmbedResponse(BaseModel):

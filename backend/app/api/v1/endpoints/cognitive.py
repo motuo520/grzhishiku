@@ -16,9 +16,8 @@ from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.core.security import get_current_user
-# NOTE: cognitive endpoints are billed via LLM prepaid balance, not subscription tier.
 from app.models.base import KnowledgeUnit, Note, User, DecisionAudit, FutureSimulation, CognitiveChallenge, CognitiveWeeklyReport
-from app.services.llm_billing_service import billed_chat_completion
+from app.services.llm_service import chat_completion
 
 router = APIRouter()
 
@@ -156,7 +155,7 @@ def _aggregate_user_content(
     return items
 
 
-# deepseek reasoning models can stream for minutes (SSE heartbeats defeat
+# Some LLM backends can stream for minutes (SSE heartbeats defeat
 # httpx's per-chunk read timeout), so bound the TOTAL call time here. On timeout
 # we raise 504, which the endpoints' existing HTTPException fallbacks convert
 # into heuristic/degraded results instead of hanging the page.
@@ -170,28 +169,22 @@ async def _llm_json(
     db: Session,
     user_id: str,
 ) -> Dict[str, Any]:
-    """调用 LLM 并尝试解析 JSON 返回。调用走计费链路。解析失败自动重试一次。"""
+    """调用 LLM 并尝试解析 JSON 返回。解析失败自动重试一次。"""
     system_prompt = "你是一个专业的认知分析专家。请严格按照用户要求的 JSON 格式输出，不要添加任何 markdown 代码块标记或其他解释性文字。"
     last_raw = ""
     for attempt in range(2):
         try:
             raw = await asyncio.wait_for(
-                billed_chat_completion(
-                    db=db,
-                    user_id=user_id,
-                    model_id=preferred_model or "deepseek-v4-pro",
-                    task_type="analysis",
+                chat_completion(
                     prompt=prompt if attempt == 0 else prompt + "\n\n再次提醒：只输出纯 JSON，不要任何其他文字。",
+                    task_type="analysis",
                     system_prompt=system_prompt,
+                    preferred_model=preferred_model,
                 ),
                 timeout=LLM_JSON_TIMEOUT,
             )
         except asyncio.TimeoutError:
             raise HTTPException(status_code=504, detail="AI 分析超时，已切换为本地估算")
-        except ValueError as e:
-            if "余额不足" in str(e):
-                raise HTTPException(status_code=402, detail=str(e))
-            raise
         raw = raw.strip()
 
         # 尝试去除 markdown 代码块

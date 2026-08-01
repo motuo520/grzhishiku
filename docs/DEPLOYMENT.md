@@ -41,10 +41,9 @@ docker-compose up -d --build
 ```
 
 服务映射：
-- 前端: http://localhost:3000
-- 后端 API: http://localhost:8000
-- Prometheus: http://localhost:9090
-- Grafana: http://localhost:3001
+- 前端: http://localhost（80 端口，内置 nginx 将 /api/ 代理到后端）
+- 后端 API: 容器内 8000，经前端 nginx 代理，默认不直接暴露
+- MinIO: http://localhost:9000（API）/ http://localhost:9001（控制台）
 
 ### 3. 查看日志
 ```bash
@@ -104,8 +103,7 @@ server {
 
 ## 监控和日志
 
-- Prometheus 抓取配置在 `prometheus.yml`
-- Grafana 仪表盘在 `monitoring/grafana/`
+- 健康检查端点：`/health`
 - 后端日志轮转：10MB 最大，保留 5 个备份
 
 ## 升级和回滚
