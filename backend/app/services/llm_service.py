@@ -20,6 +20,11 @@ class ModelProvider(str, Enum):
     DEEPSEEK = "deepseek"
     KIMI = "kimi"
     OPENCODE = "opencode"
+    GLM = "glm"
+    DASHSCOPE = "dashscope"
+    OPENAI = "openai"
+    ANTHROPIC = "anthropic"
+    GOOGLE = "google"
 
 
 class SENSITIVE_PATTERNS:
@@ -695,6 +700,22 @@ class ModelConfig:
         ]
 
 
+# ─── 直供厂商 BYOK 模型（用户自填 Key，平台不计费） ───
+ModelConfig.MODELS.update({
+    "glm-4.6": {"provider": ModelProvider.GLM, "name": "GLM 4.6（智谱）", "description": "智谱旗舰，BYOK 自付", "capabilities": ["cloud", "chinese"], "context_length": 128000, "temperature": 0.7, "endpoint": settings.GLM_BASE_URL, "model_id": "glm-4.6", "available": True},
+    "glm-4.5-air": {"provider": ModelProvider.GLM, "name": "GLM 4.5 Air（智谱）", "description": "智谱轻量款，BYOK 自付", "capabilities": ["cloud", "chinese", "fast"], "context_length": 128000, "temperature": 0.7, "endpoint": settings.GLM_BASE_URL, "model_id": "glm-4.5-air", "available": True},
+    "dashscope-qwen-max": {"provider": ModelProvider.DASHSCOPE, "name": "Qwen Max（阿里）", "description": "通义旗舰，BYOK 自付", "capabilities": ["cloud", "chinese"], "context_length": 131072, "temperature": 0.7, "endpoint": settings.DASHSCOPE_BASE_URL, "model_id": "qwen-max", "available": True},
+    "dashscope-qwen-plus": {"provider": ModelProvider.DASHSCOPE, "name": "Qwen Plus（阿里）", "description": "通义均衡款，BYOK 自付", "capabilities": ["cloud", "chinese", "fast"], "context_length": 131072, "temperature": 0.7, "endpoint": settings.DASHSCOPE_BASE_URL, "model_id": "qwen-plus", "available": True},
+    "dashscope-qwen-flash": {"provider": ModelProvider.DASHSCOPE, "name": "Qwen Flash（阿里）", "description": "通义极速款，BYOK 自付", "capabilities": ["cloud", "chinese", "fast"], "context_length": 131072, "temperature": 0.7, "endpoint": settings.DASHSCOPE_BASE_URL, "model_id": "qwen-flash", "available": True},
+    "openai-gpt-4o": {"provider": ModelProvider.OPENAI, "name": "GPT-4o（OpenAI）", "description": "OpenAI 主力，BYOK 自付", "capabilities": ["cloud"], "context_length": 128000, "temperature": 0.7, "endpoint": settings.OPENAI_BASE_URL, "model_id": "gpt-4o", "available": True},
+    "openai-gpt-4o-mini": {"provider": ModelProvider.OPENAI, "name": "GPT-4o mini（OpenAI）", "description": "OpenAI 轻量款，BYOK 自付", "capabilities": ["cloud", "fast"], "context_length": 128000, "temperature": 0.7, "endpoint": settings.OPENAI_BASE_URL, "model_id": "gpt-4o-mini", "available": True},
+    "anthropic-claude-sonnet-4-5": {"provider": ModelProvider.ANTHROPIC, "name": "Claude Sonnet 4.5", "description": "Anthropic 均衡款，BYOK 自付", "capabilities": ["cloud", "reasoning"], "context_length": 200000, "temperature": 0.7, "endpoint": settings.ANTHROPIC_BASE_URL, "model_id": "claude-sonnet-4-5", "available": True},
+    "anthropic-claude-haiku-4-5": {"provider": ModelProvider.ANTHROPIC, "name": "Claude Haiku 4.5", "description": "Anthropic 轻量款，BYOK 自付", "capabilities": ["cloud", "fast"], "context_length": 200000, "temperature": 0.7, "endpoint": settings.ANTHROPIC_BASE_URL, "model_id": "claude-haiku-4-5", "available": True},
+    "google-gemini-2.5-flash": {"provider": ModelProvider.GOOGLE, "name": "Gemini 2.5 Flash（Google）", "description": "Google 快速款，BYOK 自付", "capabilities": ["cloud", "fast"], "context_length": 1000000, "temperature": 0.7, "endpoint": settings.GOOGLE_BASE_URL, "model_id": "gemini-2.5-flash", "available": True},
+    "google-gemini-2.5-pro": {"provider": ModelProvider.GOOGLE, "name": "Gemini 2.5 Pro（Google）", "description": "Google 旗舰，BYOK 自付", "capabilities": ["cloud", "reasoning", "long_context"], "context_length": 1000000, "temperature": 0.7, "endpoint": settings.GOOGLE_BASE_URL, "model_id": "gemini-2.5-pro", "available": True},
+})
+
+
 class ProviderStatus:
     """Health status for each LLM provider"""
 
@@ -1284,6 +1305,26 @@ class LLMService:
             user_key = cfg.get("opencode_api_key")
             env_key = self.opencode_key
             default_base_url = settings.OPENCODE_BASE_URL
+        elif provider == ModelProvider.GLM:
+            user_key = cfg.get("glm_api_key")
+            env_key = settings.GLM_API_KEY
+            default_base_url = settings.GLM_BASE_URL
+        elif provider == ModelProvider.DASHSCOPE:
+            user_key = cfg.get("dashscope_api_key")
+            env_key = settings.DASHSCOPE_API_KEY
+            default_base_url = settings.DASHSCOPE_BASE_URL
+        elif provider == ModelProvider.OPENAI:
+            user_key = cfg.get("openai_api_key")
+            env_key = settings.OPENAI_API_KEY
+            default_base_url = settings.OPENAI_BASE_URL
+        elif provider == ModelProvider.ANTHROPIC:
+            user_key = cfg.get("anthropic_api_key")
+            env_key = settings.ANTHROPIC_API_KEY
+            default_base_url = settings.ANTHROPIC_BASE_URL
+        elif provider == ModelProvider.GOOGLE:
+            user_key = cfg.get("google_api_key")
+            env_key = settings.GOOGLE_API_KEY
+            default_base_url = settings.GOOGLE_BASE_URL
 
         if user_key:
             return {"api_key": user_key, "base_url": default_base_url}
@@ -1325,6 +1366,22 @@ class LLMService:
             async for chunk in self._chat_openai_compatible(
                 message, history, model, system_prompt, api_key=api_key, base_url=base_url,
                 provider_name="Kimi"
+            ):
+                yield chunk
+        elif provider in (ModelProvider.GLM, ModelProvider.DASHSCOPE, ModelProvider.OPENAI) and api_key:
+            async for chunk in self._chat_openai_compatible(
+                message, history, model, system_prompt, api_key=api_key, base_url=base_url,
+                provider_name=provider.value
+            ):
+                yield chunk
+        elif provider == ModelProvider.ANTHROPIC and api_key:
+            async for chunk in self._chat_opencode_messages(
+                message, history, model, system_prompt, api_key=api_key, base_url=base_url
+            ):
+                yield chunk
+        elif provider == ModelProvider.GOOGLE and api_key:
+            async for chunk in self._chat_opencode_gemini(
+                message, history, model, system_prompt, api_key=api_key, base_url=base_url
             ):
                 yield chunk
         elif provider == ModelProvider.OPENCODE and api_key:
@@ -1408,7 +1465,7 @@ class LLMService:
             async with httpx.AsyncClient(timeout=120.0) as client:
                 async with client.stream(
                     "POST",
-                    f"{base}/v1/chat/completions",
+                    self._join_api(base, "/chat/completions"),
                     headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"},
                     json=payload,
                 ) as response:
@@ -1488,6 +1545,16 @@ class LLMService:
             return "gemini"
         return "chat"
 
+    @staticmethod
+    def _join_api(base: str, path: str) -> str:
+        """拼接 API 路径：base 已含版本段（/v1、/v4、/v1beta 等）则直接拼，
+        否则补 /v1（opencode zen 约定）。"""
+        import re as _re
+        base = base.rstrip("/")
+        if _re.search(r"/v\d", base):
+            return base + path
+        return base + "/v1" + path
+
     def _build_messages(self, message, history, system_prompt):
         messages = []
         if system_prompt:
@@ -1508,7 +1575,7 @@ class LLMService:
         try:
             async with httpx.AsyncClient(timeout=180.0) as client:
                 async with client.stream(
-                    "POST", f"{base}/v1/responses",
+                    "POST", self._join_api(base, "/responses"),
                     headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
                     json=payload,
                 ) as response:
@@ -1544,7 +1611,7 @@ class LLMService:
         try:
             async with httpx.AsyncClient(timeout=180.0) as client:
                 async with client.stream(
-                    "POST", f"{base}/v1/messages",
+                    "POST", self._join_api(base, "/messages"),
                     headers={
                         "x-api-key": api_key,
                         "anthropic-version": "2023-06-01",
@@ -1585,7 +1652,7 @@ class LLMService:
             async with httpx.AsyncClient(timeout=180.0) as client:
                 async with client.stream(
                     "POST",
-                    f"{base}/v1/models/{model}:streamGenerateContent?alt=sse",
+                    self._join_api(base, f"/models/{model}:streamGenerateContent?alt=sse"),
                     headers={"x-goog-api-key": api_key, "Content-Type": "application/json"},
                     json=payload,
                 ) as response:

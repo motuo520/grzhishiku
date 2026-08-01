@@ -255,6 +255,32 @@ async def lifespan(app: FastAPI):
                     1, 0, 1, 8192, 2, 0, 0, 0, 0, 'CNY', datetime('now'), datetime('now'))
             """))
 
+        # 直供厂商 BYOK 模型目录（用户自填 Key 直连，平台价为 0 不计费）
+        byok_models = [
+            ('glm-4.6', 'GLM 4.6（智谱）', 'glm', 'glm-4.6', '智谱旗舰，BYOK 自付', 128000),
+            ('glm-4.5-air', 'GLM 4.5 Air（智谱）', 'glm', 'glm-4.5-air', '智谱轻量款，BYOK 自付', 128000),
+            ('dashscope-qwen-max', 'Qwen Max（阿里）', 'dashscope', 'qwen-max', '通义旗舰，BYOK 自付', 131072),
+            ('dashscope-qwen-plus', 'Qwen Plus（阿里）', 'dashscope', 'qwen-plus', '通义均衡款，BYOK 自付', 131072),
+            ('dashscope-qwen-flash', 'Qwen Flash（阿里）', 'dashscope', 'qwen-flash', '通义极速款，BYOK 自付', 131072),
+            ('openai-gpt-4o', 'GPT-4o（OpenAI）', 'openai', 'gpt-4o', 'OpenAI 主力，BYOK 自付', 128000),
+            ('openai-gpt-4o-mini', 'GPT-4o mini（OpenAI）', 'openai', 'gpt-4o-mini', 'OpenAI 轻量款，BYOK 自付', 128000),
+            ('anthropic-claude-sonnet-4-5', 'Claude Sonnet 4.5', 'anthropic', 'claude-sonnet-4-5', 'Anthropic 均衡款，BYOK 自付', 200000),
+            ('anthropic-claude-haiku-4-5', 'Claude Haiku 4.5', 'anthropic', 'claude-haiku-4-5', 'Anthropic 轻量款，BYOK 自付', 200000),
+            ('google-gemini-2.5-flash', 'Gemini 2.5 Flash（Google）', 'google', 'gemini-2.5-flash', 'Google 快速款，BYOK 自付', 1000000),
+            ('google-gemini-2.5-pro', 'Gemini 2.5 Pro（Google）', 'google', 'gemini-2.5-pro', 'Google 旗舰，BYOK 自付', 1000000),
+        ]
+        for mid, mname, mprov, mpmid, mdesc, mctx in byok_models:
+            exists = conn.execute(sa_select(LLMModel).where(LLMModel.id == mid)).first()
+            if not exists:
+                conn.execute(text("""
+                    INSERT INTO llm_models (id, name, provider, provider_model_id, description,
+                        is_active, is_system, supports_streaming, context_length, sort_order,
+                        cost_input_per_1k, cost_output_per_1k, price_input_per_1k, price_output_per_1k,
+                        currency, created_at, updated_at)
+                    VALUES (:id, :name, :provider, :pmid, :desc,
+                        1, 0, 1, :ctx, 100, 0, 0, 0, 0, 'CNY', datetime('now'), datetime('now'))
+                """), {"id": mid, "name": mname, "provider": mprov, "pmid": mpmid, "desc": mdesc, "ctx": mctx})
+
     # Load and initialize plugins, then mount the MCP SSE server
     from app.mcp.server import mcp, mount_mcp
     from app.plugins.manager import plugin_manager

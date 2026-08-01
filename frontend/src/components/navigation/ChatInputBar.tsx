@@ -11,7 +11,7 @@ import { useLLMBalance } from '@/hooks/useLLMBalance';
 import { usePlatformBilling } from '@/hooks/useSystemFeatures';
 import { BrainSide } from '@/types';
 import { LLM_MODEL_MAP, getBackendModelId, getModelIdByProviderModel } from '@/config/llmModels';
-import { llmBase } from '@/api/unifiedSync';
+import { llmBase, isDesktop } from '@/api/unifiedSync';
 
 function isLocalModel(modelId: string): boolean {
   return modelId.startsWith('ollama-') || modelId === 'ollama';
@@ -380,6 +380,10 @@ const ChatInputBar: FC<ChatInputBarProps> = ({ sidebarOpen = true, onLoginClick 
             outputTokenEstimate={200}
           />
         </div>
+      </div>
+      {/* 计费讲解：避免用户把会员门当作 BUG */}
+      <div className="mt-1 text-[10px] text-text-muted leading-relaxed">
+        本地模型免费；外部模型按 token 计费{isDesktop() ? '，需存储会员（¥9.9/月）' : ''}；标注「自付」的模型用你自己的 API Key，费用与供应商结算。
       </div>
       {/* Mobile cost badge */}
       <div className="sm:hidden mt-2">

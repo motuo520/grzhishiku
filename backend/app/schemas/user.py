@@ -60,6 +60,11 @@ class AISettings(BaseModel):
     kimi_api_key: Optional[str] = Field(None, description="User-level Kimi API key")
     deepseek_api_key: Optional[str] = Field(None, description="User-level DeepSeek API key")
     opencode_api_key: Optional[str] = Field(None, description="User-level OpenCode API key")
+    glm_api_key: Optional[str] = Field(None, description="User-level GLM (智谱) API key")
+    dashscope_api_key: Optional[str] = Field(None, description="User-level DashScope (阿里) API key")
+    openai_api_key: Optional[str] = Field(None, description="User-level OpenAI API key")
+    anthropic_api_key: Optional[str] = Field(None, description="User-level Anthropic API key")
+    google_api_key: Optional[str] = Field(None, description="User-level Google (Gemini) API key")
     api_key: Optional[str] = Field(None, description="Legacy fallback API key")
 
 

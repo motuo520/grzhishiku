@@ -23,6 +23,11 @@ const EXTERNAL_PROVIDERS = [
   { slug: 'kimi', name: 'Kimi (Moonshot)', keyLabel: 'Kimi API Key', field: 'kimi_api_key', icon: Globe },
   { slug: 'deepseek', name: 'DeepSeek', keyLabel: 'DeepSeek API Key', field: 'deepseek_api_key', icon: Sparkles },
   { slug: 'opencode', name: 'OpenCode', keyLabel: 'OpenCode API Key', field: 'opencode_api_key', icon: Brain },
+  { slug: 'glm', name: 'GLM (智谱)', keyLabel: 'GLM API Key', field: 'glm_api_key', icon: Sparkles },
+  { slug: 'dashscope', name: '阿里 DashScope', keyLabel: 'DashScope API Key', field: 'dashscope_api_key', icon: Globe },
+  { slug: 'openai', name: 'OpenAI', keyLabel: 'OpenAI API Key', field: 'openai_api_key', icon: Brain },
+  { slug: 'anthropic', name: 'Anthropic', keyLabel: 'Anthropic API Key', field: 'anthropic_api_key', icon: Brain },
+  { slug: 'google', name: 'Google (Gemini)', keyLabel: 'Google API Key', field: 'google_api_key', icon: Globe },
 ];
 
 const FALLBACK_OLLAMA_MODELS = ['qwen2.5:0.5b'];
@@ -132,6 +137,11 @@ const AISettings: FC = () => {
         kimi: settings.ai.kimi_api_key || '',
         deepseek: settings.ai.deepseek_api_key || '',
         opencode: settings.ai.opencode_api_key || '',
+        glm: settings.ai.glm_api_key || '',
+        dashscope: settings.ai.dashscope_api_key || '',
+        openai: settings.ai.openai_api_key || '',
+        anthropic: settings.ai.anthropic_api_key || '',
+        google: settings.ai.google_api_key || '',
       });
     }
   }, [settings, catalog]);
@@ -200,6 +210,11 @@ const AISettings: FC = () => {
         kimi_api_key: keyPayload('kimi'),
         deepseek_api_key: keyPayload('deepseek'),
         opencode_api_key: keyPayload('opencode'),
+        glm_api_key: keyPayload('glm'),
+        dashscope_api_key: keyPayload('dashscope'),
+        openai_api_key: keyPayload('openai'),
+        anthropic_api_key: keyPayload('anthropic'),
+        google_api_key: keyPayload('google'),
       },
     });
   };

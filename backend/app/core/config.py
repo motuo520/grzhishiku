@@ -48,6 +48,11 @@ class Settings(BaseSettings):
     # 仅保留 DeepSeek / Kimi / OpenCode 三家云厂商；OpenCode 为 OpenAI 兼容聚合接口，
     # 负责 GLM / MiMo / MiniMax / Qwen 等模型。
     KIMI_BASE_URL: str = "https://api.moonshot.cn"
+    GLM_BASE_URL: str = "https://open.bigmodel.cn/api/paas/v4"
+    DASHSCOPE_BASE_URL: str = "https://dashscope.aliyuncs.com/compatible-mode/v1"
+    OPENAI_BASE_URL: str = "https://api.openai.com/v1"
+    ANTHROPIC_BASE_URL: str = "https://api.anthropic.com/v1"
+    GOOGLE_BASE_URL: str = "https://generativelanguage.googleapis.com/v1beta"
     DEEPSEEK_BASE_URL: str = "https://api.deepseek.com"
     OPENCODE_BASE_URL: str = "https://opencode.ai/zen"
 
@@ -55,6 +60,11 @@ class Settings(BaseSettings):
     DEEPSEEK_API_KEY: str = ""
     KIMI_API_KEY: str = ""
     OPENCODE_API_KEY: str = ""
+    GLM_API_KEY: str = ""
+    DASHSCOPE_API_KEY: str = ""
+    OPENAI_API_KEY: str = ""
+    ANTHROPIC_API_KEY: str = ""
+    GOOGLE_API_KEY: str = ""
     
     # Embeddings
     OLLAMA_EMBED_MODEL: str = "qwen2.5:0.5b"
