@@ -9,7 +9,7 @@ import {
   Server, KeyRound, Sparkles, Globe, Zap,
   Bot, TestTube, ArrowRightCircle
 } from 'lucide-react';
-import { apiClient } from '@/api/client';
+import api, { apiClient } from '@/api/client';
 import { useSettings } from '@/store/settings';
 
 const PROVIDER_ICONS: Record<string, React.ElementType> = {
@@ -39,7 +39,14 @@ const AISettings: FC = () => {
       .then((res) => setCloudTier(res.data.account?.tier || null))
       .catch(() => setCloudTier(null));
   }, [desktop]);
-  const externalLocked = desktop && !(cloudTier && MEMBER_TIERS.includes(cloudTier));
+  const [localMember, setLocalMember] = useState(false);
+  useEffect(() => {
+    if (!desktop) return;
+    api.get('/api/v1/billing/check-feature/cloud_sync')
+      .then((res: any) => setLocalMember(Boolean(res.data?.has_access)))
+      .catch(() => setLocalMember(false));
+  }, [desktop]);
+  const externalLocked = desktop && !localMember && !(cloudTier && MEMBER_TIERS.includes(cloudTier));
   const [selectedModel, setSelectedModel] = useState('ollama');
   const [temperature, setTemperature] = useState(0.7);
   const [maxTokens, setMaxTokens] = useState(2048);
@@ -447,12 +454,17 @@ const AISettings: FC = () => {
           <div className="border border-warning/30 bg-warning/5 rounded-[2px] p-5 mb-4">
             <div className="text-sm font-semibold text-text-primary mb-1.5">外部模型为存储会员功能（¥9.9/月）</div>
             <p className="text-xs text-text-secondary leading-relaxed mb-3">
-              在桌面端使用 DeepSeek / Kimi / OpenCode 等外部模型（含自填 Key），需要绑定已开通存储会员的云端账号。
-              本地模型（Ollama）不受限制，可继续免费使用。
+              在桌面端使用 DeepSeek / Kimi / OpenCode 等外部模型（含自填 Key），需要存储会员。
+              token 用量走你自己的 Key 另计。本地模型（Ollama）不受限制，可继续免费使用。
             </p>
-            <a href="/settings/sync" className="btn-primary inline-flex items-center gap-2 px-4 py-2 text-xs">
-              去「设置 → 同步」绑定云端账号
-            </a>
+            <div className="flex flex-wrap gap-2.5">
+              <a href="/payment" className="btn-primary inline-flex items-center gap-2 px-4 py-2 text-xs">
+                本机开通会员 ¥9.9/月
+              </a>
+              <a href="/settings/sync" className="btn-secondary inline-flex items-center gap-2 px-4 py-2 text-xs">
+                已是云端会员？绑定云端账号
+              </a>
+            </div>
           </div>
         )}
 

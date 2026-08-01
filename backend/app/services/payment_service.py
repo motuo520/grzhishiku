@@ -247,73 +247,79 @@ class PaymentService:
                 ).first()
 
         if payment:
-            # 幂等保护：已处理到终态的成功/退款通知不再重复执行充值/续订
-            if payment.status == "success" and result.success:
-                return result
-            if payment.status == "refunded" and result.status.value == "refunded":
-                return result
-
-            # 4. 更新 Payment
-            payment.status = result.status.value
-            payment.provider_transaction_id = result.provider_transaction_id
-            payment.paid_at = datetime.utcnow() if result.success else None
-            payment.provider_response = json.dumps(result.raw_response) if result.raw_response else None
-
-            # 5. 支付成功 → 创建/续订订阅 或 充值余额
-            if result.success and payment.status == "success":
-                if payment.coupon_id:
-                    coupon_svc = CouponService(self.db)
-                    try:
-                        coupon_svc.record_usage(
-                            user_id=payment.user_id,
-                            coupon_id=payment.coupon_id,
-                            payment_id=payment.id,
-                        )
-                    except Exception:
-                        pass
-
-                if payment.payment_type == "topup":
-                    if not payment.balance_added:
-                        llm_billing = LLMBillingService(self.db)
-                        llm_billing.deposit_balance(
-                            user_id=payment.user_id,
-                            amount_cents=payment.amount,
-                            reference_id=payment.id,
-                            description=f"充值到账 {payment.amount / 100:.2f} 元",
-                            commit=False,
-                        )
-                        payment.balance_added = payment.amount
-                else:
-                    # 检查是否已有订阅
-                    existing = self.billing.get_user_subscription(payment.user_id)
-                    if existing and existing.plan_id == payment.plan_id and existing.auto_renew:
-                        # 续订：更新周期
-                        existing.current_period_end = self._extend_period(
-                            existing.current_period_end or datetime.utcnow(),
-                            existing.billing_cycle,
-                        )
-                        existing.status = "active"
-                        # 同步更新用户订阅过期时间
-                        user = self.db.query(User).filter(User.id == payment.user_id).first()
-                        if user:
-                            user.subscription_expires_at = existing.current_period_end
-                    else:
-                        # 新订阅
-                        sub = self.billing.create_subscription(
-                            user_id=payment.user_id,
-                            plan_id=payment.plan_id,
-                            billing_cycle="monthly" if payment.amount < 10000 else "yearly",  # 粗略判断
-                            payment_method=provider,
-                        )
-                        # 修正价格（因为 create_subscription 会重新计算）
-                        sub.price_paid = payment.amount
-                        sub.coupon_id = payment.coupon_id
-                        sub.current_period_start = datetime.utcnow()
-                        sub.current_period_end = self._extend_period(datetime.utcnow(), sub.billing_cycle)
+            payment = self._apply_payment_result(payment, result, provider)
 
             self.db.commit()
 
         return result
+
+    def _apply_payment_result(self, payment: Payment, result: PaymentResult, provider: str) -> Payment:
+        """按支付结果更新订单并激活订阅/充值（webhook 与主动查单共用，幂等）。"""
+        # 幂等保护：已处理到终态的成功/退款通知不再重复执行充值/续订
+        if payment.status == "success" and result.success:
+            return payment
+        if payment.status == "refunded" and result.status.value == "refunded":
+            return payment
+
+        # 更新 Payment
+        payment.status = result.status.value
+        payment.provider_transaction_id = result.provider_transaction_id
+        payment.paid_at = datetime.utcnow() if result.success else None
+        payment.provider_response = json.dumps(result.raw_response) if result.raw_response else None
+
+        # 支付成功 → 创建/续订订阅 或 充值余额
+        if result.success and payment.status == "success":
+            if payment.coupon_id:
+                coupon_svc = CouponService(self.db)
+                try:
+                    coupon_svc.record_usage(
+                        user_id=payment.user_id,
+                        coupon_id=payment.coupon_id,
+                        payment_id=payment.id,
+                    )
+                except Exception:
+                    pass
+
+            if payment.payment_type == "topup":
+                if not payment.balance_added:
+                    llm_billing = LLMBillingService(self.db)
+                    llm_billing.deposit_balance(
+                        user_id=payment.user_id,
+                        amount_cents=payment.amount,
+                        reference_id=payment.id,
+                        description=f"充值到账 {payment.amount / 100:.2f} 元",
+                        commit=False,
+                    )
+                    payment.balance_added = payment.amount
+            else:
+                # 检查是否已有订阅
+                existing = self.billing.get_user_subscription(payment.user_id)
+                if existing and existing.plan_id == payment.plan_id and existing.auto_renew:
+                    # 续订：更新周期
+                    existing.current_period_end = self._extend_period(
+                        existing.current_period_end or datetime.utcnow(),
+                        existing.billing_cycle,
+                    )
+                    existing.status = "active"
+                    # 同步更新用户订阅过期时间
+                    user = self.db.query(User).filter(User.id == payment.user_id).first()
+                    if user:
+                        user.subscription_expires_at = existing.current_period_end
+                else:
+                    # 新订阅
+                    sub = self.billing.create_subscription(
+                        user_id=payment.user_id,
+                        plan_id=payment.plan_id,
+                        billing_cycle="monthly" if payment.amount < 10000 else "yearly",  # 粗略判断
+                        payment_method=provider,
+                    )
+                    # 修正价格（因为 create_subscription 会重新计算）
+                    sub.price_paid = payment.amount
+                    sub.coupon_id = payment.coupon_id
+                    sub.current_period_start = datetime.utcnow()
+                    sub.current_period_end = self._extend_period(datetime.utcnow(), sub.billing_cycle)
+
+        return payment
 
     async def query_payment_status(self, order_id: str, provider: str) -> PaymentResult:
         """查询支付状态"""

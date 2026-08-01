@@ -66,14 +66,26 @@ async def cloud_member_tier() -> Optional[str]:
     return binding.get("tier")  # 网络失败时沿用旧缓存（可能为 None）
 
 
-async def require_external_models_member(provider: str) -> None:
-    """桌面端外部模型守卫：非 ollama 模型需云端会员。网页端直接放行。"""
+async def require_external_models_member(provider: str, db=None, user_id: str = "") -> None:
+    """桌面端外部模型守卫：非 ollama 模型需会员。网页端直接放行。
+
+    会员判定（任一满足）：
+    1. 本机订阅有效（9.9 存储会员，本机扫码购买，复用 cloud_sync 功能位）
+    2. 绑定的云端账号是付费会员（云端已付费，不重复购买）
+    """
     if not is_desktop() or provider == "ollama":
         return
+    if db is not None and user_id:
+        try:
+            from app.services.billing_service import BillingService
+            if BillingService(db).check_feature_access(user_id, "cloud_sync"):
+                return
+        except Exception:
+            pass
     tier = await cloud_member_tier()
     if tier in _MEMBER_TIERS:
         return
     raise HTTPException(
         status_code=403,
-        detail="外部模型为存储会员功能（¥9.9/月）。请在「设置 → 同步」绑定已开通会员的云端账号后使用。",
+        detail="外部模型为存储会员功能（¥9.9/月）。请在「设置 → 桌面端/会员」本机开通，或绑定已开通会员的云端账号。token 用量可走自己的 API Key（BYOK）另计。",
     )

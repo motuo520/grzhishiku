@@ -345,12 +345,26 @@ async def get_payment(
     payment_id: str,
     user: User = Depends(get_current_user),
     billing: BillingService = Depends(get_billing_service),
+    payment_service: PaymentService = Depends(get_payment_service),
 ):
-    """获取单个支付订单状态（轮询用）"""
+    """获取单个支付订单状态（轮询用）。
+
+    订单未完成时主动向供应商查单并激活——桌面端收不到 webhook 回调，
+    全靠这条轮询闭环；网页端也顺带加快到账确认。"""
     payments = billing.get_user_payments(user.id)
     payment = next((p for p in payments if p.id == payment_id), None)
     if not payment:
         raise HTTPException(status_code=404, detail="Payment not found")
+
+    if payment.status not in ("success", "paid", "refunded") and payment.payment_method:
+        try:
+            result = await payment_service.query_payment_status(payment.id, payment.payment_method)
+            if result.success or result.status.value in ("success", "failed", "cancelled", "refunded"):
+                payment_service._apply_payment_result(payment, result, payment.payment_method)
+                payment_service.db.commit()
+        except Exception:
+            pass  # 查单失败不阻塞轮询，下轮再试
+
     return {
         "id": payment.id,
         "amount": payment.amount,

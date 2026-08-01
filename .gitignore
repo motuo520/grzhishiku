@@ -49,3 +49,4 @@ OllamaSetup*
 .DS_Store
 Thumbs.db
 cloud_account.json
+desktop/build-secrets.json

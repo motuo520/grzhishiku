@@ -1,6 +1,6 @@
 {
   "name": "wenmo-desktop",
-  "version": "0.1.9",
+  "version": "0.2.0",
   "private": true,
   "description": "问墨桌面端（Electron + 内嵌后端 sidecar）",
   "main": "main.js",
@@ -39,6 +39,10 @@
       {
         "from": "backend-dist/psb-backend",
         "to": "psb-backend"
+      },
+      {
+        "from": "build-secrets.json",
+        "to": "build-secrets.json"
       }
     ],
     "win": {

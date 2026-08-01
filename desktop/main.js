@@ -89,6 +89,20 @@ async function startBackend() {
   };
   if (frontendDir) env.SERVE_FRONTEND_DIR = frontendDir;
 
+  // 支付商户密钥：构建时随包注入（desktop/build-secrets.json，gitignored）。
+  // 不含密钥的文件（如开源构建）不影响其余功能，仅收银不可用。
+  try {
+    const secretsPath = path.join(process.resourcesPath || '', 'build-secrets.json');
+    if (fs.existsSync(secretsPath)) {
+      const secrets = JSON.parse(fs.readFileSync(secretsPath, 'utf-8'));
+      for (const [k, v] of Object.entries(secrets)) {
+        if (v && !env[k]) env[k] = String(v);
+      }
+    }
+  } catch {
+    // 密钥文件损坏不阻塞启动
+  }
+
   const proc = spawn(cmd, args, { cwd, env, windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] });
   proc.stdout.on('data', (d) => logStream.write(d));
   proc.stderr.on('data', (d) => logStream.write(d));

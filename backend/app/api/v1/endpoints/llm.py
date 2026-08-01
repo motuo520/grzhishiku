@@ -291,7 +291,7 @@ async def chat(
     _provider = (_model_row.provider if _model_row else None) or route.get("provider") or (
         model_id.split("-", 1)[0] if model_id else "ollama"
     )
-    await require_external_models_member(str(_provider))
+    await require_external_models_member(str(_provider), db=db, user_id=current_user.id)
 
     input_messages = []
     if final_system_prompt:
