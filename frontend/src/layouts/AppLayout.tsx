@@ -17,7 +17,7 @@ const AppLayout: FC = () => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [searchOpen, setSearchOpen] = useState(false);
   const [loginOpen, setLoginOpen] = useState(false);
-  const { isLoggedIn, isLoading } = useAuth();
+  const { isLoading } = useAuth();
 
   if (isLoading) {
     return (
@@ -39,21 +39,6 @@ const AppLayout: FC = () => {
       <header className="flex-shrink-0 z-40 bg-bg-secondary border-b border-border-light overflow-visible">
         <TopNavigation onLoginClick={() => setLoginOpen(true)} />
       </header>
-
-      {/* Guest notice */}
-      {!isLoggedIn && (
-        <div className="flex-shrink-0 z-30 bg-bg-secondary border-b border-border-light px-4 py-2 flex items-center justify-between gap-4">
-          <p className="text-xs text-text-secondary">
-            你正在浏览演示数据，注册后即可创建属于你自己的知识库。
-          </p>
-          <button
-            onClick={() => setLoginOpen(true)}
-            className="px-3 py-1 rounded-[2px] border border-accent/40 text-accent hover:bg-accent/10 text-xs font-medium transition-colors shrink-0"
-          >
-            登录 / 注册
-          </button>
-        </div>
-      )}
 
       {/* Sub Menu Panel (slides down when active) */}
       <SubMenuPanel />
@@ -105,7 +90,7 @@ const AppLayout: FC = () => {
       {/* Bottom Chat Input Bar */}
       <ChatInputBar sidebarOpen={sidebarOpen} onLoginClick={() => setLoginOpen(true)} />
 
-      {/* Login modal: triggered by guest notice or protected actions */}
+      {/* Login modal: triggered by nav button or protected actions */}
       <LoginModal isOpen={loginOpen} onClose={() => setLoginOpen(false)} />
 
       {/* Cute mascot assistant */}

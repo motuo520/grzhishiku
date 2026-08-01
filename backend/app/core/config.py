@@ -30,10 +30,6 @@ class Settings(BaseSettings):
     # Redis
     REDIS_URL: str = "redis://localhost:6379/0"
 
-    # 游客演示模式：未登录的只读请求注入该账号的演示数据
-    GUEST_DEMO_ENABLED: bool = True
-    GUEST_DEMO_EMAIL: str = "demo@wenmo.local"
-    
     # Local LLM
     OLLAMA_BASE_URL: str = "http://localhost:11434"
     OLLAMA_MODEL: str = "qwen2.5:0.5b"

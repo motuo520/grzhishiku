@@ -41,10 +41,6 @@ async def lifespan(app: FastAPI):
     # Startup
     Base.metadata.create_all(bind=engine)
 
-    # 游客演示模式：为演示账号铸长效 token（账号不存在时自动关闭）
-    from app.core.guest_demo import init_guest_demo_token
-    init_guest_demo_token(app)
-
     # Ensure FTS5 virtual table and sync triggers exist for knowledge search.
     # Base.metadata.create_all does not create VIRTUAL TABLEs or triggers.
     from sqlalchemy import text
@@ -211,10 +207,8 @@ logging.getLogger("sqlalchemy.dialects").setLevel(logging.WARNING)
 
 from app.core.security_middleware import SecurityMiddleware
 from app.core.maintenance_middleware import MaintenanceMiddleware
-from app.core.guest_demo import GuestDemoMiddleware, init_guest_demo_token
 
 app.add_middleware(SecurityMiddleware)
-app.add_middleware(GuestDemoMiddleware)
 app.add_middleware(MaintenanceMiddleware)
 app.add_middleware(GZipMiddleware, minimum_size=1000)
 app.add_middleware(StaticFilesCacheMiddleware)
