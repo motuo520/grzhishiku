@@ -34,6 +34,9 @@ class Settings(BaseSettings):
     OLLAMA_BASE_URL: str = "http://localhost:11434"
     OLLAMA_MODEL: str = "qwen2.5:0.5b"
     OLLAMA_FALLBACK_MODEL: str = "qwen2.5:0.5b"
+    # 图谱构建（graphify）专用模型：空则回退 OLLAMA_MODEL。
+    # 0.5B 模型无法稳定输出提取 JSON，建议 qwen2.5-coder:7b 或 qwen2.5:3b。
+    GRAPHIFY_OLLAMA_MODEL: str = ""
 
     # Model routing configs
     DEFAULT_TEMPERATURE: float = 0.7

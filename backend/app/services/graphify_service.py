@@ -118,9 +118,16 @@ def export_user_corpus(db: Session, user_id: str) -> Dict[str, int]:
 
 
 def _graphify_env() -> Dict[str, str]:
+    from app.core.config import settings
     env = dict(os.environ)
     # Reasoning-model thinking prose breaks JSON extraction; keep it disabled.
     env.setdefault("GRAPHIFY_DISABLE_THINKING", "1")
+    # graphify 子进程走 OpenAI 兼容端点（/v1），把后端的 Ollama 配置显式传下去——
+    # 不能用 setdefault：compose 里注入的 OLLAMA_BASE_URL 没有 /v1 后缀。
+    # 仅消除 graphify 的告警，Ollama 本身不校验 key。
+    env.setdefault("OLLAMA_API_KEY", "ollama")
+    # 图谱提取可用独立模型：0.5B 聊天模型太弱，提取 JSON 基本全会失败。
+    env["OLLAMA_MODEL"] = getattr(settings, "GRAPHIFY_OLLAMA_MODEL", "") or settings.OLLAMA_MODEL
     return env
 
 
