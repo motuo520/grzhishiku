@@ -20,7 +20,7 @@ export default defineConfig({
       '/api': {
         // Backend (uvicorn) binds IPv4 127.0.0.1; use it explicitly to avoid the
         // same IPv6 localhost resolution issue in the proxy.
-        target: 'http://127.0.0.1:8002',
+        target: 'http://127.0.0.1:8000',
         changeOrigin: false,
       },
     },

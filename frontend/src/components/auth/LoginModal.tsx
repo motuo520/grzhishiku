@@ -55,6 +55,11 @@ const LoginModal: FC<LoginModalProps> = ({ isOpen, onClose }) => {
     const msg = err?.message || '';
 
     if (status === 401) return '邮箱或密码错误，请检查输入';
+    if (status === 422) {
+      const details = err?.response?.data?.error?.details;
+      if (Array.isArray(details) && details.length > 0 && details[0].message) return details[0].message;
+      return err?.response?.data?.error?.message || '请求参数校验失败，请检查输入';
+    }
     if (status === 400 && detail) return detail;
     if (status === 404) return '服务未找到，请检查后端是否启动';
     if (status >= 500) return '服务器错误，请稍后再试';

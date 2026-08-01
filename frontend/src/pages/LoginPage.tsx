@@ -40,6 +40,9 @@ const LoginPage: FC = () => {
     if (!email.trim()) { setFormError('请输入邮箱'); return false; }
     if (!password) { setFormError('请输入密码'); return false; }
     if (password.length < 8) { setFormError('密码长度至少 8 位'); return false; }
+    if (!/[A-Z]/.test(password)) { setFormError('密码必须包含至少一个大写字母'); return false; }
+    if (!/[a-z]/.test(password)) { setFormError('密码必须包含至少一个小写字母'); return false; }
+    if (!/\d/.test(password)) { setFormError('密码必须包含至少一个数字'); return false; }
     return true;
   };
 
@@ -49,6 +52,11 @@ const LoginPage: FC = () => {
     const msg = err?.message || '';
 
     if (status === 401) return '邮箱或密码错误，请检查输入';
+    if (status === 422) {
+      const details = err?.response?.data?.error?.details;
+      if (Array.isArray(details) && details.length > 0 && details[0].message) return details[0].message;
+      return err?.response?.data?.error?.message || '请求参数校验失败，请检查输入';
+    }
     if (status === 400 && detail) return detail;
     if (status === 404) return '服务未找到，请检查后端是否启动';
     if (status >= 500) return '服务器错误，请稍后再试';
