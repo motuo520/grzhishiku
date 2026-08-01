@@ -284,6 +284,15 @@ async def chat(
     )
     model_id = route.get("model_name") or route.get("model_id") or request.preferred_model or "ollama-qwen2.5-0.5b"
 
+    # 桌面端：外部模型（非 ollama）需云端存储会员
+    from app.core.desktop_gate import require_external_models_member
+    from app.models.llm_billing import LLMModel as _LLMModel
+    _model_row = db.query(_LLMModel).filter(_LLMModel.id == model_id).first()
+    _provider = (_model_row.provider if _model_row else None) or route.get("provider") or (
+        model_id.split("-", 1)[0] if model_id else "ollama"
+    )
+    await require_external_models_member(str(_provider))
+
     input_messages = []
     if final_system_prompt:
         input_messages.append({"role": "system", "content": final_system_prompt})

@@ -86,7 +86,13 @@ async def cloud_status(current_user: User = Depends(get_current_user)):
     binding = _load_binding()
     if not binding:
         return {"bound": False}
-    return {"bound": True, "account": {"server_url": binding["server_url"], "email": binding["email"]}}
+    # 附带云端会员 tier（桌面端外部模型会员门用；失败不阻塞 status）
+    from app.core.desktop_gate import cloud_member_tier
+    tier = await cloud_member_tier()
+    return {
+        "bound": True,
+        "account": {"server_url": binding["server_url"], "email": binding["email"], "tier": tier or "free"},
+    }
 
 
 @router.post("/logout")

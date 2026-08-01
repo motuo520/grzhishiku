@@ -32,6 +32,7 @@ export const llmBase = () =>
 export interface CloudAccount {
   server_url: string;
   email: string;
+  tier?: string;
 }
 
 export const cloudAccountApi = {

@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { settingsApi, UserSettings } from '@/api/settings';
 import { testProvider, getLLMStatus, getOllamaModels, getModelCatalog, LLMModelCatalogItem } from '@/api/llm';
 import { llmPriceTier } from '@/utils/llmTier';
+import { cloudAccountApi, isDesktop } from '@/api/unifiedSync';
 import {
   Brain, Eye, EyeOff, Loader2, Check, AlertTriangle, Wifi, WifiOff,
   Server, KeyRound, Sparkles, Globe, Zap,
@@ -26,7 +27,19 @@ const EXTERNAL_PROVIDERS = [
 
 const FALLBACK_OLLAMA_MODELS = ['qwen2.5:0.5b'];
 
+const MEMBER_TIERS = ['storage', 'pro', 'team', 'enterprise'];
+
 const AISettings: FC = () => {
+  // 桌面端外部模型会员门：BYOK 需云端存储会员
+  const desktop = isDesktop();
+  const [cloudTier, setCloudTier] = useState<string | null>(null);
+  useEffect(() => {
+    if (!desktop) return;
+    cloudAccountApi.status()
+      .then((res) => setCloudTier(res.data.account?.tier || null))
+      .catch(() => setCloudTier(null));
+  }, [desktop]);
+  const externalLocked = desktop && !(cloudTier && MEMBER_TIERS.includes(cloudTier));
   const [selectedModel, setSelectedModel] = useState('ollama');
   const [temperature, setTemperature] = useState(0.7);
   const [maxTokens, setMaxTokens] = useState(2048);
@@ -430,7 +443,20 @@ const AISettings: FC = () => {
           API Key 保存在服务端用户设置中，仅用于后端调用外部 AI 服务，不会在前端页面暴露。
         </p>
 
-        <div className="space-y-4">
+        {externalLocked && (
+          <div className="border border-warning/30 bg-warning/5 rounded-[2px] p-5 mb-4">
+            <div className="text-sm font-semibold text-text-primary mb-1.5">外部模型为存储会员功能（¥9.9/月）</div>
+            <p className="text-xs text-text-secondary leading-relaxed mb-3">
+              在桌面端使用 DeepSeek / Kimi / OpenCode 等外部模型（含自填 Key），需要绑定已开通存储会员的云端账号。
+              本地模型（Ollama）不受限制，可继续免费使用。
+            </p>
+            <a href="/settings/sync" className="btn-primary inline-flex items-center gap-2 px-4 py-2 text-xs">
+              去「设置 → 同步」绑定云端账号
+            </a>
+          </div>
+        )}
+
+        <div className={externalLocked ? 'space-y-4 opacity-40 pointer-events-none select-none' : 'space-y-4'}>
           {EXTERNAL_PROVIDERS.map((p) => {
             const Icon = p.icon;
             const keyValue = apiKeys[p.slug] || '';

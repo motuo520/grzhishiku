@@ -33,6 +33,8 @@ def _prepare_environment() -> int:
     # Desktop runs as a self-contained production app.
     os.environ.setdefault("ENV", "production")
     os.environ.setdefault("DEBUG", "false")
+    # 桌面端标记：外部模型会员门（desktop_gate）据此启用
+    os.environ.setdefault("PSB_DESKTOP", "1")
 
     # 本地向量模型：默认用专用 embedding 模型（qwen2.5:0.5b 是聊天模型，
     # Ollama 0.32+ 不支持它做 embedding，会静默降级成 mock 假向量）。
