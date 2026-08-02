@@ -21,6 +21,7 @@ from app.services import tag_service
 from pydantic import BaseModel, Field
 
 from app.services.embedding_service import embedding_service
+from app.services.chunking import embed_document_chunks
 
 router = APIRouter()
 
@@ -198,24 +199,33 @@ async def _content_to_knowledge(
         source_title = getattr(item, "source_title", None)
         brain_side = getattr(item, "brain_side", "network")
 
-    ku = KnowledgeUnit(
-        id=str(uuid.uuid4()),
-        user_id=user_id,
-        brain_side=brain_side,
-        content_raw=content_raw[:50000],
-        content_type=content_type,
-        source_id=str(item.id),
-        source_url=source_url,
-        source_title=source_title or title,
-        source_type=content_type,
-        verification_status="unverified",
-        trust_level="tentative",
-        verification_history='[]',
-        pipeline_stage=stage,
-        origin_type="book_excerpt" if brain_side == "network" else "reflection",
-        attached_practice_ids='[]',
-    )
-    db.add(ku)
+    # 查重合并：已有高度相似的知识单元时更新旧单元，不再新建
+    from app.services.knowledge_dedup import find_similar_unit, merge_into_unit, reembed_unit
+    merged_unit = await find_similar_unit(db, user_id, title, content_raw[:50000])
+    if merged_unit is not None:
+        ku = merge_into_unit(merged_unit, content_raw[:50000])
+        ku.merged = True  # 瞬时标记，供调用方/响应使用
+        db.add(ku)
+    else:
+        ku = KnowledgeUnit(
+            id=str(uuid.uuid4()),
+            user_id=user_id,
+            brain_side=brain_side,
+            content_raw=content_raw[:50000],
+            content_type=content_type,
+            source_id=str(item.id),
+            source_url=source_url,
+            source_title=source_title or title,
+            source_type=content_type,
+            verification_status="unverified",
+            trust_level="tentative",
+            verification_history='[]',
+            pipeline_stage=stage,
+            origin_type="book_excerpt" if brain_side == "network" else "reflection",
+            attached_practice_ids='[]',
+        )
+        ku.merged = False
+        db.add(ku)
     db.commit()
     db.refresh(ku)
 
@@ -240,14 +250,17 @@ async def _content_to_knowledge(
     db.refresh(item)
 
     # Generate embedding asynchronously; failure should not block the pipeline.
+    # 合并命中时内容已变化，删旧向量按新内容重算；否则按文档切块入库。
     try:
-        await embedding_service.embed(
-            ku.content_raw[:2000],
-            store=True,
-            content_type="knowledge",
-            content_id=ku.id,
-            user_id=user_id,
-        )
+        if getattr(ku, "merged", False):
+            await reembed_unit(ku)
+        else:
+            await embed_document_chunks(
+                ku.content_raw,
+                content_type="knowledge",
+                doc_id=ku.id,
+                user_id=user_id,
+            )
     except Exception:
         logger = logging.getLogger(__name__)
         logger.exception(f"Failed to generate embedding for knowledge unit {ku.id}")
@@ -703,7 +716,8 @@ async def transition_stage(
     )
     db.commit()
     db.refresh(ku)
-    return {"success": True, "content_type": "knowledge", "content_id": ku.id, "stage": request.stage}
+    return {"success": True, "content_type": "knowledge", "content_id": ku.id,
+            "stage": request.stage, "merged": getattr(ku, "merged", False)}
 
 
 @router.post("/{content_type}/{content_id}/revert", summary="Revert a pipeline item back to raw")
@@ -935,30 +949,30 @@ async def extract_concepts(
             if c.get("existing"):
                 continue
             try:
-                await embedding_service.embed(
-                    f"{c.get('concept', '')}: {c.get('definition', '')}"[:2000],
-                    store=True,
+                await embed_document_chunks(
+                    f"{c.get('concept', '')}: {c.get('definition', '')}",
                     content_type="knowledge",
-                    content_id=c["id"],
+                    doc_id=c["id"],
                     user_id=current_user.id,
                 )
             except Exception:
                 logger.exception(f"Failed to generate embedding for concept {c['id']}")
 
         return ExtractResponse(source_id=content_id, source_content_type=content_type, concepts=created)
-    except ValueError as e:
+    except ValueError:
         db.rollback()
+        logging.getLogger(__name__).exception("Concept extraction failed")
         raise HTTPException(
             status_code=500,
-            detail=f"Concept extraction failed: {str(e)} | raw_preview={raw[:500] if 'raw' in locals() and raw else '<empty response>'}",
+            detail="概念提取失败，请查看服务端日志",
         )
-    except Exception as e:
+    except Exception:
         # Rollback any partial state changes so the source item doesn't get stuck in extracted stage
         db.rollback()
-        error_preview = raw[:500] if 'raw' in locals() and raw else "<empty response>"
+        logging.getLogger(__name__).exception("Concept extraction failed")
         raise HTTPException(
             status_code=500,
-            detail=f"Concept extraction failed: {str(e)} | raw_preview={error_preview}",
+            detail="概念提取失败，请查看服务端日志",
         )
 
 
@@ -1173,11 +1187,10 @@ async def collide_concepts(
 
         # Generate embedding for the collision result so it can participate in future similarity searches.
         try:
-            await embedding_service.embed(
-                collision.content_raw[:2000],
-                store=True,
+            await embed_document_chunks(
+                collision.content_raw,
                 content_type="knowledge",
-                content_id=collision.id,
+                doc_id=collision.id,
                 user_id=current_user.id,
             )
         except Exception:
@@ -1193,18 +1206,19 @@ async def collide_concepts(
             derivation=result.get("derivation", ""),
             pairing=pairing,
         )
-    except ValueError as e:
+    except ValueError:
         db.rollback()
+        logging.getLogger(__name__).exception("Concept collision failed")
         raise HTTPException(
             status_code=500,
-            detail=f"Concept collision failed: {str(e)} | raw_preview={raw[:500] if 'raw' in locals() and raw else '<empty response>'}",
+            detail="概念碰撞失败，请查看服务端日志",
         )
-    except Exception as e:
+    except Exception:
         db.rollback()
-        error_preview = raw[:500] if 'raw' in locals() and raw else "<empty response>"
+        logging.getLogger(__name__).exception("Concept collision failed")
         raise HTTPException(
             status_code=500,
-            detail=f"Concept collision failed: {str(e)} | raw_preview={error_preview}",
+            detail="概念碰撞失败，请查看服务端日志",
         )
 
 

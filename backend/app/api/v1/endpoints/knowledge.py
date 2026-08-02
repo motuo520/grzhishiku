@@ -1,3 +1,5 @@
+import logging
+
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
 from sqlalchemy import func
@@ -22,6 +24,8 @@ from app.services import tag_service
 from app.api.v1.endpoints.graph import auto_link_knowledge
 
 router = APIRouter()
+
+logger = logging.getLogger(__name__)
 
 
 class VerifyRequest(BaseModel):
@@ -364,16 +368,31 @@ async def list_knowledge(
         responses.sort(key=lambda x: x["value_score"], reverse=reverse)
     return responses
 
-@router.post("/", response_model=KnowledgeUnitResponse, status_code=status.HTTP_201_CREATED, summary="Add knowledge unit", description="Add a new knowledge unit.")
+@router.post("/", status_code=status.HTTP_201_CREATED, summary="Add knowledge unit", description="Add a new knowledge unit. If a highly similar unit exists (and allow_merge is on), the new content is merged into it instead.")
 async def add_knowledge(
     unit_data: KnowledgeUnitCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
+    allow_merge: bool = True,
 ):
     # XSS sanitization
     safe_content, safe_url, safe_title = sanitize_knowledge_input(
         unit_data.content_raw, unit_data.source_url, unit_data.source_title
     )
+
+    # 查重合并：存在高度相似的知识单元时更新旧单元而不是新建（可用 allow_merge=false 关闭）
+    if allow_merge:
+        from app.services.knowledge_dedup import find_similar_unit, merge_into_unit, reembed_unit
+        similar = await find_similar_unit(db, current_user.id, safe_title or "", safe_content)
+        if similar is not None:
+            unit = merge_into_unit(similar, safe_content)
+            db.commit()
+            db.refresh(unit)
+            await reembed_unit(unit)
+            response = _build_knowledge_response(unit, db)
+            response["merged"] = True
+            return response
+
     unit = KnowledgeUnit(
         id=str(uuid.uuid4()),
         user_id=current_user.id,
@@ -422,9 +441,11 @@ async def add_knowledge(
         await auto_link_knowledge(db, unit, current_user.id)
         db.commit()
     except Exception as e:
-        print(f"Auto-link failed for knowledge {unit.id}: {e}")
-    
-    return _build_knowledge_response(unit, db)
+        logger.warning(f"Auto-link failed for knowledge {unit.id}: {e}")
+
+    response = _build_knowledge_response(unit, db)
+    response["merged"] = False
+    return response
 
 
 @router.get("/stats", summary="Knowledge statistics", description="Get knowledge base statistics grouped by brain side.")
@@ -538,6 +559,84 @@ async def list_sources(
     return result
 
 
+@router.post("/rag-eval", summary="RAG evaluation", description="Run the 50-question RAG evaluation set against the current user's knowledge base. Tests retrieval recall and keyword coverage without calling the LLM.")
+async def run_rag_evaluation(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Run the RAG eval set and return a score report."""
+    from app.api.v1.endpoints.llm import _retrieve_knowledge_sources
+
+    data_path = Path(__file__).resolve().parents[3] / "data" / "rag_eval_set.json"
+    if not data_path.exists():
+        raise HTTPException(status_code=500, detail="RAG eval set file not found")
+
+    with open(data_path, "r", encoding="utf-8") as f:
+        eval_data = json.load(f)
+
+    questions = eval_data.get("questions", [])
+    threshold = eval_data.get("pass_threshold", 0.7)
+    results = []
+    passed = 0
+
+    for q in questions:
+        sources = await _retrieve_knowledge_sources(
+            db=db,
+            user_id=current_user.id,
+            message=q["question"],
+            brain_side="both",
+            top_k=5,
+        )
+
+        # Find the best matching source.
+        matched_source = None
+        for src in sources:
+            if q.get("expected_source_contains") and q["expected_source_contains"] in src["title"]:
+                matched_source = src
+                break
+            if q.get("expected_source_type") and src["source_type"] == q["expected_source_type"]:
+                # Accept as fallback only if keywords also match.
+                full_text = (src.get("content_raw") or src["preview"]) + " " + src["title"]
+                if all(kw.lower() in full_text.lower() for kw in q.get("expected_keywords", [])):
+                    matched_source = src
+                    break
+
+        # Keyword coverage in retrieved sources (use full raw text for accurate check).
+        combined = " ".join((s.get("content_raw") or s["preview"]) + " " + s["title"] for s in sources).lower()
+        keyword_hits = [kw for kw in q.get("expected_keywords", []) if kw.lower() in combined]
+        keyword_score = len(keyword_hits) / max(len(q.get("expected_keywords", [])), 1)
+
+        # A question passes if expected source is in top-k AND keyword coverage >= 60%.
+        source_ok = matched_source is not None
+        ok = source_ok and keyword_score >= 0.6
+        if ok:
+            passed += 1
+
+        results.append({
+            "id": q["id"],
+            "category": q["category"],
+            "question": q["question"],
+            "passed": ok,
+            "source_found": source_ok,
+            "keyword_score": round(keyword_score, 2),
+            "matched_source_title": matched_source["title"] if matched_source else None,
+            "retrieved_count": len(sources),
+        })
+
+    total = len(questions)
+    score = round(passed / total, 4) if total else 0.0
+
+    return {
+        "total": total,
+        "passed": passed,
+        "failed": total - passed,
+        "score": score,
+        "threshold": threshold,
+        "release_ready": score >= threshold,
+        "results": results,
+    }
+
+
 @router.get("/{unit_id}", response_model=KnowledgeUnitResponse, summary="Get knowledge unit", description="Get a specific knowledge unit.")
 async def get_knowledge(
     unit_id: str,
@@ -624,7 +723,7 @@ async def update_knowledge(
         await auto_link_knowledge(db, unit, current_user.id)
         db.commit()
     except Exception as e:
-        print(f"Auto-link failed for knowledge {unit.id}: {e}")
+        logger.warning(f"Auto-link failed for knowledge {unit.id}: {e}")
     
     return _build_knowledge_response(unit, db)
 
@@ -713,7 +812,7 @@ async def verify_knowledge(
         await auto_link_knowledge(db, unit, current_user.id)
         db.commit()
     except Exception as e:
-        print(f"Auto-link failed for knowledge {unit.id}: {e}")
+        logger.warning(f"Auto-link failed for knowledge {unit.id}: {e}")
     
     return {
         "unit_id": unit_id,

@@ -210,9 +210,10 @@ async def delete_account(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    # Verify confirmation text
-    if request.confirmation != "删除我的账户":
-        raise HTTPException(status_code=400, detail="确认文字不匹配。请输入「删除我的账户」")
+    # Verify confirmation text（容忍首尾空白、「」引号与「帐/账」异体混用）
+    normalized = request.confirmation.strip().strip("「」『』\"'").replace("帐", "账")
+    if normalized != "删除我的账户":
+        raise HTTPException(status_code=400, detail="确认文字不匹配。请输入「删除我的账户」（不带引号）")
 
     # Verify password
     if not verify_password(request.password, current_user.password_hash):

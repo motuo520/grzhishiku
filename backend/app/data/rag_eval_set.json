@@ -1,0 +1,408 @@
+{
+  "version": "1.0.0",
+  "description": "钤记（开源版）RAG 评测集：50 道基于轻量播种示例数据（sample_data_service）的问题，用于验证检索能否命中正确来源并覆盖关键词。",
+  "total": 50,
+  "pass_threshold": 0.7,
+  "questions": [
+    {
+      "id": "start-001",
+      "category": "应用上手",
+      "question": "钤记的用法分为哪三步？",
+      "expected_keywords": ["存进来", "自动理好", "一句话问出来"],
+      "expected_source_contains": "欢迎使用钤记",
+      "expected_source_type": "note"
+    },
+    {
+      "id": "start-002",
+      "category": "应用上手",
+      "question": "在钤记里可以存哪些类型的内容？",
+      "expected_keywords": ["笔记", "剪藏", "RSS"],
+      "expected_source_contains": "欢迎使用钤记",
+      "expected_source_type": "note"
+    },
+    {
+      "id": "start-003",
+      "category": "应用上手",
+      "question": "钤记的 AI 会帮你做什么整理工作？",
+      "expected_keywords": ["提炼", "打标", "知识网络"],
+      "expected_source_contains": "欢迎使用钤记",
+      "expected_source_type": "note"
+    },
+    {
+      "id": "start-004",
+      "category": "应用上手",
+      "question": "怎么向自己的知识库提问？",
+      "expected_keywords": ["一句话问出来", "AI 助手"],
+      "expected_source_contains": "欢迎使用钤记",
+      "expected_source_type": "note"
+    },
+    {
+      "id": "start-005",
+      "category": "应用上手",
+      "question": "AI 助手在界面的什么位置？",
+      "expected_keywords": ["右下角", "AI 助手"],
+      "expected_source_contains": "欢迎使用钤记",
+      "expected_source_type": "note"
+    },
+    {
+      "id": "start-006",
+      "category": "应用上手",
+      "question": "欢迎笔记说示例内容可以怎么处理？",
+      "expected_keywords": ["编辑或删除"],
+      "expected_source_contains": "欢迎使用钤记",
+      "expected_source_type": "note"
+    },
+    {
+      "id": "start-007",
+      "category": "应用上手",
+      "question": "钤记里「存进来」这一步指什么？",
+      "expected_keywords": ["存进来", "笔记", "剪藏"],
+      "expected_source_contains": "欢迎使用钤记",
+      "expected_source_type": "note"
+    },
+    {
+      "id": "start-008",
+      "category": "应用上手",
+      "question": "钤记怎么把内容连成知识网络？",
+      "expected_keywords": ["自动理好", "知识网络"],
+      "expected_source_contains": "欢迎使用钤记",
+      "expected_source_type": "note"
+    },
+    {
+      "id": "start-009",
+      "category": "应用上手",
+      "question": "文件能不能存进钤记？",
+      "expected_keywords": ["文件", "存进来"],
+      "expected_source_contains": "欢迎使用钤记",
+      "expected_source_type": "note"
+    },
+    {
+      "id": "book-001",
+      "category": "读书笔记",
+      "question": "《原子习惯》读书笔记里引用了哪句话？",
+      "expected_keywords": ["目标的高度", "系统的水平"],
+      "expected_source_contains": "原子习惯",
+      "expected_source_type": "note"
+    },
+    {
+      "id": "book-002",
+      "category": "读书笔记",
+      "question": "为什么说人会跌落到系统的水平？",
+      "expected_keywords": ["系统的水平", "目标"],
+      "expected_source_contains": "原子习惯",
+      "expected_source_type": "note"
+    },
+    {
+      "id": "book-003",
+      "category": "读书笔记",
+      "question": "读书笔记作者认为立 flag 有用吗？",
+      "expected_keywords": ["flag", "环境"],
+      "expected_source_contains": "原子习惯",
+      "expected_source_type": "note"
+    },
+    {
+      "id": "book-004",
+      "category": "读书笔记",
+      "question": "怎么用环境设计培养阅读习惯？",
+      "expected_keywords": ["床头", "想读的书"],
+      "expected_source_contains": "原子习惯",
+      "expected_source_type": "note"
+    },
+    {
+      "id": "book-005",
+      "category": "读书笔记",
+      "question": "读书笔记建议把手机放在哪里？",
+      "expected_keywords": ["手机", "另一个房间"],
+      "expected_source_contains": "原子习惯",
+      "expected_source_type": "note"
+    },
+    {
+      "id": "book-006",
+      "category": "读书笔记",
+      "question": "原子习惯笔记的核心观点是什么？",
+      "expected_keywords": ["系统", "环境"],
+      "expected_source_contains": "原子习惯",
+      "expected_source_type": "note"
+    },
+    {
+      "id": "book-007",
+      "category": "读书笔记",
+      "question": "改造日常环境比立目标更有效是哪本书的笔记？",
+      "expected_keywords": ["环境", "flag"],
+      "expected_source_contains": "原子习惯",
+      "expected_source_type": "note"
+    },
+    {
+      "id": "book-008",
+      "category": "读书笔记",
+      "question": "这条读书笔记打了什么标签？",
+      "expected_keywords": ["读书笔记", "习惯"],
+      "expected_source_contains": "原子习惯",
+      "expected_source_type": "note"
+    },
+    {
+      "id": "book-009",
+      "category": "读书笔记",
+      "question": "系统比目标更重要这句话出自哪条笔记？",
+      "expected_keywords": ["系统的水平", "目标的高度"],
+      "expected_source_contains": "原子习惯",
+      "expected_source_type": "note"
+    },
+    {
+      "id": "self-001",
+      "category": "自托管部署",
+      "question": "钤记的开源主页在哪里？",
+      "expected_keywords": ["开源主页", "GitHub"],
+      "expected_source_contains": "GitHub 仓库",
+      "expected_source_type": "clip"
+    },
+    {
+      "id": "self-002",
+      "category": "自托管部署",
+      "question": "自托管钤记用什么方式一键部署？",
+      "expected_keywords": ["docker compose", "自托管"],
+      "expected_source_contains": "GitHub 仓库",
+      "expected_source_type": "clip"
+    },
+    {
+      "id": "self-003",
+      "category": "自托管部署",
+      "question": "钤记是什么类型的应用？",
+      "expected_keywords": ["第二大脑", "自托管"],
+      "expected_source_contains": "GitHub 仓库",
+      "expected_source_type": "clip"
+    },
+    {
+      "id": "self-004",
+      "category": "自托管部署",
+      "question": "怎么把网页剪藏到钤记？",
+      "expected_keywords": ["浏览器扩展", "一键剪藏"],
+      "expected_source_contains": "GitHub 仓库",
+      "expected_source_type": "clip"
+    },
+    {
+      "id": "self-005",
+      "category": "自托管部署",
+      "question": "钤记的浏览器扩展有什么用？",
+      "expected_keywords": ["浏览器扩展", "剪藏"],
+      "expected_source_contains": "GitHub 仓库",
+      "expected_source_type": "clip"
+    },
+    {
+      "id": "self-006",
+      "category": "自托管部署",
+      "question": "docker compose 在钤记里用来做什么？",
+      "expected_keywords": ["docker compose", "一键"],
+      "expected_source_contains": "GitHub 仓库",
+      "expected_source_type": "clip"
+    },
+    {
+      "id": "self-007",
+      "category": "自托管部署",
+      "question": "钤记 GitHub 仓库这条剪藏讲了什么？",
+      "expected_keywords": ["开源主页", "自托管"],
+      "expected_source_contains": "GitHub 仓库",
+      "expected_source_type": "clip"
+    },
+    {
+      "id": "self-008",
+      "category": "自托管部署",
+      "question": "任何网页都能一键剪藏到哪里？",
+      "expected_keywords": ["一键剪藏", "浏览器扩展"],
+      "expected_source_contains": "GitHub 仓库",
+      "expected_source_type": "clip"
+    },
+    {
+      "id": "pkm-001",
+      "category": "知识管理",
+      "question": "什么是个人知识管理？",
+      "expected_keywords": ["收集", "组织", "存储", "检索"],
+      "expected_source_contains": "Personal knowledge management",
+      "expected_source_type": "clip"
+    },
+    {
+      "id": "pkm-002",
+      "category": "知识管理",
+      "question": "PKM 包含哪几个过程？",
+      "expected_keywords": ["收集", "检索", "知识"],
+      "expected_source_contains": "Personal knowledge management",
+      "expected_source_type": "clip"
+    },
+    {
+      "id": "pkm-003",
+      "category": "知识管理",
+      "question": "第二大脑要解决什么问题？",
+      "expected_keywords": ["第二大脑", "解决"],
+      "expected_source_contains": "Personal knowledge management",
+      "expected_source_type": "clip"
+    },
+    {
+      "id": "pkm-004",
+      "category": "知识管理",
+      "question": "个人知识管理的英文缩写是什么？",
+      "expected_keywords": ["PKM", "个人知识管理"],
+      "expected_source_contains": "Personal knowledge management",
+      "expected_source_type": "clip"
+    },
+    {
+      "id": "pkm-005",
+      "category": "知识管理",
+      "question": "知识的存储和检索属于哪个领域？",
+      "expected_keywords": ["存储", "检索"],
+      "expected_source_contains": "Personal knowledge management",
+      "expected_source_type": "clip"
+    },
+    {
+      "id": "pkm-006",
+      "category": "知识管理",
+      "question": "「个人知识管理」在维基百科上怎么定义？",
+      "expected_keywords": ["个人知识管理", "过程"],
+      "expected_source_contains": "Personal knowledge management",
+      "expected_source_type": "clip"
+    },
+    {
+      "id": "pkm-007",
+      "category": "知识管理",
+      "question": "PKM 和第二大脑有什么关系？",
+      "expected_keywords": ["PKM", "第二大脑"],
+      "expected_source_contains": "Personal knowledge management",
+      "expected_source_type": "clip"
+    },
+    {
+      "id": "pkm-008",
+      "category": "知识管理",
+      "question": "收集和组织知识的过程叫什么？",
+      "expected_keywords": ["收集", "组织", "个人知识管理"],
+      "expected_source_contains": "Personal knowledge management",
+      "expected_source_type": "clip"
+    },
+    {
+      "id": "learn-001",
+      "category": "学习方法",
+      "question": "间隔重复能提升什么？",
+      "expected_keywords": ["长期记忆", "保持率"],
+      "expected_source_contains": "Spaced repetition",
+      "expected_source_type": "article"
+    },
+    {
+      "id": "learn-002",
+      "category": "学习方法",
+      "question": "间隔重复的核心原理是什么？",
+      "expected_keywords": ["遗忘曲线", "临界点", "复习"],
+      "expected_source_contains": "Spaced repetition",
+      "expected_source_type": "article"
+    },
+    {
+      "id": "learn-003",
+      "category": "学习方法",
+      "question": "什么时候安排复习效果最好？",
+      "expected_keywords": ["临界点", "遗忘曲线"],
+      "expected_source_contains": "Spaced repetition",
+      "expected_source_type": "article"
+    },
+    {
+      "id": "learn-004",
+      "category": "学习方法",
+      "question": "间隔重复为什么有效？",
+      "expected_keywords": ["反复提取", "记忆"],
+      "expected_source_contains": "Spaced repetition",
+      "expected_source_type": "article"
+    },
+    {
+      "id": "learn-005",
+      "category": "学习方法",
+      "question": "Spaced repetition 这条知识讲了什么？",
+      "expected_keywords": ["间隔重复", "复习"],
+      "expected_source_contains": "Spaced repetition",
+      "expected_source_type": "article"
+    },
+    {
+      "id": "learn-006",
+      "category": "学习方法",
+      "question": "遗忘曲线的临界点是指什么时候？",
+      "expected_keywords": ["遗忘曲线", "临界点"],
+      "expected_source_contains": "Spaced repetition",
+      "expected_source_type": "article"
+    },
+    {
+      "id": "learn-007",
+      "category": "学习方法",
+      "question": "怎么让大脑记住东西更久？",
+      "expected_keywords": ["反复提取", "长期记忆"],
+      "expected_source_contains": "Spaced repetition",
+      "expected_source_type": "article"
+    },
+    {
+      "id": "learn-008",
+      "category": "学习方法",
+      "question": "复习应该安排在遗忘曲线的什么位置？",
+      "expected_keywords": ["复习", "临界点"],
+      "expected_source_contains": "Spaced repetition",
+      "expected_source_type": "article"
+    },
+    {
+      "id": "life-001",
+      "category": "个人反思",
+      "question": "我在什么时间思考效率最高？",
+      "expected_keywords": ["通勤", "思考效率"],
+      "expected_source_contains": "未命名知识",
+      "expected_source_type": "knowledge"
+    },
+    {
+      "id": "life-002",
+      "category": "个人反思",
+      "question": "通勤路上适合做什么？",
+      "expected_keywords": ["复盘", "决策"],
+      "expected_source_contains": "未命名知识",
+      "expected_source_type": "knowledge"
+    },
+    {
+      "id": "life-003",
+      "category": "个人反思",
+      "question": "重要的复盘应该安排在什么时候？",
+      "expected_keywords": ["复盘", "刻意安排"],
+      "expected_source_contains": "未命名知识",
+      "expected_source_type": "knowledge"
+    },
+    {
+      "id": "life-004",
+      "category": "个人反思",
+      "question": "哪条知识记录了通勤路上的思考？",
+      "expected_keywords": ["通勤", "思考效率"],
+      "expected_source_contains": "未命名知识",
+      "expected_source_type": "knowledge"
+    },
+    {
+      "id": "life-005",
+      "category": "个人反思",
+      "question": "决策可以刻意安排在哪个时间段？",
+      "expected_keywords": ["决策", "时间段"],
+      "expected_source_contains": "未命名知识",
+      "expected_source_type": "knowledge"
+    },
+    {
+      "id": "life-006",
+      "category": "个人反思",
+      "question": "我的个人效率观察是什么？",
+      "expected_keywords": ["通勤路上", "效率最高"],
+      "expected_source_contains": "未命名知识",
+      "expected_source_type": "knowledge"
+    },
+    {
+      "id": "life-007",
+      "category": "个人反思",
+      "question": "怎么利用思考效率最高的时间？",
+      "expected_keywords": ["刻意安排", "复盘"],
+      "expected_source_contains": "未命名知识",
+      "expected_source_type": "knowledge"
+    },
+    {
+      "id": "life-008",
+      "category": "个人反思",
+      "question": "这条关于通勤的发现建议怎么做？",
+      "expected_keywords": ["刻意安排", "时间段"],
+      "expected_source_contains": "未命名知识",
+      "expected_source_type": "knowledge"
+    }
+  ]
+}

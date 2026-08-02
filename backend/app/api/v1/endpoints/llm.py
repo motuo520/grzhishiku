@@ -3,7 +3,9 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 from typing import Optional, List
 from sqlalchemy.orm import Session
+import asyncio
 import json
+import logging
 
 from app.services.llm_service import llm_service, chat_completion, LLMRouterService, ModelProvider
 from app.core.config import settings
@@ -18,6 +20,8 @@ from app.schemas.llm import (
 )
 
 router = APIRouter()
+
+logger = logging.getLogger(__name__)
 
 
 class ActiveLLMUpdate(BaseModel):
@@ -92,21 +96,127 @@ async def list_ollama_models(current_user: User = Depends(get_current_user)):
     return {"models": models}
 
 
-def _retrieve_knowledge_sources(
+# 混合检索融合权重：combined = 向量分 * HYBRID_VECTOR_WEIGHT + 关键词分 * HYBRID_KEYWORD_WEIGHT
+HYBRID_VECTOR_WEIGHT = 0.55
+HYBRID_KEYWORD_WEIGHT = 0.45
+
+# 查询改写：检索前用小模型把口语化问题改写成检索查询，失败静默降级为原文。
+# 评测结论（qwen2.5:0.5b，50 题）：0.98 -> 0.98 不降分，保留；代价约 +0.5s 延迟。
+HYBRID_QUERY_REWRITE_ENABLED = True
+HYBRID_QUERY_REWRITE_MODEL = "qwen2.5:0.5b"
+HYBRID_QUERY_REWRITE_TIMEOUT = 5.0
+
+# 第二段精排（LLM rerank）：融合排序后取 top_k*4 候选让本地小模型重排，
+# 失败/超时/解析失败静默回退到第一轮排序。
+# 评测结论（qwen2.5:0.5b，50 题）：0.98 -> 0.54 严重降分且 +1.3s 延迟，默认关闭。
+HYBRID_RERANK_ENABLED = False
+HYBRID_RERANK_MODEL = "qwen2.5:0.5b"
+HYBRID_RERANK_TIMEOUT = 9.0
+
+
+async def _ollama_quick_call(prompt: str, system: str, model: str, timeout: float) -> Optional[str]:
+    """Short call to local Ollama via llm_service; returns None on any failure."""
+    async def _collect() -> str:
+        chunks = []
+        async for chunk in llm_service._chat_ollama(prompt, None, model, system):
+            chunks.append(chunk)
+        return "".join(chunks)
+
+    try:
+        text = await asyncio.wait_for(_collect(), timeout=timeout)
+    except Exception:
+        return None
+    if not text or text.lstrip().startswith("[Error"):
+        return None
+    return text.strip()
+
+
+async def _rewrite_query(message: str) -> Optional[str]:
+    """Rewrite a colloquial user message into a retrieval query (core concepts /
+    keywords). Returns None on failure — caller then uses the original message."""
+    return await _ollama_quick_call(
+        prompt=(
+            f"用户问题：{message}\n\n"
+            "请提取这个问题用于知识库检索的核心概念和关键词，"
+            "只输出一行检索词（保留原词并可补充同义概念），不要输出任何解释。"
+        ),
+        system="你是检索查询改写器，只输出检索词。",
+        model=HYBRID_QUERY_REWRITE_MODEL,
+        timeout=HYBRID_QUERY_REWRITE_TIMEOUT,
+    )
+
+
+async def _rerank_candidates(message: str, candidates: List[tuple]) -> List[tuple]:
+    """Second-pass LLM rerank over fused candidates. On any failure returns the
+    original first-pass order unchanged."""
+    if len(candidates) < 2:
+        return candidates
+    lines = []
+    for i, (_, stype, sid, title, content, _chunk) in enumerate(candidates, 1):
+        snippet = (content or "").replace("\n", " ")[:150]
+        lines.append(f"{i}. {title} — {snippet}")
+    text = await _ollama_quick_call(
+        prompt=(
+            f"用户问题：{message}\n\n"
+            "候选资料：\n" + "\n".join(lines) + "\n\n"
+            f"请按与用户问题的相关性从高到低给出序号（1 到 {len(candidates)}），"
+            "只输出用逗号分隔的数字，不要输出任何解释。"
+        ),
+        system="你是检索结果排序器，只输出序号。",
+        model=HYBRID_RERANK_MODEL,
+        timeout=HYBRID_RERANK_TIMEOUT,
+    )
+    if not text:
+        return candidates
+    import re
+    order = []
+    for tok in re.findall(r"\d+", text):
+        idx = int(tok)
+        if 1 <= idx <= len(candidates) and idx not in order:
+            order.append(idx)
+    if not order:
+        return candidates
+    # 模型没提到的候选按原顺序排在后面
+    rest = [i for i in range(1, len(candidates) + 1) if i not in order]
+    return [candidates[i - 1] for i in order + rest]
+
+
+async def _retrieve_knowledge_sources(
     db: Session,
     user_id: str,
     message: str,
     brain_side: str = "both",
     top_k: int = 5,
 ) -> List[dict]:
-    """Minimal keyword-based retrieval over the user's notes, clips and knowledge units.
+    """Hybrid retrieval over the user's notes, clips and knowledge units.
 
-    Returns list of dicts with id, title, preview, source_type.
-    For small personal libraries simple LIKE matching is sufficient;
-    production should use vector similarity via embedding_service.
+    Pipeline: optional query rewrite (small local model rephrases the message
+    into retrieval terms, appended to the original) -> two fused channels
+    (keyword n-gram scoring + vector cosine over stored embeddings) ->
+    optional second-pass LLM rerank over the top_k*4 fused candidates.
+
+    Each channel's scores are normalised (keyword scores by the channel max,
+    vector scores are cosine values clamped at 0) and combined as
+    ``HYBRID_VECTOR_WEIGHT * vector + HYBRID_KEYWORD_WEIGHT * keyword``;
+    a document hit by both channels gets both contributions.
+
+    Graceful degradation: query-rewrite / embedding / rerank failures (or the
+    embedding mock fallback when Ollama is down) silently skip that stage —
+    the worst case is pure keyword ranking of the original message.
+
+    Returns list of dicts with id, title, preview, source_type, content_raw.
     """
     from sqlalchemy import or_
     from app.models.base import Note, BrowserClip
+
+    # 查询理解：把口语化 message 改写成检索查询。原文保留在最前，改写文本追加在后，
+    # 因此原 message 的 n-gram 关键词全部保留，改写产生的关键词追加参与打分；
+    # 检索文本（关键词 + 向量 embed 输入）同时使用两者。失败时静默用原 message。
+    search_text = message
+    if HYBRID_QUERY_REWRITE_ENABLED:
+        rewritten = await _rewrite_query(message)
+        if rewritten:
+            search_text = f"{message} {rewritten}"
 
     # Extract short keywords / 2-grams from the message.
     # For Chinese we use 2-grams because whole phrases rarely match verbatim.
@@ -117,14 +227,14 @@ def _retrieve_knowledge_sources(
         "有没有", "可以", "应该", "需要", "这样", "那样",
     }
     keywords = []
-    for token in re.findall(r"[\u4e00-\u9fa5]+", message):
+    for token in re.findall(r"[\u4e00-\u9fa5]+", search_text):
         # Use 2-grams, 3-grams and 4-grams so multi-char concepts like "500 条" are captured.
         for n in (2, 3, 4):
             for i in range(len(token) - n + 1):
                 gram = token[i:i + n]
                 if not any(g in STOPWORDS for g in (gram[:2], gram[1:3]) if len(g) == 2):
                     keywords.append(gram)
-    for token in re.findall(r"[a-zA-Z0-9]{2,}", message):
+    for token in re.findall(r"[a-zA-Z0-9]{2,}", search_text):
         keywords.append(token.lower())
     # Deduplicate while preserving order.
     seen = set()
@@ -157,8 +267,8 @@ def _retrieve_knowledge_sources(
                 return snip
         return raw[:400]
 
-    # (score, source_type, id, title, content)
-    scored: List[tuple] = []
+    # 候选文档：key 为 (kind, id)，kind ∈ {knowledge, note, clip}
+    docs: dict = {}
 
     # 1) 知识单元
     q = db.query(KnowledgeUnit).filter(KnowledgeUnit.user_id == user_id)
@@ -176,9 +286,13 @@ def _retrieve_knowledge_sources(
         content_text = (unit.content_raw or "") + " " + (unit.content_type or "")
         s = _score(unit.source_title or "", content_text)
         if s > 0:
-            scored.append((s, unit.source_type or "knowledge", unit.id,
-                           unit.source_title or unit.content_type or "未命名知识",
-                           unit.content_raw or ""))
+            docs[("knowledge", unit.id)] = {
+                "stype": unit.source_type or "knowledge",
+                "title": unit.source_title or unit.content_type or "未命名知识",
+                "content": unit.content_raw or "",
+                "kw": float(s),
+                "vec": 0.0,
+            }
 
     # 2) 个人笔记
     qn = db.query(Note).filter(Note.user_id == user_id, Note.status == "active")
@@ -194,7 +308,13 @@ def _retrieve_knowledge_sources(
     for note in qn.order_by(Note.updated_at.desc()).limit(top_k * 5).all():
         s = _score(note.title or "", note.content or "")
         if s > 0:
-            scored.append((s, "note", note.id, note.title or "无标题笔记", note.content or ""))
+            docs[("note", note.id)] = {
+                "stype": "note",
+                "title": note.title or "无标题笔记",
+                "content": note.content or "",
+                "kw": float(s),
+                "vec": 0.0,
+            }
 
     # 3) 浏览器剪藏
     qc = db.query(BrowserClip).filter(BrowserClip.user_id == user_id, BrowserClip.status == "active")
@@ -211,20 +331,117 @@ def _retrieve_knowledge_sources(
     for clip in qc.order_by(BrowserClip.capture_timestamp.desc()).limit(top_k * 5).all():
         s = _score(clip.title or "", (clip.full_text or "") + " " + (clip.excerpt or ""))
         if s > 0:
-            scored.append((s, "clip", clip.id,
-                           clip.title or clip.url or "未命名剪藏",
-                           clip.full_text or clip.excerpt or ""))
+            docs[("clip", clip.id)] = {
+                "stype": "clip",
+                "title": clip.title or clip.url or "未命名剪藏",
+                "content": clip.full_text or clip.excerpt or "",
+                "kw": float(s),
+                "vec": 0.0,
+            }
 
-    scored.sort(key=lambda x: x[0], reverse=True)
+    # ---- 向量通道：embed query + 余弦相似度检索，失败时静默退回纯关键词 ----
+    try:
+        from app.services.embedding_service import embedding_service
+        emb = await embedding_service.embed(search_text)
+        query_vector = emb.get("embedding") or []
+        # Ollama 不可用时 embed() 返回 mock 假向量，相似度无意义，跳过向量通道
+        if query_vector and emb.get("model_used") != "mock/fallback":
+            hits = embedding_service.search_similar(
+                query_vector, content_type=None, top_k=top_k * 2, user_id=user_id
+            )
+            from app.services.chunking import CHUNK_ID_SEP
+
+            def _base_id(cid: str) -> str:
+                # 块向量的 content_id 形如 "{doc_id}::chunk::{n}"，归属回原文档
+                return cid.split(CHUNK_ID_SEP, 1)[0] if cid else cid
+
+            ku_ids = list({_base_id(h["content_id"]) for h in hits if h.get("content_type") == "knowledge"})
+            note_ids = list({_base_id(h["content_id"]) for h in hits if h.get("content_type") == "note"})
+            clip_ids = list({_base_id(h["content_id"]) for h in hits if h.get("content_type") == "clip"})
+
+            vec_rows = {}
+            if ku_ids:
+                vq = db.query(KnowledgeUnit).filter(
+                    KnowledgeUnit.user_id == user_id, KnowledgeUnit.id.in_(ku_ids))
+                if brain_side != "both":
+                    vq = vq.filter(KnowledgeUnit.brain_side == brain_side)
+                for unit in vq.all():
+                    vec_rows[("knowledge", unit.id)] = {
+                        "stype": unit.source_type or "knowledge",
+                        "title": unit.source_title or unit.content_type or "未命名知识",
+                        "content": unit.content_raw or "",
+                    }
+            if note_ids:
+                vq = db.query(Note).filter(
+                    Note.user_id == user_id, Note.status == "active", Note.id.in_(note_ids))
+                if brain_side != "both":
+                    vq = vq.filter(Note.brain_side == brain_side)
+                for note in vq.all():
+                    vec_rows[("note", note.id)] = {
+                        "stype": "note",
+                        "title": note.title or "无标题笔记",
+                        "content": note.content or "",
+                    }
+            if clip_ids:
+                vq = db.query(BrowserClip).filter(
+                    BrowserClip.user_id == user_id, BrowserClip.status == "active",
+                    BrowserClip.id.in_(clip_ids))
+                if brain_side != "both":
+                    vq = vq.filter(BrowserClip.brain_side == brain_side)
+                for clip in vq.all():
+                    vec_rows[("clip", clip.id)] = {
+                        "stype": "clip",
+                        "title": clip.title or clip.url or "未命名剪藏",
+                        "content": clip.full_text or clip.excerpt or "",
+                    }
+
+            for h in hits:
+                cid = h.get("content_id") or ""
+                key = (h.get("content_type"), _base_id(cid))
+                if key not in vec_rows:
+                    continue
+                sim = max(0.0, float(h.get("similarity") or 0.0))  # 负余弦截 0
+                entry = docs.setdefault(key, {**vec_rows[key], "kw": 0.0, "vec": 0.0, "chunk": None})
+                # 同一文档多个块命中取最高余弦分，并记录得分最高块的文本
+                if sim > entry["vec"]:
+                    entry["vec"] = sim
+                    if CHUNK_ID_SEP in cid:
+                        entry["chunk"] = h.get("text_preview")
+    except Exception:
+        pass  # 向量通道任何异常都不影响关键词结果
+
+    # ---- 融合：两路分数各自归一化后按权重加权，同文档两路命中则分数相加 ----
+    kw_max = max((d["kw"] for d in docs.values()), default=0.0)
+    ranked: List[tuple] = []
+    for (kind, sid), d in docs.items():
+        kw_norm = (d["kw"] / kw_max) if kw_max > 0 else 0.0
+        combined = HYBRID_VECTOR_WEIGHT * d["vec"] + HYBRID_KEYWORD_WEIGHT * kw_norm
+        if combined <= 0:
+            continue
+        ranked.append((combined, d["stype"], sid, d["title"], d["content"], d.get("chunk")))
+
+    ranked.sort(key=lambda x: x[0], reverse=True)
+
+    # ---- 第二段精排：第一轮融合取 top_k*4 候选，LLM 重排；失败静默用第一轮排序 ----
+    if HYBRID_RERANK_ENABLED and len(ranked) > 1:
+        candidates = ranked[: top_k * 4]
+        try:
+            candidates = await _rerank_candidates(message, candidates)
+        except Exception:
+            pass  # 任何异常都回退到第一轮排序
+        ranked = candidates
+
     results = []
-    for _, stype, sid, title, content in scored[:top_k]:
+    for _, stype, sid, title, content, chunk in ranked[:top_k]:
         raw = (content or "").replace("\n", " ")
         results.append({
             "id": sid,
             "title": title,
-            "preview": _snippet(content),
+            # 块命中时 preview 用得分最高块的原文，比整篇开头更贴合问题
+            "preview": _snippet(chunk) if chunk else _snippet(content),
             "source_type": stype,
             "content_raw": raw[:2000],  # included for eval / prompt context
+            "chunk": chunk,  # 命中块原文（无块命中为 None）
         })
     return results
 
@@ -238,7 +455,7 @@ async def chat(
     user_settings = json.loads(current_user.settings or '{}')
 
     # Retrieve relevant knowledge units as citations / RAG context.
-    sources = _retrieve_knowledge_sources(
+    sources = await _retrieve_knowledge_sources(
         db=db,
         user_id=current_user.id,
         message=request.message,
@@ -319,8 +536,9 @@ async def complete(
             system_prompt=request.system_prompt,
             preferred_model=request.model,
         )
-    except ValueError as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    except ValueError:
+        logger.exception("LLM completion failed")
+        raise HTTPException(status_code=500, detail="处理失败，请查看服务端日志")
 
     return CompleteResponse(text=text.strip(), model_used=model_id)
 
@@ -348,8 +566,9 @@ async def summarize(
             task_type="summarize",
             preferred_model=request.model,
         )
-    except ValueError as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    except ValueError:
+        logger.exception("LLM completion failed")
+        raise HTTPException(status_code=500, detail="处理失败，请查看服务端日志")
 
     summary = summary.strip()
     return SummarizeResponse(
@@ -381,8 +600,9 @@ async def extract_tags(
             task_type="tag_extraction",
             preferred_model=request.model,
         )
-    except ValueError as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    except ValueError:
+        logger.exception("LLM completion failed")
+        raise HTTPException(status_code=500, detail="处理失败，请查看服务端日志")
 
     lines = [line.strip() for line in raw.strip().split("\n") if line.strip()]
     tags = [t.strip() for t in lines[0].split(",") if t.strip()][: request.max_tags] if lines else []
