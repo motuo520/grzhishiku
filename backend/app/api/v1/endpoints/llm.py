@@ -241,7 +241,11 @@ async def _retrieve_knowledge_sources(
     keywords = [k for k in keywords if not (k in seen or seen.add(k))]
     if not keywords:
         keywords = [message.strip()[:10]]
-    kws = keywords[:6]
+    # SQL 预过滤关键词：中文 n-gram 靠前截取 + 全部 ASCII 词。
+    # 混合语言问题（如「PARA 方法是按什么标准组织信息的」）里，英文标题的文档
+    # 不含任何中文 gram，只用前 6 个中文 gram 做 ILIKE 预过滤时候选都进不来。
+    ascii_kws = [k for k in keywords if k.isascii()]
+    kws = (ascii_kws + keywords)[:8]
 
     def _score(title: str, content: str) -> int:
         t = (title or "").lower()
