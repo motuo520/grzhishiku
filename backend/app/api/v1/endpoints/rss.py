@@ -12,6 +12,7 @@ import re
 from app.core.database import get_db
 from app.core.security import get_current_user
 from app.models.base import User, RssFeed, RssEntry, BrowserClip
+from app.services.url_guard import validate_fetch_url
 
 router = APIRouter()
 
@@ -79,6 +80,7 @@ def _extract_domain(url: str) -> str:
 
 
 def _fetch_feed_xml(url: str) -> str:
+    validate_fetch_url(url)  # SSRF 防护：拒绝内网/保留地址，调用方以 400 返回
     try:
         req = urllib.request.Request(
             url,

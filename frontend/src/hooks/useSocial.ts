@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { socialApi, SocialAccountCreateData } from '@/api/social';
+import { socialApi } from '@/api/social';
 
 export const useSocialAccounts = () => {
   const queryClient = useQueryClient();

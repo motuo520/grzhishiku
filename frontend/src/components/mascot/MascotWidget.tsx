@@ -1,7 +1,7 @@
 import {FC, useState, useEffect, useRef, useMemo } from 'react';
 import {motion, AnimatePresence } from 'framer-motion';
 import {
-  StickyNote, Bell, X, Plus, Clock, Check, Trash2, EyeOff, Sun, Moon,
+  X, Plus, Clock, Check, EyeOff, Sun, Moon,
 } from 'lucide-react';
 import {useStickyNotes, useCreateStickyNote } from '@/hooks/useStickyNotes';
 import {useUpcomingReminders, useCreateReminder, useUpdateReminder } from '@/hooks/useReminders';
@@ -253,10 +253,6 @@ const MascotWidget: FC = () => {
     });
   };
 
-  const upcomingCount = upcoming?.length ?? 0;
-
-  if (!isLoggedIn || !mascotVisible) return null;
-
   const isDraggingRef = useRef(false);
   const [viewport, setViewport] = useState({ w: window.innerWidth, h: window.innerHeight });
   useEffect(() => {
@@ -264,6 +260,10 @@ const MascotWidget: FC = () => {
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
+
+  const upcomingCount = upcoming?.length ?? 0;
+
+  if (!isLoggedIn || !mascotVisible) return null;
 
   return (
     <div className="fixed bottom-20 right-6 z-50 flex flex-col items-end gap-3 pointer-events-none">

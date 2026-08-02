@@ -4,6 +4,8 @@ import re
 from typing import Optional
 from pydantic import BaseModel
 
+from app.services.url_guard import validate_fetch_url, UrlNotAllowed
+
 
 class UrlMetadata(BaseModel):
     url: str
@@ -27,6 +29,10 @@ def extract_domain(url: str) -> str:
 
 
 def fetch_url_metadata(url: str, timeout: int = 8) -> UrlMetadata:
+    try:
+        validate_fetch_url(url)
+    except UrlNotAllowed as e:
+        return UrlMetadata(url=url, title=url, domain=extract_domain(url), error=str(e))
     try:
         req = urllib.request.Request(
             url,

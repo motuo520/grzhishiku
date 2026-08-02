@@ -1,12 +1,10 @@
 import { FC, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import {
-  GitCommit, Globe, Search, ExternalLink, BarChart3, ShieldCheck,
-  AlertTriangle, XCircle, HelpCircle
+  GitCommit, Globe, Search, ExternalLink, BarChart3
 } from 'lucide-react';
 import { useSourceAggregates } from '@/hooks/useKnowledge';
 import ErrorState from '@/components/ErrorState';
-import type { KnowledgeSourceAggregate } from '@/types';
 
 const reputationClass: Record<string, string> = {
   high: 'text-success',

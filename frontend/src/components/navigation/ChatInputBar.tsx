@@ -6,7 +6,7 @@ import { useSettings } from '@/store/settings';
 import { useBrain } from '@/hooks/useBrain';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
-import apiClientInstance, { apiClient } from '@/api/client';
+import { apiClient } from '@/api/client';
 import { BrainSide } from '@/types';
 import { LLM_MODEL_MAP, getBackendModelId, getModelIdByProviderModel } from '@/config/llmModels';
 import LLMConnectionStatus from '@/components/llm/LLMConnectionStatus';

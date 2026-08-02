@@ -64,7 +64,7 @@ declare module 'd3-force-3d' {
     iterations(iterations: number): this;
   }
 
-  export interface Simulation<NodeDatum, LinkDatum> {
+  export interface Simulation<NodeDatum> {
     restart(): this;
     stop(): this;
     tick(): this;
@@ -95,7 +95,7 @@ declare module 'd3-force-3d' {
     links?: LinkDatum[]
   ): ForceLink<NodeDatum, LinkDatum>;
   export function forceCollide(): ForceCollide;
-  export function forceSimulation<NodeDatum = any>(nodes?: NodeDatum[]): Simulation<NodeDatum, any>;
+  export function forceSimulation<NodeDatum = any>(nodes?: NodeDatum[]): Simulation<NodeDatum>;
   export function forceX(x?: number | ((d: any) => number)): any;
   export function forceY(y?: number | ((d: any) => number)): any;
   export function forceZ(z?: number | ((d: any) => number)): any;

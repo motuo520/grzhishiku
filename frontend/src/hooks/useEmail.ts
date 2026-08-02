@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { emailApi, EmailAccountCreateData } from '@/api/email';
+import { emailApi } from '@/api/email';
 
 export const useEmailAccounts = () => {
   const queryClient = useQueryClient();

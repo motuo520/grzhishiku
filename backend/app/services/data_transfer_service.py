@@ -2,9 +2,11 @@
 
 导出为 JSON dict；导入按 id 合并：`updated_at`（无则 `created_at`）较新者胜，
 只增/改不删。导入时所有行的 user_id 强制改写为当前用户，防止越权写入。
+撞到他用户已有的 id 时生成新 id 插入，绝不覆盖他人数据。
 """
 from datetime import datetime
 from typing import Any, Dict, Tuple
+import uuid
 
 from sqlalchemy import DateTime, select
 from sqlalchemy.orm import Session
@@ -103,9 +105,9 @@ def import_user_data(db: Session, user_id: str, data: Dict[str, Any]) -> Dict[st
         rows = data.get(name) or []
         if not isinstance(rows, list):
             continue
-        # id 是全局 UUID：同 id 出现在别的 user 名下，只会是同一人的
-        # 另一台设备/另一个实例同步过来的副本（UUID 不可猜测），直接收养并合并
-        existing_ids = {r[0] for r in db.query(model.id).all()}
+        # 已有行查询限定当前用户：撞到他用户的同 id 行时换新 id 插入，
+        # 不允许收养/覆盖他人数据
+        existing_ids = {r[0] for r in db.query(model.id).filter(model.user_id == user_id).all()}
         for raw in rows:
             if not isinstance(raw, dict) or not raw.get("id"):
                 stats["skipped"] += 1
@@ -113,21 +115,22 @@ def import_user_data(db: Session, user_id: str, data: Dict[str, Any]) -> Dict[st
             row = _coerce_columns(model, raw)
             row["user_id"] = user_id  # 强制归属当前用户
             if row["id"] in existing_ids:
-                current = db.query(model).filter(model.id == row["id"]).first()
+                current = db.query(model).filter(
+                    model.id == row["id"],
+                    model.user_id == user_id,
+                ).first()
                 current_ts = _row_to_dict(current) if current else {}
-                if current and current.user_id != user_id:
-                    # 别的账号名下的同 id 行 = 同一人另一实例的副本：收养并覆盖
-                    for k, v in row.items():
-                        setattr(current, k, v)
-                    stats["updated"] += 1
                 # 字符串形式的时间戳（ISO）可直接字典序比较
-                elif _row_timestamp(row) > _row_timestamp(current_ts):
+                if _row_timestamp(row) > _row_timestamp(current_ts):
                     for k, v in row.items():
                         setattr(current, k, v)
                     stats["updated"] += 1
                 else:
                     stats["skipped"] += 1
             else:
+                # id 是主键：与他用户的行冲突时换新 id 插入
+                if db.query(model.id).filter(model.id == row["id"]).first():
+                    row["id"] = str(uuid.uuid4())
                 db.add(model(**row))
                 stats["inserted"] += 1
         db.flush()

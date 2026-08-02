@@ -2,6 +2,7 @@
 Storage service: package user data and upload to third-party netdisks.
 """
 import json
+import logging
 import os
 import uuid
 import zipfile
@@ -15,13 +16,18 @@ import httpx
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
-from app.core.config import settings
+from app.core.config import settings, _data_dir_from_database_url
+from app.core.crypto import encrypt_secret, decrypt_secret
 from app.core.database import get_db
 from app.models.base import User, Note, Capsule, BrowserClip, KnowledgeUnit
 from app.models.storage import DataPackage, UserCloudDrive
 
+logger = logging.getLogger(__name__)
 
-PACKAGE_DIR = "uploads/packages"
+
+# 备份包包含用户全量数据，必须放在静态托管的 uploads/ 之外：
+# 与数据库同目录（docker 下为挂载的 /data，即仓库根 server-data/，已被 gitignore）
+PACKAGE_DIR = os.path.join(_data_dir_from_database_url(settings.DATABASE_URL), "packages")
 os.makedirs(PACKAGE_DIR, exist_ok=True)
 
 
@@ -403,8 +409,8 @@ class StorageService:
             )
             self.db.add(drive)
 
-        drive.access_token = access_token
-        drive.refresh_token = refresh_token
+        drive.access_token = encrypt_secret(access_token)
+        drive.refresh_token = encrypt_secret(refresh_token)
         if expires_in:
             drive.expires_at = datetime.utcnow() + timedelta(seconds=expires_in)
         drive.scope = scope
@@ -441,7 +447,7 @@ class StorageService:
         remote_path = f"psb_backup/{pkg.filename}"
         try:
             result = await provider_cls.upload_file(
-                drive.access_token,
+                decrypt_secret(drive.access_token),
                 remote_path,
                 pkg.file_path,
                 pkg.filename,
@@ -454,10 +460,11 @@ class StorageService:
             pkg.status = "failed"
             pkg.error_message = str(e)
             raise HTTPException(status_code=502, detail=str(e))
-        except Exception as e:
+        except Exception:
             pkg.status = "failed"
-            pkg.error_message = str(e)
-            raise HTTPException(status_code=500, detail=f"上传失败: {e}")
+            pkg.error_message = "上传失败，请查看服务端日志"
+            logger.exception("上传网盘失败 user_id=%s provider=%s", user_id, provider)
+            raise HTTPException(status_code=500, detail="上传失败，请查看服务端日志")
         finally:
             pkg.updated_at = datetime.utcnow()
             self.db.commit()

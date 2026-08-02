@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 
 import { useNavigation, useMenuData, getVisibleItems, type MenuId, type BrainSide } from '@/store/navigation';
+import { useSettings } from '@/store/settings';
 import BrainSideToggle from '@/components/brain/BrainSideToggle';
 
 import { useSystemFeatures } from '@/hooks/useSystemFeatures';
@@ -45,14 +46,12 @@ const ModuleLayout: FC<ModuleLayoutProps> = ({ menuId, showOverview = true }) =>
   const menu = menuData[menuId];
   const allItems = menu?.items || [];
   const { brainSide, setBrainSide } = useNavigation();
-  const visibleItems = getVisibleItems(allItems, brainSide);
+  const isClassic = useSettings((s) => s.uiMode === 'classic');
+  // 简化版标签栏展示全部子项，不按脑侧过滤（与 SubMenuPanel 下拉索引一致）；
+  // 经典版保留脑侧过滤，避免跨版本切换后残留的 brainSide 把菜单项藏掉
+  const visibleItems = isClassic ? getVisibleItems(allItems, brainSide) : allItems;
   const autoSwitchedRef = useRef<Set<string>>(new Set());
   const { data: features } = useSystemFeatures();
-
-  // Respect backend module kill-switch. Pipeline can be disabled from admin.
-  if (menuId === 'pipeline' && features?.modules?.pipeline === false) {
-    return <Navigate to="/" replace />;
-  }
 
   // Determine if we are at the module root (e.g. /ingest or /ingest/)
   const pathSegments = location.pathname.split('/').filter(Boolean);
@@ -65,16 +64,23 @@ const ModuleLayout: FC<ModuleLayoutProps> = ({ menuId, showOverview = true }) =>
 
   // Auto-switch brain side to stage-preferred value when user is on default "both".
   // Only auto-switch once per path to avoid fighting manual user selection.
+  // 简化版不做自动切换：脑侧是经典版概念，避免隐式改变全局 brainSide 影响问答/数据范围
   useEffect(() => {
+    if (!isClassic) return;
     const preferred = currentItem?.preferredBrainSide as BrainSide | undefined;
     if (!preferred) return;
     if (brainSide === 'both' && !autoSwitchedRef.current.has(location.pathname)) {
       setBrainSide(preferred);
       autoSwitchedRef.current.add(location.pathname);
     }
-  }, [currentItem, brainSide, setBrainSide, location.pathname]);
+  }, [currentItem, brainSide, setBrainSide, location.pathname, isClassic]);
 
   if (!menu) {
+    return <Navigate to="/" replace />;
+  }
+
+  // Respect backend module kill-switch. Pipeline can be disabled from admin.
+  if (menuId === 'pipeline' && features?.modules?.pipeline === false) {
     return <Navigate to="/" replace />;
   }
 
@@ -121,10 +127,12 @@ const ModuleLayout: FC<ModuleLayoutProps> = ({ menuId, showOverview = true }) =>
             );
           })}
         </div>
-        {/* 脑侧过滤开关：条目被脑侧过滤隐藏时，用户可在此切回“双脑融合”显示全部 */}
-        <div className="flex-shrink-0">
-          <BrainSideToggle value={brainSide} onChange={setBrainSide} size="sm" />
-        </div>
+        {/* 脑侧过滤开关：仅经典版显示；条目被脑侧过滤隐藏时，用户可在此切回“双脑融合”显示全部 */}
+        {isClassic && (
+          <div className="flex-shrink-0">
+            <BrainSideToggle value={brainSide} onChange={setBrainSide} size="sm" />
+          </div>
+        )}
       </div>
       </div>
 

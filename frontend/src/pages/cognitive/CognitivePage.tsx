@@ -2,7 +2,7 @@ import { FC, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Brain, AlertTriangle, Scale, Fingerprint, Zap, BarChart3,
-  ChevronRight, Eye, Search, TrendingUp, Filter, Lightbulb,
+  ChevronRight, Eye, TrendingUp, Filter, Lightbulb,
   ClipboardCheck, GitBranch, Gamepad2, FileText
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';

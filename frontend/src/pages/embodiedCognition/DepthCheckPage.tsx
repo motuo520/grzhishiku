@@ -1,6 +1,5 @@
 import { FC, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { useNavigate } from 'react-router-dom';
 import { useNavigation } from '@/store/navigation';
 import { useEmbodied } from '@/hooks/useEmbodied';
 import { useNotes } from '@/hooks/useNotes';
@@ -28,7 +27,6 @@ const SOURCE_OPTIONS = [
 ];
 
 const DepthCheckPage: FC = () => {
-  const navigate = useNavigate();
   const { brainSide } = useNavigation();
   const {
     depthCheck,

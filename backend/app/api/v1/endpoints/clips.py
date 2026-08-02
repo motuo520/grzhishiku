@@ -1,3 +1,5 @@
+import logging
+
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
 from sqlalchemy import or_
@@ -40,6 +42,8 @@ class UrlMetadata(PydanticBaseModel):
 from app.api.v1.endpoints.graph import auto_link_clip, auto_link_knowledge
 
 router = APIRouter()
+
+logger = logging.getLogger(__name__)
 
 
 def _build_clip_response(clip: BrowserClip, db: Session) -> dict:
@@ -143,7 +147,7 @@ async def create_clip(
         await auto_link_clip(db, clip, current_user.id)
         db.commit()
     except Exception as e:
-        print(f"Auto-link failed for clip {clip.id}: {e}")
+        logger.warning(f"Auto-link failed for clip {clip.id}: {e}")
     
     return _build_clip_response(clip, db)
 
@@ -246,7 +250,7 @@ async def save_clip_to_knowledge(
         await auto_link_knowledge(db, unit, current_user.id)
         db.commit()
     except Exception as e:
-        print(f"Auto-link failed for knowledge {unit.id}: {e}")
+        logger.warning(f"Auto-link failed for knowledge {unit.id}: {e}")
     
     return unit
 
@@ -352,7 +356,7 @@ async def batch_create_clips(
             try:
                 await auto_link_clip(db, clip, current_user.id)
             except Exception as e:
-                print(f"Auto-link failed for clip {clip.id}: {e}")
+                logger.warning(f"Auto-link failed for clip {clip.id}: {e}")
             db.refresh(clip)
             created.append(_build_clip_response(clip, db))
         except Exception as e:

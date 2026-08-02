@@ -11,7 +11,7 @@ import { useKnowledge } from '@/hooks/useKnowledge';
 import { useNotes } from '@/hooks/useNotes';
 import {
   FlaskConical, Plus, Loader2, Save, Trash2, Edit3, X,
-  Play, CheckCircle2, XCircle, PauseCircle, ChevronRight
+  Play, CheckCircle2, XCircle, PauseCircle
 } from 'lucide-react';
 import type { ExperimentLog, ExperimentLogCreateData, ExperimentLogUpdateData } from '@/api/jianghu';
 

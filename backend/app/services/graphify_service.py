@@ -10,6 +10,7 @@ jump from a graph node back to the originating note/clip/knowledge unit.
 """
 
 import json
+import logging
 import os
 import re
 import shutil
@@ -24,6 +25,8 @@ from typing import Any, Dict, List, Optional
 from sqlalchemy.orm import Session
 
 from app.models.base import User, Note, BrowserClip, KnowledgeUnit, GraphEdge
+
+logger = logging.getLogger(__name__)
 
 DATA_ROOT = Path(os.environ.get("GRAPHIFY_DATA_DIR") or (Path(__file__).resolve().parents[2] / "graphify_data"))
 VALID_TYPES = {"note", "clip", "knowledge"}
@@ -209,8 +212,9 @@ def build_graph(db: Session, user_id: str) -> Dict[str, Any]:
 
     if proc.returncode != 0 or not new_graph_json.exists():
         tail = (proc.stderr or proc.stdout or "")[-500:]
+        logger.error("graphify extract failed for user %s: %s", user_id, tail)
         shutil.rmtree(tmp_root, ignore_errors=True)
-        _set_build_status(user_id, state="failed", error=f"graphify 提取失败: {tail}")
+        _set_build_status(user_id, state="failed", error="graphify 提取失败，请查看服务端日志")
         return get_build_status(user_id)
 
     # Step 2: clustering + community naming + GRAPH_REPORT.md + graph.html
@@ -221,7 +225,8 @@ def build_graph(db: Session, user_id: str) -> Dict[str, Any]:
         if proc2.returncode != 0:
             # graph is already usable; report failure is non-fatal
             tail = (proc2.stderr or proc2.stdout or "")[-300:]
-            warning = f"社区/报告生成失败（图谱可用）: {tail}"
+            logger.warning("graphify cluster-only failed for user %s: %s", user_id, tail)
+            warning = "社区/报告生成失败（图谱可用），请查看服务端日志"
     except subprocess.TimeoutExpired:
         warning = "社区/报告生成超时（图谱可用）"
 
@@ -236,8 +241,9 @@ def build_graph(db: Session, user_id: str) -> Dict[str, Any]:
     sync_stats: Optional[Dict[str, int]] = None
     try:
         sync_stats = sync_edges_from_build(db, user_id)
-    except Exception as e:
-        warning = (warning + "；" if warning else "") + f"语义边同步失败（图谱可用）: {e}"
+    except Exception:
+        logger.exception("graphify edge sync failed for user %s", user_id)
+        warning = (warning + "；" if warning else "") + "语义边同步失败（图谱可用），请查看服务端日志"
 
     st: Dict[str, Any] = dict(state="done", has_graph=True, progress=None,
                               finished_at=datetime.utcnow().isoformat() + "Z", doc_count=total_docs)
@@ -422,7 +428,8 @@ def _run_query(user_id: str, args: List[str]) -> Dict[str, Any]:
     out = (proc.stdout or "").strip()
     if proc.returncode != 0:
         err = (proc.stderr or out or "查询失败")[-500:]
-        return {"ok": False, "error": err}
+        logger.warning("graphify query failed for user %s: %s", user_id, err)
+        return {"ok": False, "error": "图谱查询失败，请查看服务端日志"}
     return {"ok": True, "result": out}
 
 

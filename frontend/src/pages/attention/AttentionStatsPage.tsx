@@ -1,5 +1,5 @@
 import { FC, useState } from 'react';
-import { TrendingUp, Brain, Clock, Shield, Target, User, Globe, Layers, Sparkles, Loader2, AlertCircle } from 'lucide-react';
+import { Brain, Clock, Shield, Target, User, Globe, Layers, Sparkles, Loader2 } from 'lucide-react';
 import { useAttention } from '@/hooks/useAttention';
 import ModelSelector from '@/components/llm/ModelSelector';
 import AiErrorNotice from '@/components/llm/AiErrorNotice';
@@ -40,7 +40,6 @@ const AttentionStatsPage: FC = () => {
   const isNetwork = brainSide === 'network' || brainSide === 'both';
 
   const personalCategories = (categories || []).filter((c) => c.brain_side === 'personal' || c.brain_side === 'both');
-  const networkCategories = (categories || []).filter((c) => c.brain_side === 'network');
 
   // 汇总口径：总用量 / 总预算，避免“平均百分比”误导
   const totalBudgetAllocated = personalCategories.reduce((sum, c) => sum + (c.allocated_minutes || 0), 0);

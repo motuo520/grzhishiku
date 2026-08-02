@@ -1,8 +1,8 @@
 import { FC, useState, useMemo, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Plus, Pin, Trash2, Archive, Palette, Clock, X, Check, StickyNote as StickyNoteIcon,
-  Bell, RotateCcw, GripVertical, Square, SquareCheck, FileText,
+  Plus, Pin, Trash2, Archive, Clock, X, Check, StickyNote as StickyNoteIcon,
+  Bell, RotateCcw, Square, SquareCheck, FileText,
 } from 'lucide-react';
 import { useStickyNotes, useCreateStickyNote, useUpdateStickyNote, useDeleteStickyNote, useConvertStickyNoteToNote } from '@/hooks/useStickyNotes';
 import { useReminders, useCreateReminder, useUpdateReminder, useDeleteReminder } from '@/hooks/useReminders';

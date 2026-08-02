@@ -150,19 +150,19 @@ def _seed_data(op):
 
     # Provider accounts - keys come from current env so the system keeps working.
     providers = []
-    if os.getenv('DEEPSEEK_API_KEY') or True:  # always seed rows, keys may be empty in dev
+    if os.getenv('DEEPSEEK_API_KEY'):
         providers.append(('deepseek', os.getenv('DEEPSEEK_API_KEY', ''), os.getenv('DEEPSEEK_BASE_URL', 'https://api.deepseek.com'), '{}'))
-    if os.getenv('OPENAI_API_KEY') or True:
+    if os.getenv('OPENAI_API_KEY'):
         providers.append(('openai', os.getenv('OPENAI_API_KEY', ''), os.getenv('OPENAI_BASE_URL', 'https://api.openai.com'), '{}'))
-    if os.getenv('ANTHROPIC_API_KEY') or True:
+    if os.getenv('ANTHROPIC_API_KEY'):
         providers.append(('anthropic', os.getenv('ANTHROPIC_API_KEY', ''), 'https://api.anthropic.com', '{}'))
-    if os.getenv('KIMI_API_KEY') or True:
+    if os.getenv('KIMI_API_KEY'):
         providers.append(('kimi', os.getenv('KIMI_API_KEY', ''), os.getenv('KIMI_BASE_URL', 'https://api.moonshot.cn'), '{}'))
-    if os.getenv('QWEN_API_KEY') or True:
+    if os.getenv('QWEN_API_KEY'):
         providers.append(('qwen', os.getenv('QWEN_API_KEY', ''), os.getenv('QWEN_BASE_URL', 'https://dashscope.aliyuncs.com'), '{}'))
-    if os.getenv('ZHIPU_API_KEY') or True:
+    if os.getenv('ZHIPU_API_KEY'):
         providers.append(('zhipu', os.getenv('ZHIPU_API_KEY', ''), os.getenv('ZHIPU_BASE_URL', 'https://open.bigmodel.cn/api/paas/v4'), '{}'))
-    if os.getenv('XIAOMI_API_KEY') or True:
+    if os.getenv('XIAOMI_API_KEY'):
         providers.append(('xiaomi', os.getenv('XIAOMI_API_KEY', ''), os.getenv('XIAOMI_BASE_URL', 'https://api.xiaomi.ai/v1'), '{}'))
     # Ollama has no API key
     providers.append(('ollama', '', os.getenv('OLLAMA_BASE_URL', 'http://localhost:11434'), '{}'))

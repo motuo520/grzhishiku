@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 from pydantic import BaseModel, EmailStr, Field, field_validator
 from app.core.database import get_db
 from app.core.security import verify_password, get_password_hash, create_access_token, decode_token
+from app.core.config import settings
 from app.core.config_loader import get_system_config
 from app.models.base import User
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
@@ -97,12 +98,14 @@ async def login(user_data: UserLogin, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.email == user_data.email).first()
     if not user or not verify_password(user_data.password, user.password_hash):
         raise HTTPException(status_code=401, detail="Incorrect email or password")
-    
+    if user.status != "active":
+        raise HTTPException(status_code=403, detail="Account disabled")
+
     access_token = create_access_token(
         data={"sub": user.id, "email": user.email},
-        expires_delta=timedelta(days=7)
+        expires_delta=timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     )
-    return TokenResponse(access_token=access_token, expires_in=60 * 60 * 24 * 7)
+    return TokenResponse(access_token=access_token, expires_in=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60)
 
 @router.post("/refresh", response_model=TokenResponse, summary="Refresh access token", description="Exchange a valid refresh token for a new access token.")
 async def refresh_token(
@@ -123,6 +126,8 @@ async def refresh_token(
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
+    if user.status != "active":
+        raise HTTPException(status_code=403, detail="Account disabled")
     
     new_access_token = create_access_token(
         data={"sub": user.id, "email": user.email},

@@ -1,3 +1,5 @@
+import logging
+
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
 from sqlalchemy import or_, and_
@@ -30,6 +32,8 @@ from app.api.v1.endpoints.graph import auto_link_note
 from app.services import tag_service
 
 router = APIRouter()
+
+logger = logging.getLogger(__name__)
 
 
 def _get_note_tags(db: Session, note_id: str) -> List[TagItem]:
@@ -169,7 +173,7 @@ async def create_note(
         db.commit()
     except Exception as e:
         # Non-blocking: don't fail note creation if auto-link fails
-        print(f"Auto-link failed for note {note.id}: {e}")
+        logger.warning(f"Auto-link failed for note {note.id}: {e}")
 
     return _build_note_response(note, db)
 
@@ -233,7 +237,7 @@ async def update_note(
         await auto_link_note(db, note, current_user.id)
         db.commit()
     except Exception as e:
-        print(f"Auto-link failed for note {note.id}: {e}")
+        logger.warning(f"Auto-link failed for note {note.id}: {e}")
     
     return _build_note_response(note, db)
 
@@ -311,7 +315,7 @@ async def batch_create_notes(
             try:
                 await auto_link_note(db, note, current_user.id)
             except Exception as e:
-                print(f"Auto-link failed for note {note.id}: {e}")
+                logger.warning(f"Auto-link failed for note {note.id}: {e}")
             db.refresh(note)
             created.append(_build_note_response(note, db))
         except Exception as e:

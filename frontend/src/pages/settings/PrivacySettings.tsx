@@ -1,11 +1,10 @@
 import { FC, useState, useEffect } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { settingsApi, UserSettings } from '@/api/settings';
-import { Shield, Download, Trash2, AlertTriangle, Loader2, Check, Lock } from 'lucide-react';
+import { Shield, Download, Trash2, AlertTriangle, Loader2, Check } from 'lucide-react';
 import { downloadBlob, filenameFromDisposition } from '@/utils/download';
 
 const PrivacySettings: FC = () => {
-  const [localEncryption, setLocalEncryption] = useState(false);
   const [defaultPrivacyLevel, setDefaultPrivacyLevel] = useState<'public' | 'shared' | 'private'>('private');
   const [showClearConfirm, setShowClearConfirm] = useState(false);
   const [clearConfirmText, setClearConfirmText] = useState('');
@@ -25,7 +24,6 @@ const PrivacySettings: FC = () => {
 
   useEffect(() => {
     if (settings?.privacy) {
-      setLocalEncryption(settings.privacy.localEncryption ?? false);
       setDefaultPrivacyLevel(settings.privacy.defaultPrivacyLevel ?? 'private');
     }
   }, [settings]);
@@ -39,7 +37,6 @@ const PrivacySettings: FC = () => {
   const handleSave = () => {
     saveMutation.mutate({
       privacy: {
-        localEncryption,
         defaultPrivacyLevel,
       },
     });
@@ -125,27 +122,6 @@ const PrivacySettings: FC = () => {
             {exportMessage}
           </div>
         )}
-      </section>
-
-      {/* Local Encryption */}
-      <section className="glass-card p-6">
-        <div className="flex items-start justify-between">
-          <div className="flex-1">
-            <h2 className="text-lg font-semibold text-text-primary mb-1 flex items-center gap-2">
-              <Lock size={18} className="text-personal-primary" />
-              本地加密
-            </h2>
-            <p className="text-sm text-text-muted">
-              启用后，敏感数据将在本地加密存储。当前为 UI 占位功能，加密逻辑将在后续版本实现。
-            </p>
-          </div>
-          <button
-            onClick={() => setLocalEncryption(!localEncryption)}
-            className={`relative w-12 h-6 rounded-full transition-colors shrink-0 ml-4 ${localEncryption ? 'bg-personal-primary' : 'bg-bg-tertiary'}`}
-          >
-            <span className={`absolute top-1 left-1 w-4 h-4 rounded-full bg-white transition-transform ${localEncryption ? 'translate-x-6' : ''}`} />
-          </button>
-        </div>
       </section>
 
       {/* Default Privacy Level */}

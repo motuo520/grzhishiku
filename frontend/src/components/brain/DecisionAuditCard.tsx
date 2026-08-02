@@ -2,7 +2,7 @@ import { FC, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   ClipboardCheck, ChevronDown, ChevronUp, Brain, Globe, Layers,
-  AlertTriangle, Lightbulb, TrendingUp, CheckCircle, XCircle, Zap,
+  AlertTriangle, Lightbulb, XCircle, Zap,
   BarChart3, Trash2, Edit3, Play
 } from 'lucide-react';
 import { DecisionAudit } from '@/api/cognitive';

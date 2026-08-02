@@ -1,8 +1,10 @@
-# syntax=docker/dockerfile:1
-#
 # npm registry 可通过 build-arg 覆盖（默认使用官方源）：
 #   国内用户加速示例：
 #   docker build --build-arg NPM_REGISTRY=https://registry.npmmirror.com -t psb-frontend ./frontend
+#
+# 注意：不要加 `# syntax=docker/dockerfile:1` 指令——它会强制 buildkit
+# 拉取外部 dockerfile 前端镜像，在无法访问 auth.docker.io 的网络下构建直接失败；
+# 本文件只用基础特性，buildkit 内置前端即可。
 
 # Stage 1: Builder
 FROM node:20-alpine AS builder

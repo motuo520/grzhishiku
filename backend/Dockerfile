@@ -1,5 +1,3 @@
-# syntax=docker/dockerfile:1
-#
 # 镜像源可通过 build-arg 覆盖（默认使用官方源）：
 #   国内用户加速示例：
 #   docker build \
@@ -9,6 +7,10 @@
 #   或在 compose 中：
 #   docker compose build --build-arg APT_MIRROR=mirrors.aliyun.com \
 #     --build-arg PIP_INDEX_URL=https://mirrors.aliyun.com/pypi/simple/
+#
+# 注意：不要加 `# syntax=docker/dockerfile:1` 指令——它会强制 buildkit
+# 拉取外部 dockerfile 前端镜像，在无法访问 auth.docker.io 的网络下构建直接失败；
+# 本文件只用基础特性，buildkit 内置前端即可。
 
 # Stage 1: Builder
 FROM python:3.11-slim AS builder
@@ -46,6 +48,7 @@ ENV PATH=/root/.local/bin:$PATH \
 # USER appuser
 
 COPY app/ ./app/
+COPY scripts/ ./scripts/
 
 # Expose port
 EXPOSE 8000

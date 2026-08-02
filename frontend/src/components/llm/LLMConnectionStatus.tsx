@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   Zap, RefreshCw, X, Settings, Sparkles, Activity, Loader2, ChevronRight,
 } from 'lucide-react';
-import { getLLMStatus, testProvider, LLMProvider, getModelCatalog, LLMModelCatalogItem } from '@/api/llm';
+import { getLLMStatus, getModelCatalog, LLMModelCatalogItem } from '@/api/llm';
 import { useSettings } from '@/store/settings';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
@@ -50,14 +50,6 @@ const LLMConnectionStatus: FC<LLMConnectionStatusProps> = ({ placement = 'bottom
   const isConnected = status?.connected ?? false;
   const activeLatency = status?.latency ?? -1;
 
-  const providerStatusMap = useMemo(() => {
-    const map: Record<string, LLMProvider> = {};
-    status?.providers?.forEach((p) => {
-      map[p.provider.toLowerCase()] = p;
-    });
-    return map;
-  }, [status]);
-
   const activeProviderInfo = status?.providers?.find(
     (p) => p.provider.toLowerCase() === activeProviderName.toLowerCase()
   ) || {
@@ -76,13 +68,6 @@ const LLMConnectionStatus: FC<LLMConnectionStatusProps> = ({ placement = 'bottom
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['llmStatus'] });
       setIsOpen(false);
-    },
-  });
-
-  const testMutation = useMutation({
-    mutationFn: testProvider,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['llmStatus'] });
     },
   });
 
@@ -118,16 +103,6 @@ const LLMConnectionStatus: FC<LLMConnectionStatusProps> = ({ placement = 'bottom
     }
     const activeModelName = model.provider_model_id;
     setMutation.mutate({ provider: model.provider, model: activeModelName });
-  };
-
-  const handleTestProvider = (e: React.MouseEvent, providerSlug: string) => {
-    e.stopPropagation();
-    if (!isLoggedIn) {
-      onLoginClick?.();
-      setIsOpen(false);
-      return;
-    }
-    testMutation.mutate(providerSlug);
   };
 
   const handleRefresh = () => {
@@ -249,12 +224,6 @@ const LLMConnectionStatus: FC<LLMConnectionStatusProps> = ({ placement = 'bottom
             {/* Model List by Provider */}
             <div className="space-y-3 max-h-72 overflow-y-auto pr-0.5">
               {Object.entries(modelsByProvider).map(([provider, models]) => {
-                const providerStatus = providerStatusMap[provider.toLowerCase()];
-                const isProviderConnected = providerStatus?.connected ?? false;
-                const providerLatency = providerStatus?.latency ?? -1;
-                const providerIconColor = providerStatus?.icon_color || PROVIDER_COLORS[provider.toLowerCase()] || 'from-gray-400 to-gray-500';
-                const isTesting = testMutation.isPending && testMutation.variables === provider;
-
                 return (
                   <div key={provider} className="space-y-0.5">
                     {/* Models under this provider - no provider header shown */}

@@ -248,8 +248,9 @@ const App: FC = () => {
               {isClassic && <Route path="sources" element={<Navigate to="/emergence/sources" replace />} />}
             </Route>
 
-            {/* Graph */}
-            <Route path="graph" element={<GraphLayout />}>
+            {/* Graph：经典版用 GraphLayout（图谱专属标签栏）；简化版用 ask 模块布局，
+                保持二级标签栏与其他页面一致，避免进入这两页后菜单“塌缩”只剩两项 */}
+            <Route path="graph" element={isClassic ? <GraphLayout /> : <ModuleLayout menuId="ask" showOverview={false} />}>
               <Route index element={<GraphNetworkPage />} />
               <Route path="network" element={<GraphNetworkPage />} />
               <Route path="query" element={<GraphQueryPage />} />

@@ -12,7 +12,7 @@ export default defineConfig({
       { text: '首页', link: '/' },
       { text: '指南', link: '/guide/getting-started' },
       { text: '对比', link: '/comparison' },
-      { text: 'GitHub', link: 'https://github.com/your-org/personal-second-brain' },
+      { text: 'GitHub', link: 'https://github.com/motuo520/grzhishiku' },
     ],
     sidebar: {
       '/guide/': [
@@ -35,10 +35,10 @@ export default defineConfig({
       ],
     },
     socialLinks: [
-      { icon: 'github', link: 'https://github.com/your-org/personal-second-brain' },
+      { icon: 'github', link: 'https://github.com/motuo520/grzhishiku' },
     ],
     editLink: {
-      pattern: 'https://github.com/your-org/personal-second-brain/edit/main/docs/:path',
+      pattern: 'https://github.com/motuo520/grzhishiku/edit/main/docs/:path',
       text: '在 GitHub 上编辑此页',
     },
     footer: {

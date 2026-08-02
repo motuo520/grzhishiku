@@ -9,7 +9,7 @@ import { useNotes } from '@/hooks/useNotes';
 import { useClips } from '@/hooks/useClips';
 import type { NoteCreateData } from '@/api/notes';
 import type { ClipCreateData } from '@/api/clips';
-import { getDomainFromUrl, parseBookmarksHtml, parseLocalJson, parseLocalCsv } from '@/utils/importParsers';
+import { parseBookmarksHtml, parseLocalJson, parseLocalCsv } from '@/utils/importParsers';
 
 type ImportTab = 'markdown' | 'jsoncsv' | 'urls' | 'local';
 type PreviewType = 'note' | 'clip';

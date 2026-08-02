@@ -1,6 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { capsulesApi } from '@/api/capsules';
-import type { CapsuleDialogueResponse } from '@/api/capsules';
 
 export const useCapsules = (brainSide?: string) => {
   const queryClient = useQueryClient();

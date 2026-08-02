@@ -40,8 +40,12 @@ class WeChatParser(BaseSocialParser):
         os.makedirs(temp_dir, exist_ok=True)
         with zipfile.ZipFile(file_path, 'r') as zf:
             for name in zf.namelist():
+                # 防 zip 路径穿越：拒绝绝对路径和含 .. 的条目
+                normalized = os.path.normpath(name)
+                if (name.startswith(("/", "\\")) or os.path.isabs(name)
+                        or normalized.startswith("..") or os.path.isabs(normalized)):
+                    continue
                 if name.lower().endswith(('.txt', '.csv', '.html', '.htm')):
-                    extracted = os.path.join(temp_dir, os.path.basename(name))
                     zf.extract(name, temp_dir)
                     src = os.path.join(temp_dir, name)
                     messages.extend(self.parse(src, account_id, user_id))

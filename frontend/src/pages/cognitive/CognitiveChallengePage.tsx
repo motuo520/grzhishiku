@@ -1,6 +1,6 @@
 import { FC } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Gamepad2, AlertCircle, RefreshCw } from 'lucide-react';
+import { AlertCircle, RefreshCw } from 'lucide-react';
 import { cognitiveApi } from '@/api/cognitive';
 import CognitiveHero from '@/components/brain/CognitiveHero';
 import ChallengeStatsCard from '@/components/brain/ChallengeStatsCard';

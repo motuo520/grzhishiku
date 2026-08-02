@@ -1,3 +1,4 @@
+import logging
 import os
 import shutil
 import uuid
@@ -10,6 +11,8 @@ from sqlalchemy.orm import Session
 from app.models.base import Document, User, KnowledgeUnit
 from app.services import tag_service
 from app.core.xss_sanitizer import sanitize_knowledge_input
+
+logger = logging.getLogger(__name__)
 
 
 def _get_safe_filename(filename: str) -> str:
@@ -288,7 +291,7 @@ def save_to_knowledge(db: Session, user: User, doc: Document, tag_ids: Optional[
         auto_link_knowledge(db, unit, user.id)
         db.commit()
     except Exception as e:
-        print(f"Auto-link failed for document knowledge {unit.id}: {e}")
+        logger.warning(f"Auto-link failed for document knowledge {unit.id}: {e}")
 
     doc.doc_status = "imported_to_knowledge"
     doc.knowledge_id = unit.id

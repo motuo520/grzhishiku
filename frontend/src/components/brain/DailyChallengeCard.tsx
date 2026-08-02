@@ -1,6 +1,6 @@
 import { FC, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Brain, HelpCircle, Lightbulb, CheckCircle2, XCircle, ArrowRight, SkipForward, Send, Clock } from 'lucide-react';
+import { Brain, HelpCircle, Lightbulb, CheckCircle2, XCircle, SkipForward, Send, Clock } from 'lucide-react';
 import { Challenge } from '@/api/cognitive';
 
 interface Props {

@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { useBrain } from '@/hooks/useBrain';
 import { useAuth } from '@/hooks/useAuth';
+import { useSettings } from '@/store/settings';
 import {
   useMenuData,
   SETTINGS_ITEMS,
@@ -31,7 +32,7 @@ const ICON_MAP: Record<string, React.ElementType> = {
 };
 
 const Sidebar: FC = () => {
-  const { stats, activeBrain, switchBrain, isSwitching } = useBrain();
+  const { activeBrain, switchBrain, isSwitching } = useBrain();
   const { user } = useAuth();
   const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(false);
@@ -39,6 +40,7 @@ const Sidebar: FC = () => {
   const [brainMenuOpen, setBrainMenuOpen] = useState(false);
 
   const effectiveBrain = activeBrain || 'both';
+  const isClassic = useSettings((s) => s.uiMode === 'classic');
   const { quickActions: modeQuickActions } = useMenuData();
   const quickActions = getVisibleItems(modeQuickActions, effectiveBrain);
 
@@ -261,6 +263,22 @@ const Sidebar: FC = () => {
                     </motion.div>
                   )}
                 </AnimatePresence>
+
+                {/* Community entry: 简化版顶部导航没有社区桶，在这里提供入口 */}
+                {!isClassic && (
+                  <button
+                    onClick={() => {
+                      navigate('/community');
+                      setMenuOpen(false);
+                    }}
+                    className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-[2px] text-sm text-text-secondary hover:bg-bg-hover hover:text-text-primary transition-colors"
+                  >
+                    <div className="w-7 h-7 rounded-[2px] bg-accent/10 flex items-center justify-center text-accent">
+                      <MessageSquare className="w-3.5 h-3.5" />
+                    </div>
+                    <span className="flex-1 text-left">社区</span>
+                  </button>
+                )}
 
                 <div className="my-1.5 border-t border-border-color" />
 

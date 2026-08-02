@@ -6,7 +6,7 @@ import {
   AlertCircle, CheckCircle, ArrowRight, Shuffle, Flame, GitMerge, GitBranch, Network,
 } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { emergenceApi, type Idea, type BrainSide } from '@/api/emergence';
+import { emergenceApi, type BrainSide } from '@/api/emergence';
 
 const BRAIN_SIDE_CLASS: Record<string, string> = {
   personal: 'bg-personal-primary/10 text-personal-primary border-personal-primary/20',

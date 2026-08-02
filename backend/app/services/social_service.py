@@ -1,3 +1,4 @@
+import logging
 import os
 import shutil
 import uuid
@@ -11,6 +12,8 @@ from app.models.base import SocialAccount, SocialMessage, User, KnowledgeUnit
 from app.services import tag_service
 from app.core.xss_sanitizer import sanitize_knowledge_input
 from app.services.social_parsers import PARSERS
+
+logger = logging.getLogger(__name__)
 
 
 def get_parser(provider: str):
@@ -236,7 +239,7 @@ def save_to_knowledge(db: Session, user: User, message: SocialMessage, tag_ids: 
         auto_link_knowledge(db, unit, user.id)
         db.commit()
     except Exception as e:
-        print(f"Auto-link failed for social knowledge {unit.id}: {e}")
+        logger.warning(f"Auto-link failed for social knowledge {unit.id}: {e}")
 
     message.status = "imported_to_knowledge"
     message.knowledge_id = unit.id

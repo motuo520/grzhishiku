@@ -5,7 +5,6 @@
 - **Python**: 3.11+
 - **Node.js**: 20+
 - **数据库**: SQLite（默认）或 PostgreSQL 14+
-- **缓存**: Redis（可选，推荐生产环境）
 - **容器**: Docker 20.10+ & Docker Compose 2.20+（推荐）
 
 ## 本地开发启动
@@ -37,7 +36,7 @@ cp .env.example .env
 
 ### 2. 构建并启动
 ```bash
-docker-compose up -d --build
+docker compose up -d --build
 ```
 
 服务映射：
@@ -47,30 +46,31 @@ docker-compose up -d --build
 
 ### 3. 查看日志
 ```bash
-docker-compose logs -f backend
-docker-compose logs -f frontend
+docker compose logs -f backend
+docker compose logs -f frontend
 ```
 
 ### 4. 停止服务
 ```bash
-docker-compose down
+docker compose down
 # 包含数据卷清理
-docker-compose down -v
+docker compose down -v
 ```
 
 ## 环境变量说明
 
+所有变量均有默认值，无必填项；不配置任何 `.env` 也可直接 `docker compose up -d` 启动。
+
 | 变量 | 说明 | 默认值 | 必需 |
 |------|------|--------|------|
-| ENV | 运行环境 | development | 是 |
-| DATABASE_URL | 数据库连接 | sqlite:///./psb.db | 是 |
-| SECRET_KEY | JWT 密钥 | - | 是 |
-| ADMIN_SECRET_KEY | 管理员 JWT 密钥 | - | 是 |
-| REDIS_URL | Redis 缓存地址 | - | 否 |
+| ENV | 运行环境 | development | 否 |
+| DATABASE_URL | 数据库连接 | sqlite:///./psb.db | 否 |
+| SECRET_KEY | JWT 密钥 | 开发环境自动生成临时密钥 | 否 |
+| ADMIN_SECRET_KEY | 管理员 JWT 密钥 | 开发环境自动生成临时密钥 | 否 |
 | OLLAMA_BASE_URL | 本地 LLM 地址 | http://localhost:11434 | 否 |
-| API_BASE_URL | 后端 URL | http://localhost:8000 | 是 |
-| FRONTEND_URL | 前端 URL | http://localhost:3000 | 是 |
-| ALLOWED_ORIGINS | CORS 白名单 | - | 是 |
+| API_BASE_URL | 后端 URL | http://localhost:8000 | 否 |
+| FRONTEND_URL | 前端 URL | http://localhost:3000 | 否 |
+| ALLOWED_ORIGINS | CORS 白名单 | http://localhost:3000,http://127.0.0.1:3000（compose 下默认为 http://localhost） | 否 |
 
 ## SSL 配置（Let's Encrypt）
 
@@ -111,11 +111,11 @@ server {
 升级：
 ```bash
 git pull
-docker-compose up -d --build
+docker compose up -d --build
 ```
 
 回滚：
 ```bash
 git checkout <previous-tag>
-docker-compose up -d --build
+docker compose up -d --build
 ```

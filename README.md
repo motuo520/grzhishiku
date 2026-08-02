@@ -21,7 +21,7 @@
 
 ```bash
 git clone https://github.com/motuo520/grzhishiku.git
-cd personal-second-brain
+cd grzhishiku
 docker compose up -d
 ```
 
@@ -39,6 +39,8 @@ docker compose up -d
 docker compose exec backend python -m scripts.create_admin user@example.com
 ```
 
+> **构建失败排查**：若 `docker compose up -d` 在拉取镜像阶段报 `auth.docker.io` 超时（部分网络环境 DNS 被污染），可改用传统构建器：`DOCKER_BUILDKIT=0 docker compose up -d --build`；或配置 Docker 镜像加速。构建慢还可用 Dockerfile 提供的 `APT_MIRROR` / `PIP_INDEX_URL` / `NPM_REGISTRY` build-arg 换国内源。
+
 ---
 
 ## Quick Start
@@ -47,7 +49,7 @@ One command (Docker required):
 
 ```bash
 git clone https://github.com/motuo520/grzhishiku.git
-cd personal-second-brain
+cd grzhishiku
 docker compose up -d
 ```
 
@@ -64,6 +66,16 @@ After the first launch, register a regular account, then promote it to admin:
 ```bash
 docker compose exec backend python -m scripts.create_admin user@example.com
 ```
+
+> **Build troubleshooting**: if `docker compose up -d` times out fetching images from `auth.docker.io` (DNS pollution in some networks), fall back to the legacy builder: `DOCKER_BUILDKIT=0 docker compose up -d --build`, or configure a Docker registry mirror. Slow builds can also use the `APT_MIRROR` / `PIP_INDEX_URL` / `NPM_REGISTRY` build-args provided in the Dockerfiles.
+
+---
+
+## 安全默认值 / Security Defaults
+
+密钥首次启动时自动生成，并持久化在 `./server-data/.secrets/`（随数据卷一起备份即可，勿提交到 git）。本地自用无需任何配置；**公网部署请显式设置 `SECRET_KEY`、`ADMIN_SECRET_KEY`、`DATABASE_ENCRYPT_KEY`** 等敏感项——在仓库根目录自建 `.env` 写入对应变量即可覆盖 compose 默认值。
+
+Secrets are auto-generated on first launch and persisted under `./server-data/.secrets/` (back it up with the data volume; never commit it). Nothing to configure for local use; **for public deployments, explicitly set `SECRET_KEY`, `ADMIN_SECRET_KEY`, `DATABASE_ENCRYPT_KEY`, etc.** — create a root `.env` to override the compose defaults.
 
 ---
 

@@ -53,7 +53,6 @@ export const ToolOptionsBar: FC<ToolOptionsProps> = ({
   onBrainSideChange,
   preferredModel,
   onPreferredModelChange,
-  inputText = '',
   taskType = 'creative',
 }) => {
   return (

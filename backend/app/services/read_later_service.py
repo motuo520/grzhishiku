@@ -1,3 +1,4 @@
+import logging
 import uuid
 from datetime import datetime
 from typing import List, Optional
@@ -6,8 +7,11 @@ from sqlalchemy.orm import Session
 
 from app.models.base import ReadLaterItem, User, KnowledgeUnit
 from app.services import tag_service
+from app.services.url_guard import validate_fetch_url
 from app.services.url_metadata import fetch_url_metadata
 from app.core.xss_sanitizer import sanitize_knowledge_input
+
+logger = logging.getLogger(__name__)
 
 
 def create_item(
@@ -140,13 +144,14 @@ def fetch_full_content(db: Session, user: User, item_id: str) -> Optional[ReadLa
             db.commit()
             db.refresh(item)
     except Exception as e:
-        print(f"Fetch full content failed for {item.id}: {e}")
+        logger.warning(f"Fetch full content failed for {item.id}: {e}")
     return item
 
 
 def _extract_article_text(url: str) -> Optional[str]:
     """Basic article text extraction using readability-lxml if available, otherwise fallback."""
     try:
+        validate_fetch_url(url)
         from readability import Document
         import requests
         headers = {
@@ -206,7 +211,7 @@ def save_to_knowledge(db: Session, user: User, item: ReadLaterItem, tag_ids: Opt
         auto_link_knowledge(db, unit, user.id)
         db.commit()
     except Exception as e:
-        print(f"Auto-link failed for read-later knowledge {unit.id}: {e}")
+        logger.warning(f"Auto-link failed for read-later knowledge {unit.id}: {e}")
 
     item.item_status = "imported_to_knowledge"
     item.knowledge_id = unit.id

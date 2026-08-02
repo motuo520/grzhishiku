@@ -72,7 +72,10 @@ const TrueEvolutionPage: FC = () => {
   const { data: experimentLogsData } = useExperimentLogs({
     brain_side: brainSide === 'unknown' ? undefined : brainSide,
   });
-  const experimentLogs: { id: string; title: string }[] = experimentLogsData || [];
+  const experimentLogs: { id: string; title: string }[] = useMemo(
+    () => experimentLogsData || [],
+    [experimentLogsData]
+  );
 
   const targetOptions: { id: string; label: string }[] = useMemo(() => {
     switch (form.related_content_type) {
@@ -153,12 +156,6 @@ const TrueEvolutionPage: FC = () => {
     if (r.related_content_type === 'knowledge_unit') return `/knowledge/${r.related_content_id}`;
     if (r.related_content_type === 'experiment_log') return `/social-brain/experimenter`;
     return null;
-  };
-
-  const relatedLabel = (r: EvolutionReflection) => {
-    if (!r.related_content_type) return null;
-    const found = RELATED_TYPE_OPTIONS.find((o) => o.value === r.related_content_type);
-    return found?.label;
   };
 
   const trueCount = evolutionReflections.filter((r) => r.is_true_evolution).length;

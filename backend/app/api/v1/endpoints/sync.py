@@ -1,5 +1,8 @@
 from datetime import datetime
 from typing import List, Optional
+import os
+import shutil
+import tempfile
 
 from fastapi import APIRouter, Depends, File, Form, UploadFile, HTTPException, status
 from sqlalchemy.orm import Session
@@ -17,14 +20,6 @@ from app.schemas.sync import (
 from app.services import sync_service, sync_storage_service
 
 router = APIRouter(tags=["Sync"])
-
-
-def _device_fingerprint() -> str:
-    # The fingerprint is supplied by the client during registration and then
-    # kept in localStorage.  For endpoints that do not re-register we rely on
-    # the client sending it in a header or form field.  Here we accept it via
-    # a simple query/form parameter for GET requests.
-    raise NotImplementedError("use fingerprint parameter")
 
 
 @router.post("/devices", response_model=DeviceOut)
@@ -99,16 +94,26 @@ def upload_snapshot(
     device = sync_service.get_or_create_device(
         db, current_user.id, fingerprint=fingerprint
     )
-    data = file.file.read()
-    s3_key = sync_storage_service.upload_encrypted_blob(
-        current_user.id, device.id, data
-    )
+    # 分块写入临时文件再流式上传，避免整个快照一次性读进内存
+    tmp_path = None
+    try:
+        with tempfile.NamedTemporaryFile(delete=False, prefix="psb-sync-", suffix=".enc") as tmp:
+            shutil.copyfileobj(file.file, tmp)
+            tmp_path = tmp.name
+        size = os.path.getsize(tmp_path)
+        with open(tmp_path, "rb") as f:
+            s3_key = sync_storage_service.upload_encrypted_blob(
+                current_user.id, device.id, f
+            )
+    finally:
+        if tmp_path and os.path.exists(tmp_path):
+            os.unlink(tmp_path)
     snapshot = sync_service.record_snapshot(
         db,
         current_user.id,
         device.id,
         s3_key,
-        size_bytes=len(data),
+        size_bytes=size,
         salt=salt,
         iv=iv,
         entity_count=entity_count,

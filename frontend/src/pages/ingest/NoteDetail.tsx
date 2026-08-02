@@ -2,7 +2,7 @@ import { FC, useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Save, ArrowLeft, Tag, X, Loader2, AlertCircle, FileText, Eye, EyeOff,
+  Save, ArrowLeft, X, Loader2, AlertCircle, FileText, Eye, EyeOff,
   Bold, Italic, Heading, List, ListOrdered, Code, Quote, Link as LinkIcon,
   Sparkles, PenLine, AlignLeft, Hash, Check, Wand2,
 } from 'lucide-react';
@@ -215,8 +215,8 @@ const NoteDetail: FC = () => {
       .replace(/\*\*(.*?)\*\*/g, '<strong class="text-text-primary">$1</strong>')
       .replace(/\*(.*?)\*/g, '<em class="text-text-secondary">$1</em>')
       .replace(/`([^`]+)`/g, '<code class="px-1 py-0.5 bg-bg-tertiary rounded text-info text-xs font-mono">$1</code>')
-      .replace(/^\> (.*$)/gim, '<blockquote class="border-l-2 border-[#8b949e] pl-3 my-2 text-text-secondary italic">$1</blockquote>')
-      .replace(/^\- (.*$)/gim, '<li class="ml-4 text-text-secondary">$1</li>')
+      .replace(/^> (.*$)/gim, '<blockquote class="border-l-2 border-[#8b949e] pl-3 my-2 text-text-secondary italic">$1</blockquote>')
+      .replace(/^- (.*$)/gim, '<li class="ml-4 text-text-secondary">$1</li>')
       .replace(/^\d+\. (.*$)/gim, '<li class="ml-4 text-text-secondary list-decimal">$1</li>')
       .replace(/\[\[([^\]]+)\]\]/g, '<span class="text-info bg-network-primary/10 px-1 rounded cursor-pointer">$1</span>')
       .replace(/\n/g, '<br />');

@@ -4,7 +4,9 @@
 #   2. 首次启动会自动拉取模型 qwen2.5:0.5b 与 nomic-embed-text（需联网，约几百 MB）
 #   3. 访问 http://localhost/  （前端 80 端口，/api 由 nginx 代理到 backend:8000）
 # 所有配置均有默认值，fresh clone 即可启动，不依赖任何 .env 文件。
-# 如需覆盖，可在仓库根目录自建 .env（compose 会自动读取其中的变量用于 ${VAR:-default} 插值），
+# 密钥（SECRET_KEY / ADMIN_SECRET_KEY / DATABASE_ENCRYPT_KEY）无需手工配置：
+# 首次启动时后端自动生成并持久化在 ./server-data/.secrets/（容器内 /data/.secrets/）。
+# 如需覆盖，可在仓库根目录自建 .env 设置同名变量（compose 会自动读取用于 ${VAR} 插值），
 # 或用 docker compose up -d 前 export 对应环境变量。
 # 数据持久化在 ./server-data/（SQLite 库 + graphify 图谱数据），直接打包该目录即备份。
 
@@ -42,19 +44,21 @@ services:
   backend:
     build: ./backend
     environment:
+      ENV: production
       # 本地模型（compose 内部走 ollama 服务，请勿改为 localhost）
       OLLAMA_BASE_URL: http://ollama:11434
       OLLAMA_MODEL: qwen2.5:0.5b
       OLLAMA_EMBED_MODEL: nomic-embed-text
+      GRAPHIFY_OLLAMA_MODEL: ${GRAPHIFY_OLLAMA_MODEL:-}
       # 数据统一放 /data（挂载 ./server-data）
       DATABASE_URL: sqlite:////data/psb.db
       GRAPHIFY_DATA_DIR: /data/graphify_data
       # 浏览器直连 API 的允许来源，上线改成服务器域名/IP，逗号分隔
       ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost}
-      # 以下为开发默认值，生产环境务必修改（可在根目录 .env 中覆盖）
-      SECRET_KEY: ${SECRET_KEY:-dev-secret-key-change-me-in-production}
-      ADMIN_SECRET_KEY: ${ADMIN_SECRET_KEY:-dev-admin-secret-key-change-me}
-      DATABASE_ENCRYPT_KEY: ${DATABASE_ENCRYPT_KEY:-dev-db-encrypt-key-change-me}
+      # 密钥留空则由容器自动生成并持久化到 /data/.secrets/（见文件头注释）
+      SECRET_KEY: ${SECRET_KEY:-}
+      ADMIN_SECRET_KEY: ${ADMIN_SECRET_KEY:-}
+      DATABASE_ENCRYPT_KEY: ${DATABASE_ENCRYPT_KEY:-}
       # 对象存储（MinIO）配置
       S3_ENDPOINT: http://minio:9000
       S3_ACCESS_KEY: ${MINIO_ROOT_USER:-psbminio}

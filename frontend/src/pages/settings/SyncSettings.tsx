@@ -94,7 +94,6 @@ const SyncSettings: FC = () => {
     ])
       .catch(() => showToast('加载设置失败', 'error'))
       .finally(() => setLoading(false));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showToast]);
 
   async function loadDevices() {

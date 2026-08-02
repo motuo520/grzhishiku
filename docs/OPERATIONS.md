@@ -25,23 +25,23 @@
 ### 数据库连接失败
 ```bash
 # 检查 SQLite 文件权限
-ls -la data/psb.db
+ls -la ./server-data/psb.db
 # 检查 WAL 模式
-sqlite3 data/psb.db "PRAGMA journal_mode;"
+sqlite3 ./server-data/psb.db "PRAGMA journal_mode;"
 # 修复 WAL
-sqlite3 data/psb.db "PRAGMA wal_checkpoint;"
+sqlite3 ./server-data/psb.db "PRAGMA wal_checkpoint;"
 ```
 
 ### LLM 服务不可用
 ```bash
 # 检查 Ollama 状态
 curl http://localhost:11434/api/tags
-# 检查后端 LLM 健康端点
-curl http://localhost:8000/api/v1/llm/health
+# 检查后端 LLM 健康端点（走前端 nginx 代理）
+curl http://localhost/api/v1/llm/health
 ```
 
 ### 内存不足
-- 检查 Redis 内存使用：`redis-cli info memory`
+- 检查各容器内存占用：`docker stats`
 - 限制 LLM 并发请求数
 - 增加容器内存限制
 
@@ -50,22 +50,24 @@ curl http://localhost:8000/api/v1/llm/health
 ### SQLite 备份
 ```bash
 # 在线备份
-sqlite3 data/psb.db ".backup '/backup/psb-$(date +%Y%m%d).db'"
+sqlite3 ./server-data/psb.db ".backup '/backup/psb-$(date +%Y%m%d).db'"
 # 导出 SQL
-sqlite3 data/psb.db ".dump" > /backup/psb-$(date +%Y%m%d).sql
+sqlite3 ./server-data/psb.db ".dump" > /backup/psb-$(date +%Y%m%d).sql
 ```
 
 ### 恢复
 ```bash
 # 停止服务
-docker-compose stop backend
+docker compose stop backend
 # 替换数据库
-cp /backup/psb-20240101.db data/psb.db
+cp /backup/psb-20240101.db ./server-data/psb.db
 # 重启服务
-docker-compose up -d backend
+docker compose up -d backend
 ```
 
 ## 用户管理
+
+> **注意**：docker compose 默认不暴露后端 8000 端口。以下直连 `localhost:8000` 的命令，需先在 `docker-compose.yml` 中放开 backend 的 `8000:8000` 端口映射；或将地址改为 `http://localhost/api/...`（前端 nginx 已将 `/api/` 代理到后端）。
 
 ### 创建管理员
 ```bash
@@ -96,7 +98,7 @@ curl -X PATCH http://localhost:8000/api/admin/users/<user_id> \
 
 ### 维护模式开关
 ```bash
-# 开启维护模式（通过系统配置）
+# 开启维护模式（通过系统配置；同上，8000 端口需放开映射，或改用 http://localhost/api/...）
 curl -X PUT http://localhost:8000/api/admin/config/maintenance_mode \
   -H "Authorization: Bearer <admin_token>" \
   -d '{"value":"true"}'

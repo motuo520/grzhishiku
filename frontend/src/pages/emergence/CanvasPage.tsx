@@ -5,12 +5,12 @@ import {
   Network, Sparkles, Plus, Save, Trash2, Loader2, ArrowLeft, LayoutGrid,
   BookOpen, Type, Database, GitMerge, X, Check, GripVertical, MousePointer2,
   GitBranch, Pencil, ChevronRight, Clock, ZoomIn, ZoomOut, Maximize,
-  Palette, Download, FileText, Wand2, Lightbulb, Move, LayoutTemplate,
+  Download, FileText, Wand2, Lightbulb, Move, LayoutTemplate,
 } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import {
-  emergenceApi, type Idea, type CanvasNode, type CanvasEdge, type CanvasDetail,
+  emergenceApi, type Idea, type CanvasNode, type CanvasEdge,
   type BrainSide, type EmergenceSource, type CanvasReportRequest,
 } from '@/api/emergence';
 import ModelSelector from '@/components/llm/ModelSelector';
@@ -195,7 +195,7 @@ const CanvasEditor: FC<CanvasEditorProps> = ({ canvasId, onBack }) => {
   const [reportResult, setReportResult] = useState<{ title: string; content: string } | null>(null);
   const [reportModelId, setReportModelId] = useState<string>('');
 
-  const { data: existingCanvas, isLoading: isLoadingCanvas } = useQuery({
+  const { data: existingCanvas } = useQuery({
     queryKey: ['emergence', 'canvas', canvasId],
     queryFn: async () => {
       if (!canvasId) return null;
@@ -406,10 +406,6 @@ const CanvasEditor: FC<CanvasEditorProps> = ({ canvasId, onBack }) => {
     setNodes((prev) => prev.filter((n) => n.id !== id));
     setEdges((prev) => prev.filter((e) => e.source !== id && e.target !== id));
     setSelectedIds((prev) => prev.filter((sid) => sid !== id));
-  };
-
-  const deleteEdge = (id: string) => {
-    setEdges((prev) => prev.filter((e) => e.id !== id));
   };
 
   const handleNodeClick = (e: React.MouseEvent, id: string) => {
@@ -1101,7 +1097,7 @@ const CanvasEditor: FC<CanvasEditorProps> = ({ canvasId, onBack }) => {
                   <p className="text-xs text-text-muted text-center py-6">暂无推荐，先在画布添加一些节点吧</p>
                 ) : (
                   <div className="space-y-2">
-                    {recommendations.map(({ item, type, score }, idx) => (
+                    {recommendations.map(({ item, type }, idx) => (
                       <div
                         key={`${type}-${item.id}-${idx}`}
                         className="p-3 rounded-xl bg-white/[0.02] border border-white/[0.06] hover:border-white/[0.12] transition-all"

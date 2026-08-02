@@ -6,7 +6,6 @@ import { useAuth } from '@/hooks/useAuth';
 import TopNavigation from '@/components/navigation/TopNavigation';
 import SubMenuPanel from '@/components/navigation/SubMenuPanel';
 import Sidebar from '@/components/navigation/Sidebar';
-import FusionSearch from '@/components/search/FusionSearch';
 import ChatInputBar from '@/components/navigation/ChatInputBar';
 
 import AnnouncementBanner from '@/components/common/AnnouncementBanner';
@@ -15,7 +14,6 @@ import MascotWidget from '@/components/mascot/MascotWidget';
 
 const AppLayout: FC = () => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [searchOpen, setSearchOpen] = useState(false);
   const [loginOpen, setLoginOpen] = useState(false);
   const { isLoading } = useAuth();
 
@@ -29,9 +27,6 @@ const AppLayout: FC = () => {
 
   return (
     <div className="flex flex-col h-screen w-screen overflow-hidden bg-bg-primary relative">
-      {/* Fusion Search Modal (Cmd+K quick search) */}
-      <FusionSearch isOpen={searchOpen} onClose={() => setSearchOpen(false)} />
-
       {/* System Announcement */}
       <AnnouncementBanner />
 

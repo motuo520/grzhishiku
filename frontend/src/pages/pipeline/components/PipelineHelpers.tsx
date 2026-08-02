@@ -15,7 +15,7 @@ export const BrainSideBadge = ({ side, className = 'text-[10px]' }: BrainSideBad
   return <span className={`badge-network ${className}`}>网络脑</span>;
 };
 
-export function isValidHttpUrl(url?: string | null): boolean {
+function isValidHttpUrl(url?: string | null): boolean {
   if (!url) return false;
   try {
     const u = new URL(url);
@@ -25,7 +25,7 @@ export function isValidHttpUrl(url?: string | null): boolean {
   }
 }
 
-export function getDomain(url?: string | null): string | null {
+function getDomain(url?: string | null): string | null {
   if (!url) return null;
   try {
     return new URL(url).hostname;

@@ -43,8 +43,12 @@ def _ensure_bucket():
             raise
 
 
-def upload_encrypted_blob(user_id: str, device_id: str, data: bytes) -> str:
-    """Upload an encrypted blob and return its S3 key."""
+def upload_encrypted_blob(user_id: str, device_id: str, data) -> str:
+    """Upload an encrypted blob and return its S3 key.
+
+    `data` may be raw bytes or a binary file object (streamed to S3 without
+    loading the whole blob into memory).
+    """
     _ensure_bucket()
     snapshot_id = uuid.uuid4().hex
     s3_key = f"sync/{user_id}/{snapshot_id}.enc"

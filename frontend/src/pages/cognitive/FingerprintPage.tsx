@@ -6,7 +6,7 @@ import {
   PieChart, Pie, Cell, Legend
 } from 'recharts';
 import {
-  Brain, TrendingUp, Lightbulb, Target, Zap, BarChart3,
+  TrendingUp, Lightbulb, Target, Zap, BarChart3,
   Loader2, RefreshCw, BookOpen, GitBranch, Heart, Layers, Search, Sparkles, Shield
 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';

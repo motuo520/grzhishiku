@@ -213,7 +213,6 @@ const ClipperPage: FC = () => {
         return;
       }
       // Add tags by name if not in availableTags, otherwise use id
-      const allTagNames = (availableTags || []).map((t) => t.name.toLowerCase());
       const payloadTags = [...existingTagIds, ...tagNamesToAdd];
       await updateClip({
         id: clip.id,

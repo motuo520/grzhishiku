@@ -65,11 +65,11 @@ const TopNavigation: FC<TopNavigationProps> = ({ onLoginClick }) => {
 
   const ThemeIcon = theme === 'light' ? Sun : theme === 'dark' ? Moon : Monitor;
 
-  const moduleEnabled = (menuId: MenuId) => {
+  const moduleEnabled = useCallback((menuId: MenuId) => {
     const key = MENU_MODULE_MAP[menuId];
     if (!key) return true;
     return systemFeatures?.modules?.[key] !== false;
-  };
+  }, [systemFeatures]);
 
   // 根据当前路径推导所在模块和一级桶，保证直接访问 URL 时顶部高亮正确
   const currentMenuId = getMenuIdByPath(location.pathname, menuData);
@@ -87,7 +87,7 @@ const TopNavigation: FC<TopNavigationProps> = ({ onLoginClick }) => {
     } else {
       setActiveMenu(targetMenuId);
     }
-  }, [activeMenu, setActiveMenu, toggleSubMenu, topNavBuckets]);
+  }, [activeMenu, setActiveMenu, toggleSubMenu, topNavBuckets, moduleEnabled]);
 
   // Keyboard shortcuts: Ctrl+1~3 for top buckets
   useEffect(() => {

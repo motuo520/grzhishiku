@@ -2,7 +2,7 @@ import { FC, useState, useRef, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Bookmark, Upload, Link2, Trash2, Check, Loader2, AlertCircle,
-  Globe, Folder, X, ArrowLeft, Import, ExternalLink, Search,
+  Globe, Folder, ArrowLeft, Import, ExternalLink, Search,
   Filter, Edit2, CheckCircle2, Copy, FolderTree, Tag
 } from 'lucide-react';
 import { useClips } from '@/hooks/useClips';

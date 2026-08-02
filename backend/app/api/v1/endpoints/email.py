@@ -1,3 +1,5 @@
+import logging
+
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
 from typing import List, Optional
@@ -6,6 +8,7 @@ import uuid
 import json
 
 from app.core.database import get_db
+from app.core.crypto import encrypt_secret
 from app.core.security import get_current_user
 from app.core.xss_sanitizer import sanitize_knowledge_input
 from app.models.base import User, EmailAccount, EmailMessage, KnowledgeUnit
@@ -17,6 +20,8 @@ from app.services import email_service, tag_service
 from app.api.v1.endpoints.graph import auto_link_knowledge
 
 router = APIRouter()
+
+logger = logging.getLogger(__name__)
 
 
 def _mask_token(token: Optional[str]) -> Optional[str]:
@@ -99,6 +104,9 @@ async def create_email_account(
     if not email_service.test_imap_connection(account):
         raise HTTPException(status_code=400, detail="无法连接到邮箱，请检查 IMAP 地址、端口或授权码")
 
+    # 凭证加密落库（连接测试用的是内存中的明文）
+    account.access_token = encrypt_secret(account.access_token)
+    account.refresh_token = encrypt_secret(account.refresh_token)
     db.add(account)
     db.commit()
     db.refresh(account)
@@ -147,9 +155,9 @@ async def update_email_account(
     if data.imap_use_ssl is not None:
         account.imap_use_ssl = data.imap_use_ssl
     if data.access_token is not None:
-        account.access_token = data.access_token
+        account.access_token = encrypt_secret(data.access_token)
     if data.refresh_token is not None:
-        account.refresh_token = data.refresh_token
+        account.refresh_token = encrypt_secret(data.refresh_token)
     if data.status is not None:
         account.status = data.status
 
@@ -307,7 +315,7 @@ async def save_email_to_knowledge(
         await auto_link_knowledge(db, unit, current_user.id)
         db.commit()
     except Exception as e:
-        print(f"Auto-link failed for email knowledge {unit.id}: {e}")
+        logger.warning(f"Auto-link failed for email knowledge {unit.id}: {e}")
 
     msg.status = "imported_to_knowledge"
     msg.knowledge_id = unit.id

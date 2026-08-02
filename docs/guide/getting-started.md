@@ -9,7 +9,7 @@
 
 ```bash
 git clone https://github.com/motuo520/grzhishiku.git
-cd personal-second-brain
+cd grzhishiku
 docker compose up -d
 ```
 

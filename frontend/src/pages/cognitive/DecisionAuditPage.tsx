@@ -16,7 +16,7 @@ const DecisionAuditPage: FC = () => {
   const [statusFilter, setStatusFilter] = useState<string>('');
   const [modelId, setModelId] = useState<string>('');
 
-  const { data, isLoading, refetch } = useQuery({
+  const { data, isLoading } = useQuery({
     queryKey: ['cognitive', 'decision-audits', statusFilter],
     queryFn: async () => {
       const response = await cognitiveApi.listDecisionAudits({ status: statusFilter || undefined, limit: 100 });

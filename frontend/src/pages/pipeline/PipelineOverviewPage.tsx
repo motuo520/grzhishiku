@@ -55,8 +55,8 @@ const PipelineOverviewPage: FC = () => {
 
   // 默认全选原始素材，用户可以取消勾选来控制一键管线的范围
   useEffect(() => {
-    if (rawItems && rawItems.length > 0 && selectedRawIds.size === 0) {
-      setSelectedRawIds(new Set(rawItems.map((item) => item.id)));
+    if (rawItems && rawItems.length > 0) {
+      setSelectedRawIds((prev) => (prev.size === 0 ? new Set(rawItems.map((item) => item.id)) : prev));
     }
   }, [rawItems]);
 
@@ -154,7 +154,7 @@ const PipelineOverviewPage: FC = () => {
     return plain.length > maxLen ? plain.slice(0, maxLen) + '...' : plain;
   };
 
-  const renderRecentItem = (item: PipelineItem, index: number) => {
+  const renderRecentItem = (item: PipelineItem) => {
     const config = CONTENT_TYPE_CONFIG[item.content_type] || { label: item.content_type, icon: Layers, color: 'text-text-secondary' };
     const Icon = config.icon;
     const stageInfo = STAGE_CONFIG.find((s) => s.key === item.pipeline_stage) || STAGE_CONFIG[0];
@@ -446,7 +446,7 @@ const PipelineOverviewPage: FC = () => {
           </div>
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-            {recentItems.map((item, index) => renderRecentItem(item, index))}
+            {recentItems.map((item) => renderRecentItem(item))}
           </div>
         )}
       </div>

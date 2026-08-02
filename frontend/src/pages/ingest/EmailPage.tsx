@@ -1,8 +1,8 @@
-import { FC, useState, useMemo } from 'react';
+import { FC, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Mail, Plus, Search, Trash2, RefreshCw, AlertCircle, X, Loader2,
-  Check, BookOpen, Clock, Eye, Tag, Filter, ExternalLink
+  Check, BookOpen, Clock, Eye, Tag, Filter
 } from 'lucide-react';
 import { useEmailAccounts, useEmailMessages } from '@/hooks/useEmail';
 import { useTags } from '@/hooks/useTags';

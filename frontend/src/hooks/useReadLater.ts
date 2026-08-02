@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { readLaterApi, ReadLaterCreateData, ReadLaterUpdateData, ReadLaterFilters } from '@/api/readLater';
+import { readLaterApi, ReadLaterUpdateData, ReadLaterFilters } from '@/api/readLater';
 
 export const useReadLater = (filters?: ReadLaterFilters) => {
   const queryClient = useQueryClient();

@@ -11,7 +11,7 @@
 ## 快速开始
 
 ### 1. 注册与登录
-1. 打开 http://localhost:3000
+1. 打开 http://localhost
 2. 点击「注册」，输入邮箱和密码（密码需包含大小写字母和数字）
 3. 登录后进入 Dashboard
 
@@ -147,5 +147,5 @@
 ## 联系支持
 
 - 客服工单：应用内「设置」→「帮助与反馈」
-- 支持邮箱：support@example.com
+- 问题反馈：https://github.com/motuo520/grzhishiku/issues
 - 社区论坛：https://github.com/motuo520/grzhishiku/discussions

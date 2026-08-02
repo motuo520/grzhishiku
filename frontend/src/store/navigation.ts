@@ -465,10 +465,23 @@ export function getMenuIdByPath(
   pathname: string,
   menuData: Record<string, MenuData> = MENU_DATA
 ): MenuId | null {
-  const segments = pathname.toLowerCase().split('/').filter(Boolean);
+  const lowered = pathname.toLowerCase();
+  const segments = lowered.split('/').filter(Boolean);
   const first = segments[0] as MenuId | string;
   if (menuData[first as MenuId]) return first as MenuId;
-  return null;
+  // 首段匹配不到时（如简化版 /graph/*、/knowledge/*），遍历各菜单的子项，
+  // 取 item.path 与当前路径最长前缀匹配者
+  let best: { menuId: MenuId; len: number } | null = null;
+  for (const menu of Object.values(menuData)) {
+    for (const item of menu.items) {
+      const itemPath = item.path.toLowerCase();
+      const isPrefix = lowered === itemPath || lowered.startsWith(itemPath + '/');
+      if (isPrefix && itemPath.length > (best?.len ?? 0)) {
+        best = { menuId: menu.id, len: itemPath.length };
+      }
+    }
+  }
+  return best?.menuId ?? null;
 }
 
 // ── 模块 ID → 一级导航桶（buckets 传当前模式的桶列表；默认经典版） ──
@@ -524,3 +537,11 @@ export const useNavigation = create<NavigationState>()(
     }
   )
 );
+
+// 切换界面版本（简化版 ⇄ 经典版）时重置脑侧为“双脑融合”，
+// 避免上一版本残留的 brainSide（持久化在 localStorage）在新版本里过滤菜单与数据
+useSettings.subscribe((state, prev) => {
+  if (state.uiMode !== prev.uiMode) {
+    useNavigation.getState().setBrainSide('both');
+  }
+});

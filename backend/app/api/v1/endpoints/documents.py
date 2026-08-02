@@ -1,3 +1,4 @@
+import logging
 import os
 import uuid
 import shutil
@@ -12,6 +13,8 @@ from app.schemas.document import DocumentResponse, DocumentSaveToKnowledgeReques
 from app.services import document_service, tag_service
 
 router = APIRouter()
+
+logger = logging.getLogger(__name__)
 
 
 def _build_response(doc: Document) -> dict:
@@ -72,8 +75,9 @@ async def upload_document(
     try:
         with open(temp_path, "wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=f"保存上传文件失败: {e}")
+    except Exception:
+        logger.exception(f"Failed to save uploaded file {filename}")
+        raise HTTPException(status_code=400, detail="保存上传文件失败，请查看服务端日志")
     finally:
         await file.close()
 
@@ -83,8 +87,9 @@ async def upload_document(
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=f"处理文件失败: {e}")
+    except Exception:
+        logger.exception(f"Failed to process uploaded file {filename}")
+        raise HTTPException(status_code=400, detail="处理文件失败，请查看服务端日志")
 
     return _build_response(doc)
 

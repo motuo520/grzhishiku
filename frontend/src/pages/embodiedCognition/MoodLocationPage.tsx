@@ -6,7 +6,6 @@ import {
   MapPin, Loader2, Smile, Frown, CloudSun, CloudRain, Zap,
   Thermometer, Navigation, Calendar, Brain, Home, Globe
 } from 'lucide-react';
-import type { MoodLocationItem } from '@/api/embodied';
 
 const MoodLocationPage: FC = () => {
   const navigate = useNavigate();

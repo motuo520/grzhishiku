@@ -1,5 +1,5 @@
 import { FC, useState } from 'react';
-import { MessageSquare, Send, Trash2, Loader2, User } from 'lucide-react';
+import { MessageSquare, Send, Trash2, Loader2 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useCommunityPosts, useCreateCommunityPost, useDeleteCommunityPost } from '@/hooks/useCommunity';
 import { formatDistanceToNow } from '@/utils/date';

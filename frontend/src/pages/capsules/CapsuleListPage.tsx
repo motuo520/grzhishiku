@@ -1,7 +1,7 @@
 import { FC, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { Package, Plus, Lock, Unlock, Clock, Calendar, Search, Grid, List as ListIcon, User, Globe } from 'lucide-react';
+import { Package, Plus, Lock, Unlock, Calendar, Search, Grid, List as ListIcon, User, Globe } from 'lucide-react';
 import { useCapsules } from '@/hooks/useCapsules';
 
 const CapsuleListPage: FC = () => {

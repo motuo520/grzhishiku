@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   FileText, Plus, Search, Trash2, Edit3, X, Save, AlertCircle, Loader2, Tag,
-  Clock, Filter, Upload, Download, Square, CheckSquare, LayoutGrid, List, Tags,
+  Clock, Filter, Upload, Download, Square, CheckSquare, LayoutGrid, List,
 } from 'lucide-react';
 import { useNotes } from '@/hooks/useNotes';
 import { useTags } from '@/hooks/useTags';
@@ -211,7 +211,7 @@ const NotesPage: FC = () => {
   }
 
   function getExcerpt(content: string, maxLen = 120) {
-    const plain = content.replace(/[#*`\[\]()]/g, '').replace(/\s+/g, ' ').trim();
+    const plain = content.replace(/[#*`[\]()]/g, '').replace(/\s+/g, ' ').trim();
     return plain.length > maxLen ? plain.slice(0, maxLen) + '...' : plain;
   }
 

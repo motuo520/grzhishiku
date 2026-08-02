@@ -1,5 +1,6 @@
 """Email integration service - IMAP import and message extraction."""
 import imaplib
+import logging
 import email
 import uuid
 import json
@@ -12,7 +13,10 @@ from email.utils import parsedate_to_datetime
 
 from sqlalchemy.orm import Session
 
+from app.core.crypto import decrypt_secret
 from app.models.base import EmailAccount, EmailMessage, User
+
+logger = logging.getLogger(__name__)
 
 
 # Preset IMAP configurations for common providers
@@ -153,8 +157,8 @@ def connect_imap(account: EmailAccount) -> imaplib.IMAP4_SSL:
     port = account.imap_port or 993
     use_ssl = account.imap_use_ssl if account.imap_use_ssl is not None else True
 
-    # access_token stores IMAP password/app-specific code for now
-    password = account.access_token or ""
+    # access_token stores IMAP password/app-specific code (encrypted at rest)
+    password = decrypt_secret(account.access_token) or ""
 
     if use_ssl:
         mail = imaplib.IMAP4_SSL(host, port)
@@ -252,7 +256,7 @@ def sync_account(db: Session, account: EmailAccount, user: User, max_messages: i
                     db.commit()
 
             except Exception as e:
-                print(f"Failed to process email {msg_id}: {e}")
+                logger.warning(f"Failed to process email {msg_id}: {e}")
                 continue
 
         db.commit()

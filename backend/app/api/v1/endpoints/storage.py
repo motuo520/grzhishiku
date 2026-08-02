@@ -3,14 +3,39 @@ from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 from typing import List, Optional
+import base64
+import hashlib
+import hmac
 import os
 
+from app.core.config import settings
 from app.core.database import get_db
 from app.core.security import get_current_user
 from app.models.base import User
 from app.services.storage_service import StorageService, get_provider, NetdiskError
 
 router = APIRouter()
+
+
+def _sign_state(user_id: str) -> str:
+    """生成 OAuth state：base64(user_id).HMAC-SHA256 签名，防止伪造。"""
+    payload = base64.urlsafe_b64encode(user_id.encode("utf-8")).decode("ascii").rstrip("=")
+    sig = hmac.new(settings.SECRET_KEY.encode("utf-8"), payload.encode("ascii"), hashlib.sha256).hexdigest()
+    return f"{payload}.{sig}"
+
+
+def _verify_state(state: str) -> str:
+    """校验 OAuth state 签名并取出 user_id；签名不符返回 400。"""
+    payload, sep, sig = state.rpartition(".")
+    if not sep:
+        raise HTTPException(status_code=400, detail="无效的授权状态参数")
+    expected = hmac.new(settings.SECRET_KEY.encode("utf-8"), payload.encode("ascii"), hashlib.sha256).hexdigest()
+    if not hmac.compare_digest(sig, expected):
+        raise HTTPException(status_code=400, detail="授权状态校验失败，请重新发起授权")
+    try:
+        return base64.urlsafe_b64decode(payload + "=" * (-len(payload) % 4)).decode("utf-8")
+    except Exception:
+        raise HTTPException(status_code=400, detail="无效的授权状态参数")
 
 
 class PackageOut(BaseModel):
@@ -159,7 +184,7 @@ async def get_auth_url(
     if not provider_cls.is_configured():
         raise HTTPException(status_code=503, detail=f"{provider_cls.name} 尚未在服务端配置")
     try:
-        url = provider_cls.auth_url(current_user.id)
+        url = provider_cls.auth_url(_sign_state(current_user.id))
     except NetdiskError as e:
         raise HTTPException(status_code=503, detail=str(e))
     return AuthUrlOut(url=url)
@@ -176,6 +201,9 @@ async def oauth_callback(
     if not provider_cls.is_configured():
         raise HTTPException(status_code=503, detail=f"{provider_cls.name} 尚未在服务端配置")
 
+    # state 为 HMAC 签名的 user_id，先校验再换取 token，防止伪造
+    user_id = _verify_state(state)
+
     try:
         token_data = await provider_cls.exchange_token(code)
     except NetdiskError as e:
@@ -188,9 +216,6 @@ async def oauth_callback(
 
     if not access_token:
         raise HTTPException(status_code=400, detail="授权失败，未获取到 access_token")
-
-    # state 中存放 user_id
-    user_id = state
 
     account_name = None
     try:

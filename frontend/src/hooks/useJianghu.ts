@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
-import { jianghuApi, type PracticeRecordCreateData, type RelevanceCheckRequest, type ContextGuideCreateData, type ContextGuideUpdateData, type ExperimentLogCreateData, type ExperimentLogUpdateData } from '@/api/jianghu';
+import { jianghuApi, type RelevanceCheckRequest, type ContextGuideUpdateData, type ExperimentLogUpdateData } from '@/api/jianghu';
 
 const JIANGHU_KEY = 'jianghu';
 
@@ -48,7 +48,7 @@ export function useGenerateDailyReview() {
       const response = await jianghuApi.generateDailyReview(data, preferred_model);
       return response.data;
     },
-    onSuccess: (_data, variables) => {
+    onSuccess: () => {
       qc.invalidateQueries({ queryKey: [JIANGHU_KEY, 'daily-reviews'] });
       qc.invalidateQueries({ queryKey: [JIANGHU_KEY, 'knowledge-health'] });
     },

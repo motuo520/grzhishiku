@@ -1,9 +1,8 @@
 import { FC, useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Share2, Plus, Search, Trash2, RefreshCw, AlertCircle, X, Loader2,
+  Share2, Plus, Search, Trash2, AlertCircle, X, Loader2,
   Check, BookOpen, Clock, Eye, Tag, Filter, MessageCircle, Upload,
-  FileText, FileJson, FileSpreadsheet, ChevronDown, ChevronUp,
   Home, Globe, Brain,
 } from 'lucide-react';
 import { useSocialAccounts, useSocialMessages, useSocialUpload } from '@/hooks/useSocial';
@@ -170,13 +169,6 @@ const SocialPage: FC = () => {
     const text = msg.content_text || '';
     const clean = text.replace(/\s+/g, ' ').trim();
     return clean.length > maxLen ? clean.slice(0, maxLen) + '...' : clean;
-  };
-
-  const getFileIcon = (filename: string) => {
-    const ext = filename.split('.').pop()?.toLowerCase();
-    if (ext === 'json') return <FileJson className="w-4 h-4" />;
-    if (ext === 'csv') return <FileSpreadsheet className="w-4 h-4" />;
-    return <FileText className="w-4 h-4" />;
   };
 
   return (

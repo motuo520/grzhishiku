@@ -90,7 +90,7 @@ const SubMenuPanel: FC = () => {
           transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}
           className="overflow-hidden bg-bg-secondary border-b border-border-color z-30 relative"
         >
-          <div className="w-full px-6 py-3">
+          <div className="w-full px-6 py-3 max-h-[calc(100vh-10rem)] overflow-y-auto">
             <div className="flex items-center justify-between mb-3">
               <div>
                 <h2 className="text-lg font-bold text-text-primary">{bucket.label}</h2>

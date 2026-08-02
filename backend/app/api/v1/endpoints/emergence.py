@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
 from typing import List, Optional, Dict, Any
 from datetime import datetime
+import logging
 import uuid
 import json
 import re
@@ -215,12 +216,14 @@ async def _call_llm_json(
                 brain_side=brain_side,
                 preferred_model=preferred_model,
             )
-        except ValueError as e:
-            raise HTTPException(status_code=500, detail=str(e))
+        except ValueError:
+            logging.getLogger(__name__).exception("LLM call failed")
+            raise HTTPException(status_code=500, detail="处理失败，请查看服务端日志")
         except HTTPException:
             raise
-        except Exception as e:
-            raise HTTPException(status_code=503, detail=f"AI 服务暂时不可用：{e}")
+        except Exception:
+            logging.getLogger(__name__).exception("LLM provider unavailable")
+            raise HTTPException(status_code=503, detail="AI 服务暂时不可用，请稍后重试")
 
         try:
             cleaned = (text or "").strip()
