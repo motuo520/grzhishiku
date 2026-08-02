@@ -1,6 +1,6 @@
 {
-  "name": "问墨 Wenmo",
-  "short_name": "问墨",
+  "name": "钤记 Qianji",
+  "short_name": "钤记",
   "description": "本地优先的开源个人知识库：存进来、自动理好、一句话问出来。",
   "start_url": "/",
   "display": "standalone",

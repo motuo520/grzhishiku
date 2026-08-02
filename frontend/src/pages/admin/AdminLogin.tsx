@@ -50,7 +50,7 @@ export default function AdminLogin() {
             <Shield className="w-8 h-8 text-admin-primary" />
           </div>
           <h1 className="text-2xl font-bold text-white mb-2">管理员登录</h1>
-          <p className="text-admin-muted">问墨管理后台</p>
+          <p className="text-admin-muted">钤记管理后台</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">

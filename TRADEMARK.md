@@ -1,6 +1,6 @@
 # 商标声明 / Trademark Notice
 
-「个人第二大脑」、「第二大脑」、"Personal Second Brain"、"grzhishiku.com" 及其相关 LOGO、图形标识（以下统称"商标"）是项目运营方的商标或标识。
+「钤记」、"Qianji"、"grzhishiku.com" 及其相关 LOGO、图形标识（朱砂印章图标等，以下统称"商标"）是项目运营方的商标或标识。
 
 本仓库中的源代码依据 [AGPL-3.0](LICENSE) 授权，**但商标不随代码一并授权**。任何人不得：
 
@@ -12,7 +12,7 @@
 
 ---
 
-"Personal Second Brain" (in Chinese: 个人第二大脑 / 第二大脑), "grzhishiku.com", and the related logos and graphic marks (collectively, the "Trademarks") are trademarks or identifiers of the project operator.
+"Qianji" (in Chinese: 钤记), "grzhishiku.com", and the related logos and graphic marks (including the cinnabar seal icon, collectively the "Trademarks") are trademarks or identifiers of the project operator.
 
 The source code in this repository is licensed under [AGPL-3.0](LICENSE). **The Trademarks are not licensed under AGPL-3.0.** No one may, without prior written permission:
 

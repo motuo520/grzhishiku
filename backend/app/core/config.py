@@ -1,23 +1,23 @@
+import os
 from pydantic_settings import BaseSettings
-from pydantic import model_validator
 from functools import lru_cache
 import secrets
 import warnings
 
 class Settings(BaseSettings):
-    APP_NAME: str = "Wenmo"
-    DEBUG: bool = True
+    APP_NAME: str = "Qianji"
+    DEBUG: bool = False
     
     # Environment
     ENV: str = "development"
     
     # Database
     DATABASE_URL: str = "sqlite:///./psb.db"
-    # 生产环境必须设置强密钥；开发环境若为空则跳过数据库加密层。
+    # 为空时自动生成并持久化到数据目录 .secrets/（见文件末尾兜底逻辑）。
     DATABASE_ENCRYPT_KEY: str = ""
     
     # Security
-    # 生产环境必须设置强随机密钥；开发环境为空时使用临时密钥并发出警告。
+    # 为空时自动生成并持久化到数据目录 .secrets/；生产环境建议显式设置。
     SECRET_KEY: str = ""
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24  # 24 hours
     REFRESH_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 7  # 7 days
@@ -27,8 +27,8 @@ class Settings(BaseSettings):
     ADMIN_SECRET_KEY: str = ""
     ADMIN_ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 8  # 8 hours
     
-    # Redis
-    REDIS_URL: str = "redis://localhost:6379/0"
+    # MCP server（SSE，挂载在 /api/v1/mcp，需用户 JWT）；默认关闭
+    MCP_ENABLED: bool = False
 
     # Local LLM
     OLLAMA_BASE_URL: str = "http://localhost:11434"
@@ -45,9 +45,8 @@ class Settings(BaseSettings):
 
     # Embeddings
     OLLAMA_EMBED_MODEL: str = "nomic-embed-text"
-    CHROMADB_PERSIST_DIR: str = "./chroma_db"
-    EMBEDDING_DIMENSION: int = 896
-    EMBEDDING_FALLBACK_DIMENSION: int = 896
+    EMBEDDING_DIMENSION: int = 768
+    EMBEDDING_FALLBACK_DIMENSION: int = 768
 
     
     # URLs
@@ -85,23 +84,15 @@ class Settings(BaseSettings):
     # the directory exists, the API server also serves the SPA at "/" with
     # index.html fallback — the frontend then loads everything same-origin.
     SERVE_FRONTEND_DIR: str = ""
+
+    # 上传体积上限（MB），超出返回 413
+    MAX_UPLOAD_MB: int = 100
     
     class Config:
         env_file = ".env"
         case_sensitive = True
         # 忽略 .env 中历史遗留的未知键（如已下线的云厂商/支付配置）
         extra = "ignore"
-    
-    @model_validator(mode='after')
-    def validate_production(self):
-        if self.ENV == "production":
-            if not self.SECRET_KEY:
-                raise ValueError("SECRET_KEY must be set in production")
-            if not self.ADMIN_SECRET_KEY:
-                raise ValueError("ADMIN_SECRET_KEY must be set in production")
-            if not self.DATABASE_ENCRYPT_KEY:
-                raise ValueError("DATABASE_ENCRYPT_KEY must be set in production")
-        return self
 
 @lru_cache()
 def get_settings() -> Settings:
@@ -109,29 +100,67 @@ def get_settings() -> Settings:
 
 settings = get_settings()
 
-# Development safety net: if secrets are left empty, generate ephemeral keys and
-# warn loudly. Production must set real keys before startup.
-if settings.ENV != "production":
-    if not settings.SECRET_KEY:
+
+def _data_dir_from_database_url(url: str) -> str:
+    """从 DATABASE_URL 推导数据目录。
+
+    sqlite:////data/psb.db → /data；sqlite:///./psb.db → 当前目录。
+    非 sqlite 或无法解析时回退为当前目录。
+    """
+    prefix = "sqlite:///"
+    if not url.startswith(prefix):
+        return "."
+    path = url[len(prefix):]
+    if not path or path == ":memory:":
+        return "."
+    return os.path.dirname(path) or "."
+
+
+def _load_or_create_secret(name: str) -> str:
+    """从数据目录 .secrets/<name> 读取密钥；文件不存在则生成并写入（权限 0o600）。
+
+    文件读写异常时回退为纯临时密钥并打 warning。
+    """
+    secrets_dir = os.path.join(_data_dir_from_database_url(settings.DATABASE_URL), ".secrets")
+    secret_path = os.path.join(secrets_dir, name)
+    try:
+        if os.path.isfile(secret_path):
+            with open(secret_path, "r", encoding="utf-8") as f:
+                value = f.read().strip()
+            if value:
+                return value
+        value = secrets.token_urlsafe(32)
+        os.makedirs(secrets_dir, exist_ok=True)
+        fd = os.open(secret_path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            f.write(value + "\n")
+        return value
+    except OSError as exc:
         warnings.warn(
-            "SECRET_KEY is empty in development; using an ephemeral key. "
-            "Set a strong SECRET_KEY before deploying to production.",
+            f"{name} could not be read from or persisted to {secret_path} ({exc}); "
+            "using an ephemeral key for this run.",
             RuntimeWarning,
             stacklevel=2,
         )
-        settings.SECRET_KEY = secrets.token_urlsafe(32)
-    if not settings.ADMIN_SECRET_KEY:
-        warnings.warn(
-            "ADMIN_SECRET_KEY is empty in development; using an ephemeral key. "
-            "Set a strong ADMIN_SECRET_KEY before deploying to production.",
-            RuntimeWarning,
-            stacklevel=2,
-        )
-        settings.ADMIN_SECRET_KEY = secrets.token_urlsafe(32)
-    if not settings.DATABASE_ENCRYPT_KEY:
-        warnings.warn(
-            "DATABASE_ENCRYPT_KEY is empty; database encryption is disabled. "
-            "Set a strong key before deploying to production.",
-            RuntimeWarning,
-            stacklevel=2,
-        )
+        return secrets.token_urlsafe(32)
+
+
+# 密钥兜底：环境变量/配置优先；为空时从数据目录 .secrets/ 读取，不存在则自动生成
+# 并持久化，保证 docker compose up -d 一条命令可用且重启后密钥不丢失。
+# 开发/生产同一套逻辑；生产环境未显式配置密钥时不再拒绝启动，只打 warning。
+_auto_secrets = [
+    name
+    for name in ("SECRET_KEY", "ADMIN_SECRET_KEY", "DATABASE_ENCRYPT_KEY")
+    if not getattr(settings, name)
+]
+for _name in _auto_secrets:
+    setattr(settings, _name, _load_or_create_secret(_name))
+if _auto_secrets:
+    warnings.warn(
+        "The following secrets were not configured; random keys have been "
+        "auto-generated and persisted under the data directory's .secrets/ "
+        f"subdirectory: {', '.join(_auto_secrets)}. "
+        "Set them explicitly via environment variables to take full control.",
+        RuntimeWarning,
+        stacklevel=2,
+    )

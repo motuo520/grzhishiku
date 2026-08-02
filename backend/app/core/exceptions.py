@@ -8,7 +8,7 @@ import logging
 logger = logging.getLogger("psb")
 
 class PSBException(Exception):
-    """Base exception for Wenmo"""
+    """Base exception for Qianji"""
     def __init__(self, message: str, status_code: int = 500, error_code: str = "INTERNAL_ERROR"):
         self.message = message
         self.status_code = status_code

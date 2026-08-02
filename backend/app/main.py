@@ -2,6 +2,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
+from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, ConfigDict, Field
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -19,6 +20,24 @@ from app.core.config import settings
 from app.core.database import engine, Base
 from app.core.exceptions import register_exception_handlers
 from app.core.metrics import get_metrics
+
+# 上传体积上限（MB）。config.py 由另一分组维护，字段落地前先用默认值 100。
+MAX_UPLOAD_BYTES = int(getattr(settings, "MAX_UPLOAD_MB", 100)) * 1024 * 1024
+
+
+class UploadSizeLimitMiddleware(BaseHTTPMiddleware):
+    """Reject requests whose declared Content-Length exceeds the upload cap."""
+
+    async def dispatch(self, request: Request, call_next):
+        content_length = request.headers.get("content-length")
+        if content_length:
+            try:
+                if int(content_length) > MAX_UPLOAD_BYTES:
+                    return JSONResponse(status_code=413, content={"detail": "请求体过大，超出上传大小限制"})
+            except ValueError:
+                pass
+        return await call_next(request)
+
 
 class StaticFilesCacheMiddleware(BaseHTTPMiddleware):
     """Add cache-control headers to static files.
@@ -148,12 +167,13 @@ async def lifespan(app: FastAPI):
                     "INSERT INTO system_configs (id, key, value_json, updated_at) VALUES (:id, :key, :val, datetime('now'))"
                 ), {"id": str(uuid.uuid4()), "key": key, "val": val})
 
-    # Load and initialize plugins, then mount the MCP SSE server
+    # Load and initialize plugins, then mount the MCP SSE server (opt-in)
     from app.mcp.server import mcp, mount_mcp
     from app.plugins.manager import plugin_manager
     plugin_manager.load_all()
     plugin_manager.initialize(app, mcp)
-    mount_mcp(app)
+    if settings.MCP_ENABLED:
+        mount_mcp(app)
 
     # Initialize background scheduler for plugin auto-sync
     from app.services.plugin_scheduler import initialize_scheduler
@@ -165,7 +185,7 @@ async def lifespan(app: FastAPI):
     await shutdown_scheduler()
 
 app = FastAPI(
-    title="Wenmo API",
+    title="Qianji API",
     description="AI-enhanced personal knowledge management system",
     version="0.1.0",
     lifespan=lifespan,
@@ -212,6 +232,7 @@ app.add_middleware(SecurityMiddleware)
 app.add_middleware(MaintenanceMiddleware)
 app.add_middleware(GZipMiddleware, minimum_size=1000)
 app.add_middleware(StaticFilesCacheMiddleware)
+app.add_middleware(UploadSizeLimitMiddleware)
 
 # TrustedHostMiddleware: restrict allowed hosts in production
 if settings.ENV == "production":
@@ -290,7 +311,7 @@ async def receive_client_error(report: ClientErrorReport):
 if not _serve_frontend_dir:
     @app.get("/", tags=["Health"])
     async def root():
-        return {"message": "Wenmo API", "version": "0.1.0"}
+        return {"message": "Qianji API", "version": "0.1.0"}
 
 @app.get("/health", tags=["Health"])
 async def health_check():

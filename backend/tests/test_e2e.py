@@ -207,4 +207,4 @@ class TestHealth:
     def test_root(self):
         response = client.get("/")
         assert response.status_code == 200
-        assert "Wenmo API" in response.json()["message"]
+        assert "Qianji API" in response.json()["message"]

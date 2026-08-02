@@ -1,7 +1,6 @@
 import { FC, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Mail, Lock, Eye, EyeOff, Loader2, ArrowRight } from 'lucide-react';
-import { setToken } from '@/api/auth';
 import { useAuth } from '@/hooks/useAuth';
 import { SealMark } from '@/components/common/BrandLogo';
 
@@ -76,19 +75,6 @@ const LoginModal: FC<LoginModalProps> = ({ isOpen, onClose }) => {
       await login({ email, password });
       onClose();
     } catch (err: any) {
-      try {
-        const resp = await fetch('http://localhost:8000/api/v1/auth/login', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email, password }),
-        });
-        const data = await resp.json();
-        if (resp.ok) {
-          setToken(data.access_token);
-          window.location.reload();
-          return;
-        }
-      } catch {}
       setFormError(formatError(err));
     }
   };
@@ -132,7 +118,7 @@ const LoginModal: FC<LoginModalProps> = ({ isOpen, onClose }) => {
             <div className="mb-3">
               <SealMark size={44} />
             </div>
-            <h1 className="text-xl font-bold text-text-primary tracking-tight">问墨</h1>
+            <h1 className="text-xl font-bold text-text-primary tracking-tight">钤记</h1>
             <p className="text-sm text-text-secondary mt-1">登录以开始使用</p>
           </div>
 

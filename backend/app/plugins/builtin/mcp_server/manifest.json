@@ -2,7 +2,7 @@
   "id": "mcp-server",
   "name": "MCP Server",
   "version": "1.0.0",
-  "description": "把问墨知识库暴露为 Model Context Protocol Server，让外部 AI Agent 通过 SSE 读写知识库。",
+  "description": "把钤记知识库暴露为 Model Context Protocol Server，让外部 AI Agent 通过 SSE 读写知识库。",
   "type": "builtin",
   "entrypoint": "plugin:McpServerPlugin",
   "enabled_default": true,

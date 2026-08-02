@@ -4,7 +4,7 @@ import * as d3 from 'd3';
 import { useQueryClient } from '@tanstack/react-query';
 import {
   Network, RefreshCw, Loader2, X, ExternalLink, Sparkles,
-  AlertTriangle, ZoomIn, ZoomOut, RotateCcw, Database, Link2, Users, Search,
+  AlertTriangle, ZoomIn, ZoomOut, RotateCcw, Database, Link2, Users, Search, Info,
 } from 'lucide-react';
 import { useGraphifyStatus, useGraphifyGraph, useGraphifyBuild, useGraphifyExplain } from '@/hooks/useGraphify';
 import type { GraphifyNode, GraphifyLink, GraphifyTextResult } from '@/api/graphify';
@@ -64,6 +64,14 @@ const GraphNetworkPage: FC = () => {
 
   const [selectedNode, setSelectedNode] = useState<GraphifyNode | null>(null);
   const [explainResult, setExplainResult] = useState<GraphifyTextResult | null>(null);
+
+  // 本地模型能力提示（可关闭，关闭状态持久化）
+  const HINT_KEY = 'graphNetworkLocalModelHintDismissed';
+  const [hintDismissed, setHintDismissed] = useState(() => localStorage.getItem(HINT_KEY) === '1');
+  const dismissHint = () => {
+    localStorage.setItem(HINT_KEY, '1');
+    setHintDismissed(true);
+  };
 
   const isBuilding = build.isPending || status?.state === 'exporting' || status?.state === 'building';
   const hasGraph = Boolean(status?.has_graph);
@@ -367,6 +375,21 @@ const GraphNetworkPage: FC = () => {
           重建图谱
         </button>
       </div>
+
+      {/* 本地模型能力提示：构建中与进度条同位，互斥显示 */}
+      {!hintDismissed && !isBuilding && (
+        <div className="absolute top-16 left-1/2 -translate-x-1/2 z-30 glass-card rounded-xl px-4 py-2.5 flex items-center gap-3 text-xs text-text-secondary max-w-xl">
+          <Info className="w-3.5 h-3.5 text-info shrink-0" />
+          <span>
+            本地小模型构建图谱的能力有限，提取效果可能不理想。可在「设置 → AI 设置」接入外部模型提升效果，或到
+            <a href="https://grzhishiku.com/" target="_blank" rel="noreferrer" className="text-info hover:underline mx-0.5">演示站「钤记」</a>
+            查看完整效果。
+          </span>
+          <button onClick={dismissHint} className="text-text-muted hover:text-text-primary shrink-0" title="不再提示">
+            <X className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      )}
 
       {/* 图例 */}
       {hasGraph && (

@@ -278,7 +278,7 @@ const WelcomePage: FC = () => {
                 是你的私有 AI 资料库
               </h2>
               <p className="text-[#b8b0a4] leading-relaxed mb-6">
-                Obsidian 的笔记很强，但 AI 是插件；Notion AI 很方便，但数据必须上云。问墨把"可自托管"和"AI 原生"做在同一个架构里。
+                Obsidian 的笔记很强，但 AI 是插件；Notion AI 很方便，但数据必须上云。钤记把"可自托管"和"AI 原生"做在同一个架构里。
               </p>
               <p className="text-[#b8b0a4] leading-relaxed">
                 这是 ChatGPT 做不到的事：让它读你的病历、合同、私人文档，并告诉你答案来自哪一页。
@@ -334,7 +334,7 @@ const WelcomePage: FC = () => {
         <div className="max-w-6xl mx-auto px-6 py-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-[#6b655c]">
           <div className="flex items-center gap-2">
             <BrandLogo size={22} dark withWordmark={false} />
-            <span>问墨 · grzhishiku.com</span>
+            <span>钤记 · grzhishiku.com</span>
           </div>
           <div className="flex items-center gap-6">
             <a href={GITHUB_URL} target="_blank" rel="noreferrer" className="hover:text-[#9a9286] transition-colors">

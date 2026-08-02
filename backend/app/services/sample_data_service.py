@@ -31,10 +31,10 @@ def seed_sample_data(db: Session, user_id: str) -> Dict[str, int]:
         db.add_all([
             Note(
                 id=str(uuid.uuid4()), user_id=user_id,
-                title="👋 欢迎使用问墨",
+                title="👋 欢迎使用钤记",
                 content=(
                     "这是你的第一条笔记。\n\n"
-                    "问墨的用法就三步：\n\n"
+                    "钤记的用法就三步：\n\n"
                     "1. **存进来**——笔记、剪藏、文件、RSS，什么都往里放\n"
                     "2. **自动理好**——AI 帮你提炼、打标、连成知识网络\n"
                     "3. **一句话问出来**——右下角 AI 助手，随时向你的知识库提问\n\n"
@@ -74,10 +74,10 @@ def seed_sample_data(db: Session, user_id: str) -> Dict[str, int]:
         db.add_all([
             BrowserClip(
                 id=str(uuid.uuid4()), user_id=user_id,
-                title="示例剪藏：问墨 GitHub 仓库",
+                title="示例剪藏：钤记 GitHub 仓库",
                 url="https://github.com/motuo520/grzhishiku",
                 domain="github.com",
-                excerpt="问墨开源主页：一键 docker compose 自托管的个人第二大脑。装上浏览器扩展后，任何网页都能一键剪藏到这里。",
+                excerpt="钤记开源主页：一键 docker compose 自托管的个人第二大脑。装上浏览器扩展后，任何网页都能一键剪藏到这里。",
             ),
             BrowserClip(
                 id=str(uuid.uuid4()), user_id=user_id,
@@ -124,8 +124,8 @@ def seed_sample_data(db: Session, user_id: str) -> Dict[str, int]:
             content_type="text",
             content_body=(
                 "给一年后的自己：\n\n"
-                "希望这时的你，已经在问墨里沉淀了真正属于自己的知识体系。\n\n"
-                "—— 来自刚注册问墨的你"
+                "希望这时的你，已经在钤记里沉淀了真正属于自己的知识体系。\n\n"
+                "—— 来自刚注册钤记的你"
             ),
             mood_emotion="hopeful",
             sealed_at=now,
