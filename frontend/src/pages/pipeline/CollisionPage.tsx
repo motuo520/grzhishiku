@@ -25,6 +25,10 @@ const CollisionPage: FC = () => {
   const [batchProgress, setBatchProgress] = useState(0);
   const [actingId, setActingId] = useState<string | null>(null);
   const [modelId, setModelId] = useState<string>('');
+  // 审批弹窗：Electron 不支持 window.prompt（调用即抛错，曾导致批准静默失效），
+  // 用内嵌弹窗同时承载确认与可选注记输入。
+  const [reviewPrompt, setReviewPrompt] = useState<{ item: PipelineItem; action: 'approve' | 'reject' } | null>(null);
+  const [feedbackText, setFeedbackText] = useState('');
 
   const { stats } = usePipelineStats(brainSide);
   const { items, isLoading: isItemsLoading, error: queryError, refetch } = usePipelineItems('collided', brainSide);
@@ -72,19 +76,17 @@ const CollisionPage: FC = () => {
     }
   };
 
-  const handleReview = async (item: PipelineItem, action: 'approve' | 'reject') => {
+  const handleReview = (item: PipelineItem, action: 'approve' | 'reject') => {
     setError(null);
-    let feedback: string | undefined;
-    if (action === 'approve') {
-      const confirmMsg = item.brain_side === 'network'
-        ? '批准将把这条网络脑碰撞洞见转入个人脑并注卡，是否继续？'
-        : '批准后将进入注卡阶段，成为个人知识库的一部分，是否继续？';
-      if (!confirm(confirmMsg)) return;
-      feedback = window.prompt('添加个人注记（可选，会保存到卡片个人语境中）：') || undefined;
-    } else {
-      if (!confirm('拒绝后这条碰撞结果将被标记为拒绝，是否继续？')) return;
-      feedback = window.prompt('拒绝原因（可选）：') || undefined;
-    }
+    setFeedbackText('');
+    setReviewPrompt({ item, action });
+  };
+
+  const confirmReview = async () => {
+    if (!reviewPrompt) return;
+    const { item, action } = reviewPrompt;
+    const feedback = feedbackText.trim() || undefined;
+    setReviewPrompt(null);
     setActingId(item.id);
     try {
       await reviewCollision.mutateAsync({ collision_id: item.content_id, action, feedback });
@@ -365,6 +367,54 @@ const CollisionPage: FC = () => {
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* 审批确认弹窗（替代 Electron 不支持的 window.prompt） */}
+      {reviewPrompt && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+          <div className="glass-card p-5 w-full max-w-md">
+            <h3 className="text-sm font-medium text-text-primary">
+              {reviewPrompt.action === 'approve' ? '批准碰撞洞见' : '拒绝碰撞结果'}
+            </h3>
+            <p className="text-xs text-text-secondary mt-2 leading-relaxed">
+              {reviewPrompt.action === 'approve'
+                ? reviewPrompt.item.brain_side === 'network'
+                  ? '批准将把这条网络脑碰撞洞见转入个人脑并注卡。'
+                  : '批准后将进入注卡阶段，成为个人知识库的一部分。'
+                : '拒绝后这条碰撞结果将被标记为拒绝。'}
+            </p>
+            <textarea
+              value={feedbackText}
+              onChange={(e) => setFeedbackText(e.target.value)}
+              rows={3}
+              autoFocus
+              placeholder={
+                reviewPrompt.action === 'approve'
+                  ? '添加个人注记（可选，会保存到卡片个人语境中）'
+                  : '拒绝原因（可选）'
+              }
+              className="mt-3 w-full px-3 py-2 bg-white/[0.04] border border-white/[0.08] rounded-[2px] text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:border-info/50 resize-none"
+            />
+            <div className="flex justify-end gap-2 mt-4">
+              <button
+                onClick={() => setReviewPrompt(null)}
+                className="px-3 py-1.5 bg-white/[0.05] border border-white/[0.08] rounded-[2px] text-xs text-text-secondary hover:bg-white/[0.08] transition-colors"
+              >
+                取消
+              </button>
+              <button
+                onClick={confirmReview}
+                className={
+                  reviewPrompt.action === 'approve'
+                    ? 'px-3 py-1.5 bg-success/10 border border-success/30 rounded-[2px] text-xs text-success hover:bg-success/20 transition-colors'
+                    : 'px-3 py-1.5 bg-danger/10 border border-danger/30 rounded-[2px] text-xs text-danger hover:bg-danger/20 transition-colors'
+                }
+              >
+                {reviewPrompt.action === 'approve' ? '批准' : '拒绝'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
