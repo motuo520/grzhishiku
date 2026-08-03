@@ -276,6 +276,9 @@ const App: FC = () => {
                   <Route path="knowledge-health" element={<KnowledgeHealthPage />} />
                   <Route path="weekly-report" element={<CognitiveWeeklyReportPage />} />
                   <Route path="challenge" element={<CognitiveChallengePage />} />
+                  <Route path="practice-records" element={<PracticeRecordsPage />} />
+                  <Route path="evolution-track" element={<EvolutionTrackPage />} />
+                  <Route path="invocation-track" element={<InvocationTrackPage />} />
                 </Route>
               </>
             )}
@@ -340,11 +343,11 @@ const App: FC = () => {
                 <Route path="network" element={<NetworkKnowledgePage />} />
                 <Route path="personal" element={<PersonalKnowledgePage />} />
                 <Route path="verify" element={<VerificationCenterPage />} />
+                <Route path="sources" element={<SourceTraceabilityPage />} />
+                <Route path="counter" element={<CounterEvidenceWallPage />} />
+                <Route path="credibility" element={<CredibilityMapPage />} />
                 <Route path="create" element={<KnowledgeCreatePage />} />
                 {/* 经典版专属子页：显式兜底，避免被 :id 吞掉显示空详情 */}
-                <Route path="sources" element={<RouteFallback />} />
-                <Route path="counter" element={<RouteFallback />} />
-                <Route path="credibility" element={<RouteFallback />} />
                 <Route path="timeliness" element={<RouteFallback />} />
                 <Route path="stats" element={<RouteFallback />} />
                 <Route path=":id" element={<KnowledgeDetail />} />
