@@ -195,6 +195,10 @@ const ExtractPage: FC = () => {
         setError(`${collidedCount} 个碰撞成功，${failed} 项失败`);
       }
       setSelectedIds(new Set());
+      if (failed === 0 && collidedCount > 0) {
+        // 全部成功：自动进入下一阶段（碰撞结果审批）
+        navigate('/pipeline/collision');
+      }
     } catch (err: any) {
       setError(err.message || '批量碰撞失败');
     } finally {

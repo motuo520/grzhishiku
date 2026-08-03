@@ -131,6 +131,10 @@ const RawMaterialsPage: FC = () => {
         setError(`${selected.length - failed} 条成功，${failed} 条失败`);
       }
       setSelectedIds(new Set());
+      if (failed === 0) {
+        // 全部成功：自动进入下一阶段，不用猜卡片去哪了
+        navigate('/pipeline/cards');
+      }
     } catch (err: any) {
       setError(err.message || '批量卡片化失败');
     } finally {

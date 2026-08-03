@@ -137,6 +137,10 @@ const CardsPage: FC = () => {
         setError(`${selected.length - failed} 张成功，${failed} 张失败`);
       }
       setSelectedIds(new Set());
+      if (failed === 0) {
+        // 全部成功：自动进入下一阶段（碰撞）
+        navigate('/pipeline/extract');
+      }
     } catch (err: any) {
       setError(err.message || '批量抽取失败');
     } finally {

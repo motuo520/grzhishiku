@@ -119,6 +119,10 @@ const CollisionPage: FC = () => {
         setError(`${selected.length - failed} 个成功，${failed} 个失败`);
       }
       setSelectedIds(new Set());
+      if (action === 'approve' && failed === 0) {
+        // 批量批准全部成功：自动进入下一阶段（注卡）
+        navigate('/pipeline/annotate');
+      }
     } catch (err: any) {
       setError(err.message || '批量操作失败');
     } finally {
