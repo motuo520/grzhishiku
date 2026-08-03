@@ -1,4 +1,5 @@
 import { FC, useState, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { settingsApi } from '@/api/settings';
 import { notesApi } from '@/api/notes';
@@ -22,6 +23,7 @@ const DataSettings: FC = () => {
   const [preview, setPreview] = useState<ImportPreviewItem[] | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
 
   const showToast = (message: string, type: 'success' | 'error') => {
     setToast({ message, type });
@@ -152,6 +154,20 @@ const DataSettings: FC = () => {
     setImportLoading(false);
     setPreview(null);
     showToast(`导入完成：成功 ${success} 条，失败 ${failed} 条`, failed === 0 ? 'success' : 'error');
+    // 单一类型且全部成功时，自动跳到产物所在列表页，不用猜东西去哪了
+    if (failed === 0 && success > 0 && preview) {
+      const typePaths: Record<string, string> = {
+        note: '/ingest/notes',
+        capsule: '/capsules/my',
+        clip: '/ingest/clipper',
+        knowledge: '/knowledge/network',
+      };
+      const types = new Set(preview.map((item) => item.type));
+      if (types.size === 1) {
+        const path = typePaths[preview[0].type];
+        if (path) navigate(path);
+      }
+    }
   };
 
   return (

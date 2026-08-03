@@ -9,6 +9,7 @@ const CapsulePlazaPage: FC = () => {
   const { capsules, isLoading, collectCapsule, isCollecting } = useCapsulePlaza();
   const [searchQuery, setSearchQuery] = useState('');
   const [collectingId, setCollectingId] = useState<string | null>(null);
+  const [collectNotice, setCollectNotice] = useState<string | null>(null);
 
   const filteredCapsules = (capsules || []).filter((capsule) => {
     if (searchQuery && !capsule.content_body.toLowerCase().includes(searchQuery.toLowerCase())) return false;
@@ -19,6 +20,9 @@ const CapsulePlazaPage: FC = () => {
     setCollectingId(id);
     try {
       await collectCapsule(id);
+      // 收藏成功但留在广场页（方便连续收藏），提示产物去向
+      setCollectNotice('已收藏，可在「我的胶囊」查看');
+      setTimeout(() => setCollectNotice(null), 3000);
     } finally {
       setCollectingId(null);
     }
@@ -31,6 +35,14 @@ const CapsulePlazaPage: FC = () => {
           <h1 className="text-2xl font-bold text-text-primary">胶囊广场</h1>
           <p className="text-sm text-text-secondary mt-1">看看大家公开封存的胶囊，收藏感兴趣的到个人脑</p>
         </div>
+        {collectNotice && (
+          <button
+            onClick={() => navigate('/capsules/my')}
+            className="px-3 py-1.5 bg-success/10 border border-success/30 rounded-[2px] text-xs text-success hover:bg-success/20 transition-colors"
+          >
+            {collectNotice} →
+          </button>
+        )}
       </div>
 
       <div className="flex items-center gap-4">

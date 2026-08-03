@@ -1,5 +1,5 @@
 import { FC, useState, useRef, useEffect, useMemo } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Upload, FileText, Link2, FileJson, Trash2, AlertCircle, Check, Loader2,
@@ -28,6 +28,7 @@ interface PreviewItem {
 
 const BatchImportPage: FC = () => {
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<ImportTab>(() => {
     const type = searchParams.get('type');
     if (type === 'notes') return 'markdown';
@@ -233,6 +234,10 @@ const BatchImportPage: FC = () => {
       }
       setResult({ success, failed });
       setPreviews([]);
+      if (failed === 0 && success > 0) {
+        // 全部成功：素材已就位，自动进入管线原始素材页衔接后续生产
+        navigate('/pipeline/raw');
+      }
     } catch (e: any) {
       addError('导入失败：' + (e.message || '未知错误'));
     } finally {

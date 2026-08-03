@@ -309,6 +309,10 @@ const BookmarksPage: FC = () => {
         setError(`${res.data.failed_count} 条书签导入失败`);
       }
       setBookmarks((prev) => prev.filter((b) => !b.selected));
+      if (res.data.failed_count === 0 && res.data.success_count > 0) {
+        // 全部成功：自动进入剪藏列表查看导入结果
+        navigate('/ingest/clipper');
+      }
     } catch (e: any) {
       setError('导入失败：' + (e.message || '未知错误'));
     } finally {

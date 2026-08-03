@@ -122,7 +122,7 @@ const EmailPage: FC = () => {
   const handleSaveToKnowledge = async (msg: EmailMessage) => {
     try {
       await saveToKnowledge({ id: msg.id, tag_ids: saveTagIds });
-      showSuccess('已保存到知识库');
+      showSuccess('已保存到 知识库 · 网络脑知识');
       setIsDetailOpen(false);
       setSaveTagIds([]);
     } catch (err: any) {

@@ -104,7 +104,7 @@ const SocialPage: FC = () => {
   const handleSaveToKnowledge = async (msg: SocialMessage) => {
     try {
       await saveToKnowledge({ id: msg.id, tag_ids: saveTagIds, brain_side: saveBrainSide });
-      showSuccess('已保存到知识库');
+      showSuccess('已保存到 知识库 · 网络脑知识');
       setIsDetailOpen(false);
       setSaveTagIds([]);
       setSaveBrainSide('network');
@@ -116,7 +116,7 @@ const SocialPage: FC = () => {
   const handleQuickSaveToKnowledge = async (msg: SocialMessage) => {
     try {
       await saveToKnowledge({ id: msg.id, tag_ids: [], brain_side: 'network' });
-      showSuccess('已保存到知识库');
+      showSuccess('已保存到 知识库 · 网络脑知识');
     } catch (err: any) {
       showError(err?.response?.data?.detail || err.message || '保存失败');
     }

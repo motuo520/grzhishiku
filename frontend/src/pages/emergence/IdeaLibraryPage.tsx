@@ -82,9 +82,12 @@ const IdeaLibraryPage: FC = () => {
   const promoteMutation = useMutation({
     mutationFn: ({ id, target_type }: { id: string; target_type: 'note' | 'capsule' | 'knowledge' }) =>
       emergenceApi.promoteIdea(id, { target_type }),
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['emergence', 'ideas'] });
       setPromotingId(null);
+      // 转化完成直接带去看产物，不用猜落在哪个二级菜单
+      const targetPaths = { note: '/ingest/notes', capsule: '/capsules/my', knowledge: '/knowledge/network' } as const;
+      navigate(targetPaths[variables.target_type]);
     },
     onError: () => setError('转化失败，请重试'),
   });

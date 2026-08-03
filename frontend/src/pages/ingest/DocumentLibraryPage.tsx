@@ -105,7 +105,7 @@ const DocumentLibraryPage: FC = () => {
   const handleSaveToKnowledge = async (id: string) => {
     try {
       await saveToKnowledge({ id, tagIds: selectedTagIds.length ? selectedTagIds : undefined });
-      showSuccess('已保存到知识库');
+      showSuccess('已保存到 知识库 · 网络脑知识');
       setSelectedTagIds([]);
     } catch (err: any) {
       showError(formatError(err) || '保存失败');

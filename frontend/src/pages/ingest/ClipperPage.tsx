@@ -236,7 +236,7 @@ const ClipperPage: FC = () => {
     if (!confirm(`确定把「${clip.title}」保存到知识库吗？`)) return;
     try {
       await saveToKnowledge(clip.id);
-      showSuccess('已保存到知识库');
+      showSuccess('已保存到 知识库 · 网络脑知识');
     } catch (err: any) {
       showError(err.message || '保存失败');
     }
