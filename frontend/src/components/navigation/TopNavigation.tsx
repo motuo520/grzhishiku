@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   Download, Network, Sparkles, Target, Package, Shield, Settings, Brain,
   LogOut, User, Search, Sun, Moon, Monitor, MessageSquare, Users, Workflow,
-  Layers, LayoutGrid,
+  Layers, LayoutGrid, Map, Calendar,
 } from 'lucide-react';
 import {
   useNavigation,
@@ -21,13 +21,14 @@ import BrandLogo from '@/components/common/BrandLogo';
 const ICON_MAP: Record<string, React.ElementType> = {
   Monitor,
   Download, Network, Sparkles, Target, Package, Shield, Settings, Brain,
-  Users, Workflow, User, MessageSquare,
+  Users, Workflow, User, MessageSquare, Map, Calendar,
 };
 
 const MENU_MODULE_MAP: Record<MenuId, string | null> = {
   ingest: null,
   pipeline: 'pipeline',
   ask: null,
+  daily: null,
   community: null,
   settings: null,
   graph: null,

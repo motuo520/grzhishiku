@@ -41,6 +41,7 @@ const MENU_MODULE_MAP: Record<MenuId, string | null> = {
   ingest: null,
   pipeline: 'pipeline',
   ask: null,
+  daily: null,
   community: null,
   settings: null,
   graph: null,

@@ -268,9 +268,16 @@ const App: FC = () => {
             {isClassic ? (
               <Route path="daily-review" element={<DailyReviewPage />} />
             ) : (
-              <Route path="daily-review" element={<ModuleLayout menuId="ask" showOverview={false} />}>
-                <Route index element={<DailyReviewPage />} />
-              </Route>
+              <>
+                {/* 旧路径重定向到「每日」模块 */}
+                <Route path="daily-review" element={<Navigate to="/daily" replace />} />
+                <Route path="daily" element={<ModuleLayout menuId="daily" />}>
+                  <Route index element={<DailyReviewPage />} />
+                  <Route path="knowledge-health" element={<KnowledgeHealthPage />} />
+                  <Route path="weekly-report" element={<CognitiveWeeklyReportPage />} />
+                  <Route path="challenge" element={<CognitiveChallengePage />} />
+                </Route>
+              </>
             )}
 
             {/* Attention（经典版） */}

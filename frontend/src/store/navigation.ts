@@ -5,15 +5,17 @@ import { useSettings } from './settings';
 export type BrainSide = 'personal' | 'network' | 'both' | 'unknown';
 
 // ── 两套菜单的模块 ID ──
-// 简化版：开源版收敛为三个动作 + 设置/社区
+// 简化版：四个动作（存进来 / 知识地图 / 每日 / 问出来）+ 社区/设置
 export type SimpleMenuId =
   | 'ingest'
   | 'pipeline'
+  | 'graph'
+  | 'daily'
   | 'ask'
   | 'community'
   | 'settings';
 
-// 经典版：旧版完整 12 模块
+// 经典版：完整 12 模块
 export type ClassicMenuId =
   | 'ingest'
   | 'graph'
@@ -30,7 +32,7 @@ export type ClassicMenuId =
 
 export type MenuId = SimpleMenuId | ClassicMenuId;
 
-export type SimpleTopNavBucketId = 'collect' | 'process' | 'ask';
+export type SimpleTopNavBucketId = 'collect' | 'process' | 'graph' | 'daily' | 'ask';
 export type ClassicTopNavBucketId = 'inbox' | 'process' | 'knowledge' | 'social';
 export type TopNavBucketId = SimpleTopNavBucketId | ClassicTopNavBucketId;
 
@@ -66,7 +68,7 @@ export interface TopNavBucket {
 // 简化版菜单（三动作）
 // ================================================================
 
-// ── 顶部导航：只保留"存进来 / 自动理好 / 一句话问出来"三个动作 ──
+// ── 顶部导航：存进来 / 自动理好 / 知识地图 / 每日 / 问出来 五个动作 ──
 export const TOP_NAV_BUCKETS_SIMPLE: TopNavBucket[] = [
   {
     id: 'collect',
@@ -85,8 +87,24 @@ export const TOP_NAV_BUCKETS_SIMPLE: TopNavBucket[] = [
     moduleIds: ['pipeline'],
   },
   {
+    id: 'graph',
+    label: '知识地图',
+    icon: 'Map',
+    description: '知识图谱可视化：全局网络、路径、报告与时间轴',
+    primaryModuleId: 'graph',
+    moduleIds: ['graph'],
+  },
+  {
+    id: 'daily',
+    label: '每日',
+    icon: 'Calendar',
+    description: 'AI 复盘你的输入与知识健康度，每天花几分钟看看自己',
+    primaryModuleId: 'daily',
+    moduleIds: ['daily'],
+  },
+  {
     id: 'ask',
-    label: '一句话问出来',
+    label: '问出来',
     icon: 'Sparkles',
     description: '向你的知识库提问，答案必须带引用出处',
     primaryModuleId: 'ask',
@@ -127,20 +145,52 @@ export const MENU_DATA_SIMPLE: Record<SimpleMenuId, MenuData> = {
       { id: 'annotate', label: '注卡', description: '为卡片注入个人语境与行动', icon: 'Pencil', path: '/pipeline/annotate', brainSide: 'personal', preferredBrainSide: 'personal' },
     ],
   },
+  graph: {
+    id: 'graph',
+    label: '知识地图',
+    icon: 'Map',
+    description: '知识图谱可视化与结构洞察',
+    defaultBrainSide: 'both',
+    items: [
+      { id: 'network', label: '知识网络', description: '全局关系图谱', icon: 'Network', path: '/graph/network', brainSide: 'both' },
+      { id: 'path', label: '路径探索', description: '发现知识路径', icon: 'Route', path: '/graph/path', brainSide: 'both' },
+      { id: 'report', label: '图谱报告', description: '知识网络的统计与结构概览', icon: 'FileText', path: '/graph/report', brainSide: 'both' },
+      { id: 'bridges', label: '跨脑桥梁', description: '连接个人脑与网络脑的关键关联', icon: 'GitMerge', path: '/graph/bridges', brainSide: 'both' },
+      { id: 'tags', label: '标签图谱', description: '标签共现关系网络', icon: 'Tag', path: '/graph/tags', brainSide: 'both' },
+      { id: 'timeline', label: '时间轴', description: '按时间回顾知识积累', icon: 'Clock', path: '/graph/timeline', brainSide: 'both' },
+    ],
+  },
+  daily: {
+    id: 'daily',
+    label: '每日',
+    icon: 'Calendar',
+    description: '每天几分钟，看看自己积累了什么',
+    defaultBrainSide: 'both',
+    items: [
+      { id: 'review', label: '每日复盘', description: '回顾今日输入，发现行为差距', icon: 'Calendar', path: '/daily', brainSide: 'both' },
+      { id: 'health', label: '知识健康', description: '查看知识体系进化分布', icon: 'HeartPulse', path: '/daily/knowledge-health', brainSide: 'both' },
+      { id: 'weekly', label: '认知周报', description: '每周认知健康报告', icon: 'FileText', path: '/daily/weekly-report', brainSide: 'both' },
+      { id: 'challenge', label: '认知挑战', description: '每日思维训练打卡', icon: 'Gamepad2', path: '/daily/challenge', brainSide: 'both' },
+      { id: 'practice', label: '实操记录', description: '记录知识落地与验证', icon: 'Dumbbell', path: '/daily/practice-records', brainSide: 'both' },
+      { id: 'evolution', label: '进化轨迹', description: '追踪知识从收集到内化', icon: 'TrendingUp', path: '/daily/evolution-track', brainSide: 'both' },
+      { id: 'invocation', label: '调用追踪', description: '统计知识被调用与践行次数', icon: 'Activity', path: '/daily/invocation-track', brainSide: 'both' },
+    ],
+  },
   ask: {
     id: 'ask',
-    label: '一句话问出来',
+    label: '问出来',
     icon: 'Sparkles',
     description: '用 AI 向你的知识库提问',
     defaultBrainSide: 'both',
     items: [
       { id: 'query', label: 'AI 问答', description: '用自然语言提问，答案带引用', icon: 'Sparkles', path: '/graph/query', brainSide: 'both' },
-      { id: 'network', label: '知识网络', description: '全局关系图谱', icon: 'Network', path: '/graph/network', brainSide: 'both' },
       { id: 'knowledge-network', label: '网络脑知识', description: '从外部采集的可验证知识', icon: 'Globe', path: '/knowledge/network', brainSide: 'network' },
       { id: 'knowledge-personal', label: '个人脑知识', description: '个人思考与沉淀的知识单元', icon: 'User', path: '/knowledge/personal', brainSide: 'personal' },
       { id: 'verify', label: '做到了没', description: '多模型验证与共识裁决', icon: 'CheckCircle', path: '/knowledge/verify', brainSide: 'both' },
+      { id: 'sources', label: '来源追溯', description: '按域名聚合的来源可信度', icon: 'GitCommit', path: '/knowledge/sources', brainSide: 'both' },
+      { id: 'counter', label: '反证墙', description: '争议与证伪知识的集中审查', icon: 'XCircle', path: '/knowledge/counter', brainSide: 'both' },
+      { id: 'credibility', label: '可信度地图', description: '来源域名的可信度分布', icon: 'Map', path: '/knowledge/credibility', brainSide: 'both' },
       { id: 'capsules', label: '未来的信', description: '封存记忆，未来开启', icon: 'Package', path: '/capsules/my', brainSide: 'personal' },
-      { id: 'daily-review', label: '每日复盘', description: '回顾今日输入，发现行为差距', icon: 'Calendar', path: '/daily-review', brainSide: 'both' },
     ],
   },
   community: {
@@ -181,11 +231,11 @@ export const QUICK_ACTIONS_SIMPLE: Pick<SubMenuItem, 'id' | 'label' | 'icon' | '
 ];
 
 // ================================================================
-// 经典版菜单（旧版完整 12 模块，4 个一级导航桶）
+// 经典版菜单（完整 12 模块，4 个一级导航桶）
 // ================================================================
 
 // ── 一级导航桶：把 12+ 个模块收敛成 4 个可理解的入口 ──
-// “我/设置”统一放在左侧边栏底部菜单，不再占用顶部导航
+// “我/设置/会员/账单”统一放在左侧边栏底部菜单，不再占用顶部导航
 export const TOP_NAV_BUCKETS_CLASSIC: TopNavBucket[] = [
   {
     id: 'inbox',
@@ -465,23 +515,23 @@ export function getMenuIdByPath(
   pathname: string,
   menuData: Record<string, MenuData> = MENU_DATA
 ): MenuId | null {
-  const lowered = pathname.toLowerCase();
-  const segments = lowered.split('/').filter(Boolean);
-  const first = segments[0] as MenuId | string;
-  if (menuData[first as MenuId]) return first as MenuId;
-  // 首段匹配不到时（如简化版 /graph/*、/knowledge/*），遍历各菜单的子项，
-  // 取 item.path 与当前路径最长前缀匹配者
-  let best: { menuId: MenuId; len: number } | null = null;
-  for (const menu of Object.values(menuData)) {
-    for (const item of menu.items) {
-      const itemPath = item.path.toLowerCase();
-      const isPrefix = lowered === itemPath || lowered.startsWith(itemPath + '/');
-      if (isPrefix && itemPath.length > (best?.len ?? 0)) {
-        best = { menuId: menu.id, len: itemPath.length };
+  // 先按菜单项路径匹配（最长优先）：二级菜单允许跨路径前缀调动
+  // （如简化版「问出来」桶里的 /graph/query），归属以菜单配置为准
+  let best: { id: MenuId; len: number } | null = null;
+  for (const [id, mod] of Object.entries(menuData)) {
+    for (const item of mod.items) {
+      if (pathname === item.path || pathname.startsWith(item.path + '/')) {
+        if (!best || item.path.length > best.len) best = { id: id as MenuId, len: item.path.length };
       }
     }
   }
-  return best?.menuId ?? null;
+  if (best) return best.id;
+
+  const segments = pathname.toLowerCase().split('/').filter(Boolean);
+  const first = segments[0] as MenuId | string;
+  if (menuData[first as MenuId]) return first as MenuId;
+  // 个人中心相关独立页面统一归入 settings 桶
+  return null;
 }
 
 // ── 模块 ID → 一级导航桶（buckets 传当前模式的桶列表；默认经典版） ──
