@@ -374,6 +374,12 @@ const GraphNetworkPage: FC = () => {
           </div>
         )}
 
+        {hasGraph && (
+          <div className="pointer-events-auto glass-card px-2 py-1 rounded-xl">
+            <ModelSelector value={modelId} onChange={setModelId} taskType="analysis" className="w-44" />
+          </div>
+        )}
+
         <button
           onClick={handleBuild}
           disabled={isBuilding}
