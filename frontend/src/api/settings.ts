@@ -66,5 +66,8 @@ export const settingsApi = {
   changePassword: (data: ChangePasswordData) => api.post('/api/v1/auth/change-password', data),
   deleteAccount: (data: DeleteAccountData) => api.delete('/api/v1/users/me/account', { data }),
   exportData: () => api.post<Blob>('/api/v1/users/me/export', null, { responseType: 'blob' }),
+  // 全量数据包合并导入（/me/export 产物）：按 id 合并、新者胜、不删本地数据
+  importData: (payload: any) =>
+    api.post<{ success: boolean; inserted: number; updated: number; skipped: number }>('/api/v1/users/me/import', payload),
   clearData: () => api.delete('/api/v1/users/me/data'),
 };

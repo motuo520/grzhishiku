@@ -7,9 +7,10 @@ import {
 } from 'lucide-react';
 import { useNotes } from '@/hooks/useNotes';
 import { useClips } from '@/hooks/useClips';
+import { settingsApi } from '@/api/settings';
 import type { NoteCreateData } from '@/api/notes';
 import type { ClipCreateData } from '@/api/clips';
-import { parseBookmarksHtml, parseLocalJson, parseLocalCsv } from '@/utils/importParsers';
+import { getDomainFromUrl, parseBookmarksHtml, parseLocalJson, parseLocalCsv, detectFullExport, FULL_EXPORT_TABLE_LABELS, type FullExportDetection } from '@/utils/importParsers';
 
 type ImportTab = 'markdown' | 'jsoncsv' | 'urls' | 'local';
 type PreviewType = 'note' | 'clip';
@@ -37,6 +38,8 @@ const BatchImportPage: FC = () => {
     return 'markdown';
   });
   const [previews, setPreviews] = useState<PreviewItem[]>([]);
+  const [fullExport, setFullExport] = useState<FullExportDetection | null>(null);
+  const [exportResult, setExportResult] = useState<{ inserted: number; updated: number; skipped: number } | null>(null);
   const [textInput, setTextInput] = useState('');
   const [isParsing, setIsParsing] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
@@ -54,6 +57,8 @@ const BatchImportPage: FC = () => {
   useEffect(() => {
     setResult(null);
     setError(null);
+    setFullExport(null);
+    setExportResult(null);
   }, [activeTab]);
 
   const addError = (message: string) => {
@@ -112,6 +117,15 @@ const BatchImportPage: FC = () => {
         if (ext === 'html' || ext === 'htm') {
           imported = parseBookmarksHtml(text);
         } else if (ext === 'json') {
+          // 全量数据包（/me/export 产物）优先识别：走 merge 导入，不拆条目
+          try {
+            const fe = detectFullExport(JSON.parse(text));
+            if (fe) {
+              setFullExport(fe);
+              setExportResult(null);
+              continue;
+            }
+          } catch { /* 不是合法 JSON，交给逐条解析报错 */ }
           imported = parseLocalJson(text, baseName);
         } else if (ext === 'csv') {
           imported = parseLocalCsv(text);
@@ -151,6 +165,18 @@ const BatchImportPage: FC = () => {
     try {
       let imported: import('@/utils/importParsers').ImportItem[] = [];
       if (text.startsWith('[') || text.startsWith('{')) {
+        // 全量数据包优先识别
+        if (text.startsWith('{')) {
+          try {
+            const fe = detectFullExport(JSON.parse(text));
+            if (fe) {
+              setFullExport(fe);
+              setExportResult(null);
+              setTextInput('');
+              return;
+            }
+          } catch { /* 落到逐条解析 */ }
+        }
         imported = parseLocalJson(text);
       } else {
         imported = parseLocalCsv(text);
@@ -201,6 +227,21 @@ const BatchImportPage: FC = () => {
   };
 
   const handleImport = async () => {
+    // 全量数据包：直接走合并导入，不拆条目
+    if (fullExport) {
+      setIsImporting(true);
+      setExportResult(null);
+      try {
+        const res = await settingsApi.importData(fullExport.payload);
+        setExportResult(res.data);
+        setFullExport(null);
+      } catch (e: any) {
+        addError('数据包导入失败：' + (e?.response?.data?.detail || e.message || '未知错误'));
+      } finally {
+        setIsImporting(false);
+      }
+      return;
+    }
     if (previews.length === 0) return;
     setIsImporting(true);
     setResult(null);
@@ -288,6 +329,50 @@ const BatchImportPage: FC = () => {
           <Check className="w-4 h-4" />
           导入完成：成功 {result.success} 条，失败 {result.failed} 条
         </motion.div>
+      )}
+
+      {exportResult && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="flex items-center gap-2 px-4 py-3 rounded-[2px] bg-success/10 border border-success/30 text-success text-sm"
+        >
+          <Check className="w-4 h-4" />
+          数据包合并完成：新增 {exportResult.inserted} 条，更新 {exportResult.updated} 条，跳过 {exportResult.skipped} 条（已按类型归入笔记/剪藏/知识单元等各自列表）
+        </motion.div>
+      )}
+
+      {/* 全量数据包识别卡 */}
+      {fullExport && (
+        <div className="glass-card p-6 space-y-4 border-info/30">
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-semibold text-text-primary">检测到完整数据包（共 {fullExport.total} 条）</h2>
+            <button onClick={() => setFullExport(null)} className="text-xs text-danger hover:text-danger/80 transition-colors">
+              移除
+            </button>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {Object.entries(fullExport.counts).map(([key, count]) => (
+              <span key={key} className="px-2.5 py-1 rounded-[2px] text-xs bg-info/10 text-info border border-info/25">
+                {FULL_EXPORT_TABLE_LABELS[key] || key} {count}
+              </span>
+            ))}
+          </div>
+          <p className="text-xs text-text-muted">
+            数据包按 id 合并导入：已存在的条目以较新者为准，不会删除本地数据，可重复导入。
+          </p>
+          <div className="flex justify-end">
+            <button
+              onClick={handleImport}
+              disabled={isImporting}
+              className="btn-primary flex items-center gap-2"
+            >
+              {isImporting && <Loader2 className="w-4 h-4 animate-spin" />}
+              <Download className="w-4 h-4" />
+              合并导入数据包
+            </button>
+          </div>
+        </div>
       )}
 
       {/* Tabs */}
@@ -395,7 +480,7 @@ const BatchImportPage: FC = () => {
               <div className="text-xs text-text-muted space-y-1">
                 <p>• .html / .htm：浏览器书签导出文件 → 导入为剪藏</p>
                 <p>• .md / .txt / .markdown → 导入为笔记</p>
-                <p>• .json：支持数组或 {'{ notes, clips }'} 结构</p>
+                <p>• .json：数组、{'{ notes, clips }'} 结构，或「数据导出」产生的完整数据包（自动识别，按 id 合并导入）</p>
                 <p>• .csv：首行 title,content,tags 或 title,url,domain,excerpt</p>
               </div>
             </div>

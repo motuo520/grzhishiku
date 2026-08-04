@@ -22,6 +22,45 @@ export function getDomainFromUrl(url: string): string {
   }
 }
 
+// ─── 全量数据包识别（/users/me/export 的产物） ───
+// 结构：{ exported_at, user, total_records, data: { notes: [...], clips: [...], ... } }
+// 此前批量导入不认识这层包装，会把整个 JSON 揉成一条笔记（"全是笔记/不知去向"）。
+export interface FullExportDetection {
+  payload: any; // 原样转发给 /users/me/import（merge 导入，幂等）
+  counts: Record<string, number>;
+  total: number;
+}
+
+export const FULL_EXPORT_TABLE_LABELS: Record<string, string> = {
+  notes: '笔记',
+  clips: '剪藏',
+  knowledge_units: '知识单元',
+  capsules: '胶囊',
+  sticky_notes: '便签',
+  read_later: '稍后读',
+  documents: '文档',
+  rss_feeds: 'RSS 源',
+  tags: '标签',
+  content_tags: '标签关联',
+};
+
+export function detectFullExport(parsed: any): FullExportDetection | null {
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return null;
+  const data = parsed.data;
+  if (!data || typeof data !== 'object' || Array.isArray(data)) return null;
+  const counts: Record<string, number> = {};
+  let total = 0;
+  for (const key of Object.keys(FULL_EXPORT_TABLE_LABELS)) {
+    const v = data[key];
+    if (Array.isArray(v) && v.length > 0) {
+      counts[key] = v.length;
+      total += v.length;
+    }
+  }
+  if (total === 0) return null;
+  return { payload: parsed, counts, total };
+}
+
 export function parseBookmarksHtml(html: string): ImportItem[] {
   const items: ImportItem[] = [];
   try {

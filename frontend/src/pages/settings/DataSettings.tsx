@@ -6,6 +6,7 @@ import { notesApi } from '@/api/notes';
 import { capsulesApi } from '@/api/capsules';
 import { clipsApi } from '@/api/clips';
 import { knowledgeApi } from '@/api/knowledge';
+import { detectFullExport } from '@/utils/importParsers';
 import { Download, Upload, Trash2, AlertTriangle, Check, Loader2, FileJson, FileText } from 'lucide-react';
 import { downloadBlob, filenameFromDisposition } from '@/utils/download';
 
@@ -107,6 +108,20 @@ const DataSettings: FC = () => {
     if (!file) return;
     setImportLoading(true);
     try {
+      // 全量数据包（/me/export 产物）优先识别：走 merge 导入，不拆条目预览
+      const text = await file.text();
+      let fe = null;
+      try {
+        fe = detectFullExport(JSON.parse(text));
+      } catch { /* 不是 JSON，走逐条预览 */ }
+      if (fe) {
+        const res = await settingsApi.importData(fe.payload);
+        await Promise.all(['notes', 'capsules', 'clips', 'knowledge'].map((key) =>
+          queryClient.invalidateQueries({ queryKey: [key], refetchType: 'all' })
+        ));
+        showToast(`数据包合并完成：新增 ${res.data.inserted} 条，更新 ${res.data.updated} 条，跳过 ${res.data.skipped} 条`, 'success');
+        return;
+      }
       const items = await parseImportFile(file);
       setPreview(items);
     } catch (error: any) {
