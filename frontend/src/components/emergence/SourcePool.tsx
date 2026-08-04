@@ -17,6 +17,7 @@ import {
   Database,
   CheckSquare,
   Square,
+  Trash2,
 } from 'lucide-react';
 import { emergenceApi, EmergenceSource, type BrainSide, type SelectedSource } from '@/api/emergence';
 
@@ -78,6 +79,8 @@ interface SourcePoolProps {
   onSelectionChange?: (ids: string[]) => void;
   selectedSources?: SelectedSource[];
   onSelectedSourcesChange?: (sources: SelectedSource[]) => void;
+  /** 提供时卡片右上角显示删除按钮（素材池页用；工具页不传则无变化） */
+  onDeleteItem?: (item: EmergenceSource) => void;
 }
 
 const SourcePool: FC<SourcePoolProps> = ({
@@ -85,6 +88,7 @@ const SourcePool: FC<SourcePoolProps> = ({
   onSelectionChange,
   selectedSources: externalSelectedSources,
   onSelectedSourcesChange,
+  onDeleteItem,
 }) => {
   const isControlledBySources = externalSelectedSources !== undefined;
   const selectedIds = isControlledBySources
@@ -248,6 +252,7 @@ const SourcePool: FC<SourcePoolProps> = ({
               item={item}
               selected={selectedIds.includes(item.id)}
               onToggle={() => toggleSelection(item.id)}
+              onDelete={onDeleteItem ? () => onDeleteItem(item) : undefined}
             />
           ))}
         </div>
@@ -260,9 +265,10 @@ interface SourceCardProps {
   item: EmergenceSource;
   selected: boolean;
   onToggle: () => void;
+  onDelete?: () => void;
 }
 
-const SourceCard: FC<SourceCardProps> = ({ item, selected, onToggle }) => {
+const SourceCard: FC<SourceCardProps> = ({ item, selected, onToggle, onDelete }) => {
   const Icon = TYPE_ICON_MAP[item.type] || Database;
   const typeLabel = SOURCE_TYPES.find((t) => t.key === item.type)?.label || item.type;
 
@@ -275,6 +281,18 @@ const SourceCard: FC<SourceCardProps> = ({ item, selected, onToggle }) => {
           : 'bg-white/[0.02] border-white/[0.06] hover:border-white/[0.12]'
       }`}
     >
+      {onDelete && (
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onDelete();
+          }}
+          title="删除该素材"
+          className="absolute top-2 right-2 p-1.5 rounded-lg text-text-muted hover:text-danger hover:bg-danger/10 transition-colors"
+        >
+          <Trash2 className="w-3.5 h-3.5" />
+        </button>
+      )}
       <div className="flex items-start gap-3">
         <input
           type="checkbox"

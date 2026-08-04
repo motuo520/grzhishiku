@@ -94,6 +94,7 @@ export const knowledgeApi = {
   }) => api.get<KnowledgeUnit[]>('/api/v1/knowledge/', { params }),
   create: (data: KnowledgeCreateData) => api.post<KnowledgeUnit>('/api/v1/knowledge/', data),
   get: (id: string) => api.get<KnowledgeUnit>(`/api/v1/knowledge/${id}`),
+  delete: (id: string) => api.delete(`/api/v1/knowledge/${id}`),
   update: (id: string, data: KnowledgeUpdateData) =>
     api.patch<KnowledgeUnit>(`/api/v1/knowledge/${id}`, data),
   verify: (id: string, preferred_model?: string) =>
