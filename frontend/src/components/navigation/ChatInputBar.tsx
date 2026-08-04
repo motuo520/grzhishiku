@@ -127,12 +127,16 @@ const ChatInputBar: FC<ChatInputBarProps> = ({ sidebarOpen = true, onLoginClick 
 
     try {
       const token = apiClient.getToken();
+      // 停止按钮依赖这个 controller（此前从未创建/接线，停止形同虚设）
+      const abortController = new AbortController();
+      abortControllerRef.current = abortController;
       const response = await fetch('/api/v1/llm/chat', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': token ? `Bearer ${token}` : '',
         },
+        signal: abortController.signal,
         body: JSON.stringify({
           message: userMsg.content,
           brain_side: effectiveBrain,
@@ -159,7 +163,18 @@ const ChatInputBar: FC<ChatInputBarProps> = ({ sidebarOpen = true, onLoginClick 
       if (reader) {
         let streamDone = false;
         while (!streamDone) {
-          const { done, value } = await reader.read();
+          // 闲置看门狗：SSE 半开（休眠/断网但连接未断）时 read() 永不 resolve，
+          // isStreaming 卡死导致输入框一直 disabled（"点不出光标"）。
+          // 2 分钟无数据视为挂起：取消读取、抛错走 catch，finally 复位状态。
+          const { done, value } = await Promise.race([
+            reader.read(),
+            new Promise<never>((_, reject) =>
+              setTimeout(() => {
+                reader.cancel().catch(() => {});
+                reject(new Error('模型响应超时（2 分钟无数据），请重试'));
+              }, 120000)
+            ),
+          ]);
           streamDone = done;
           if (done) break;
 
@@ -190,6 +205,13 @@ const ChatInputBar: FC<ChatInputBarProps> = ({ sidebarOpen = true, onLoginClick 
         prev.map((m) => (m.id === aiMsgId ? { ...m, content: fullContent, isStreaming: false } : m))
       );
     } catch (error: any) {
+      // 用户主动停止：保留已生成的部分内容，不当错误处理
+      if (error?.name === 'AbortError') {
+        setMessages((prev) =>
+          prev.map((m) => (m.id === aiMsgId ? { ...m, isStreaming: false } : m))
+        );
+        return;
+      }
       const errMsg = error?.message || '未知错误';
       let displayMsg = '抱歉，连接出现问题。';
 
@@ -212,6 +234,7 @@ const ChatInputBar: FC<ChatInputBarProps> = ({ sidebarOpen = true, onLoginClick 
       );
       showToast(displayMsg, 'error');
     } finally {
+      abortControllerRef.current = null;
       setIsStreaming(false);
     }
   };
