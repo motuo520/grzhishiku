@@ -47,9 +47,10 @@ const ModuleLayout: FC<ModuleLayoutProps> = ({ menuId, showOverview = true }) =>
   const allItems = menu?.items || [];
   const { brainSide, setBrainSide } = useNavigation();
   const isClassic = useSettings((s) => s.uiMode === 'classic');
-  // 简化版标签栏展示全部子项，不按脑侧过滤（与 SubMenuPanel 下拉索引一致）；
-  // 经典版保留脑侧过滤，避免跨版本切换后残留的 brainSide 把菜单项藏掉
-  const visibleItems = isClassic ? getVisibleItems(allItems, brainSide) : allItems;
+  // 顶部二级菜单只在经典版且暴露脑侧切换的模块（社会大脑/具身认知）里按脑侧过滤；
+  // 其余模块显示全部二级项——否则进入某页自动切脑侧后，顶部菜单会缺项
+  const showBrainToggle = isClassic && (menuId === 'social-brain' || menuId === 'embodied-cognition');
+  const visibleItems = showBrainToggle ? getVisibleItems(allItems, brainSide) : allItems;
   const autoSwitchedRef = useRef<Set<string>>(new Set());
   const { data: features } = useSystemFeatures();
 
@@ -127,8 +128,8 @@ const ModuleLayout: FC<ModuleLayoutProps> = ({ menuId, showOverview = true }) =>
             );
           })}
         </div>
-        {/* 脑侧过滤开关：仅经典版显示；条目被脑侧过滤隐藏时，用户可在此切回“双脑融合”显示全部 */}
-        {isClassic && (
+        {/* 脑侧过滤开关：仅暴露脑侧切换的模块显示；条目被脑侧过滤隐藏时，用户可在此切回“双脑融合”显示全部 */}
+        {showBrainToggle && (
           <div className="flex-shrink-0">
             <BrainSideToggle value={brainSide} onChange={setBrainSide} size="sm" />
           </div>

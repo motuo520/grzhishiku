@@ -2,6 +2,7 @@ import { FC, useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Sparkles, Send, Loader2, AlertCircle } from 'lucide-react';
 import { useGraphifyStatus, useGraphifyQuery } from '@/hooks/useGraphify';
+import ModelSelector from '@/components/llm/ModelSelector';
 
 interface QAItem {
   question: string;
@@ -22,6 +23,7 @@ const GraphQueryPage: FC = () => {
 
   const [question, setQuestion] = useState('');
   const [history, setHistory] = useState<QAItem[]>([]);
+  const [modelId, setModelId] = useState<string>('');
 
   const ask = (q: string) => {
     const trimmed = q.trim();
@@ -32,7 +34,7 @@ const GraphQueryPage: FC = () => {
       next.delete('q');
       setSearchParams(next, { replace: true });
     }
-    query.mutate(trimmed, {
+    query.mutate({ question: trimmed, preferred_model: modelId || undefined }, {
       onSuccess: (data) => {
         setHistory((prev) => [
           { question: trimmed, answer: data.ok ? (data.result || '') : (data.error || '查询失败'), ok: data.ok },
@@ -82,6 +84,7 @@ const GraphQueryPage: FC = () => {
 
         {/* 提问输入区 */}
         <div className="card flex items-center gap-3">
+          <ModelSelector value={modelId} onChange={setModelId} taskType="analysis" className="w-44 shrink-0" />
           <input
             type="text"
             value={question}

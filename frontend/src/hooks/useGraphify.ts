@@ -33,8 +33,8 @@ export const useGraphifyBuild = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async () => {
-      const response = await graphifyApi.build();
+    mutationFn: async (preferred_model?: string) => {
+      const response = await graphifyApi.build(preferred_model);
       return response.data;
     },
     onSuccess: () => {
@@ -46,8 +46,8 @@ export const useGraphifyBuild = () => {
 
 export const useGraphifyQuery = () => {
   return useMutation({
-    mutationFn: async (question: string) => {
-      const response = await graphifyApi.query(question);
+    mutationFn: async ({ question, preferred_model }: { question: string; preferred_model?: string }) => {
+      const response = await graphifyApi.query(question, preferred_model);
       return response.data;
     },
   });

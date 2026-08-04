@@ -120,7 +120,7 @@ def export_user_corpus(db: Session, user_id: str) -> Dict[str, int]:
     return counts
 
 
-def _graphify_env() -> Dict[str, str]:
+def _graphify_env(preferred_model: Optional[str] = None) -> Dict[str, str]:
     from app.core.config import settings
     env = dict(os.environ)
     # Reasoning-model thinking prose breaks JSON extraction; keep it disabled.
@@ -131,6 +131,12 @@ def _graphify_env() -> Dict[str, str]:
     env.setdefault("OLLAMA_API_KEY", "ollama")
     # 图谱提取可用独立模型：0.5B 聊天模型太弱，提取 JSON 基本全会失败。
     env["OLLAMA_MODEL"] = getattr(settings, "GRAPHIFY_OLLAMA_MODEL", "") or settings.OLLAMA_MODEL
+    # 用户在前端选了模型时优先其选择（本构建仅 Ollama，覆盖提取模型即可）
+    if preferred_model:
+        from app.services.llm_service import ModelConfig
+        cfg = ModelConfig.get(preferred_model)
+        if cfg:
+            env["OLLAMA_MODEL"] = cfg["model_id"]
     return env
 
 
@@ -138,11 +144,12 @@ def _pick_backend() -> str:
     return "ollama"
 
 
-def _run_cli(args: List[str], cwd: Optional[Path] = None, timeout: int = 1800) -> subprocess.CompletedProcess:
+def _run_cli(args: List[str], cwd: Optional[Path] = None, timeout: int = 1800,
+             env: Optional[Dict[str, str]] = None) -> subprocess.CompletedProcess:
     return subprocess.run(
         [sys.executable, "-m", "graphify", *args],
         cwd=str(cwd) if cwd else None,
-        env=_graphify_env(),
+        env=env or _graphify_env(),
         capture_output=True,
         text=True,
         encoding="utf-8",
@@ -167,7 +174,7 @@ def _set_build_status(user_id: str, **kwargs: Any) -> None:
         _build_status.setdefault(user_id, {}).update(kwargs)
 
 
-def build_graph(db: Session, user_id: str) -> Dict[str, Any]:
+def build_graph(db: Session, user_id: str, preferred_model: Optional[str] = None) -> Dict[str, Any]:
     """Synchronous build: export corpus then run graphify extract. Caller should run in a thread."""
     _set_build_status(user_id, state="exporting", error=None, progress="正在导出语料…")
     try:
@@ -183,6 +190,8 @@ def build_graph(db: Session, user_id: str) -> Dict[str, Any]:
 
     user_dir = _user_dir(user_id)
     backend = _pick_backend()
+    # 用户选了模型时带入其选择（覆盖提取用 OLLAMA_MODEL）
+    cli_env = _graphify_env(preferred_model) if preferred_model else None
     # Build in a throwaway copy of the corpus, then swap graphify-out on success.
     # Three reasons:
     # 1. graphify caches per-chunk extraction results under graphify-out/cache —
@@ -204,7 +213,7 @@ def build_graph(db: Session, user_id: str) -> Dict[str, Any]:
 
     _set_build_status(user_id, state="building", progress=f"正在用 {backend} 提取 {total_docs} 篇文档…")
     try:
-        proc = _run_cli(["extract", "corpus_building", "--backend", backend], cwd=tmp_root)
+        proc = _run_cli(["extract", "corpus_building", "--backend", backend], cwd=tmp_root, env=cli_env)
     except subprocess.TimeoutExpired:
         shutil.rmtree(tmp_root, ignore_errors=True)
         _set_build_status(user_id, state="failed", error="构建超时（30 分钟）")
@@ -221,7 +230,7 @@ def build_graph(db: Session, user_id: str) -> Dict[str, Any]:
     warning = None
     _set_build_status(user_id, state="building", progress="正在检测社区并生成报告…")
     try:
-        proc2 = _run_cli(["cluster-only", "corpus_building", "--backend", backend], cwd=tmp_root)
+        proc2 = _run_cli(["cluster-only", "corpus_building", "--backend", backend], cwd=tmp_root, env=cli_env)
         if proc2.returncode != 0:
             # graph is already usable; report failure is non-fatal
             tail = (proc2.stderr or proc2.stdout or "")[-300:]
@@ -255,12 +264,12 @@ def build_graph(db: Session, user_id: str) -> Dict[str, Any]:
     return get_build_status(user_id)
 
 
-def start_build_background(db: Session, user_id: str) -> Dict[str, Any]:
+def start_build_background(db: Session, user_id: str, preferred_model: Optional[str] = None) -> Dict[str, Any]:
     st = get_build_status(user_id)
     if st.get("state") in ("exporting", "building"):
         return st
     _set_build_status(user_id, state="exporting", progress="正在导出语料…", error=None)
-    thread = threading.Thread(target=build_graph, args=(db, user_id), daemon=True)
+    thread = threading.Thread(target=build_graph, args=(db, user_id, preferred_model), daemon=True)
     thread.start()
     return get_build_status(user_id)
 
@@ -433,7 +442,7 @@ def _run_query(user_id: str, args: List[str]) -> Dict[str, Any]:
     return {"ok": True, "result": out}
 
 
-async def query_graph(user_id: str, question: str) -> Dict[str, Any]:
+async def query_graph(user_id: str, question: str, preferred_model: Optional[str] = None) -> Dict[str, Any]:
     retrieval = _run_query(user_id, ["query", question])
     if not retrieval.get("ok"):
         return retrieval
@@ -459,6 +468,7 @@ async def query_graph(user_id: str, question: str) -> Dict[str, Any]:
         prompt=prompt,
         task_type="graph_query",
         system_prompt="你是个人知识库问答助手，只根据给定的检索结果回答，答案必须带条目引用。",
+        preferred_model=preferred_model,
     )
     answer = answer.strip() or "暂时无法生成回答，请重试。"
     return {"ok": True, "result": answer, "evidence": trace}

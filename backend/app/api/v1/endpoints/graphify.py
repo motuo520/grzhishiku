@@ -23,6 +23,11 @@ router = APIRouter()
 
 class QueryRequest(BaseModel):
     question: str = Field(..., min_length=1, max_length=2000)
+    preferred_model: Optional[str] = Field(None, max_length=100)
+
+
+class BuildRequest(BaseModel):
+    preferred_model: Optional[str] = Field(None, max_length=100)
 
 
 class PathRequest(BaseModel):
@@ -88,10 +93,11 @@ def graphify_status(
 
 @router.post("/build", summary="Build or rebuild the user's knowledge graph")
 def graphify_build(
+    req: Optional[BuildRequest] = None,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    st = gfs.start_build_background(db, current_user.id)
+    st = gfs.start_build_background(db, current_user.id, preferred_model=(req.preferred_model if req else None))
     state = st.get("state")
     if state in ("exporting", "building"):
         return {"ok": True, "status": st}
@@ -147,7 +153,7 @@ async def graphify_query(
     req: QueryRequest,
     current_user: User = Depends(get_current_user),
 ):
-    return await gfs.query_graph(current_user.id, req.question)
+    return await gfs.query_graph(current_user.id, req.question, preferred_model=req.preferred_model)
 
 
 @router.post("/path", summary="Shortest path between two graph nodes")

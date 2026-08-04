@@ -7,6 +7,7 @@ import {
   AlertTriangle, ZoomIn, ZoomOut, RotateCcw, Database, Link2, Users, Search, Info,
 } from 'lucide-react';
 import { useGraphifyStatus, useGraphifyGraph, useGraphifyBuild, useGraphifyExplain } from '@/hooks/useGraphify';
+import ModelSelector from '@/components/llm/ModelSelector';
 import type { GraphifyNode, GraphifyLink, GraphifyTextResult } from '@/api/graphify';
 
 type SimNode = GraphifyNode & d3.SimulationNodeDatum;
@@ -64,6 +65,7 @@ const GraphNetworkPage: FC = () => {
 
   const [selectedNode, setSelectedNode] = useState<GraphifyNode | null>(null);
   const [explainResult, setExplainResult] = useState<GraphifyTextResult | null>(null);
+  const [modelId, setModelId] = useState<string>('');
 
   // 本地模型能力提示（可关闭，关闭状态持久化）
   const HINT_KEY = 'graphNetworkLocalModelHintDismissed';
@@ -259,7 +261,7 @@ const GraphNetworkPage: FC = () => {
   };
 
   const handleBuild = () => {
-    build.mutate();
+    build.mutate(modelId || undefined);
   };
 
   const handleExplain = () => {
@@ -289,10 +291,13 @@ const GraphNetworkPage: FC = () => {
           <AlertTriangle className="w-12 h-12 text-red-400 mb-4" />
           <div className="text-text-primary font-semibold mb-2">图谱构建失败</div>
           <div className="text-sm text-text-secondary mb-6 max-w-md">{status.error || '未知错误'}</div>
-          <button onClick={handleBuild} disabled={isBuilding} className="btn-primary flex items-center gap-2 disabled:opacity-50">
-            {isBuilding ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
-            重新构建
-          </button>
+          <div className="flex items-center gap-3">
+            <ModelSelector value={modelId} onChange={setModelId} taskType="analysis" className="w-44" />
+            <button onClick={handleBuild} disabled={isBuilding} className="btn-primary flex items-center gap-2 disabled:opacity-50">
+              {isBuilding ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+              重新构建
+            </button>
+          </div>
         </div>
       );
     }
@@ -304,10 +309,13 @@ const GraphNetworkPage: FC = () => {
           <div className="text-sm text-text-secondary mb-6 max-w-md">
             基于你的笔记、剪藏和知识单元构建一张可交互的知识网络，发现内容之间的隐藏关联。
           </div>
-          <button onClick={handleBuild} className="btn-primary flex items-center gap-2">
-            <Sparkles className="w-4 h-4" />
-            构建知识图谱
-          </button>
+          <div className="flex items-center gap-3">
+            <ModelSelector value={modelId} onChange={setModelId} taskType="analysis" className="w-44" />
+            <button onClick={handleBuild} className="btn-primary flex items-center gap-2">
+              <Sparkles className="w-4 h-4" />
+              构建知识图谱
+            </button>
+          </div>
         </div>
       );
     }

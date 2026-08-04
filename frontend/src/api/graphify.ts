@@ -59,9 +59,11 @@ export interface GraphifyTextResult {
 
 export const graphifyApi = {
   getStatus: () => api.get<GraphifyStatus>('/api/v1/graphify/status'),
-  build: () => api.post<{ ok: boolean; status: GraphifyStatus }>('/api/v1/graphify/build'),
+  build: (preferred_model?: string) =>
+    api.post<{ ok: boolean; status: GraphifyStatus }>('/api/v1/graphify/build', { preferred_model }),
   getGraph: () => api.get<GraphifyGraph>('/api/v1/graphify/graph'),
-  query: (question: string) => api.post<GraphifyTextResult>('/api/v1/graphify/query', { question }),
+  query: (question: string, preferred_model?: string) =>
+    api.post<GraphifyTextResult>('/api/v1/graphify/query', { question, preferred_model }),
   path: (a: string, b: string) => api.post<GraphifyTextResult>('/api/v1/graphify/path', { a, b }),
   explain: (node: string) => api.post<GraphifyTextResult>('/api/v1/graphify/explain', { node }),
   getReport: () => api.get<{ content: string }>('/api/v1/graphify/report'),
