@@ -235,7 +235,7 @@ export const QUICK_ACTIONS_SIMPLE: Pick<SubMenuItem, 'id' | 'label' | 'icon' | '
 // ================================================================
 
 // ── 一级导航桶：把 12+ 个模块收敛成 4 个可理解的入口 ──
-// “我/设置/会员/账单”统一放在左侧边栏底部菜单，不再占用顶部导航
+// “我/设置”统一放在左侧边栏底部菜单，不再占用顶部导航
 export const TOP_NAV_BUCKETS_CLASSIC: TopNavBucket[] = [
   {
     id: 'inbox',
