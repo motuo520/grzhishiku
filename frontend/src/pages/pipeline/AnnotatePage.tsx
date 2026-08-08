@@ -23,9 +23,13 @@ const AnnotatePage: FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [editingItem, setEditingItem] = useState<import('@/api/pipeline').PipelineItem | null>(null);
 
-  const { stats } = usePipelineStats(brainSide);
-  const { items, isLoading: isItemsLoading, error: queryError, refetch } = usePipelineItems('approved', brainSide);
-  const { items: collisionItems } = usePipelineItems('collided', brainSide);
+  // 注卡阶段的内容（批准的碰撞洞见）一律落在个人脑；用户手动停在网络脑侧时
+  // 按个人脑查询，否则刚批准的内容在本页不可见（「要刷新才显示」的根因之一）
+  const effectiveSide = brainSide === 'network' ? 'personal' : brainSide;
+
+  const { stats } = usePipelineStats(effectiveSide);
+  const { items, isLoading: isItemsLoading, error: queryError, refetch } = usePipelineItems('approved', effectiveSide);
+  const { items: collisionItems } = usePipelineItems('collided', effectiveSide);
   const reviewCollision = useReviewCollision();
   const updateUnit = useUpdateKnowledgeUnit();
   const [isPulling, setIsPulling] = useState(false);
@@ -89,10 +93,30 @@ const AnnotatePage: FC = () => {
 
   const handleSaveAnnotation = async (id: string, data: import('@/api/knowledge').KnowledgeUpdateData) => {
     await updateUnit.mutateAsync({ id, data });
+    setSavedToast({ id });
+    setTimeout(() => setSavedToast(null), 6000);
   };
+
+  const [savedToast, setSavedToast] = useState<{ id: string } | null>(null);
 
   return (
     <div className="max-w-7xl mx-auto p-6 space-y-5">
+      {/* 注卡完成去向提示 */}
+      {savedToast && (
+        <div className="fixed bottom-6 right-6 z-50 glass-card px-4 py-3 rounded-xl flex items-center gap-3 text-sm border border-success/30">
+          <CheckCircle2 className="w-4 h-4 text-success shrink-0" />
+          <span className="text-text-primary">已注卡，归入个人脑知识，问答检索已加权</span>
+          <button
+            onClick={() => navigate(`/knowledge/${savedToast.id}`)}
+            className="text-xs text-info hover:underline shrink-0"
+          >
+            查看知识
+          </button>
+          <button onClick={() => setSavedToast(null)} className="text-text-muted hover:text-text-primary shrink-0">
+            <X className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      )}
       <AnnotateCardModal
         isOpen={!!editingItem}
         onClose={() => setEditingItem(null)}

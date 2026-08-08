@@ -1,13 +1,15 @@
-import { FC, useEffect, useMemo, useState } from 'react';
+import { FC, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Workflow, Database, SquareStack, Filter, Shuffle, Pencil, ArrowRight,
   Layers, Clock, Globe, BookOpen, FileText, FolderOpen, Rss,
   Loader2, AlertCircle, X, Play, Sparkles, TrendingUp, CheckSquare, Square, Calendar,
+  Brain, ShieldCheck,
 } from 'lucide-react';
 import PipelineBrainToggle from './components/PipelineBrainToggle';
 import PipelineStageBar from './components/PipelineStageBar';
 import { useNavigation } from '@/store/navigation';
+import { useSettings } from '@/store/settings';
 import ErrorState from '@/components/ErrorState';
 import {
   usePipelineStats,
@@ -39,6 +41,7 @@ const CONTENT_TYPE_CONFIG: Record<string, { label: string; icon: React.ElementTy
 const PipelineOverviewPage: FC = () => {
   const navigate = useNavigate();
   const { brainSide } = useNavigation();
+  const isClassic = useSettings((s) => s.uiMode === 'classic');
   const [error, setError] = useState<string | null>(null);
   const [isRunning, setIsRunning] = useState(false);
   const [runProgress, setRunProgress] = useState(0);
@@ -52,11 +55,18 @@ const PipelineOverviewPage: FC = () => {
   const extractConcepts = useExtractConcepts();
   const collideConcept = useCollideConcept();
   const [runSummary, setRunSummary] = useState<string | null>(null);
+  const hasInitializedSelection = useRef(false);
+  const runTokenRef = useRef(0);
+
+  useEffect(() => {
+    return () => { runTokenRef.current++; };
+  }, []);
 
   // 默认全选原始素材，用户可以取消勾选来控制一键管线的范围
   useEffect(() => {
-    if (rawItems && rawItems.length > 0) {
-      setSelectedRawIds((prev) => (prev.size === 0 ? new Set(rawItems.map((item) => item.id)) : prev));
+    if (rawItems && rawItems.length > 0 && !hasInitializedSelection.current) {
+      setSelectedRawIds(new Set(rawItems.map((item) => item.id)));
+      hasInitializedSelection.current = true;
     }
   }, [rawItems]);
 
@@ -94,8 +104,10 @@ const PipelineOverviewPage: FC = () => {
     let done = 0;
     let failed = 0;
     let collisions = 0;
+    const currentToken = ++runTokenRef.current;
     try {
       for (let i = 0; i < targets.length; i++) {
+        if (runTokenRef.current !== currentToken) break; // 组件已卸载/重跑
         const item = targets[i];
         try {
           // 1) raw -> card (returns the card ref: note id, or new knowledge id for external items)
@@ -154,7 +166,7 @@ const PipelineOverviewPage: FC = () => {
     return plain.length > maxLen ? plain.slice(0, maxLen) + '...' : plain;
   };
 
-  const renderRecentItem = (item: PipelineItem) => {
+  const renderRecentItem = (item: PipelineItem, index: number) => {
     const config = CONTENT_TYPE_CONFIG[item.content_type] || { label: item.content_type, icon: Layers, color: 'text-text-secondary' };
     const Icon = config.icon;
     const stageInfo = STAGE_CONFIG.find((s) => s.key === item.pipeline_stage) || STAGE_CONFIG[0];
@@ -333,7 +345,7 @@ const PipelineOverviewPage: FC = () => {
             <SquareStack className="w-5 h-5" />
           </div>
           <div>
-            <div className="text-2xl font-bold text-text-primary">{isStatsLoading ? '-' : stats?.today.new_cards ?? 0}</div>
+            <div className="text-2xl font-bold text-text-primary">{isStatsLoading ? '-' : stats?.today?.new_cards ?? 0}</div>
             <div className="text-xs text-text-secondary">今日新卡片</div>
           </div>
         </div>
@@ -342,7 +354,7 @@ const PipelineOverviewPage: FC = () => {
             <Filter className="w-5 h-5" />
           </div>
           <div>
-            <div className="text-2xl font-bold text-text-primary">{isStatsLoading ? '-' : stats?.today.new_concepts ?? 0}</div>
+            <div className="text-2xl font-bold text-text-primary">{isStatsLoading ? '-' : stats?.today?.new_concepts ?? 0}</div>
             <div className="text-xs text-text-secondary">今日新概念</div>
           </div>
         </div>
@@ -351,7 +363,7 @@ const PipelineOverviewPage: FC = () => {
             <Shuffle className="w-5 h-5" />
           </div>
           <div>
-            <div className="text-2xl font-bold text-text-primary">{isStatsLoading ? '-' : stats?.today.new_collisions ?? 0}</div>
+            <div className="text-2xl font-bold text-text-primary">{isStatsLoading ? '-' : stats?.today?.new_collisions ?? 0}</div>
             <div className="text-xs text-text-secondary">今日新碰撞</div>
           </div>
         </div>
@@ -428,6 +440,56 @@ const PipelineOverviewPage: FC = () => {
         </div>
       </div>
 
+      {/* 注卡之后（侧线导引）：新人常问「走完管线然后呢」——入库后的三条去向 */}
+      <div className="glass-card p-5 space-y-3 border-dashed border-white/[0.12]">
+        <div className="flex items-center gap-2 flex-wrap">
+          <Brain className="w-4 h-4 text-personal-primary" />
+          <h2 className="text-sm font-semibold text-text-primary">注卡之后，去哪了</h2>
+          <span className="text-xs text-text-muted">管线到注卡封顶；入库后有三条侧线，随时可做、顺序随意</span>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <button
+            onClick={() => navigate('/knowledge/network')}
+            className="text-left p-3 rounded-[2px] bg-white/[0.02] border border-white/[0.06] hover:border-personal-primary/30 hover:bg-white/[0.04] transition-colors group"
+          >
+            <div className="flex items-center gap-1.5 text-xs font-medium text-text-primary">
+              <Brain className="w-3.5 h-3.5 text-personal-primary" />
+              个人脑知识
+              <ArrowRight className="w-3 h-3 text-text-muted group-hover:text-personal-primary transition-colors" />
+            </div>
+            <div className="text-[10px] text-text-muted mt-1.5 leading-relaxed">
+              批准/注卡即入库：立即可被搜索、问答引用，并进入知识图谱语料
+            </div>
+          </button>
+          <button
+            onClick={() => navigate('/knowledge/verify')}
+            className="text-left p-3 rounded-[2px] bg-white/[0.02] border border-white/[0.06] hover:border-info/30 hover:bg-white/[0.04] transition-colors group"
+          >
+            <div className="flex items-center gap-1.5 text-xs font-medium text-text-primary">
+              <ShieldCheck className="w-3.5 h-3.5 text-info" />
+              验证中心
+              <ArrowRight className="w-3 h-3 text-text-muted group-hover:text-info transition-colors" />
+            </div>
+            <div className="text-[10px] text-text-muted mt-1.5 leading-relaxed">
+              手动审查可信度；争议/证伪的进反证墙处置（修正重验/保留/移除）
+            </div>
+          </button>
+          <button
+            onClick={() => navigate(isClassic ? '/social-brain/evolution-track' : '/daily/evolution-track')}
+            className="text-left p-3 rounded-[2px] bg-white/[0.02] border border-white/[0.06] hover:border-fusion-primary/30 hover:bg-white/[0.04] transition-colors group"
+          >
+            <div className="flex items-center gap-1.5 text-xs font-medium text-text-primary">
+              <TrendingUp className="w-3.5 h-3.5 text-fusion-primary" />
+              进化轨迹
+              <ArrowRight className="w-3 h-3 text-text-muted group-hover:text-fusion-primary transition-colors" />
+            </div>
+            <div className="text-[10px] text-text-muted mt-1.5 leading-relaxed">
+              践行与内化的统计；注过卡的知识检索加权 15%，更容易被问答命中
+            </div>
+          </button>
+        </div>
+      </div>
+
       {/* Recent Active */}
       <div className="space-y-3">
         <div className="flex items-center gap-2">
@@ -446,7 +508,7 @@ const PipelineOverviewPage: FC = () => {
           </div>
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-            {recentItems.map((item) => renderRecentItem(item))}
+            {recentItems.map((item, index) => renderRecentItem(item, index))}
           </div>
         )}
       </div>

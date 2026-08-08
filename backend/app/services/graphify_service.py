@@ -22,6 +22,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
+from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from app.core.database import SessionLocal
@@ -113,7 +114,15 @@ def export_user_corpus(db: Session, user_id: str) -> Dict[str, int]:
                    {"url": clip.url or "", "domain": clip.domain or ""})
         counts["clip"] += 1
 
-    for ku in db.query(KnowledgeUnit).filter(KnowledgeUnit.user_id == user_id, KnowledgeUnit.status == "active").all():
+    # debunked（证伪）知识不进图谱语料——错误知识进图谱比不进更糟
+    for ku in db.query(KnowledgeUnit).filter(
+        KnowledgeUnit.user_id == user_id,
+        KnowledgeUnit.status == "active",
+        or_(
+            KnowledgeUnit.verification_status != "debunked",
+            KnowledgeUnit.verification_status.is_(None)
+        ),
+    ).all():
         _write_doc(corpus, "knowledge", ku.id, ku.source_title or "知识单元", ku.content_raw or "",
                    {"url": ku.source_url or ""})
         counts["knowledge"] += 1

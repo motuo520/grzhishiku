@@ -96,6 +96,11 @@ class KnowledgeUnitUpdate(BaseModel):
     content_subtype: Optional[ContentSubtype] = Field(None, description="Content subtype")
     source_id: Optional[str] = Field(None, description="Source content ID")
     source_content_type: Optional[str] = Field(None, description="Source content type")
+    verification_status: Optional[str] = Field(
+        None,
+        pattern=r"^(unverified|checking|confirmed|disputed|debunked|outdated)$",
+        description="Verification status（反证墙处置台「保留观察」重置为 unverified）",
+    )
 
 class KnowledgeUnitResponse(BaseModel):
     id: str = Field(..., description="Knowledge unit ID (UUID)")

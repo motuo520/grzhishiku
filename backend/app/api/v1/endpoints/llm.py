@@ -274,16 +274,20 @@ async def _retrieve_knowledge_sources(
     # 候选文档：key 为 (kind, id)，kind ∈ {knowledge, note, clip}
     docs: dict = {}
 
-    # 1) 知识单元
-    q = db.query(KnowledgeUnit).filter(KnowledgeUnit.user_id == user_id)
+    # 1) 知识单元（debunked 证伪单元不进检索；disputed 在融合阶段降权）
+    q = db.query(KnowledgeUnit).filter(
+        KnowledgeUnit.user_id == user_id,
+        KnowledgeUnit.verification_status != "debunked",
+    )
     if brain_side != "both":
         q = q.filter(KnowledgeUnit.brain_side == brain_side)
     ku_filters = []
     for kw in kws:
-        like = f"%{kw}%"
-        ku_filters.append(KnowledgeUnit.content_raw.ilike(like))
-        ku_filters.append(KnowledgeUnit.source_title.ilike(like))
-        ku_filters.append(KnowledgeUnit.content_type.ilike(like))
+        escaped_kw = kw.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+        like = f"%{escaped_kw}%"
+        ku_filters.append(KnowledgeUnit.content_raw.ilike(like, escape="\\"))
+        ku_filters.append(KnowledgeUnit.source_title.ilike(like, escape="\\"))
+        ku_filters.append(KnowledgeUnit.content_type.ilike(like, escape="\\"))
     if ku_filters:
         q = q.filter(or_(*ku_filters))
     for unit in q.order_by(KnowledgeUnit.invoke_count.desc()).limit(top_k * 5).all():
@@ -296,6 +300,8 @@ async def _retrieve_knowledge_sources(
                 "content": unit.content_raw or "",
                 "kw": float(s),
                 "vec": 0.0,
+                "ann": (unit.practice_depth or 0) > 0 or (unit.evolution_stage or "collected") != "collected",
+                "vs": unit.verification_status or "unverified",
             }
 
     # 2) 个人笔记
@@ -304,9 +310,10 @@ async def _retrieve_knowledge_sources(
         qn = qn.filter(Note.brain_side == brain_side)
     note_filters = []
     for kw in kws:
-        like = f"%{kw}%"
-        note_filters.append(Note.title.ilike(like))
-        note_filters.append(Note.content.ilike(like))
+        escaped_kw = kw.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+        like = f"%{escaped_kw}%"
+        note_filters.append(Note.title.ilike(like, escape="\\"))
+        note_filters.append(Note.content.ilike(like, escape="\\"))
     if note_filters:
         qn = qn.filter(or_(*note_filters))
     for note in qn.order_by(Note.updated_at.desc()).limit(top_k * 5).all():
@@ -326,10 +333,11 @@ async def _retrieve_knowledge_sources(
         qc = qc.filter(BrowserClip.brain_side == brain_side)
     clip_filters = []
     for kw in kws:
-        like = f"%{kw}%"
-        clip_filters.append(BrowserClip.title.ilike(like))
-        clip_filters.append(BrowserClip.full_text.ilike(like))
-        clip_filters.append(BrowserClip.excerpt.ilike(like))
+        escaped_kw = kw.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+        like = f"%{escaped_kw}%"
+        clip_filters.append(BrowserClip.title.ilike(like, escape="\\"))
+        clip_filters.append(BrowserClip.full_text.ilike(like, escape="\\"))
+        clip_filters.append(BrowserClip.excerpt.ilike(like, escape="\\"))
     if clip_filters:
         qc = qc.filter(or_(*clip_filters))
     for clip in qc.order_by(BrowserClip.capture_timestamp.desc()).limit(top_k * 5).all():
@@ -366,7 +374,8 @@ async def _retrieve_knowledge_sources(
             vec_rows = {}
             if ku_ids:
                 vq = db.query(KnowledgeUnit).filter(
-                    KnowledgeUnit.user_id == user_id, KnowledgeUnit.id.in_(ku_ids))
+                    KnowledgeUnit.user_id == user_id, KnowledgeUnit.id.in_(ku_ids),
+                    KnowledgeUnit.verification_status != "debunked")
                 if brain_side != "both":
                     vq = vq.filter(KnowledgeUnit.brain_side == brain_side)
                 for unit in vq.all():
@@ -374,6 +383,8 @@ async def _retrieve_knowledge_sources(
                         "stype": unit.source_type or "knowledge",
                         "title": unit.source_title or unit.content_type or "未命名知识",
                         "content": unit.content_raw or "",
+                        "ann": (unit.practice_depth or 0) > 0 or (unit.evolution_stage or "collected") != "collected",
+                        "vs": unit.verification_status or "unverified",
                     }
             if note_ids:
                 vq = db.query(Note).filter(
@@ -416,10 +427,18 @@ async def _retrieve_knowledge_sources(
 
     # ---- 融合：两路分数各自归一化后按权重加权，同文档两路命中则分数相加 ----
     kw_max = max((d["kw"] for d in docs.values()), default=0.0)
+    # 注卡加权：人精修/登记过践行的知识单元（ann）×1.15——「注卡=内化」的检索侧兑现
+    # 反证降权：disputed 存疑单元 ×0.7（debunked 已在候选阶段剔除）
+    ANNOTATED_BOOST = 1.15
+    DISPUTED_PENALTY = 0.7
     ranked: List[tuple] = []
     for (kind, sid), d in docs.items():
         kw_norm = (d["kw"] / kw_max) if kw_max > 0 else 0.0
         combined = HYBRID_VECTOR_WEIGHT * d["vec"] + HYBRID_KEYWORD_WEIGHT * kw_norm
+        if d.get("ann"):
+            combined *= ANNOTATED_BOOST
+        if d.get("vs") == "disputed":
+            combined *= DISPUTED_PENALTY
         if combined <= 0:
             continue
         ranked.append((combined, d["stype"], sid, d["title"], d["content"], d.get("chunk")))
