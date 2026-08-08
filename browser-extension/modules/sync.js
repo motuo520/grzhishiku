@@ -80,7 +80,7 @@ class SyncManager {
 
       for (const clip of unsyncedClips) {
         try {
-          await fetch(`${this.apiUrl}/api/v1/knowledge`, {
+          const response = await fetch(`${this.apiUrl}/api/v1/knowledge`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -92,6 +92,7 @@ class SyncManager {
               source_title: clip.title,
             }),
           });
+          if (!response.ok) throw new Error(`HTTP ${response.status}`);
           clip.synced = true;
           results.clips++;
         } catch (error) {
@@ -108,7 +109,7 @@ class SyncManager {
 
       for (const capsule of unsyncedCapsules) {
         try {
-          await fetch(`${this.apiUrl}/api/v1/capsules`, {
+          const response = await fetch(`${this.apiUrl}/api/v1/capsules`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -116,6 +117,7 @@ class SyncManager {
             },
             body: JSON.stringify(capsule),
           });
+          if (!response.ok) throw new Error(`HTTP ${response.status}`);
           capsule.synced = true;
           results.capsules++;
         } catch (error) {

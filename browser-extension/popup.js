@@ -2,10 +2,23 @@ import Clipper from './modules/clipper.js';
 
 const clipper = new Clipper();
 
+// 仅从受信本机回环源提取 token，避免任意远程页面伪造投放
+function isTrustedTokenSource(url) {
+  try {
+    const parsed = new URL(url);
+    return (
+      (parsed.protocol === 'http:' || parsed.protocol === 'https:') &&
+      (parsed.hostname === '127.0.0.1' || parsed.hostname === 'localhost')
+    );
+  } catch {
+    return false;
+  }
+}
+
 async function tryFetchPageToken() {
   try {
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-    if (!tab?.id || !tab.url || tab.url.startsWith('chrome://') || tab.url.startsWith('edge://')) {
+    if (!tab?.id || !tab.url || !isTrustedTokenSource(tab.url)) {
       return null;
     }
     const result = await chrome.tabs.sendMessage(tab.id, { type: 'GET_TOKEN' });

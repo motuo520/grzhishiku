@@ -22,7 +22,15 @@ class Clipper {
         capture_method: 'browser_extension',
       };
 
-      const saved = await createClip(clip);
+      let saved;
+      try {
+        saved = await createClip(clip);
+      } catch (error) {
+        // 远端失败也保存本地离线副本（synced=false），由同步模块稍后重试
+        saved = { id: Date.now().toString() };
+        await saveLocalClip({ ...clip, id: saved.id, synced: false }).catch(() => {});
+        throw error;
+      }
 
       // Local cache as offline fallback
       await saveLocalClip({
@@ -56,7 +64,15 @@ class Clipper {
         capture_method: 'browser_extension_selection',
       };
 
-      const saved = await createClip(clip);
+      let saved;
+      try {
+        saved = await createClip(clip);
+      } catch (error) {
+        saved = { id: Date.now().toString() };
+        await saveLocalClip({ ...clip, id: saved.id, synced: false }).catch(() => {});
+        throw error;
+      }
+
       await saveLocalClip({
         ...clip,
         id: saved.id,
@@ -83,7 +99,15 @@ class Clipper {
         capture_method: 'manual_note',
       };
 
-      const saved = await createClip(clip);
+      let saved;
+      try {
+        saved = await createClip(clip);
+      } catch (error) {
+        saved = { id: Date.now().toString() };
+        await saveLocalClip({ ...clip, id: saved.id, synced: false }).catch(() => {});
+        throw error;
+      }
+
       await saveLocalClip({
         ...clip,
         id: saved.id,

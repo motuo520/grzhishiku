@@ -3,17 +3,36 @@ import { useSearchParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Upload, FileText, Link2, FileJson, Trash2, AlertCircle, Check, Loader2,
-  X, Download, Globe, FileSpreadsheet, HardDrive
+  X, Download, Globe, FileSpreadsheet, HardDrive, BookOpen, Rss, Brain
 } from 'lucide-react';
 import { useNotes } from '@/hooks/useNotes';
 import { useClips } from '@/hooks/useClips';
 import { settingsApi } from '@/api/settings';
+import { readLaterApi } from '@/api/readLater';
+import { rssApi } from '@/api/rss';
+import { knowledgeApi } from '@/api/knowledge';
 import type { NoteCreateData } from '@/api/notes';
 import type { ClipCreateData } from '@/api/clips';
 import { getDomainFromUrl, parseBookmarksHtml, parseLocalJson, parseLocalCsv, detectFullExport, FULL_EXPORT_TABLE_LABELS, type FullExportDetection } from '@/utils/importParsers';
 
 type ImportTab = 'markdown' | 'jsoncsv' | 'urls' | 'local';
 type PreviewType = 'note' | 'clip';
+// 导入目标类型：note/knowledge 消费文本类条目，clip/readlater/rss 消费 URL 类条目
+type TargetType = 'note' | 'clip' | 'readlater' | 'rss' | 'knowledge';
+const TARGET_ACCEPTS: Record<TargetType, PreviewType> = {
+  note: 'note',
+  knowledge: 'note',
+  clip: 'clip',
+  readlater: 'clip',
+  rss: 'clip',
+};
+const TARGET_LABELS: Record<TargetType, string> = {
+  note: '笔记',
+  clip: '剪藏',
+  readlater: '稍后读',
+  rss: 'RSS 源',
+  knowledge: '知识单元',
+};
 
 interface PreviewItem {
   id: string;
@@ -38,12 +57,17 @@ const BatchImportPage: FC = () => {
     return 'markdown';
   });
   const [previews, setPreviews] = useState<PreviewItem[]>([]);
+  // 前置选择：本批导入目标类型，非目标消费的条目类型将被跳过
+  const [targetType, setTargetType] = useState<TargetType>(() => {
+    const type = searchParams.get('type');
+    return type === 'clips' ? 'clip' : 'note';
+  });
   const [fullExport, setFullExport] = useState<FullExportDetection | null>(null);
   const [exportResult, setExportResult] = useState<{ inserted: number; updated: number; skipped: number } | null>(null);
   const [textInput, setTextInput] = useState('');
   const [isParsing, setIsParsing] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
-  const [result, setResult] = useState<{ success: number; failed: number } | null>(null);
+  const [result, setResult] = useState<{ success: number; failed: number; skipped?: number } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const localFileInputRef = useRef<HTMLInputElement>(null);
@@ -53,6 +77,12 @@ const BatchImportPage: FC = () => {
 
   const notePreviews = useMemo(() => previews.filter(p => p.type === 'note'), [previews]);
   const clipPreviews = useMemo(() => previews.filter(p => p.type === 'clip'), [previews]);
+  // 目标类型消费的条目才参与导入，其余保留在预览里（可切换目标后再导）
+  const selectedPreviews = useMemo(
+    () => previews.filter(p => p.type === TARGET_ACCEPTS[targetType]),
+    [targetType, previews]
+  );
+  const skippedCount = previews.length - selectedPreviews.length;
 
   useEffect(() => {
     setResult(null);
@@ -242,13 +272,13 @@ const BatchImportPage: FC = () => {
       }
       return;
     }
-    if (previews.length === 0) return;
+    if (previews.length === 0 || selectedPreviews.length === 0) return;
     setIsImporting(true);
     setResult(null);
     let success = 0;
     let failed = 0;
     try {
-      if (notePreviews.length > 0) {
+      if (targetType === 'note') {
         const items: NoteCreateData[] = notePreviews.map(p => ({
           title: p.title || '未命名',
           content: p.content || '',
@@ -258,8 +288,7 @@ const BatchImportPage: FC = () => {
         const res = await batchCreateNotes({ items });
         success += res.data.success_count;
         failed += res.data.failed_count;
-      }
-      if (clipPreviews.length > 0) {
+      } else if (targetType === 'clip') {
         const items: ClipCreateData[] = clipPreviews
           .filter(p => p.url?.trim())
           .map(p => ({
@@ -272,9 +301,49 @@ const BatchImportPage: FC = () => {
         const res = await batchCreateClips({ items });
         success += res.data.success_count;
         failed += res.data.failed_count;
+      } else if (targetType === 'readlater') {
+        // 稍后读：无批量端点，逐条创建（URL 类条目）
+        for (const p of clipPreviews.filter(p => p.url?.trim())) {
+          try {
+            await readLaterApi.create({
+              url: p.url!.trim(),
+              title: p.title || undefined,
+              excerpt: p.excerpt,
+              source: 'batch-import',
+            });
+            success++;
+          } catch {
+            failed++;
+          }
+        }
+      } else if (targetType === 'rss') {
+        // RSS 源：逐条添加（每个源后端会抓取校验一次，速度较慢属正常）
+        for (const p of clipPreviews.filter(p => p.url?.trim())) {
+          try {
+            await rssApi.createFeed({ url: p.url!.trim(), title: p.title || undefined });
+            success++;
+          } catch {
+            failed++;
+          }
+        }
+      } else {
+        // 知识单元：逐条创建（文本类条目）
+        for (const p of notePreviews) {
+          try {
+            await knowledgeApi.create({
+              content_raw: p.content || p.title || '',
+              source_title: p.title || undefined,
+              brain_side: 'personal',
+            });
+            success++;
+          } catch {
+            failed++;
+          }
+        }
       }
-      setResult({ success, failed });
-      setPreviews([]);
+      setResult({ success, failed, skipped: skippedCount });
+      // 只清掉已导入类型，跳过的条目留在预览里（切换目标类型后可继续导）
+      setPreviews(prev => prev.filter(p => p.type !== TARGET_ACCEPTS[targetType]));
       if (failed === 0 && success > 0) {
         // 全部成功：素材已就位，自动进入管线原始素材页衔接后续生产
         navigate('/pipeline/raw');
@@ -298,7 +367,7 @@ const BatchImportPage: FC = () => {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-text-primary">批量导入中心</h1>
-          <p className="text-sm text-text-secondary mt-1">批量导入笔记、剪藏和链接</p>
+          <p className="text-sm text-text-secondary mt-1">批量导入笔记、剪藏、稍后读、RSS 源和知识单元</p>
         </div>
         <span className="badge-fusion">Fusion</span>
       </div>
@@ -328,6 +397,7 @@ const BatchImportPage: FC = () => {
         >
           <Check className="w-4 h-4" />
           导入完成：成功 {result.success} 条，失败 {result.failed} 条
+          {result.skipped ? `，跳过 ${result.skipped} 条非所选类型（仍保留在预览中）` : ''}
         </motion.div>
       )}
 
@@ -374,6 +444,41 @@ const BatchImportPage: FC = () => {
           </div>
         </div>
       )}
+
+      {/* 前置选择：本批导入目标类型，非目标消费的条目类型导入时跳过 */}
+      <div className="flex items-center gap-3 flex-wrap">
+        <span className="text-sm text-text-secondary">导入目标：</span>
+        <div className="flex items-center gap-1 bg-bg-tertiary p-1 rounded-[2px]">
+          {([
+            { id: 'note' as TargetType, label: TARGET_LABELS.note, icon: FileText, tab: 'markdown' as ImportTab },
+            { id: 'clip' as TargetType, label: TARGET_LABELS.clip, icon: Globe, tab: 'urls' as ImportTab },
+            { id: 'readlater' as TargetType, label: TARGET_LABELS.readlater, icon: BookOpen, tab: 'urls' as ImportTab },
+            { id: 'rss' as TargetType, label: TARGET_LABELS.rss, icon: Rss, tab: 'urls' as ImportTab },
+            { id: 'knowledge' as TargetType, label: TARGET_LABELS.knowledge, icon: Brain, tab: 'jsoncsv' as ImportTab },
+          ]).map(t => {
+            const Icon = t.icon;
+            const active = targetType === t.id;
+            return (
+              <button
+                key={t.id}
+                onClick={() => {
+                  setTargetType(t.id);
+                  setActiveTab(t.tab);
+                }}
+                className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-[2px] text-sm transition-all ${
+                  active
+                    ? 'bg-white/[0.08] text-info font-medium'
+                    : 'text-text-secondary hover:text-text-primary'
+                }`}
+              >
+                <Icon className="w-3.5 h-3.5" />
+                {t.label}
+              </button>
+            );
+          })}
+        </div>
+        <span className="text-xs text-text-muted">先选类型再添加内容；不属于所选类型的条目会被跳过</span>
+      </div>
 
       {/* Tabs */}
       <div className="flex items-center gap-2 bg-bg-tertiary p-1 rounded-[2px] w-fit">
@@ -510,17 +615,24 @@ const BatchImportPage: FC = () => {
         <div className="glass-card p-6 space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-semibold text-text-primary">
-              预览（{notePreviews.length} 条笔记 / {clipPreviews.length} 条剪藏）
+              预览（将导入 {selectedPreviews.length} 条{TARGET_LABELS[targetType]}
+              {skippedCount > 0 && `，跳过 ${skippedCount} 条`}）
             </h2>
             <button onClick={clearPreviews} className="text-xs text-danger hover:text-danger/80 transition-colors">
               清空预览
             </button>
           </div>
           <div className="max-h-96 overflow-y-auto space-y-2">
-            {previews.map(item => (
+            {previews.map(item => {
+              const willSkip = item.type !== TARGET_ACCEPTS[targetType];
+              return (
               <div
                 key={item.id}
-                className="flex items-start gap-3 p-3 rounded-[2px] border border-white/[0.08] bg-white/[0.02] hover:border-white/[0.12] transition-colors"
+                className={`flex items-start gap-3 p-3 rounded-[2px] border transition-colors ${
+                  willSkip
+                    ? 'border-white/[0.04] bg-white/[0.01] opacity-50'
+                    : 'border-white/[0.08] bg-white/[0.02] hover:border-white/[0.12]'
+                }`}
               >
                 <div className="mt-0.5">
                   {item.type === 'note' ? <FileText className="w-4 h-4 text-personal-primary" /> : <Globe className="w-4 h-4 text-network-primary" />}
@@ -534,6 +646,11 @@ const BatchImportPage: FC = () => {
                   )}
                   {item.error && <div className="text-xs text-danger mt-1">{item.error}</div>}
                 </div>
+                {willSkip && (
+                  <span className="text-[10px] px-1.5 py-0.5 rounded-[2px] bg-bg-tertiary text-text-muted shrink-0 mt-0.5">
+                    跳过
+                  </span>
+                )}
                 <button
                   onClick={() => removePreview(item.id)}
                   className="p-1.5 rounded-[2px] hover:bg-white/[0.05] text-text-muted hover:text-danger transition-colors"
@@ -541,17 +658,18 @@ const BatchImportPage: FC = () => {
                   <Trash2 className="w-4 h-4" />
                 </button>
               </div>
-            ))}
+              );
+            })}
           </div>
           <div className="flex justify-end">
             <button
               onClick={handleImport}
-              disabled={isImporting}
+              disabled={isImporting || selectedPreviews.length === 0}
               className="btn-primary flex items-center gap-2"
             >
               {isImporting && <Loader2 className="w-4 h-4 animate-spin" />}
               <Download className="w-4 h-4" />
-              确认导入
+              确认导入 {selectedPreviews.length} 条{TARGET_LABELS[targetType]}
             </button>
           </div>
         </div>

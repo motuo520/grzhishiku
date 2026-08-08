@@ -1,6 +1,8 @@
 import importlib.util
 import json
 import logging
+import os
+import sys
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -12,8 +14,14 @@ from app.plugins.base import BasePlugin, PluginManifest
 
 logger = logging.getLogger(__name__)
 
-BUILTIN_PLUGINS_DIR = Path(__file__).parent / "builtin"
-USER_PLUGINS_DIR = Path(__file__).parent.parent.parent / "plugins"
+if getattr(sys, "frozen", False):
+    # PyInstaller onedir：内置插件源文件由 spec 的 datas 落到 _internal/app/plugins；
+    # 用户插件放数据目录（_internal 不可写），桌面端为 %APPDATA%/psb-desktop/data/plugins
+    BUILTIN_PLUGINS_DIR = Path(sys._MEIPASS) / "app" / "plugins" / "builtin"
+    USER_PLUGINS_DIR = Path(os.environ.get("PSB_DATA_DIR") or (Path.home() / ".psb-desktop")) / "plugins"
+else:
+    BUILTIN_PLUGINS_DIR = Path(__file__).parent / "builtin"
+    USER_PLUGINS_DIR = Path(__file__).parent.parent.parent / "plugins"
 
 
 class PluginManager:
@@ -89,18 +97,59 @@ class PluginManager:
         self._app = app
         self._mcp = mcp
         for plugin in self.plugins.values():
-            try:
-                plugin.initialize()
+            self.initialize_plugin(plugin)
+
+    def initialize_plugin(self, plugin: BasePlugin) -> None:
+        """Mount one plugin's routers/MCP tools (startup or runtime install)."""
+        try:
+            plugin.initialize()
+            if self._app is not None:
                 for router in plugin.get_routers():
-                    app.include_router(
+                    self._app.include_router(
                         router,
                         prefix=f"/api/v1/plugins/{plugin.manifest.id}",
                         tags=[f"Plugin: {plugin.manifest.name}"],
                     )
-                plugin.register_mcp_tools(mcp)
-                logger.info("Initialized plugin: %s", plugin.manifest.id)
-            except Exception as e:
-                logger.exception("Failed to initialize plugin %s: %s", plugin.manifest.id, e)
+            if self._mcp is not None:
+                plugin.register_mcp_tools(self._mcp)
+            logger.info("Initialized plugin: %s", plugin.manifest.id)
+        except Exception as e:
+            logger.exception("Failed to initialize plugin %s: %s", plugin.manifest.id, e)
+
+    def install_local(self, manifest_path: Path) -> BasePlugin:
+        """Load and initialize a user plugin from an on-disk manifest (runtime install)."""
+        data = json.loads(manifest_path.read_text(encoding="utf-8"))
+        data["type"] = "local"
+        manifest = PluginManifest(**data)
+        manifest._manifest_path = manifest_path  # type: ignore
+        if manifest.id in self.plugins:
+            raise ValueError(f"插件 {manifest.id} 已存在")
+        for builtin_manifest_path in BUILTIN_PLUGINS_DIR.rglob("manifest.json") if BUILTIN_PLUGINS_DIR.exists() else []:
+            try:
+                builtin_id = json.loads(builtin_manifest_path.read_text(encoding="utf-8")).get("id")
+            except Exception:
+                continue
+            if builtin_id == manifest.id:
+                raise ValueError(f"插件 id 与内置插件冲突: {manifest.id}")
+        plugin = self.load_plugin(manifest)
+        if not plugin:
+            raise ValueError(f"插件 {manifest.id} 加载失败，请查看服务端日志")
+        self.plugins[manifest.id] = plugin
+        self._manifests[manifest.id] = manifest
+        self.initialize_plugin(plugin)
+        logger.info("Installed local plugin: %s v%s", manifest.id, manifest.version)
+        return plugin
+
+    def remove_local(self, plugin_id: str) -> None:
+        """Unregister a user plugin. Routes stay mounted until restart but go inert:
+        plugin endpoints check per-user enabled state, and callers must disable
+        the plugin for all users first (endpoints enforce this)."""
+        manifest = self._manifests.get(plugin_id)
+        if manifest is None or manifest.type != "local":
+            raise ValueError("只能卸载用户安装的插件")
+        self.plugins.pop(plugin_id, None)
+        self._manifests.pop(plugin_id, None)
+        logger.info("Removed local plugin: %s", plugin_id)
 
     # ---- user-level enablement / config ----
 

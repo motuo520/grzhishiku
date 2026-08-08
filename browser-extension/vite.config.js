@@ -5,13 +5,15 @@ import fs from 'fs';
 const manifestV3 = {
   manifest_version: 3,
   name: "Personal Second Brain",
-  version: "0.1.0",
+  version: "0.2.0",
   description: "Your AI-enhanced personal knowledge assistant",
   permissions: [
     "activeTab",
     "storage",
     "declarativeNetRequest",
-    "notifications"
+    "notifications",
+    "contextMenus",
+    "scripting"
   ],
   host_permissions: [
     "<all_urls>"
@@ -46,7 +48,7 @@ const manifestV3 = {
 const manifestV2 = {
   manifest_version: 2,
   name: "Personal Second Brain",
-  version: "0.1.0",
+  version: "0.2.0",
   description: "Your AI-enhanced personal knowledge assistant",
   permissions: [
     "activeTab",
@@ -54,7 +56,8 @@ const manifestV2 = {
     "webRequest",
     "webRequestBlocking",
     "<all_urls>",
-    "notifications"
+    "notifications",
+    "contextMenus"
   ],
   browser_action: {
     default_popup: "popup.html",
@@ -89,11 +92,13 @@ export default defineConfig(({ mode }) => {
   const manifest = isFirefox ? manifestV2 : manifestV3;
 
   const distDir = resolve(__dirname, 'dist');
-  fs.mkdirSync(distDir, { recursive: true });
-  fs.writeFileSync(
-    resolve(distDir, 'manifest.json'),
-    JSON.stringify(manifest, null, 2)
-  );
+  const writeManifest = () => {
+    fs.mkdirSync(distDir, { recursive: true });
+    fs.writeFileSync(
+      resolve(distDir, 'manifest.json'),
+      JSON.stringify(manifest, null, 2)
+    );
+  };
 
   // Copy static assets that are not Rollup inputs
   const copyStaticAssets = () => {
@@ -133,7 +138,8 @@ export default defineConfig(({ mode }) => {
     plugins: [
       {
         name: 'copy-static-assets',
-        closeBundle: copyStaticAssets,
+        // emptyOutDir 会清掉配置期写入的 manifest，必须在 closeBundle 重写
+        closeBundle: () => { writeManifest(); copyStaticAssets(); },
       }
     ]
   };

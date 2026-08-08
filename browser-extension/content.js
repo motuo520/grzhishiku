@@ -69,15 +69,17 @@ function showHighlightTooltip(selection) {
     <button id="psb-create-capsule" style="background:#d29922;color:#fff;border:none;padding:4px 8px;border-radius:4px;cursor:pointer;font-size:12px;">胶囊</button>
   `;
 
-  highlightOverlay.style.left = `${rect.left + window.scrollX}px`;
-  highlightOverlay.style.top = `${rect.top + window.scrollY - 40}px`;
+  // position:fixed 使用 client 坐标，不应叠加 scrollX/scrollY
+  highlightOverlay.style.left = `${rect.left}px`;
+  highlightOverlay.style.top = `${rect.top - 40}px`;
 
-  document.getElementById('psb-save-clip')?.addEventListener('click', () => {
+  // 在注入容器内查询控件，避免宿主页面预置同 ID 元素造成 DOM clobbering
+  highlightOverlay.querySelector('#psb-save-clip')?.addEventListener('click', () => {
     saveQuickNote(selection.toString());
     hideHighlightTooltip();
   });
 
-  document.getElementById('psb-create-capsule')?.addEventListener('click', () => {
+  highlightOverlay.querySelector('#psb-create-capsule')?.addEventListener('click', () => {
     showQuickNoteDialog(selection.toString());
     hideHighlightTooltip();
   });
@@ -136,12 +138,12 @@ function showQuickNoteDialog(text) {
 
   document.body.appendChild(dialog);
 
-  document.getElementById('psb-cancel')?.addEventListener('click', () => {
+  dialog.querySelector('#psb-cancel')?.addEventListener('click', () => {
     dialog.remove();
   });
 
-  document.getElementById('psb-save')?.addEventListener('click', () => {
-    const noteText = document.getElementById('psb-note-text').value;
+  dialog.querySelector('#psb-save')?.addEventListener('click', () => {
+    const noteText = dialog.querySelector('#psb-note-text')?.value || '';
     saveQuickNote(noteText);
     dialog.remove();
   });
