@@ -7,11 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **RSS 定时自动刷新**：单源可配自动刷新（30 分钟/1/6/24 小时），后端 sweeper 每 15 分钟扫描到期源，重启自动恢复。
+- **图谱自进化（事件驱动）**：笔记/剪藏/知识单元写入提交后自动重建图谱；构建中置 dirty、成功后补建；后台构建线程独立会话（修复跨线程 Session 隐患）。
+- **批量导入前置目标选择**：导入前先选目标类型——笔记 / 剪藏 / 稍后读 / RSS 源 / 知识单元；非目标类型条目预览置灰跳过、可切换续导。
+- **反证处置闭环**：证伪（debunked）知识单元退出检索与图谱语料；存疑（disputed）检索降权 ×0.7；反证墙处置台（修正重验/保留观察/移除）。
+- **注卡钩子**：已精修/登记践行的知识单元检索加权 ×1.15；管线总览「注卡之后」侧线导引。
+- **浏览器扩展增强**：右键菜单（剪藏此页/选中内容）；token 来源校验；更新不再清空本地数据；同步检查 HTTP 状态码。
+- **内置插件随包**：notion-import / pocket-sync / readwise-sync / mcp-server；插件目录补全 `__init__.py`（打包收集修复）。
+
 ### Fixed
 
 - **Auth interceptor deadlock**: a failed `/auth/refresh` (401) used to re-trigger the refresh flow and await itself, leaving the UI on an infinite loading spinner.
 - **Anonymous 401 redirect**: guest users hitting a 401 API were force-redirected to `/welcome`; they can now browse the app in guest mode as designed.
 - **KnowledgeDetail crash**: the page crashed with `Cannot read properties of undefined (reading 'length')` when a knowledge unit had an empty `content_raw`.
+- **Token 续期加固**：access/refresh 双 token 以 `token_use` 声明区分，access token 不再能无限续期；认证瞬时失败（网络抖动/启动竞态）自动重试并聚焦自愈，不再误踢登录。
+- **检索关键词 LIKE 转义**：检索词含 `%`/`_` 时不再被当作通配符。
+- **Ollama 保活策略**：小模型与嵌入模型常驻内存（keep_alive=-1），大模型 30 分钟闲置自动卸载。
 
 ## [0.1.0] - 2026-08-01
 
