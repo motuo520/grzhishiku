@@ -35,6 +35,8 @@ class TokenResponse(BaseModel):
     access_token: str = Field(..., description="JWT access token")
     token_type: str = Field("bearer", description="Token type")
     expires_in: int = Field(..., description="Token expiry in seconds")
+    refresh_token: Optional[str] = Field(None, description="JWT refresh token")
+    refresh_expires_in: Optional[int] = Field(None, description="Refresh token expiry in seconds")
 
 class UserLogin(BaseModel):
     email: EmailStr = Field(..., description="User email address")

@@ -39,6 +39,8 @@ class TokenResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
     expires_in: int
+    refresh_token: str | None = None
+    refresh_expires_in: int | None = None
 
 class RefreshTokenRequest(BaseModel):
     refresh_token: str
@@ -58,6 +60,24 @@ class ChangePasswordRequest(BaseModel):
         if not re.search(r'\d', v):
             raise ValueError('密码必须包含至少一个数字')
         return v
+
+def _create_token_pair(user: User) -> TokenResponse:
+    """签发 access/refresh 双 token；token_use 声明区分，防止 access token 无限续期。"""
+    access_token = create_access_token(
+        data={"sub": user.id, "email": user.email, "token_use": "access"},
+        expires_delta=timedelta(days=7),
+    )
+    refresh_token = create_access_token(
+        data={"sub": user.id, "email": user.email, "token_use": "refresh"},
+        expires_delta=timedelta(days=30),
+    )
+    return TokenResponse(
+        access_token=access_token,
+        expires_in=60 * 60 * 24 * 7,
+        refresh_token=refresh_token,
+        refresh_expires_in=60 * 60 * 24 * 30,
+    )
+
 
 @router.post("/register", response_model=TokenResponse, summary="User registration", description="Register a new user with email and password.")
 async def register(user_data: UserRegister, db: Session = Depends(get_db)):
@@ -87,11 +107,7 @@ async def register(user_data: UserRegister, db: Session = Depends(get_db)):
     except Exception as e:
         logger.warning("sample data seeding failed for user %s: %s", user.id, e)
 
-    access_token = create_access_token(
-        data={"sub": user.id, "email": user.email},
-        expires_delta=timedelta(days=7)
-    )
-    return TokenResponse(access_token=access_token, expires_in=60 * 60 * 24 * 7)
+    return _create_token_pair(user)
 
 @router.post("/login", response_model=TokenResponse, summary="User login", description="Authenticate with email and password. Returns an access token.")
 async def login(user_data: UserLogin, db: Session = Depends(get_db)):
@@ -101,11 +117,7 @@ async def login(user_data: UserLogin, db: Session = Depends(get_db)):
     if user.status != "active":
         raise HTTPException(status_code=403, detail="Account disabled")
 
-    access_token = create_access_token(
-        data={"sub": user.id, "email": user.email},
-        expires_delta=timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
-    )
-    return TokenResponse(access_token=access_token, expires_in=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60)
+    return _create_token_pair(user)
 
 @router.post("/refresh", response_model=TokenResponse, summary="Refresh access token", description="Exchange a valid refresh token for a new access token.")
 async def refresh_token(
@@ -118,22 +130,21 @@ async def refresh_token(
     payload = decode_token(credentials.credentials)
     if not payload:
         raise HTTPException(status_code=401, detail="Invalid or expired token")
-    
+    # 只接受 refresh token；普通 access token 不能用来续期（防无限续期）
+    if payload.get("token_use") != "refresh":
+        raise HTTPException(status_code=401, detail="Invalid refresh token")
+
     user_id = payload.get("sub")
     if not user_id:
         raise HTTPException(status_code=401, detail="Invalid token")
-    
+
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     if user.status != "active":
         raise HTTPException(status_code=403, detail="Account disabled")
-    
-    new_access_token = create_access_token(
-        data={"sub": user.id, "email": user.email},
-        expires_delta=timedelta(days=7)
-    )
-    return TokenResponse(access_token=new_access_token, expires_in=60 * 60 * 24 * 7)
+
+    return _create_token_pair(user)
 
 @router.post("/logout", summary="User logout", description="Invalidate the current access token. Client should discard the token.")
 async def logout(

@@ -42,13 +42,27 @@ class TestAuth:
         })
         assert resp.status_code == 401
 
-    def test_refresh_token(self, client: TestClient, test_user_token):
+    def test_refresh_token(self, client: TestClient, test_user_token, test_user):
+        # access token 不能续期（防无限续期）
         resp = client.post("/api/v1/auth/refresh", headers={
             "Authorization": f"Bearer {test_user_token}"
+        })
+        assert resp.status_code == 401
+
+        # refresh token 正常换新
+        from app.core.security import create_access_token
+        from datetime import timedelta
+        refresh = create_access_token(
+            data={"sub": test_user.id, "email": test_user.email, "token_use": "refresh"},
+            expires_delta=timedelta(days=30),
+        )
+        resp = client.post("/api/v1/auth/refresh", headers={
+            "Authorization": f"Bearer {refresh}"
         })
         assert resp.status_code == 200
         data = resp.json()
         assert "access_token" in data
+        assert data.get("refresh_token")
 
     def test_logout(self, client: TestClient, test_user_token):
         resp = client.post("/api/v1/auth/logout", headers={

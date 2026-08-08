@@ -1,5 +1,5 @@
 import axios, { AxiosInstance, AxiosError, InternalAxiosRequestConfig } from 'axios';
-import { getToken, setToken, clearToken, TOKEN_KEY } from './auth';
+import { getToken, setToken, clearToken, getRefreshToken, setRefreshToken, clearRefreshToken, TOKEN_KEY } from './auth';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || '';
 
@@ -69,6 +69,7 @@ class ApiClient {
             return this.client(originalRequest);
           } catch (refreshError) {
             clearToken();
+            clearRefreshToken();
             window.dispatchEvent(new CustomEvent('psb:auth:logout'));
             // Redirect to welcome after a tick so callers can finish cleanup
             setTimeout(() => {
@@ -120,11 +121,12 @@ class ApiClient {
     if (this.refreshPromise) return this.refreshPromise;
     this.refreshPromise = this.client
       .post('/api/v1/auth/refresh', {}, {
-        headers: { Authorization: `Bearer ${getToken() || ''}` },
+        headers: { Authorization: `Bearer ${getRefreshToken() || getToken() || ''}` },
       })
       .then((response) => {
-        const { access_token } = response.data;
+        const { access_token, refresh_token } = response.data;
         setToken(access_token);
+        if (refresh_token) setRefreshToken(refresh_token);
         return access_token;
       })
       .finally(() => { this.refreshPromise = null; });
