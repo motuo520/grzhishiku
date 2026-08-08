@@ -25,3 +25,4 @@ lxml>=5.0.0
 apscheduler>=3.11.0
 graphifyy==0.9.16
 boto3>=1.34.0
+openai==2.45.0  # graphify 提取走 Ollama 的 OpenAI 兼容端点所需
