@@ -179,10 +179,20 @@ async def lifespan(app: FastAPI):
     from app.services.plugin_scheduler import initialize_scheduler
     await initialize_scheduler()
 
+    # RSS 定时自动刷新扫班（user.settings["rss_auto"] 驱动，15min 一拍）
+    from app.services.rss_scheduler import initialize_rss_scheduler
+    initialize_rss_scheduler()
+
+    # 图谱自进化：事件驱动（内容写入提交即重建），不走定时器
+    from app.services import graphify_service as _gfs
+    _gfs.register_evolve_listener()
+
     yield
     # Shutdown
     from app.services.plugin_scheduler import shutdown_scheduler
     await shutdown_scheduler()
+    from app.services.rss_scheduler import shutdown_rss_scheduler
+    shutdown_rss_scheduler()
 
 app = FastAPI(
     title="Qianji API",

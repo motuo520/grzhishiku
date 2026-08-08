@@ -1,12 +1,96 @@
-import { FC, useState } from 'react';
+import { FC, useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Rss, Plus, Trash2, RefreshCw, ExternalLink, BookOpen, Check, Loader2,
-  AlertCircle, X, Globe, Save, ChevronDown, ChevronUp, Info, Sparkles
+  AlertCircle, X, Globe, Save, ChevronDown, ChevronUp, Info, Sparkles, Clock
 } from 'lucide-react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useRssFeeds, useRssEntries } from '@/hooks/useRss';
+import { rssApi } from '@/api/rss';
 import ModelSelector from '@/components/llm/ModelSelector';
 import { summarizeText } from '@/api/llm';
+
+const AUTO_FETCH_INTERVALS = [
+  { value: 30, label: '30 分钟' },
+  { value: 60, label: '1 小时' },
+  { value: 360, label: '6 小时' },
+  { value: 1440, label: '24 小时' },
+];
+
+/** 单源自动刷新配置面板：开关 + 间隔 + 下次到期时间 */
+const FeedAutoFetchPanel: FC<{ feedId: string }> = ({ feedId }) => {
+  const queryClient = useQueryClient();
+  const { data } = useQuery({
+    queryKey: ['rss-auto-fetch', feedId],
+    queryFn: () => rssApi.getAutoFetch(feedId).then(r => r.data),
+  });
+  const [enabled, setEnabled] = useState(false);
+  const [intervalMinutes, setIntervalMinutes] = useState(60);
+
+  // 切换 feedId 时重置本地状态，避免旧配置覆盖后端设置
+  useEffect(() => {
+    setEnabled(false);
+    setIntervalMinutes(60);
+  }, [feedId]);
+
+  useEffect(() => {
+    if (data) {
+      setEnabled(data.enabled);
+      setIntervalMinutes(data.interval_minutes || 60);
+    }
+  }, [data]);
+
+  const mutation = useMutation({
+    mutationFn: (cfg: { enabled: boolean; interval_minutes: number }) =>
+      rssApi.setAutoFetch(feedId, cfg),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['rss-auto-fetch', feedId] }),
+    onError: () => {
+      // 失败回滚到后端值
+      if (data) {
+        setEnabled(data.enabled);
+        setIntervalMinutes(data.interval_minutes || 60);
+      }
+    },
+  });
+
+  return (
+    <div className="flex flex-wrap items-center gap-3 px-4 py-3 rounded-[2px] border border-white/[0.08] bg-bg-primary/50 text-xs">
+      <span className="flex items-center gap-1.5 text-text-secondary">
+        <Clock className="w-3.5 h-3.5" />
+        自动刷新
+      </span>
+      <button
+        onClick={() => {
+          const next = !enabled;
+          setEnabled(next);
+          mutation.mutate({ enabled: next, interval_minutes: intervalMinutes });
+        }}
+        disabled={mutation.isPending}
+        className={`relative w-9 h-5 rounded-full transition-colors ${enabled ? 'bg-info' : 'bg-bg-tertiary'}`}
+      >
+        <span className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white transition-transform ${enabled ? 'translate-x-4' : ''}`} />
+      </button>
+      <select
+        value={intervalMinutes}
+        onChange={(e) => {
+          const v = Number(e.target.value);
+          setIntervalMinutes(v);
+          mutation.mutate({ enabled, interval_minutes: v });
+        }}
+        disabled={!enabled || mutation.isPending}
+        className="bg-bg-primary border border-white/[0.08] rounded-[2px] px-2 py-1 text-xs text-text-primary focus:outline-none focus:border-info/40 disabled:opacity-50"
+      >
+        {AUTO_FETCH_INTERVALS.map(opt => (
+          <option key={opt.value} value={opt.value}>{opt.label}</option>
+        ))}
+      </select>
+      {enabled && data?.next_due_at && (
+        <span className="text-text-muted">下次：{new Date(data.next_due_at).toLocaleString('zh-CN')}</span>
+      )}
+      {mutation.isPending && <Loader2 className="w-3.5 h-3.5 animate-spin text-info" />}
+    </div>
+  );
+};
 
 const RssPage: FC = () => {
   const [newUrl, setNewUrl] = useState('');
@@ -20,6 +104,12 @@ const RssPage: FC = () => {
   const [modelId, setModelId] = useState('');
   const [summarizingId, setSummarizingId] = useState<string | null>(null);
   const [summaries, setSummaries] = useState<Record<string, string>>({});
+
+  // 切换 Feed 时清空批量选择，避免误删其他 Feed 的条目
+  useEffect(() => {
+    setSelectedEntryIds(new Set());
+    setEntryBatchMode(false);
+  }, [selectedFeedId]);
 
   const {
     feeds,
@@ -137,15 +227,20 @@ const RssPage: FC = () => {
     }
     const count = selectedEntryIds.size;
     if (!confirm(`确定要删除选中的 ${count} 条消息吗？`)) return;
-    try {
-      for (const entryId of selectedEntryIds) {
+    const failed: string[] = [];
+    for (const entryId of selectedEntryIds) {
+      try {
         await deleteEntry(entryId);
+      } catch {
+        failed.push(entryId);
       }
-      setSelectedEntryIds(new Set());
+    }
+    setSelectedEntryIds(new Set(failed));
+    if (failed.length === 0) {
       setEntryBatchMode(false);
       showSuccess(`已删除 ${count} 条消息`);
-    } catch (e: any) {
-      showError(e?.message || '批量删除失败');
+    } else {
+      showError(`${count - failed.length} 条删除成功，${failed.length} 条失败`);
     }
   };
 
@@ -159,8 +254,19 @@ const RssPage: FC = () => {
     });
   };
 
+  const safeUrl = (url?: string) => {
+    if (!url) return '';
+    try {
+      const u = new URL(url);
+      return u.protocol === 'http:' || u.protocol === 'https:' ? url : '';
+    } catch {
+      return '';
+    }
+  };
+
   const formatError = (err: any): string => {
     const detail = err?.response?.data?.detail || err?.message || '未知错误';
+    if (typeof detail !== 'string') return JSON.stringify(detail);
     if (typeof detail === 'string' && detail.startsWith('Fetch failed:')) {
       const raw = detail.replace('Fetch failed:', '').trim();
       if (raw.includes('HTTP Error')) return '无法访问该地址，请检查 URL 是否正确';
@@ -436,6 +542,8 @@ const RssPage: FC = () => {
                 </div>
               )}
 
+              <FeedAutoFetchPanel feedId={selectedFeed.id} />
+
               {entriesLoading ? (
                 <div className="flex justify-center py-12">
                   <Loader2 className="w-8 h-8 text-info animate-spin" />
@@ -475,7 +583,7 @@ const RssPage: FC = () => {
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2">
                             <div className="text-sm font-medium text-text-primary hover:text-info transition-colors">
-                              <a href={entry.link} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1">
+                              <a href={safeUrl(entry.link)} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1">
                                 {entry.title || '无标题'}
                                 <ExternalLink className="w-3 h-3" />
                               </a>

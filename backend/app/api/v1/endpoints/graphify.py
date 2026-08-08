@@ -97,11 +97,36 @@ def graphify_build(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    st = gfs.start_build_background(db, current_user.id, preferred_model=(req.preferred_model if req else None))
+    st = gfs.start_build_background(current_user.id, preferred_model=(req.preferred_model if req else None))
     state = st.get("state")
     if state in ("exporting", "building"):
         return {"ok": True, "status": st}
     return {"ok": state == "done", "status": st}
+
+
+class AutoEvolveRequest(BaseModel):
+    enabled: bool = False
+    model: Optional[str] = Field(None, max_length=100)
+
+
+@router.get("/auto-evolve", summary="Get graph auto-evolve configuration")
+def get_auto_evolve(
+    current_user: User = Depends(get_current_user),
+):
+    cfg = gfs.get_auto_evolve_config(current_user)
+    mtime = gfs.last_built_mtime(current_user.id)
+    last_built_at = datetime.fromtimestamp(mtime).isoformat() if mtime else None
+    return {**cfg, "last_built_at": last_built_at}
+
+
+@router.put("/auto-evolve", summary="Update graph auto-evolve configuration")
+def set_auto_evolve(
+    req: AutoEvolveRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    cfg = gfs.set_auto_evolve_config(current_user, req.enabled, req.model, db)
+    return cfg
 
 
 @router.get("/graph", summary="Get the enriched knowledge graph")

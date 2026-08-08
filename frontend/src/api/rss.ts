@@ -40,12 +40,23 @@ export interface FeedUpdateData {
   status?: 'active' | 'paused' | 'deleted';
 }
 
+export interface AutoFetchConfig {
+  feed_id: string;
+  enabled: boolean;
+  interval_minutes: number;
+  last_fetched_at?: string | null;
+  next_due_at?: string | null;
+}
+
 export const rssApi = {
   listFeeds: () => api.get<RssFeed[]>('/api/v1/rss/sources'),
   createFeed: (data: FeedCreateData) => api.post<RssFeed>('/api/v1/rss/sources', data),
   updateFeed: (id: string, data: FeedUpdateData) => api.put<RssFeed>(`/api/v1/rss/sources/${id}`, data),
   deleteFeed: (id: string) => api.delete(`/api/v1/rss/sources/${id}`),
   fetchFeed: (id: string) => api.post<{ success: boolean; added: number; total_parsed: number }>(`/api/v1/rss/sources/${id}/fetch`),
+  getAutoFetch: (id: string) => api.get<AutoFetchConfig>(`/api/v1/rss/sources/${id}/auto-fetch`),
+  setAutoFetch: (id: string, data: { enabled: boolean; interval_minutes: number }) =>
+    api.put<AutoFetchConfig>(`/api/v1/rss/sources/${id}/auto-fetch`, data),
   listEntries: (feedId: string, params?: { unread_only?: boolean; saved_only?: boolean; limit?: number }) =>
     api.get<RssEntry[]>(`/api/v1/rss/sources/${feedId}/entries`, { params }),
   markRead: (entryId: string) => api.post<RssEntry>(`/api/v1/rss/entries/${entryId}/read`),

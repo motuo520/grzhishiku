@@ -24,6 +24,7 @@ from typing import Any, Dict, List, Optional
 
 from sqlalchemy.orm import Session
 
+from app.core.database import SessionLocal
 from app.models.base import User, Note, BrowserClip, KnowledgeUnit, GraphEdge
 
 logger = logging.getLogger(__name__)
@@ -264,14 +265,26 @@ def build_graph(db: Session, user_id: str, preferred_model: Optional[str] = None
     return get_build_status(user_id)
 
 
-def start_build_background(db: Session, user_id: str, preferred_model: Optional[str] = None) -> Dict[str, Any]:
+def start_build_background(user_id: str, preferred_model: Optional[str] = None) -> Dict[str, Any]:
     st = get_build_status(user_id)
     if st.get("state") in ("exporting", "building"):
         return st
     _set_build_status(user_id, state="exporting", progress="正在导出语料…", error=None)
-    thread = threading.Thread(target=build_graph, args=(db, user_id, preferred_model), daemon=True)
+    thread = threading.Thread(target=_build_then_flush, args=(user_id, preferred_model), daemon=True)
     thread.start()
     return get_build_status(user_id)
+
+
+def _build_then_flush(user_id: str, preferred_model: Optional[str] = None) -> None:
+    """构建 + 自进化 dirty 补建（构建期间有新内容写入时，成功后自动再建一次）。"""
+    db = SessionLocal()  # 后台线程自建会话，避免跨线程使用请求 Session
+    try:
+        build_graph(db, user_id, preferred_model)
+    finally:
+        try:
+            flush_evolve_dirty(user_id)
+        except Exception:
+            logger.exception("Graph auto-evolve dirty flush failed user=%s", user_id)
 
 
 def load_graph(user_id: str) -> Optional[Dict[str, Any]]:
@@ -485,3 +498,106 @@ def explain_graph(user_id: str, node: str) -> Dict[str, Any]:
 def graph_report_path(user_id: str) -> Optional[Path]:
     p = _out_dir(user_id) / "GRAPH_REPORT.md"
     return p if p.exists() else None
+
+
+# ── 图谱自进化（事件驱动：内容写入提交后触发重建；构建中置 dirty，成功后补建）──
+
+def last_built_mtime(user_id: str) -> Optional[float]:
+    """最近一次成功构建时间（graph.json mtime，epoch 秒）；无图返回 None。"""
+    p = _graph_json_path(user_id)
+    return p.stat().st_mtime if p.exists() else None
+
+
+def _load_user_settings(user: User) -> Dict[str, Any]:
+    try:
+        return json.loads(user.settings or "{}")
+    except json.JSONDecodeError:
+        return {}
+
+
+def get_auto_evolve_config(user: User) -> Dict[str, Any]:
+    cfg = ((_load_user_settings(user).get("graphify") or {}).get("auto_evolve") or {})
+    return {
+        "enabled": bool(cfg.get("enabled")),
+        "model": cfg.get("model") or None,
+    }
+
+
+def set_auto_evolve_config(user: User, enabled: bool, model: Optional[str], db: Session) -> Dict[str, Any]:
+    settings_data = _load_user_settings(user)
+    graphify_cfg = dict(settings_data.get("graphify") or {})
+    graphify_cfg["auto_evolve"] = {
+        "enabled": enabled,
+        "model": model,
+    }
+    settings_data["graphify"] = graphify_cfg
+    user.settings = json.dumps(settings_data, ensure_ascii=False)
+    db.commit()
+    db.refresh(user)
+    return get_auto_evolve_config(user)
+
+
+_evolve_lock = threading.Lock()
+_evolve_dirty: Dict[str, bool] = {}
+
+
+def maybe_trigger_evolve(user_id: str) -> bool:
+    """自进化开启且当前空闲 → 立即触发重建；构建中 → 置 dirty 待补建。
+
+    返回是否立即触发了构建。供内容写入事件（after_commit）与测试调用。
+    """
+    db = SessionLocal()
+    try:
+        user = db.query(User).filter(User.id == user_id).first()
+        if not user:
+            return False
+        cfg = get_auto_evolve_config(user)
+        if not cfg["enabled"]:
+            return False
+        if get_build_status(user_id).get("state") in ("exporting", "building"):
+            with _evolve_lock:
+                _evolve_dirty[user_id] = True
+            return False
+        start_build_background(user_id, preferred_model=cfg["model"])
+        logger.info("Graph auto-evolve build triggered user=%s model=%s", user_id, cfg["model"])
+        return True
+    except Exception as e:
+        logger.warning("Graph auto-evolve trigger failed user=%s: %s", user_id, e)
+        try:
+            db.rollback()
+        except Exception:
+            pass
+        return False
+    finally:
+        db.close()
+
+
+def flush_evolve_dirty(user_id: str) -> None:
+    """构建完成后调用：若期间有新内容（dirty）且最终构建成功，补建一次。"""
+    with _evolve_lock:
+        dirty = _evolve_dirty.pop(user_id, False)
+    if not dirty:
+        return
+    if get_build_status(user_id).get("state") != "done":
+        return  # 失败不补建，避免失败循环
+    logger.info("Graph auto-evolve dirty flush user=%s", user_id)
+    maybe_trigger_evolve(user_id)
+
+
+def register_evolve_listener() -> None:
+    """挂 SQLAlchemy after_commit 监听：任何路径写入笔记/剪藏/知识单元
+    （API/批量导入/剪藏扩展/插件同步/管线）提交后都触发自进化。"""
+    from sqlalchemy import event
+
+    @event.listens_for(SessionLocal, "after_commit")
+    def _on_content_commit(session) -> None:
+        # 覆盖新增/更新/删除，符合“任何写入提交后触发自进化”的语义
+        user_ids = {
+            obj.user_id
+            for state in (session.new, session.dirty, session.deleted)
+            for obj in state
+            if isinstance(obj, (Note, BrowserClip, KnowledgeUnit)) and getattr(obj, "user_id", None)
+        }
+        for uid in user_ids:
+            # 独立线程+新会话，不占用已提交的请求会话
+            threading.Thread(target=maybe_trigger_evolve, args=(uid,), daemon=True).start()

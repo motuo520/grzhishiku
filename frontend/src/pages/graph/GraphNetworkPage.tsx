@@ -1,14 +1,56 @@
 import { FC, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import * as d3 from 'd3';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQueryClient, useQuery, useMutation } from '@tanstack/react-query';
 import {
   Network, RefreshCw, Loader2, X, ExternalLink, Sparkles,
-  AlertTriangle, ZoomIn, ZoomOut, RotateCcw, Database, Link2, Users, Search, Info,
+  AlertTriangle, ZoomIn, ZoomOut, RotateCcw, Database, Link2, Users, Search,
+  Maximize2, Minimize2, Sprout,
 } from 'lucide-react';
 import { useGraphifyStatus, useGraphifyGraph, useGraphifyBuild, useGraphifyExplain } from '@/hooks/useGraphify';
 import ModelSelector from '@/components/llm/ModelSelector';
+import { graphifyApi } from '@/api/graphify';
 import type { GraphifyNode, GraphifyLink, GraphifyTextResult } from '@/api/graphify';
+
+/** 自进化开关 chip：开启后新增内容自动触发图谱重建；开关旁 ⚠ 提示余额消耗 */
+const AutoEvolveChip: FC<{ modelId: string }> = ({ modelId }) => {
+  const queryClient = useQueryClient();
+  const { data } = useQuery({
+    queryKey: ['graphify-auto-evolve'],
+    queryFn: () => graphifyApi.getAutoEvolve().then(r => r.data),
+  });
+  const mutation = useMutation({
+    mutationFn: (cfg: { enabled: boolean; model?: string | null }) =>
+      graphifyApi.setAutoEvolve(cfg),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['graphify-auto-evolve'] }),
+  });
+
+  const enabled = data?.enabled ?? false;
+
+  const save = (nextEnabled: boolean) => {
+    mutation.mutate({ enabled: nextEnabled, model: modelId || data?.model || null });
+  };
+
+  return (
+    <div className="pointer-events-auto glass-card px-3 py-2 rounded-xl flex items-center gap-2 text-xs">
+      <span className="flex items-center gap-1 text-text-secondary" title="开启后，新增笔记/剪藏/知识单元会自动重建知识图谱">
+        <Sprout className="w-3.5 h-3.5 text-[#98c379]" />
+        自进化
+      </span>
+      <button
+        onClick={() => save(!enabled)}
+        disabled={mutation.isPending}
+        className={`relative w-8 h-5 rounded-full transition-colors ${enabled ? 'bg-[#98c379]' : 'bg-bg-tertiary'}`}
+        title={enabled ? '已开启，点击关闭' : '已关闭，点击开启'}
+      >
+        <span className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white transition-transform ${enabled ? 'translate-x-3' : ''}`} />
+      </button>
+      <span title="自进化会在每次新增内容时调用模型重建图谱，消耗云端余额（平台模型）或厂商额度（BYOK）">
+        <AlertTriangle className="w-3.5 h-3.5 text-amber-300" />
+      </span>
+    </div>
+  );
+};
 
 type SimNode = GraphifyNode & d3.SimulationNodeDatum;
 type SimLink = GraphifyLink & d3.SimulationLinkDatum<SimNode>;
@@ -34,11 +76,11 @@ const BRAIN_SIDE_LABELS: Record<string, string> = {
 const getSourceRoute = (type: string, id?: string): string | undefined => {
   switch (type) {
     case 'note':
-      return id ? `/ingest/notes/${id}` : '/ingest/notes';
+      return id ? `/ingest/notes/${encodeURIComponent(id)}` : '/ingest/notes';
     case 'clip':
-      return id ? `/ingest/clipper?highlight=${id}` : '/ingest/clipper';
+      return id ? `/ingest/clipper?highlight=${encodeURIComponent(id)}` : '/ingest/clipper';
     case 'knowledge':
-      return id ? `/knowledge/${id}` : '/knowledge/network';
+      return id ? `/knowledge/${encodeURIComponent(id)}` : '/knowledge/network';
     default:
       return undefined;
   }
@@ -66,14 +108,44 @@ const GraphNetworkPage: FC = () => {
   const [selectedNode, setSelectedNode] = useState<GraphifyNode | null>(null);
   const [explainResult, setExplainResult] = useState<GraphifyTextResult | null>(null);
   const [modelId, setModelId] = useState<string>('');
+  // 真全屏（Fullscreen API）；API 不可用时退化为 CSS overlay
+  const [apiFullscreen, setApiFullscreen] = useState(false);
+  const [cssFullscreen, setCssFullscreen] = useState(false);
+  const isFullscreen = apiFullscreen || cssFullscreen;
 
-  // 本地模型能力提示（可关闭，关闭状态持久化）
-  const HINT_KEY = 'graphNetworkLocalModelHintDismissed';
-  const [hintDismissed, setHintDismissed] = useState(() => localStorage.getItem(HINT_KEY) === '1');
-  const dismissHint = () => {
-    localStorage.setItem(HINT_KEY, '1');
-    setHintDismissed(true);
+  // 自进化配置（与 AutoEvolveChip 共享同一 queryKey，缓存去重）
+  const { data: autoEvolve } = useQuery({
+    queryKey: ['graphify-auto-evolve'],
+    queryFn: () => graphifyApi.getAutoEvolve().then(r => r.data),
+  });
+
+  useEffect(() => {
+    const onChange = () => setApiFullscreen(!!document.fullscreenElement);
+    document.addEventListener('fullscreenchange', onChange);
+    return () => document.removeEventListener('fullscreenchange', onChange);
+  }, []);
+
+  const toggleFullscreen = () => {
+    if (cssFullscreen) {
+      setCssFullscreen(false);
+    } else if (document.fullscreenElement) {
+      document.exitFullscreen();
+    } else if (containerRef.current?.requestFullscreen) {
+      containerRef.current.requestFullscreen().then(() => setCssFullscreen(false)).catch(() => setCssFullscreen(true));
+    } else {
+      setCssFullscreen(true);
+    }
   };
+
+  // ESC 退出 CSS 退化模式（API 模式由浏览器原生处理）
+  useEffect(() => {
+    if (!cssFullscreen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setCssFullscreen(false);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [cssFullscreen]);
 
   const isBuilding = build.isPending || status?.state === 'exporting' || status?.state === 'building';
   const hasGraph = Boolean(status?.has_graph);
@@ -116,7 +188,11 @@ const GraphNetworkPage: FC = () => {
     );
 
     const nodes = graphData.nodes.map((n) => ({ ...n })) as SimNode[];
-    const links = graphData.links.map((l) => ({ ...l })) as SimLink[];
+    // 过滤 source/target 不存在的脏边，避免 d3.forceLink 抛错白屏
+    const nodeIdSet = new Set(nodes.map((n) => n.id));
+    const links = graphData.links
+      .filter((l) => nodeIdSet.has(l.source) && nodeIdSet.has(l.target))
+      .map((l) => ({ ...l })) as SimLink[];
 
     const g = svg.append('g');
 
@@ -133,6 +209,38 @@ const GraphNetworkPage: FC = () => {
       .force('charge', d3.forceManyBody().strength(-120))
       .force('center', d3.forceCenter(width / 2, height / 2))
       .force('collision', d3.forceCollide().radius(24));
+
+    // ── 玻璃星球风格：每社区一个径向渐变（亮核→饱和边），节点=光晕+渐变球+高光 ──
+    const brighter = (hex: string, k = 1) => d3.color(hex)?.brighter(k).formatHex() ?? hex;
+    const darker = (hex: string, k = 1) => d3.color(hex)?.darker(k).formatHex() ?? hex;
+    const gradId = (c: number | null | undefined) => `orb-grad-${c ?? 'none'}`;
+    const defs = svg.append('defs');
+    Array.from(new Set(nodes.map((n) => n.community))).forEach((c) => {
+      const base = communityColor(c);
+      const grad = defs.append('radialGradient')
+        .attr('id', gradId(c))
+        .attr('cx', '35%').attr('cy', '30%').attr('r', '80%');
+      grad.append('stop').attr('offset', '0%').attr('stop-color', brighter(base, 1.6));
+      grad.append('stop').attr('offset', '55%').attr('stop-color', base);
+      grad.append('stop').attr('offset', '100%').attr('stop-color', darker(base, 1.2));
+    });
+
+    // hover 邻居高亮用的邻接表
+    const neighborMap = new Map<string, Set<string>>();
+    links.forEach((l: any) => {
+      const s = typeof l.source === 'object' ? l.source.id : l.source;
+      const t = typeof l.target === 'object' ? l.target.id : l.target;
+      if (!neighborMap.has(s)) neighborMap.set(s, new Set());
+      if (!neighborMap.has(t)) neighborMap.set(t, new Set());
+      neighborMap.get(s)!.add(t);
+      neighborMap.get(t)!.add(s);
+    });
+    const resetEmphasis = () => {
+      nodeSel.selectAll('.orb').attr('opacity', 1).attr('stroke-width', 1);
+      nodeSel.selectAll('.halo').attr('opacity', 0.12);
+      nodeSel.selectAll('.spec').attr('opacity', 0.5);
+      linkSel.attr('stroke-opacity', (d: any) => (d.confidence === 'AMBIGUOUS' ? 0.22 : 0.5));
+    };
 
     // 边样式：EXTRACTED 实线 / INFERRED 虚线 / AMBIGUOUS 淡点线
     const linkSel = g.append('g').selectAll('line').data(links).join('line')
@@ -155,7 +263,7 @@ const GraphNetworkPage: FC = () => {
       .attr('stroke-width', 3)
       .attr('opacity', 0);
 
-    const drag = d3.drag<SVGCircleElement, SimNode>()
+    const drag = d3.drag<SVGGElement, SimNode>()
       .on('start', (event, d) => {
         if (!event.active) simulation.alphaTarget(0.3).restart();
         d.fx = d.x;
@@ -171,22 +279,60 @@ const GraphNetworkPage: FC = () => {
         d.fy = null;
       });
 
-    const nodeSel = g.append('g').selectAll('circle').data(nodes).join('circle')
-      .attr('r', (d) => nodeRadius(degreeMap[d.id] || 0))
-      .attr('fill', (d) => communityColor(d.community))
-      .attr('stroke', '#0d1117')
-      .attr('stroke-width', 1.5)
+    const nodeSel = g.append('g').selectAll('g').data(nodes).join('g')
       .attr('cursor', 'pointer')
-      .call(drag as any)
+      .call(drag as any);
+
+    // 光晕（廉价的辉光，不用 SVG filter 保性能）
+    nodeSel.append('circle')
+      .attr('class', 'halo')
+      .attr('r', (d) => nodeRadius(degreeMap[d.id] || 0) * 1.9)
+      .attr('fill', (d) => communityColor(d.community))
+      .attr('opacity', 0.12)
+      .attr('pointer-events', 'none');
+    // 渐变球体
+    nodeSel.append('circle')
+      .attr('class', 'orb')
+      .attr('r', (d) => nodeRadius(degreeMap[d.id] || 0))
+      .attr('fill', (d) => `url(#${gradId(d.community)})`)
+      .attr('stroke', (d) => brighter(communityColor(d.community), 1.2))
+      .attr('stroke-width', 1)
+      .attr('stroke-opacity', 0.75);
+    // 高光点（玻璃质感）
+    nodeSel.append('circle')
+      .attr('class', 'spec')
+      .attr('r', (d) => nodeRadius(degreeMap[d.id] || 0) * 0.26)
+      .attr('cx', (d) => -nodeRadius(degreeMap[d.id] || 0) * 0.3)
+      .attr('cy', (d) => -nodeRadius(degreeMap[d.id] || 0) * 0.36)
+      .attr('fill', '#ffffff')
+      .attr('opacity', 0.5)
+      .attr('pointer-events', 'none');
+
+    nodeSel
       .on('mouseenter', (event, d) => {
         hovered = d;
-        hoverLabel.text(d.label).attr('opacity', 1);
-        d3.select(event.currentTarget).attr('stroke', '#e6edf3');
+        // 力导向停止后 tick 不再触发，mouseenter 时立即同步坐标
+        hoverLabel
+          .text(d.label)
+          .attr('opacity', 1)
+          .attr('x', d.x ?? 0)
+          .attr('y', (d.y ?? 0) - nodeRadius(degreeMap[d.id] || 0) - 8);
+        // 邻居保持，其余淡出
+        const keep = new Set([d.id, ...(neighborMap.get(d.id) ?? [])]);
+        nodeSel.selectAll('.orb').attr('opacity', (n: any) => (keep.has(n.id) ? 1 : 0.2));
+        nodeSel.selectAll('.halo').attr('opacity', (n: any) => (keep.has(n.id) ? 0.22 : 0.03));
+        nodeSel.selectAll('.spec').attr('opacity', (n: any) => (keep.has(n.id) ? 0.6 : 0.06));
+        linkSel.attr('stroke-opacity', (l: any) => {
+          const s = typeof l.source === 'object' ? l.source.id : l.source;
+          const t = typeof l.target === 'object' ? l.target.id : l.target;
+          return s === d.id || t === d.id ? 0.85 : 0.05;
+        });
+        d3.select(event.currentTarget).select('.orb').attr('stroke-width', 2);
       })
-      .on('mouseleave', (event) => {
+      .on('mouseleave', () => {
         hovered = null;
         hoverLabel.attr('opacity', 0);
-        d3.select(event.currentTarget).attr('stroke', '#0d1117');
+        resetEmphasis();
       })
       .on('click', (event, d) => {
         event.stopPropagation();
@@ -215,9 +361,7 @@ const GraphNetworkPage: FC = () => {
         .attr('x2', (d: any) => d.target.x)
         .attr('y2', (d: any) => d.target.y);
 
-      nodeSel
-        .attr('cx', (d: any) => d.x)
-        .attr('cy', (d: any) => d.y);
+      nodeSel.attr('transform', (d: any) => `translate(${d.x},${d.y})`);
 
       labelSel
         .attr('x', (d: any) => d.x)
@@ -240,7 +384,7 @@ const GraphNetworkPage: FC = () => {
       simulation.stop();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [graphData]);
+  }, [graphData, isFullscreen]);
 
   const zoomIn = () => {
     if (zoomRef.current && svgRef.current) {
@@ -266,8 +410,15 @@ const GraphNetworkPage: FC = () => {
 
   const handleExplain = () => {
     if (!selectedNode) return;
-    explain.mutate(selectedNode.id, {
-      onSuccess: (data) => setExplainResult(data),
+    const nodeId = selectedNode.id;
+    explain.mutate(nodeId, {
+      // 请求返回时校验当前选中节点，避免张冠李戴
+      onSuccess: (data) => {
+        setSelectedNode((current) => {
+          if (current?.id === nodeId) setExplainResult(data);
+          return current;
+        });
+      },
     });
   };
 
@@ -323,7 +474,12 @@ const GraphNetworkPage: FC = () => {
   };
 
   return (
-    <div className="relative w-full h-full bg-bg-primary overflow-hidden select-none" ref={containerRef}>
+    <div
+      className={`bg-bg-primary overflow-hidden select-none ${
+        isFullscreen ? 'fixed inset-0 z-[100]' : 'relative w-full h-full'
+      }`}
+      ref={containerRef}
+    >
       {hasGraph && <svg ref={svgRef} className="absolute inset-0 w-full h-full" />}
 
       {renderCenterState()}
@@ -347,7 +503,8 @@ const GraphNetworkPage: FC = () => {
         </>
       )}
 
-      {/* 顶部工具栏 */}
+      {/* 顶部工具栏（全屏时隐藏，只留右上角退出按钮） */}
+      {!isFullscreen && (
       <div className="absolute top-4 left-4 right-4 z-30 flex flex-wrap items-center gap-2 pointer-events-none">
         <div className="pointer-events-auto glass-card px-3 py-2 rounded-xl flex items-center gap-3 text-xs text-text-secondary">
           <span className="flex items-center gap-1">
@@ -367,13 +524,6 @@ const GraphNetworkPage: FC = () => {
           )}
         </div>
 
-        {status?.stale && (
-          <div className="pointer-events-auto glass-card px-3 py-2 rounded-xl flex items-center gap-1.5 text-xs text-amber-300 border border-amber-400/30">
-            <AlertTriangle className="w-3.5 h-3.5" />
-            内容已更新，建议重建
-          </div>
-        )}
-
         {hasGraph && (
           <div className="pointer-events-auto glass-card px-2 py-1 rounded-xl">
             <ModelSelector value={modelId} onChange={setModelId} taskType="analysis" className="w-44" />
@@ -388,25 +538,42 @@ const GraphNetworkPage: FC = () => {
           {isBuilding ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
           重建图谱
         </button>
-      </div>
 
-      {/* 本地模型能力提示：构建中与进度条同位，互斥显示 */}
-      {!hintDismissed && !isBuilding && (
-        <div className="absolute top-16 left-1/2 -translate-x-1/2 z-30 glass-card rounded-xl px-4 py-2.5 flex items-center gap-3 text-xs text-text-secondary max-w-xl">
-          <Info className="w-3.5 h-3.5 text-info shrink-0" />
-          <span>
-            本地小模型构建图谱的能力有限，提取效果可能不理想。可在「设置 → AI 设置」接入外部模型提升效果，或到
-            <a href="https://grzhishiku.com/" target="_blank" rel="noreferrer" className="text-info hover:underline mx-0.5">演示站「钤记」</a>
-            查看完整效果。
-          </span>
-          <button onClick={dismissHint} className="text-text-muted hover:text-text-primary shrink-0" title="不再提示">
-            <X className="w-3.5 h-3.5" />
-          </button>
+        <AutoEvolveChip modelId={modelId} />
+
+        <button
+          onClick={toggleFullscreen}
+          className="pointer-events-auto glass-card px-3 py-2 rounded-xl flex items-center gap-1.5 text-xs text-text-secondary hover:text-text-primary transition-colors"
+          title="全屏展示"
+        >
+          <Maximize2 className="w-3.5 h-3.5" />
+          全屏
+        </button>
+      </div>
+      )}
+
+      {/* 全屏时唯一常驻控件：退出全屏 */}
+      {isFullscreen && (
+        <button
+          onClick={toggleFullscreen}
+          className="absolute top-4 right-4 z-[110] glass-card px-3 py-2 rounded-xl flex items-center gap-1.5 text-xs text-text-secondary hover:text-text-primary transition-colors"
+          title="退出全屏（ESC）"
+        >
+          <Minimize2 className="w-3.5 h-3.5" />
+          退出全屏
+        </button>
+      )}
+
+      {/* 自进化开启提示：新增内容自动重建消耗模型余额/厂商额度（全屏隐藏） */}
+      {autoEvolve?.enabled && !isFullscreen && (
+        <div className="absolute top-16 left-4 z-30 glass-card px-3 py-1.5 rounded-xl flex items-center gap-1.5 text-[11px] text-amber-300 border border-amber-400/30 pointer-events-none">
+          <AlertTriangle className="w-3 h-3" />
+          自进化已开启：每次新增内容都会自动调用模型重建图谱，消耗云端余额（平台模型）或厂商额度（BYOK），请注意费用。
         </div>
       )}
 
-      {/* 图例 */}
-      {hasGraph && (
+      {/* 图例（全屏隐藏） */}
+      {hasGraph && !isFullscreen && (
         <div className="absolute bottom-20 left-4 z-30 glass-card px-3 py-2 rounded-xl flex items-center gap-4 text-[10px] text-text-muted pointer-events-none">
           <span className="flex items-center gap-1.5">
             <span className="w-5 border-t border-[#8b949e]" />
@@ -423,8 +590,8 @@ const GraphNetworkPage: FC = () => {
         </div>
       )}
 
-      {/* 缩放控制 */}
-      {hasGraph && (
+      {/* 缩放控制（全屏隐藏） */}
+      {hasGraph && !isFullscreen && (
         <div className="absolute bottom-4 right-4 z-30 flex flex-col gap-1">
           <button onClick={zoomIn} className="glass-card p-2 rounded-lg text-text-secondary hover:text-text-primary transition-colors" title="放大">
             <ZoomIn className="w-4 h-4" />

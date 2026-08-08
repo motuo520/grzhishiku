@@ -57,6 +57,12 @@ export interface GraphifyTextResult {
   error?: string;
 }
 
+export interface AutoEvolveConfig {
+  enabled: boolean;
+  model: string | null;
+  last_built_at?: string | null;
+}
+
 export const graphifyApi = {
   getStatus: () => api.get<GraphifyStatus>('/api/v1/graphify/status'),
   build: (preferred_model?: string) =>
@@ -67,4 +73,7 @@ export const graphifyApi = {
   path: (a: string, b: string) => api.post<GraphifyTextResult>('/api/v1/graphify/path', { a, b }),
   explain: (node: string) => api.post<GraphifyTextResult>('/api/v1/graphify/explain', { node }),
   getReport: () => api.get<{ content: string }>('/api/v1/graphify/report'),
+  getAutoEvolve: () => api.get<AutoEvolveConfig>('/api/v1/graphify/auto-evolve'),
+  setAutoEvolve: (data: { enabled: boolean; model?: string | null }) =>
+    api.put<AutoEvolveConfig>('/api/v1/graphify/auto-evolve', data),
 };
