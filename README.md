@@ -11,6 +11,8 @@
 
 ![Demo](screenshots/demo.gif)
 
+**[在线演示 →](https://grzhishiku.com)**（打开即玩，游客自动进入演示账号；完整功能含桌面端与 Pro 权益）
+
 [中文](#快速开始) · [English](#quick-start)
 
 ---
