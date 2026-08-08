@@ -139,6 +139,11 @@ def _graphify_env(preferred_model: Optional[str] = None) -> Dict[str, str]:
     # 不能用 setdefault：compose 里注入的 OLLAMA_BASE_URL 没有 /v1 后缀。
     # 仅消除 graphify 的告警，Ollama 本身不校验 key。
     env.setdefault("OLLAMA_API_KEY", "ollama")
+    # graphify 的 ollama 后端走 OpenAI 兼容端点，URL 必须带 /v1
+    # （compose/自托管注入的 OLLAMA_BASE_URL 通常没有 /v1，不补则提取全灭）
+    base = (getattr(settings, "OLLAMA_BASE_URL", "") or "").rstrip("/")
+    if base:
+        env["OLLAMA_BASE_URL"] = base if base.endswith("/v1") else f"{base}/v1"
     # 图谱提取可用独立模型：0.5B 聊天模型太弱，提取 JSON 基本全会失败。
     env["OLLAMA_MODEL"] = getattr(settings, "GRAPHIFY_OLLAMA_MODEL", "") or settings.OLLAMA_MODEL
     # 用户在前端选了模型时优先其选择（本构建仅 Ollama，覆盖提取模型即可）
