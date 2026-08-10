@@ -370,6 +370,13 @@ class SPAStaticFiles(StaticFiles):
             raise
 
 
+# MCP SSE server 必须在 SPA 通配挂载之前挂上：挂载顺序即匹配顺序，若只在
+# lifespan 里挂载，SERVE_FRONTEND_DIR 模式下 "/" catch-all 会永远抢先，
+# /api/v1/mcp 被 SPA 返回 404。lifespan 里的 mount_mcp 调用靠幂等守卫空转。
+if settings.MCP_ENABLED:
+    from app.mcp.server import mount_mcp as _mount_mcp
+    _mount_mcp(app)
+
 # SPA hosting: serve the built SPA from "/". Mounted last so API routes,
 # /uploads and /health always win.
 if _serve_frontend_dir:
