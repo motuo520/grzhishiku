@@ -142,8 +142,9 @@ async def upload_file(
     if account.connection_type != "local_import":
         raise HTTPException(status_code=400, detail="该账号类型不支持文件上传导入")
 
-    # Validate extension
-    filename = file.filename or "unknown"
+    # Validate extension; strip any path components to prevent path traversal
+    # (Linux 上 os.path.basename 不认 "\"，先统一成 "/" 再取纯文件名)
+    filename = os.path.basename((file.filename or "unknown").replace("\\", "/")) or "unknown"
     ext = os.path.splitext(filename)[1].lower()
     allowed = {".txt", ".csv", ".html", ".htm", ".json", ".zip"}
     if ext not in allowed:

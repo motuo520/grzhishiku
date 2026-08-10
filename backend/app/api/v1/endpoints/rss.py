@@ -103,18 +103,12 @@ async def create_feed(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    # SSRF 防护：仅允许 http/https，且禁止内网/回环地址
-    from urllib.parse import urlparse
-    import ipaddress
-    _p = urlparse(feed_data.url)
-    if _p.scheme not in ("http", "https") or not _p.hostname:
-        raise HTTPException(status_code=400, detail="仅支持 http/https 协议的 RSS 地址")
+    # SSRF 防护：仅允许 http/https，且禁止内网/回环地址（域名解析后的 IP 同样校验）
+    from app.services.url_guard import validate_fetch_url, UrlNotAllowed
     try:
-        _ip = ipaddress.ip_address(_p.hostname)
-        if _ip.is_private or _ip.is_loopback or _ip.is_reserved:
-            raise HTTPException(status_code=400, detail="RSS 地址不能指向内网或本机")
-    except ValueError:
-        pass  # 域名放行
+        validate_fetch_url(feed_data.url)
+    except UrlNotAllowed as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
     existing = db.query(RssFeed).filter(
         RssFeed.user_id == current_user.id,

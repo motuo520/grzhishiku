@@ -78,12 +78,13 @@ async def lifespan(app: FastAPI):
         """))
         conn.execute(text("""
             CREATE TRIGGER IF NOT EXISTS knowledge_fts_update AFTER UPDATE ON knowledge_units BEGIN
-                UPDATE knowledge_fts SET content_raw = new.content_raw WHERE rowid = new.rowid;
+                INSERT INTO knowledge_fts(knowledge_fts, rowid, content_raw) VALUES('delete', old.rowid, old.content_raw);
+                INSERT INTO knowledge_fts(rowid, content_raw) VALUES (new.rowid, new.content_raw);
             END
         """))
         conn.execute(text("""
             CREATE TRIGGER IF NOT EXISTS knowledge_fts_delete AFTER DELETE ON knowledge_units BEGIN
-                DELETE FROM knowledge_fts WHERE rowid = old.rowid;
+                INSERT INTO knowledge_fts(knowledge_fts, rowid, content_raw) VALUES('delete', old.rowid, old.content_raw);
             END
         """))
 
@@ -246,17 +247,17 @@ app.add_middleware(UploadSizeLimitMiddleware)
 
 # TrustedHostMiddleware: restrict allowed hosts in production
 if settings.ENV == "production":
-    _allowed_hosts = ["localhost", "127.0.0.1", "*.localhost"]
+    _allowed_hosts = []
     _api_host = settings.API_BASE_URL.replace("https://", "").replace("http://", "").split(":")[0]
-    if _api_host and _api_host not in _allowed_hosts:
+    if _api_host and _api_host != "*" and _api_host not in _allowed_hosts:
         _allowed_hosts.append(_api_host)
     # 同时允许前端域名和 CORS 来源域名（支持反向代理/多域名访问）
     _frontend_host = settings.FRONTEND_URL.replace("https://", "").replace("http://", "").split(":")[0]
-    if _frontend_host and _frontend_host not in _allowed_hosts:
+    if _frontend_host and _frontend_host != "*" and _frontend_host not in _allowed_hosts:
         _allowed_hosts.append(_frontend_host)
     for origin in settings.ALLOWED_ORIGINS.split(","):
         host = origin.replace("https://", "").replace("http://", "").split(":")[0]
-        if host and host not in _allowed_hosts:
+        if host and host != "*" and host not in _allowed_hosts:
             _allowed_hosts.append(host)
     app.add_middleware(TrustedHostMiddleware, allowed_hosts=_allowed_hosts)
 
@@ -269,7 +270,8 @@ if settings.ENV == "development":
         for port in range(3000, 3051)
     ]
 else:
-    _cors_origins = [o.strip() for o in settings.ALLOWED_ORIGINS.split(",") if o.strip()]
+    # 生产 CORS 过滤通配符，避免与 allow_credentials=True 冲突
+    _cors_origins = [o.strip() for o in settings.ALLOWED_ORIGINS.split(",") if o.strip() and o.strip() != "*"]
 if not _cors_origins:
     _cors_origins = ["http://localhost:3000"]
 
@@ -290,12 +292,12 @@ os.makedirs("uploads/avatars", exist_ok=True)
 app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 
 class ClientErrorReport(BaseModel):
-    message: str
-    stack: str | None = None
-    componentStack: str | None = Field(default=None, alias="componentStack")
-    url: str = ""
-    userAgent: str = Field(default="", alias="userAgent")
-    timestamp: str = ""
+    message: str = Field(max_length=1000)
+    stack: str | None = Field(default=None, max_length=5000)
+    componentStack: str | None = Field(default=None, alias="componentStack", max_length=5000)
+    url: str = Field(default="", max_length=500)
+    userAgent: str = Field(default="", alias="userAgent", max_length=500)
+    timestamp: str = Field(default="", max_length=100)
 
     model_config = ConfigDict(populate_by_name=True)
 
@@ -304,17 +306,22 @@ class ClientErrorReport(BaseModel):
 async def receive_client_error(report: ClientErrorReport):
     """Receive frontend error reports for diagnostics."""
     logger = logging.getLogger("client_errors")
+
+    def _sanitize(s: str) -> str:
+        # 换行/回车替换为空格，防日志伪造
+        return s.replace("\n", " ").replace("\r", " ")
+
     logger.warning(
         "Frontend error: %s | URL: %s | UA: %s | Time: %s",
-        report.message,
-        report.url,
-        report.userAgent,
+        _sanitize(report.message),
+        _sanitize(report.url),
+        _sanitize(report.userAgent),
         report.timestamp,
     )
     if report.stack:
-        logger.debug("Stack:\n%s", report.stack)
+        logger.debug("Stack:\n%s", _sanitize(report.stack))
     if report.componentStack:
-        logger.debug("Component stack:\n%s", report.componentStack)
+        logger.debug("Component stack:\n%s", _sanitize(report.componentStack))
     return {"received": True}
 
 
@@ -328,7 +335,18 @@ async def health_check():
     return {"status": "ok", "timestamp": time.time()}
 
 @app.get("/metrics", tags=["Monitoring"], include_in_schema=False)
-async def metrics():
+async def metrics(request: Request):
+    # 仅允许本机/内网访问，避免暴露内部运行指标
+    client_host = request.client.host if request.client else ""
+    is_internal = (
+        client_host in ("127.0.0.1", "::1", "localhost")
+        or client_host.startswith("10.")
+        or client_host.startswith("172.")
+        or client_host.startswith("192.168.")
+    )
+    if not is_internal:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=403, detail="Forbidden")
     return get_metrics()
 
 

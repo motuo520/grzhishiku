@@ -1,10 +1,22 @@
 from datetime import datetime
 from typing import List, Optional
 
-from mcp.server.fastmcp import FastMCP
+from mcp.server.fastmcp import Context, FastMCP
 
 from app.core.database import SessionLocal
 from app.models.base import KnowledgeUnit, Note, User
+from app.mcp.server import authenticate_token
+
+
+def _current_user_id(ctx: Context) -> str:
+    """Resolve the authenticated user from the HTTP request carrying this MCP call."""
+    request = getattr(ctx.request_context, "request", None)
+    auth = request.headers.get("authorization", "") if request is not None else ""
+    token = auth[len("bearer "):] if auth.lower().startswith("bearer ") else ""
+    user_id = authenticate_token(token)
+    if not user_id:
+        raise ValueError("未认证：请在 MCP 客户端配置 Authorization: Bearer <token>")
+    return user_id
 
 
 def register_core_tools(mcp: FastMCP) -> None:
@@ -13,11 +25,13 @@ def register_core_tools(mcp: FastMCP) -> None:
     @mcp.tool()
     def search_knowledge(
         query: str,
-        user_id: str,
+        ctx: Context,
         brain_side: str = "both",
         limit: int = 10,
     ) -> List[dict]:
         """Search the user's knowledge units by content or source title."""
+        user_id = _current_user_id(ctx)
+        limit = max(1, min(limit, 100))
         db = SessionLocal()
         try:
             q = db.query(KnowledgeUnit).filter(KnowledgeUnit.user_id == user_id)
@@ -47,10 +61,11 @@ def register_core_tools(mcp: FastMCP) -> None:
     def create_note(
         title: str,
         content: str,
-        user_id: str,
+        ctx: Context,
         brain_side: str = "personal",
     ) -> dict:
         """Create a personal note in the second brain."""
+        user_id = _current_user_id(ctx)
         db = SessionLocal()
         try:
             user = db.query(User).filter(User.id == user_id).first()
@@ -78,12 +93,13 @@ def register_core_tools(mcp: FastMCP) -> None:
     @mcp.tool()
     def create_knowledge_unit(
         content_raw: str,
-        user_id: str,
+        ctx: Context,
         brain_side: str = "network",
         source_url: Optional[str] = None,
         source_title: Optional[str] = None,
     ) -> dict:
         """Create a network-brain knowledge unit from external content."""
+        user_id = _current_user_id(ctx)
         db = SessionLocal()
         try:
             user = db.query(User).filter(User.id == user_id).first()
@@ -117,10 +133,11 @@ def register_core_tools(mcp: FastMCP) -> None:
 
     @mcp.tool()
     def get_pipeline_stats(
-        user_id: str,
+        ctx: Context,
         brain_side: str = "both",
     ) -> dict:
         """Return cognitive pipeline stage counts for the user."""
+        user_id = _current_user_id(ctx)
         db = SessionLocal()
         try:
             note_query = db.query(Note).filter(Note.user_id == user_id, Note.status == "active")
@@ -140,8 +157,9 @@ def register_core_tools(mcp: FastMCP) -> None:
             db.close()
 
     @mcp.tool()
-    def whoami(user_id: str) -> dict:
-        """Return basic info about the user."""
+    def whoami(ctx: Context) -> dict:
+        """Return basic info about the authenticated user."""
+        user_id = _current_user_id(ctx)
         db = SessionLocal()
         try:
             user = db.query(User).filter(User.id == user_id).first()

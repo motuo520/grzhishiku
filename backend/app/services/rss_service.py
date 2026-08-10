@@ -8,7 +8,6 @@
 import json
 import re
 import urllib.error
-import urllib.request
 import uuid
 import xml.etree.ElementTree as ET
 from datetime import datetime
@@ -17,6 +16,7 @@ from typing import Any, Dict, Optional
 from sqlalchemy.orm import Session
 
 from app.models.base import User, RssFeed, RssEntry
+from app.services.url_guard import open_checked_url, read_capped
 
 AUTO_FETCH_INTERVALS = {30, 60, 360, 1440}
 
@@ -35,15 +35,16 @@ def _extract_domain(url: str) -> str:
 
 def fetch_feed_xml(url: str) -> str:
     try:
-        req = urllib.request.Request(
+        # SSRF 防护：仅 http/https、拒绝内网地址；重定向逐跳校验，响应体限 5MB
+        with open_checked_url(
             url,
+            timeout=15,
             headers={
                 "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
             },
-        )
-        with urllib.request.urlopen(req, timeout=15) as response:
+        ) as response:
             content_type = response.headers.get("Content-Type", "")
-            data = response.read()
+            data = read_capped(response)
     except urllib.error.HTTPError as e:
         status = e.code
         if status == 404:
@@ -59,6 +60,9 @@ def fetch_feed_xml(url: str) -> str:
         if "ssl" in lowered:
             raise RuntimeError("SSL 证书错误") from e
         raise RuntimeError(f"无法访问该地址：{reason}") from e
+    except ValueError as e:
+        # SSRF 校验失败 / 重定向过多 / 响应过大，直接透出原始提示
+        raise RuntimeError(str(e)) from e
     except Exception as e:
         raise RuntimeError(f"请求失败：{e}") from e
 

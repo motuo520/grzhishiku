@@ -127,6 +127,20 @@ const AISettings: FC = () => {
       return;
     }
 
+    // Ollama 地址前端纵深校验（后端仍须白名单/禁重定向防 SSRF）
+    if (ollamaUrl.trim()) {
+      try {
+        const parsedUrl = new URL(ollamaUrl);
+        if (!['http:', 'https:'].includes(parsedUrl.protocol)) {
+          showToast('Ollama 地址仅支持 http 或 https 协议', 'error');
+          return;
+        }
+      } catch {
+        showToast('请输入有效的 Ollama 地址', 'error');
+        return;
+      }
+    }
+
     const provider = selectedConfig.provider;
     const activeModel = provider === 'ollama' ? ollamaModel : selectedConfig.provider_model_id;
 

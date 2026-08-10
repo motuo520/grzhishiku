@@ -26,11 +26,16 @@ def _extract_text_from_txt(file_path: str) -> str:
     encodings = ["utf-8", "gbk", "gb2312", "latin-1"]
     for enc in encodings:
         try:
-            with open(file_path, "r", encoding=enc, errors="replace") as f:
+            # strict 探测，避免 errors=replace 让 utf-8 假成功导致 GBK 中文乱码
+            with open(file_path, "r", encoding=enc, errors="strict") as f:
                 return f.read()
+        except UnicodeDecodeError:
+            continue
         except Exception:
             continue
-    return ""
+    # 最终兜底：损坏文件用 replace 避免崩溃
+    with open(file_path, "r", encoding="utf-8", errors="replace") as f:
+        return f.read()
 
 
 def _extract_text_from_pdf(file_path: str) -> str:
@@ -61,15 +66,17 @@ def _extract_text_from_docx(file_path: str) -> str:
 
 def _extract_text_from_xlsx(file_path: str) -> str:
     try:
+        from contextlib import closing
         from openpyxl import load_workbook
-        wb = load_workbook(file_path, data_only=True, read_only=True)
-        parts = []
-        for sheet in wb.worksheets:
-            for row in sheet.iter_rows(values_only=True):
-                row_text = " ".join(str(cell) for cell in row if cell is not None)
-                if row_text.strip():
-                    parts.append(row_text)
-        return "\n".join(parts)
+        # closing 确保 read_only workbook 句柄被关闭，防批量解析泄漏
+        with closing(load_workbook(file_path, data_only=True, read_only=True)) as wb:
+            parts = []
+            for sheet in wb.worksheets:
+                for row in sheet.iter_rows(values_only=True):
+                    row_text = " ".join(str(cell) for cell in row if cell is not None)
+                    if row_text.strip():
+                        parts.append(row_text)
+            return "\n".join(parts)
     except Exception as e:
         raise RuntimeError(f"XLSX 提取失败: {e}") from e
 

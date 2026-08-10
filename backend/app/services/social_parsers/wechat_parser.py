@@ -2,10 +2,16 @@ import os
 import re
 import csv
 import json
+import uuid
 import zipfile
 from datetime import datetime
 from typing import List, Optional
 from .base import BaseSocialParser, SocialMessageDict
+
+# 解压防护上限（量级参考 plugin_installer）
+_MAX_MEMBERS = 2000
+_MAX_MEMBER_BYTES = 100 * 1024 * 1024   # 单成员上限 100MB
+_MAX_TOTAL_BYTES = 500 * 1024 * 1024    # 解压后总字节上限 500MB
 
 
 class WeChatParser(BaseSocialParser):
@@ -36,9 +42,19 @@ class WeChatParser(BaseSocialParser):
 
     def _parse_zip(self, file_path: str, account_id: str, user_id: str) -> List[SocialMessageDict]:
         messages = []
-        temp_dir = os.path.join(os.path.dirname(file_path), f"_wechat_extract_{datetime.now().strftime('%Y%m%d%H%M%S')}")
+        temp_dir = os.path.join(os.path.dirname(file_path), f"_wechat_extract_{uuid.uuid4().hex}")
         os.makedirs(temp_dir, exist_ok=True)
         with zipfile.ZipFile(file_path, 'r') as zf:
+            members = [m for m in zf.infolist() if not m.is_dir()]
+            if len(members) > _MAX_MEMBERS:
+                raise ValueError(f"压缩包文件数超过 {_MAX_MEMBERS} 上限")
+            total_bytes = 0
+            for m in members:
+                if m.file_size > _MAX_MEMBER_BYTES:
+                    raise ValueError(f"压缩包内单文件超过 100MB 上限: {m.filename}")
+                total_bytes += m.file_size
+            if total_bytes > _MAX_TOTAL_BYTES:
+                raise ValueError("压缩包解压后总大小超过 500MB 上限")
             for name in zf.namelist():
                 # 防 zip 路径穿越：拒绝绝对路径和含 .. 的条目
                 normalized = os.path.normpath(name)

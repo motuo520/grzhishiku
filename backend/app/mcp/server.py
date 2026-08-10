@@ -1,3 +1,5 @@
+from typing import Optional
+
 from fastapi import FastAPI
 from mcp.server.fastmcp import FastMCP
 from starlette.responses import JSONResponse
@@ -11,9 +13,17 @@ mcp = FastMCP(
         "You are an agent connected to Qianji, a local-first AI knowledge base. "
         "You can search knowledge, create notes and knowledge units, "
         "and inspect the cognitive production pipeline. "
-        "Always ask for user_id when a tool requires it."
+        "Tools act as the user identified by the Bearer token; never ask for user_id."
     ),
 )
+
+
+def authenticate_token(token: str) -> Optional[str]:
+    """校验用户 JWT，合法返回 user_id，否则返回 None。"""
+    payload = decode_token(token) if token else None
+    if not payload or payload.get("type") != "user":
+        return None
+    return payload.get("sub")
 
 
 class JWTAuthMiddleware:
@@ -31,7 +41,7 @@ class JWTAuthMiddleware:
             headers = dict(scope.get("headers") or [])
             auth = headers.get(b"authorization", b"").decode("latin-1")
             token = auth[len("bearer "):] if auth.lower().startswith("bearer ") else ""
-            if not token or not decode_token(token):
+            if not authenticate_token(token):
                 response = JSONResponse({"detail": "Not authenticated"}, status_code=401)
                 await response(scope, receive, send)
                 return
@@ -39,6 +49,12 @@ class JWTAuthMiddleware:
 
 
 def mount_mcp(app: FastAPI) -> None:
-    """Mount the MCP SSE server under /api/v1/mcp (JWT-authenticated)."""
+    """Mount the MCP SSE server under /api/v1/mcp (JWT-authenticated).
+
+    幂等：lifespan 可能多次进入（测试里每个 TestClient 都跑一遍），
+    重复 mount 只会在路由表里堆积无人命中的重复 Mount。
+    """
+    if any(getattr(route, "path", None) == "/api/v1/mcp" for route in app.routes):
+        return
     sse_app = JWTAuthMiddleware(mcp.sse_app())
     app.mount("/api/v1/mcp", sse_app)

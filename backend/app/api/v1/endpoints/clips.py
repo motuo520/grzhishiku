@@ -125,8 +125,7 @@ async def create_clip(
         status="active",
     )
     db.add(clip)
-    db.commit()
-    db.refresh(clip)
+    db.flush()
 
     quota.record_storage_add(current_user.id, additional_bytes)
 
@@ -139,16 +138,17 @@ async def create_clip(
             user_id=current_user.id,
             tag_inputs=clip_data.tags,
         )
-        db.commit()
-        db.refresh(clip)
-    
+
     # Auto-link graph edges
     try:
         await auto_link_clip(db, clip, current_user.id)
-        db.commit()
     except Exception as e:
         logger.warning(f"Auto-link failed for clip {clip.id}: {e}")
-    
+
+    # 统一事务提交，避免部分成功留脏数据
+    db.commit()
+    db.refresh(clip)
+
     return _build_clip_response(clip, db)
 
 @router.get("/{clip_id}", response_model=ClipResponse, summary="Get clip", description="Get a specific clip by ID.")

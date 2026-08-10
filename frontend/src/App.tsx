@@ -145,9 +145,12 @@ const AuthGuard: FC<{ children: React.ReactNode }> = ({ children }) => {
     return <Navigate to="/app" replace />;
   }
 
-  // Show welcome page for non-logged-in users
-  if (!isLoggedIn && (location.pathname === '/' || location.pathname === '/welcome')) {
-    return <WelcomePage />;
+  // 未登录：欢迎页放行，其余受保护路径统一重定向回 /welcome
+  if (!isLoggedIn) {
+    if (location.pathname === '/' || location.pathname === '/welcome') {
+      return <WelcomePage />;
+    }
+    return <Navigate to="/welcome" replace />;
   }
 
   return <>{children}</>;

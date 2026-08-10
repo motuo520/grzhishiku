@@ -157,23 +157,23 @@ async def create_note(
         attached_practice_ids='[]',
     )
     db.add(note)
-    db.commit()
-    db.refresh(note)
+    db.flush()
 
     quota.record_storage_add(current_user.id, additional_bytes)
 
     _set_note_tags(db, note.id, current_user.id, note_data.tags)
     _sync_capsule_refs(note, db)
-    db.commit()
-    db.refresh(note)
 
     # Auto-link graph edges
     try:
         await auto_link_note(db, note, current_user.id)
-        db.commit()
     except Exception as e:
         # Non-blocking: don't fail note creation if auto-link fails
         logger.warning(f"Auto-link failed for note {note.id}: {e}")
+
+    # 统一事务提交，避免部分成功留脏数据
+    db.commit()
+    db.refresh(note)
 
     return _build_note_response(note, db)
 

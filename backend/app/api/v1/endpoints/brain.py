@@ -107,6 +107,8 @@ async def fusion_search(
     current_user: User = Depends(get_current_user)
 ):
     query = request.query.lower().strip()
+    # 转义 LIKE 通配符，防 %/_ 注入导致分页不准与全表扫描
+    escaped_query = query.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
     brain_sides = request.brain_sides or []
     if request.brain_side:
         brain_sides = [request.brain_side]
@@ -122,10 +124,10 @@ async def fusion_search(
             Note.user_id == current_user.id,
             Note.status == "active",
             or_(
-                Note.title.ilike(f"%{query}%"),
-                Note.content.ilike(f"%{query}%")
+                Note.title.ilike(f"%{escaped_query}%", escape="\\"),
+                Note.content.ilike(f"%{escaped_query}%", escape="\\")
             )
-        ).limit(limit * 2).all()
+        ).all()
 
         for note in notes:
             title_match = query in (note.title or "").lower()
@@ -151,8 +153,8 @@ async def fusion_search(
         # Capsules
         capsules = db.query(Capsule).filter(
             Capsule.user_id == current_user.id,
-            Capsule.content_body.ilike(f"%{query}%")
-        ).limit(limit).all()
+            Capsule.content_body.ilike(f"%{escaped_query}%", escape="\\")
+        ).all()
 
         for cap in capsules:
             relevance = 0.75
@@ -175,11 +177,11 @@ async def fusion_search(
             BrowserClip.user_id == current_user.id,
             BrowserClip.status == "active",
             or_(
-                BrowserClip.title.ilike(f"%{query}%"),
-                BrowserClip.excerpt.ilike(f"%{query}%"),
-                BrowserClip.full_text.ilike(f"%{query}%")
+                BrowserClip.title.ilike(f"%{escaped_query}%", escape="\\"),
+                BrowserClip.excerpt.ilike(f"%{escaped_query}%", escape="\\"),
+                BrowserClip.full_text.ilike(f"%{escaped_query}%", escape="\\")
             )
-        ).limit(limit * 2).all()
+        ).all()
 
         for clip in clips:
             title_match = query in (clip.title or "").lower()
@@ -201,7 +203,7 @@ async def fusion_search(
 
         knowledge = db.query(KnowledgeUnit).filter(
             KnowledgeUnit.user_id == current_user.id,
-            KnowledgeUnit.content_raw.ilike(f"%{query}%")
+            KnowledgeUnit.content_raw.ilike(f"%{escaped_query}%", escape="\\")
         ).limit(limit * 2).all()
 
         for ku in knowledge:
@@ -274,10 +276,11 @@ async def get_search_suggestions(
             suggestions.append(t.name)
     # 2. Recent note titles (partial match)
     if q:
+        escaped_q = q.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
         notes = db.query(Note).filter(
             Note.user_id == current_user.id,
             Note.status == "active",
-            Note.title.ilike(f"%{q}%")
+            Note.title.ilike(f"%{escaped_q}%", escape="\\")
         ).limit(5).all()
         for n in notes:
             if n.title not in suggestions:
@@ -304,11 +307,13 @@ async def get_brain_stats(
     note_count = db.query(Note).filter(Note.user_id == current_user.id, Note.status == "active").count()
     capsule_count = db.query(Capsule).filter(Capsule.user_id == current_user.id).count()
     tag_count = db.query(Tag).filter(Tag.user_id == current_user.id).count()
-    total_words = 0
-    for note in db.query(Note).filter(Note.user_id == current_user.id, Note.status == "active").all():
-        total_words += len((note.content or "").split())
-    for cap in db.query(Capsule).filter(Capsule.user_id == current_user.id).all():
-        total_words += len((cap.content_body or "").split())
+    note_chars = db.query(func.sum(func.length(Note.content))).filter(
+        Note.user_id == current_user.id, Note.status == "active"
+    ).scalar() or 0
+    capsule_chars = db.query(func.sum(func.length(Capsule.content_body))).filter(
+        Capsule.user_id == current_user.id
+    ).scalar() or 0
+    total_words = note_chars + capsule_chars
 
     # Network stats
     clip_count = db.query(BrowserClip).filter(BrowserClip.user_id == current_user.id, BrowserClip.status == "active").count()
@@ -354,39 +359,54 @@ async def create_cross_link(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    # Verify ownership of source and target
-    owned = False
-    for Model in [Note, Capsule, BrowserClip, KnowledgeUnit]:
+    # Verify ownership of source and target; brain side 由实际命中的表推断，
+    # 不信任请求里的 source_type/target_type（用户可伪造）
+    _MODEL_BRAIN_SIDE = {
+        Note: "personal",
+        Capsule: "personal",
+        BrowserClip: "network",
+        KnowledgeUnit: "network",
+    }
+
+    source_brain = None
+    for Model, side in _MODEL_BRAIN_SIDE.items():
         if db.query(Model).filter(Model.id == request.source_id, Model.user_id == current_user.id).first():
-            owned = True
+            source_brain = side
             break
-    if not owned:
+    if not source_brain:
         raise HTTPException(status_code=404, detail="Source item not found")
-    
-    owned = False
-    for Model in [Note, Capsule, BrowserClip, KnowledgeUnit]:
+
+    target_brain = None
+    for Model, side in _MODEL_BRAIN_SIDE.items():
         if db.query(Model).filter(Model.id == request.target_id, Model.user_id == current_user.id).first():
-            owned = True
+            target_brain = side
             break
-    if not owned:
+    if not target_brain:
         raise HTTPException(status_code=404, detail="Target item not found")
 
-    # Determine brain sides for source and target
-    source_brain = "unknown"
-    target_brain = "unknown"
-    
-    if request.source_type in ["note", "capsule"]:
-        source_brain = "personal"
-    elif request.source_type in ["clip", "knowledge"]:
-        source_brain = "network"
-    
-    if request.target_type in ["note", "capsule"]:
-        target_brain = "personal"
-    elif request.target_type in ["clip", "knowledge"]:
-        target_brain = "network"
-    
     cross_brain = source_brain != target_brain
-    
+
+    # 双向去重：同向由 db.merge 幂等覆盖，反向边存在时直接复用
+    existing = db.query(GraphEdge).filter(
+        GraphEdge.user_id == current_user.id,
+        GraphEdge.source_id == request.target_id,
+        GraphEdge.target_id == request.source_id,
+    ).first()
+    if existing:
+        return CrossLinkResponse(
+            id=existing.id,
+            source_id=existing.source_id,
+            source_type=request.target_type,
+            source_brain_side=existing.source_brain_side,
+            target_id=existing.target_id,
+            target_type=request.source_type,
+            target_brain_side=existing.target_brain_side,
+            link_type=existing.edge_type,
+            strength=existing.strength,
+            cross_brain=existing.cross_brain,
+            created_at=existing.created_at.isoformat() if existing.created_at else "",
+        )
+
     edge = GraphEdge(
         id=f"{request.source_id}-{request.target_id}",
         user_id=current_user.id,
@@ -433,6 +453,7 @@ async def get_cross_brain_graph(
     
     # Get cross-brain edges where both source and target belong to current user
     edges = db.query(GraphEdge).filter(
+        GraphEdge.user_id == current_user.id,
         GraphEdge.cross_brain == True,
         GraphEdge.source_id.in_(user_ids),
         GraphEdge.target_id.in_(user_ids),
@@ -471,7 +492,7 @@ async def get_cross_brain_graph(
         if knowledge:
             nodes.append({
                 "id": knowledge.id,
-                "label": knowledge.content_raw[:30],
+                "label": (knowledge.content_raw or '')[:30],
                 "type": "knowledge",
                 "brain_side": "network",
             })
@@ -481,7 +502,7 @@ async def get_cross_brain_graph(
         if capsule:
             nodes.append({
                 "id": capsule.id,
-                "label": capsule.content_body[:30],
+                "label": (capsule.content_body or '')[:30],
                 "type": "capsule",
                 "brain_side": "personal",
             })

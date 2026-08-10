@@ -1,4 +1,4 @@
-import { FC, Suspense, lazy, useState, useEffect } from 'react';
+import React, { FC, Suspense, lazy, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
@@ -34,6 +34,21 @@ const fadeInUp = {
   visible: { opacity: 1, y: 0 },
 };
 
+// 背景组件（WebGL/3D）异常时降级为隐藏，避免整个欢迎页白屏
+class BgErrorBoundary extends React.Component<{ children: React.ReactNode }, { hasError: boolean }> {
+  constructor(props: { children: React.ReactNode }) {
+    super(props);
+    this.state = { hasError: false };
+  }
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+  render() {
+    if (this.state.hasError) return null;
+    return this.props.children;
+  }
+}
+
 const WelcomePage: FC = () => {
   const navigate = useNavigate();
   const [mounted, setMounted] = useState(false);
@@ -54,14 +69,18 @@ const WelcomePage: FC = () => {
     <div className="min-h-screen w-full relative overflow-x-hidden bg-black">
       {/* Hero 背景层 */}
       <div className="fixed inset-0 z-0 pointer-events-none">
-        <Suspense fallback={null}>
-          <MoonlitRipple />
-        </Suspense>
+        <BgErrorBoundary>
+          <Suspense fallback={null}>
+            <MoonlitRipple />
+          </Suspense>
+        </BgErrorBoundary>
       </div>
       <div className="fixed inset-0 z-[1]">
-        <Suspense fallback={null}>
-          <WelcomeNetwork3D />
-        </Suspense>
+        <BgErrorBoundary>
+          <Suspense fallback={null}>
+            <WelcomeNetwork3D />
+          </Suspense>
+        </BgErrorBoundary>
       </div>
       <div
         className="fixed inset-0 z-[2] pointer-events-none"

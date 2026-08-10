@@ -127,6 +127,9 @@ def _build_source_context(
     if not source_ids:
         return ""
 
+    # Limit source_ids to prevent excessive DB queries and long prompts
+    source_ids = source_ids[:20]
+
     # Normalize source_types length to match source_ids
     types = source_types or []
     types = (types + [None] * len(source_ids))[: len(source_ids)]

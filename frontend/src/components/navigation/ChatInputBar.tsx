@@ -109,6 +109,8 @@ const ChatInputBar: FC<ChatInputBarProps> = ({ sidebarOpen = true, onLoginClick 
   };
 
   const handleSend = async () => {
+    // 同步锁防重复发送（state 异步更新有延迟）
+    if (abortControllerRef.current) return;
     if (!message.trim() && attachments.length === 0) return;
 
     const userMsg: ChatMessage = {
@@ -142,6 +144,7 @@ const ChatInputBar: FC<ChatInputBarProps> = ({ sidebarOpen = true, onLoginClick 
           brain_side: effectiveBrain,
           history: messages
             .filter((m) => m.content.trim() && !m.isStreaming)
+            .slice(-20) // 截断长对话历史，防请求体过大/超上下文
             .map((m) => ({
               role: m.role === 'ai' ? 'assistant' : m.role,
               content: m.content,
@@ -162,26 +165,32 @@ const ChatInputBar: FC<ChatInputBarProps> = ({ sidebarOpen = true, onLoginClick 
 
       if (reader) {
         let streamDone = false;
+        let sseBuffer = '';
         while (!streamDone) {
           // 闲置看门狗：SSE 半开（休眠/断网但连接未断）时 read() 永不 resolve，
           // isStreaming 卡死导致输入框一直 disabled（"点不出光标"）。
           // 2 分钟无数据视为挂起：取消读取、抛错走 catch，finally 复位状态。
+          let watchdogTimer: ReturnType<typeof setTimeout> | undefined;
           const { done, value } = await Promise.race([
             reader.read(),
-            new Promise<never>((_, reject) =>
-              setTimeout(() => {
+            new Promise<never>((_, reject) => {
+              watchdogTimer = setTimeout(() => {
                 reader.cancel().catch(() => {});
                 reject(new Error('模型响应超时（2 分钟无数据），请重试'));
-              }, 120000)
-            ),
+              }, 120000);
+            }),
           ]);
+          clearTimeout(watchdogTimer); // 每次 read 成功即清理，防定时器泄漏
           streamDone = done;
           if (done) break;
 
           const chunk = decoder.decode(value, { stream: true });
-          const lines = chunk.split('\n\n');
+          // 缓存跨 chunk 的不完整事件帧，避免分片导致解析丢失
+          sseBuffer += chunk;
+          const events = sseBuffer.split('\n\n');
+          sseBuffer = events.pop() || '';
 
-          for (const line of lines) {
+          for (const line of events) {
             if (line.startsWith('data: ')) {
               try {
                 const data = JSON.parse(line.slice(6));

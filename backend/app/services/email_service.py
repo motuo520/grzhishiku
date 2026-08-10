@@ -157,6 +157,13 @@ def connect_imap(account: EmailAccount) -> imaplib.IMAP4_SSL:
     port = account.imap_port or 993
     use_ssl = account.imap_use_ssl if account.imap_use_ssl is not None else True
 
+    # SSRF 防护：解析 host，拒绝环回/链路本地（含云元数据 169.254.169.254）/保留地址；
+    # RFC1918 私网段仅在生产环境（云端部署）拒绝——本产品支持自托管，
+    # 用户可能确有局域网邮件服务器，非生产环境放行。
+    from app.core.config import settings
+    from app.services.url_guard import validate_fetch_host
+    validate_fetch_host(host, allow_private=settings.ENV != "production")
+
     # access_token stores IMAP password/app-specific code (encrypted at rest)
     password = decrypt_secret(account.access_token) or ""
 

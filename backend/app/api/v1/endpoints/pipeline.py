@@ -226,8 +226,6 @@ async def _content_to_knowledge(
         )
         ku.merged = False
         db.add(ku)
-    db.commit()
-    db.refresh(ku)
 
     # Mark the original external item as moved into the pipeline so it cannot be
     # re-imported / re-extracted repeatedly.
@@ -246,8 +244,8 @@ async def _content_to_knowledge(
     elif content_type == "note":
         # Notes already have pipeline_stage and were advanced by the caller.
         pass
-    db.commit()
-    db.refresh(item)
+    # 统一由外层调用方 commit，避免中途失败留下已提交脏数据
+    db.flush()
 
     # Generate embedding asynchronously; failure should not block the pipeline.
     # 合并命中时内容已变化，删旧向量按新内容重算；否则按文档切块入库。
@@ -898,14 +896,20 @@ async def extract_concepts(
         for c in concepts:
             if not isinstance(c, dict):
                 continue
-            concept_text = f"{c.get('concept', '')}: {c.get('definition', '')}"
-            if not concept_text.strip() or concept_text == ":":
+            concept_name = str(c.get('concept', '') or '').strip()
+            definition = str(c.get('definition', '') or '').strip()
+            if not concept_name:
+                continue
+            concept_text = f"{concept_name}: {definition}"
+            if concept_text == ":":
                 continue
             # Check duplicate by content similarity (simple substring)
+            escaped_concept = concept_name.replace('\\', '\\\\').replace('%', '\\%').replace('_', '\\_')
             existing = db.query(KnowledgeUnit).filter(
                 KnowledgeUnit.user_id == current_user.id,
                 KnowledgeUnit.content_subtype == "concept",
-                KnowledgeUnit.content_raw.ilike(f"%{c.get('concept', '')}%"),
+                KnowledgeUnit.status == "active",
+                KnowledgeUnit.content_raw.ilike(f"%{escaped_concept}%", escape='\\'),
             ).first()
             if existing:
                 created.append({"id": existing.id, "concept": c.get("concept"), "definition": c.get("definition"), "existing": True})

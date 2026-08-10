@@ -1,4 +1,4 @@
-import { FC, useState, useMemo, memo } from 'react';
+import { FC, useState, useMemo, useEffect, memo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -127,6 +127,12 @@ const NotesPage: FC = () => {
     if (!confirm('确定要删除这条笔记吗？')) return;
     try {
       await deleteNote(id);
+      // 删除后同步清理选中态，避免批量操作作用于已删除项
+      setSelectedIds(prev => {
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
+      });
     } catch (err: any) {
       setError(err.message || '删除失败，请重试');
     }
@@ -137,6 +143,15 @@ const NotesPage: FC = () => {
       prev.includes(tagId) ? prev.filter((id) => id !== tagId) : [...prev, tagId]
     );
   };
+
+  // 筛选/列表变化时裁剪选中项，避免批量操作作用于不可见或已删除笔记
+  useEffect(() => {
+    setSelectedIds(prev => {
+      const visible = new Set(displayNotes.map(n => n.id));
+      const next = new Set([...prev].filter(id => visible.has(id)));
+      return next.size === prev.size ? prev : next;
+    });
+  }, [displayNotes]);
 
   const toggleSelect = (id: string) => {
     setSelectedIds(prev => {

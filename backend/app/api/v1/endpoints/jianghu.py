@@ -340,6 +340,8 @@ async def generate_daily_review(
             json_str = raw.split("```")[1].split("```")[0].strip()
 
         result = json.loads(json_str)
+        if not isinstance(result, dict):
+            raise ValueError("AI 返回格式错误：期望 JSON 对象")
     except ValueError as e:
         raise HTTPException(status_code=500, detail=f"AI 复盘生成失败：{str(e)}")
     except Exception as e:
@@ -496,6 +498,8 @@ async def check_relevance(
             json_str = raw.split("```")[1].split("```")[0].strip()
 
         result = json.loads(json_str)
+        if not isinstance(result, dict):
+            raise ValueError("AI 返回格式错误：期望 JSON 对象")
         score = max(0.0, min(1.0, float(result.get("personal_relevance_score", 0.5))))
         action = result.get("suggested_action", "read_later")
         if action not in ("import", "import_with_practice", "read_later", "ignore"):
@@ -848,6 +852,8 @@ async def analyze_cognitive_potential(
             json_str = raw.split("```")[1].split("```")[0].strip()
 
         result = json.loads(json_str)
+        if not isinstance(result, dict):
+            raise ValueError("AI 返回格式错误：期望 JSON 对象")
     except ValueError as e:
         raise HTTPException(status_code=500, detail=f"AI 分析失败：{str(e)}")
     except Exception as e:

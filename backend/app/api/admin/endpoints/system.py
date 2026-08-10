@@ -194,7 +194,7 @@ def get_system_config(db: Session) -> SystemConfig:
 
 
 def _set_config(db: Session, key: str, value: Any, updated_by: str):
-    """Set or update a single config key in DB."""
+    """Set or update a single config key in DB（不在此 commit，由外层统一提交）。"""
     record = db.query(SysConfigModel).filter(SysConfigModel.key == key).first()
     val_str = json.dumps(value, default=str) if not isinstance(value, str) else value
     if record:
@@ -209,7 +209,6 @@ def _set_config(db: Session, key: str, value: Any, updated_by: str):
             updated_by=updated_by,
         )
         db.add(record)
-    db.commit()
 
 
 def invalidate_config_cache():
@@ -345,19 +344,26 @@ async def update_system_config(
     if not updates:
         raise HTTPException(status_code=400, detail="No fields provided for update")
 
-    for key, value in updates.items():
-        # Convert feature_flags array to object if needed
-        if key == "feature_flags" and isinstance(value, list):
-            obj = {}
-            for item in value:
-                if isinstance(item, dict) and "key" in item:
-                    obj[item["key"]] = item.get("enabled", False)
-            value = obj
-        # Sync resume_at to estimated_recovery
-        if key == "maintenance_mode" and isinstance(value, dict):
-            if value.get("resume_at") and not value.get("estimated_recovery"):
-                value["estimated_recovery"] = value["resume_at"]
-        _set_config(db, key, value, current_admin.id)
+    try:
+        for key, value in updates.items():
+            # Convert feature_flags array to object if needed
+            if key == "feature_flags" and isinstance(value, list):
+                obj = {}
+                for item in value:
+                    if isinstance(item, dict) and "key" in item:
+                        obj[item["key"]] = item.get("enabled", False)
+                value = obj
+            # Sync resume_at to estimated_recovery
+            if key == "maintenance_mode" and isinstance(value, dict):
+                if value.get("resume_at") and not value.get("estimated_recovery"):
+                    value["estimated_recovery"] = value["resume_at"]
+            _set_config(db, key, value, current_admin.id)
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        import logging
+        logging.getLogger(__name__).error(f"Failed to update system config: {e}")
+        raise HTTPException(status_code=500, detail="Failed to update configuration")
 
     invalidate_config_cache()
 

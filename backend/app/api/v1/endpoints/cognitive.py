@@ -115,13 +115,15 @@ def _aggregate_user_content(
 ) -> List[Dict[str, Any]]:
     """聚合用户内容。brain_side 控制来源：personal 只查 Note，network 只查 KnowledgeUnit，both 保持原样。"""
     items = []
+    # both 时两侧各取一半，避免总数翻倍
+    per_side_limit = limit // 2 if brain_side == "both" else limit
 
     if brain_side in ("both", "personal", None):
         notes = (
             db.query(Note)
             .filter(Note.user_id == user.id)
             .order_by(Note.created_at.desc())
-            .limit(limit)
+            .limit(per_side_limit)
             .all()
         )
         for n in notes:
@@ -139,7 +141,7 @@ def _aggregate_user_content(
             db.query(KnowledgeUnit)
             .filter(KnowledgeUnit.user_id == user.id)
             .order_by(KnowledgeUnit.created_at.desc())
-            .limit(limit)
+            .limit(per_side_limit)
             .all()
         )
         for k in knowledge:
@@ -291,15 +293,20 @@ async def generate_fingerprint(
 
     try:
         data = await _llm_json(prompt, preferred_model=preferred_model, db=db, user_id=user.id)
+        if not isinstance(data, dict):
+            raise ValueError("Invalid LLM output")
         degraded = False
     except HTTPException as e:
         _raise_if_payment_error(e)
         # LLM 失败时回退到基于统计的生成
         data = _fallback_fingerprint(items)
         degraded = True
+    except (ValueError, TypeError, KeyError, AttributeError):
+        data = _fallback_fingerprint(items)
+        degraded = True
 
     # 归一化主题百分比
-    topics = data.get("topics", [])
+    topics = data.get("topics", []) if isinstance(data, dict) else []
     if topics:
         total = sum(t.get("percentage", 0) for t in topics)
         if total > 0:
@@ -665,18 +672,33 @@ async def bias_summary(
         ]
 
     # 补充未检测到的偏差类型（count=0）
-    seen = set(s["bias_type"] for s in summaries_raw)
+    seen = set(s.get("bias_type") for s in summaries_raw if s.get("bias_type"))
     for bt in BIAS_TYPES:
         if bt not in seen:
             summaries_raw.append({"bias_type": bt, "count": 0, "average_severity": 0.0, "max_severity": 0})
 
     summaries = []
     for s in summaries_raw:
+        bt = s.get("bias_type")
+        if not bt:
+            continue
+        try:
+            count = int(s.get("count", 0))
+        except (ValueError, TypeError):
+            count = 0
+        try:
+            avg_sev = float(s.get("average_severity", 0.0))
+        except (ValueError, TypeError):
+            avg_sev = 0.0
+        try:
+            max_sev = int(s.get("max_severity", 0))
+        except (ValueError, TypeError):
+            max_sev = 0
         summaries.append(BiasSummaryItem(
-            bias_type=s["bias_type"],
-            count=int(s.get("count", 0)),
-            average_severity=float(s.get("average_severity", 0.0)),
-            max_severity=int(s.get("max_severity", 0)),
+            bias_type=bt,
+            count=count,
+            average_severity=avg_sev,
+            max_severity=max_sev,
         ))
 
     return BiasSummaryResponse(
@@ -1775,6 +1797,7 @@ class ChallengeAnswerResponse(BaseModel):
 def _get_or_create_daily_challenge(db: Session, user: User) -> CognitiveChallenge:
     """获取或创建用户今日挑战。跳过的挑战会被忽略，以便生成新题目。"""
     today = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+    # 行锁串行化同一用户并发，防每日多条挑战/重复积分
     challenge = (
         db.query(CognitiveChallenge)
         .filter(
@@ -1783,6 +1806,7 @@ def _get_or_create_daily_challenge(db: Session, user: User) -> CognitiveChalleng
             CognitiveChallenge.status != "skipped",
         )
         .order_by(CognitiveChallenge.created_at.desc())
+        .with_for_update()
         .first()
     )
     if challenge:
@@ -1882,6 +1906,9 @@ async def submit_challenge_answer(
     ).first()
     if not challenge:
         raise HTTPException(status_code=404, detail="Challenge not found")
+    # 仅 pending 可作答；skipped 等状态明确拒绝，防跳过机制被绕过刷积分
+    if challenge.status == "skipped":
+        raise HTTPException(status_code=400, detail="该挑战已被跳过")
     if challenge.status == "completed":
         return ChallengeAnswerResponse(
             success=False,

@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from pydantic import BaseModel
-from typing import List, Optional
+from typing import List, Optional, Literal
 from datetime import datetime
 import uuid
 import secrets
@@ -12,7 +12,7 @@ from app.core.database import get_db
 from app.core.admin_permissions import Permission, require_permission
 from app.models.base import User, Note, Capsule, AdminAuditLog, AdminUser
 from app.models.sync import SyncDevice, SyncSnapshot
-from app.core.security import get_password_hash
+from app.core.security import get_password_hash, validate_password_complexity
 
 router = APIRouter()
 
@@ -51,7 +51,7 @@ class UserDetailResponse(BaseModel):
 
 
 class UserStatusUpdate(BaseModel):
-    status: str
+    status: Literal["active", "inactive", "banned"]
 
 
 class ResetPasswordResponse(BaseModel):
@@ -114,11 +114,12 @@ async def list_users(
 ):
     query = db.query(User)
     if q:
-        like = f"%{q}%"
+        escaped_q = q.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+        like = f"%{escaped_q}%"
         query = query.filter(
-            (User.email.ilike(like))
-            | (User.username.ilike(like))
-            | (User.display_name.ilike(like))
+            (User.email.ilike(like, escape="\\"))
+            | (User.username.ilike(like, escape="\\"))
+            | (User.display_name.ilike(like, escape="\\"))
         )
     if status:
         query = query.filter(User.status == status)
@@ -126,11 +127,35 @@ async def list_users(
     total = query.count()
     users = query.order_by(User.created_at.desc()).offset((page - 1) * page_size).limit(page_size).all()
 
+    # 批量聚合统计数据，避免 N+1
+    user_ids = [u.id for u in users]
+    notes_counts = dict(db.query(Note.user_id, func.count(Note.id)).filter(Note.user_id.in_(user_ids)).group_by(Note.user_id).all()) if user_ids else {}
+    capsules_counts = dict(db.query(Capsule.user_id, func.count(Capsule.id)).filter(Capsule.user_id.in_(user_ids)).group_by(Capsule.user_id).all()) if user_ids else {}
+    sync_devices_counts = dict(db.query(SyncDevice.user_id, func.count(SyncDevice.id)).filter(SyncDevice.user_id.in_(user_ids)).group_by(SyncDevice.user_id).all()) if user_ids else {}
+    last_syncs = dict(db.query(SyncSnapshot.user_id, func.max(SyncSnapshot.created_at)).filter(SyncSnapshot.user_id.in_(user_ids)).group_by(SyncSnapshot.user_id).all()) if user_ids else {}
+
+    items = [
+        UserListItem(
+            id=u.id,
+            email=u.email,
+            username=u.username or "",
+            display_name=u.display_name or "",
+            status=u.status,
+            notes_count=notes_counts.get(u.id, 0),
+            capsules_count=capsules_counts.get(u.id, 0),
+            sync_devices_count=sync_devices_counts.get(u.id, 0),
+            last_sync_at=last_syncs.get(u.id),
+            created_at=u.created_at,
+            last_login_at=u.last_login_at,
+        )
+        for u in users
+    ]
+
     return UserListResponse(
         total=total,
         page=page,
         page_size=page_size,
-        items=[_user_list_item(db, u) for u in users],
+        items=items,
     )
 
 
@@ -243,7 +268,11 @@ async def reset_user_password(
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    temp_password = "".join(secrets.choice(string.ascii_letters + string.digits) for _ in range(12))
+    # 生成满足复杂度要求的临时密码
+    while True:
+        temp_password = "".join(secrets.choice(string.ascii_letters + string.digits + string.punctuation) for _ in range(12))
+        if validate_password_complexity(temp_password):
+            break
     user.password_hash = get_password_hash(temp_password)
 
     log = AdminAuditLog(

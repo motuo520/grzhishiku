@@ -21,7 +21,8 @@ Base = declarative_base()
 
 # ── Async engine (prepared for PostgreSQL migration) ───────────
 # If DATABASE_URL starts with postgresql+asyncpg, use async engine.
-# For SQLite, async engine requires aiosqlite: sqlite+aiosqlite:///...nasync_engine = None
+# For SQLite, async engine requires aiosqlite: sqlite+aiosqlite:///...
+async_engine = None
 AsyncSessionLocal = None
 
 if settings.DATABASE_URL.startswith("postgresql"):

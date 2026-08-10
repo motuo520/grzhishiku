@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from sqlalchemy import or_, and_
 from typing import List, Optional
-from datetime import datetime
+from datetime import datetime, timezone
 import uuid
 import json
 
@@ -20,7 +20,10 @@ router = APIRouter()
 
 
 def _build_dialogue_response(dialogue: CapsuleDialogue) -> CapsuleDialogueResponse:
-    messages = json.loads(dialogue.conversation or '[]')
+    try:
+        messages = json.loads(dialogue.conversation or '[]')
+    except json.JSONDecodeError:
+        messages = []
     formatted_messages = [CapsuleDialogueMessage(**msg) for msg in messages]
     return CapsuleDialogueResponse(
         id=dialogue.id,
@@ -54,7 +57,10 @@ def check_unlock_conditions(capsule: Capsule) -> bool:
         unlock_date = config.get('unlock_date')
         if unlock_date:
             try:
-                return datetime.now() >= datetime.fromisoformat(unlock_date.replace('Z', '+00:00'))
+                unlock_dt = datetime.fromisoformat(unlock_date.replace('Z', '+00:00'))
+                if unlock_dt.tzinfo is None:
+                    unlock_dt = unlock_dt.replace(tzinfo=timezone.utc)
+                return datetime.now(timezone.utc) >= unlock_dt
             except (ValueError, TypeError, AttributeError):
                 return False
     
@@ -62,12 +68,8 @@ def check_unlock_conditions(capsule: Capsule) -> bool:
     return False
 
 def _capsule_to_response(capsule: Capsule, db: Session) -> CapsuleResponse:
-    # Lazily persist auto-unlock for temporal capsules whose time has come,
-    # so unlock_status stays consistent across list, detail and dialogue.
-    if capsule.unlock_status == 'locked' and check_unlock_conditions(capsule):
-        capsule.unlock_status = 'unlocked'
-        db.commit()
-        db.refresh(capsule)
+    # 不再在响应构造中自动修改胶囊并 commit（副作用/性能问题）；
+    # 自动解锁应交给显式服务/定时任务
     return CapsuleResponse(
         id=capsule.id,
         user_id=capsule.user_id,
@@ -235,6 +237,9 @@ async def collect_capsule(
         raise HTTPException(status_code=400, detail="Private capsules cannot be collected")
     if capsule.user_id != current_user.id and capsule.privacy_level != 'public':
         raise HTTPException(status_code=403, detail="Only public capsules can be collected")
+    # 他人锁定胶囊不可 collect（避免复制未解锁的 content_body）
+    if capsule.user_id != current_user.id and capsule.unlock_status == 'locked':
+        raise HTTPException(status_code=403, detail="Locked capsules cannot be collected")
 
     collected = Capsule(
         id=str(uuid.uuid4()),
@@ -375,7 +380,10 @@ async def capsule_dialogue(
         db.add(dialogue)
 
     # Append message to conversation
-    conversation = json.loads(dialogue.conversation or '[]')
+    try:
+        conversation = json.loads(dialogue.conversation or '[]')
+    except json.JSONDecodeError:
+        conversation = []
     now_iso = datetime.now().isoformat()
     conversation.append({
         'role': 'user',

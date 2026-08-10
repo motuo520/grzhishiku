@@ -39,6 +39,9 @@ _build_lock = threading.Lock()
 
 
 def _user_dir(user_id: str) -> Path:
+    # user_id 白名单校验，防路径穿越
+    if not re.fullmatch(r"[A-Za-z0-9_-]+", user_id or ""):
+        raise ValueError(f"Invalid user_id: {user_id}")
     return DATA_ROOT / user_id
 
 
@@ -453,12 +456,22 @@ def sync_edges_from_build(db: Session, user_id: str) -> Dict[str, int]:
     return {"created": created, "skipped": skipped}
 
 
+def _safe_cli_arg(arg: str) -> str:
+    """防 CLI 参数注入：禁止以 - 开头被误识别为选项。"""
+    if arg.startswith("-"):
+        raise ValueError("Invalid argument")
+    return arg
+
+
 def _run_query(user_id: str, args: List[str]) -> Dict[str, Any]:
     graph = _graph_json_path(user_id)
     if not graph.exists():
         return {"ok": False, "error": "图谱尚未构建，请先点击「重建图谱」"}
     try:
-        proc = _run_cli([*args, "--graph", str(graph)], cwd=_user_dir(user_id), timeout=120)
+        # 用户输入（如 question）作为 CLI argv 传入，需防 - 开头的选项注入
+        proc = _run_cli([*[_safe_cli_arg(a) for a in args], "--graph", str(graph)], cwd=_user_dir(user_id), timeout=120)
+    except ValueError:
+        return {"ok": False, "error": "查询参数不合法"}
     except subprocess.TimeoutExpired:
         return {"ok": False, "error": "查询超时"}
     out = (proc.stdout or "").strip()
@@ -553,6 +566,7 @@ def set_auto_evolve_config(user: User, enabled: bool, model: Optional[str], db: 
 
 _evolve_lock = threading.Lock()
 _evolve_dirty: Dict[str, bool] = {}
+_evolve_listener_registered = False  # 监听挂在全局 SessionLocal 类上，重复注册会叠加触发
 
 
 def maybe_trigger_evolve(user_id: str) -> bool:
@@ -601,6 +615,12 @@ def flush_evolve_dirty(user_id: str) -> None:
 def register_evolve_listener() -> None:
     """挂 SQLAlchemy after_commit 监听：任何路径写入笔记/剪藏/知识单元
     （API/批量导入/剪藏扩展/插件同步/管线）提交后都触发自进化。"""
+    global _evolve_listener_registered
+    if _evolve_listener_registered:
+        # lifespan 重入（测试里每个 TestClient 一次）不得重复挂，否则一次提交触发 N 次自进化
+        return
+    _evolve_listener_registered = True
+
     from sqlalchemy import event
 
     @event.listens_for(SessionLocal, "after_commit")

@@ -144,6 +144,13 @@ async def import_obsidian_vault(
     vault = Path(req.vault_path.strip()).expanduser() if req.vault_path.strip() else None
     if vault is None:
         raise HTTPException(status_code=400, detail="vault_path 不能为空")
+    # 根目录白名单防路径穿越（默认用户主目录，可用 OBSIDIAN_VAULT_ROOT 覆盖）
+    from app.core.config import settings
+    allowed_root = Path(getattr(settings, "OBSIDIAN_VAULT_ROOT", None) or "~").expanduser().resolve()
+    try:
+        vault.resolve().relative_to(allowed_root)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="vault_path 不在允许的目录范围内")
     if not vault.exists():
         raise HTTPException(status_code=400, detail=f"路径不存在: {vault}")
     if not vault.is_dir():
@@ -318,6 +325,13 @@ async def export_markdown(
     # 防止误写根目录（C:\ 或 /）
     if target.parent == target:
         raise HTTPException(status_code=400, detail="不允许直接导出到根目录")
+    # 根目录白名单防路径穿越/任意文件写（默认用户主目录，可用 OBSIDIAN_EXPORT_ROOT 覆盖）
+    from app.core.config import settings
+    allowed_export_root = Path(getattr(settings, "OBSIDIAN_EXPORT_ROOT", None) or "~").expanduser().resolve()
+    try:
+        target.resolve().relative_to(allowed_export_root)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="target_dir 不在允许的目录范围内")
 
     notes_dir = target / "notes"
     knowledge_dir = target / "knowledge"

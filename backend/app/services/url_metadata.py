@@ -1,10 +1,9 @@
-import urllib.request
 import urllib.error
 import re
 from typing import Optional
 from pydantic import BaseModel
 
-from app.services.url_guard import validate_fetch_url, UrlNotAllowed
+from app.services.url_guard import validate_fetch_url, UrlNotAllowed, open_checked_url, read_capped
 
 
 class UrlMetadata(BaseModel):
@@ -34,15 +33,15 @@ def fetch_url_metadata(url: str, timeout: int = 8) -> UrlMetadata:
     except UrlNotAllowed as e:
         return UrlMetadata(url=url, title=url, domain=extract_domain(url), error=str(e))
     try:
-        req = urllib.request.Request(
+        # SSRF 防护：重定向逐跳校验，响应体限 5MB
+        with open_checked_url(
             url,
+            timeout=timeout,
             headers={
                 "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
             },
-            timeout=timeout,
-        )
-        with urllib.request.urlopen(req, timeout=timeout) as response:
-            html = response.read().decode("utf-8", errors="ignore")
+        ) as response:
+            html = read_capped(response).decode("utf-8", errors="ignore")
         
         title_match = re.search(r"<title[^>]*>(.*?)</title>", html, re.IGNORECASE | re.DOTALL)
         title = title_match.group(1).strip() if title_match else url

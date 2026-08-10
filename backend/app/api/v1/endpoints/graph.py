@@ -75,12 +75,15 @@ def _create_edge(
     return edge
 
 
-def cleanup_content_edges(db: Session, content_id: str) -> int:
+def cleanup_content_edges(db: Session, content_id: str, user_id: Optional[str] = None) -> int:
     """Delete graph edges referencing a piece of content. Call when content is deleted
     so soft/hard-deleted nodes don't linger as phantom nodes via their edges."""
-    return db.query(GraphEdge).filter(
+    q = db.query(GraphEdge).filter(
         or_(GraphEdge.source_id == content_id, GraphEdge.target_id == content_id)
-    ).delete(synchronize_session=False)
+    )
+    if user_id:
+        q = q.filter(GraphEdge.user_id == user_id)
+    return q.delete(synchronize_session=False)
 
 
 def _resolve_node_brain_side(db: Session, node_id: str) -> str:
@@ -178,7 +181,7 @@ def _get_all_nodes_for_user(db: Session, current_user: User) -> List[Dict[str, A
         nodes.append(_build_node_dict(db, capsule, "capsule"))
     for clip in db.query(BrowserClip).filter(BrowserClip.user_id == current_user.id, BrowserClip.status == "active").all():
         nodes.append(_build_node_dict(db, clip, "clip"))
-    for unit in db.query(KnowledgeUnit).filter(KnowledgeUnit.user_id == current_user.id).all():
+    for unit in db.query(KnowledgeUnit).filter(KnowledgeUnit.user_id == current_user.id, KnowledgeUnit.status == "active").all():
         nodes.append(_build_node_dict(db, unit, "knowledge"))
     for tag in db.query(Tag).filter(Tag.user_id == current_user.id).all():
         nodes.append(_build_node_dict(db, tag, "tag"))
@@ -356,14 +359,14 @@ async def get_bridges(
     current_user: User = Depends(get_current_user)
 ):
     edges = db.query(GraphEdge).filter(
-        GraphEdge.user_id == current_user.id
+        GraphEdge.user_id == current_user.id,
+        GraphEdge.cross_brain == True
     ).all()
 
-    # First pass: qualify by brain_side, keep edge data without per-bridge label queries
     candidates = []
     for edge in edges:
-        s_side = _node_brain_side_from_edge(db, edge, edge.source_id)
-        t_side = _node_brain_side_from_edge(db, edge, edge.target_id)
+        s_side = edge.source_brain_side or "unknown"
+        t_side = edge.target_brain_side or "unknown"
         # Only keep true personal<->network bridges
         if {s_side, t_side} != {"personal", "network"}:
             continue

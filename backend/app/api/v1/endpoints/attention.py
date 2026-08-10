@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from sqlalchemy import func
+import html
 from datetime import datetime, timedelta
 import json
 import uuid
@@ -24,15 +25,25 @@ router = APIRouter()
 async def list_activities(
     start: str = None,
     end: str = None,
+    limit: int = 100,
+    offset: int = 0,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
     query = db.query(AttentionActivity).filter(AttentionActivity.user_id == current_user.id)
     if start:
-        query = query.filter(AttentionActivity.start_time >= datetime.fromisoformat(start))
+        try:
+            start_dt = datetime.fromisoformat(start)
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid start time format")
+        query = query.filter(AttentionActivity.start_time >= start_dt)
     if end:
-        query = query.filter(AttentionActivity.start_time <= datetime.fromisoformat(end))
-    activities = query.order_by(AttentionActivity.start_time.desc()).all()
+        try:
+            end_dt = datetime.fromisoformat(end)
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid end time format")
+        query = query.filter(AttentionActivity.start_time <= end_dt)
+    activities = query.order_by(AttentionActivity.start_time.desc()).offset(offset).limit(limit).all()
     return activities
 
 @router.post("/activities", response_model=AttentionActivityResponse, summary="Record activity", description="Record a new attention activity.")
@@ -558,7 +569,7 @@ async def end_deep_work(
         category_id="deep-work",
         category="work",
         brain_side=session.brain_side,
-        description=f"深度工作：{session.task}",
+        description=f"深度工作：{html.escape(session.task or '')}",
         start_time=now - timedelta(minutes=duration_min),
         end_time=now,
         actual_duration=duration_min,
@@ -573,6 +584,8 @@ async def end_deep_work(
 @router.get("/deep-work", response_model=list[DeepWorkSessionResponse], summary="List deep work sessions", description="Get deep work history. Optional brain_side filter.")
 async def list_deep_work(
     brain_side: str = None,
+    limit: int = 50,
+    offset: int = 0,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
@@ -581,7 +594,7 @@ async def list_deep_work(
     )
     if brain_side and brain_side != "both":
         query = query.filter(DeepWorkSession.brain_side == brain_side)
-    sessions = query.order_by(DeepWorkSession.started_at.desc()).all()
+    sessions = query.order_by(DeepWorkSession.started_at.desc()).offset(offset).limit(limit).all()
     return sessions
 
 @router.get("/categories", response_model=list[AttentionCategoryResponse], summary="List categories", description="Get attention categories for the current user with today usage.")

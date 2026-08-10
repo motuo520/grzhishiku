@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Search, Eye, Edit, Trash, Lock, RefreshCw, ChevronLeft, ChevronRight,
@@ -53,8 +53,10 @@ export default function AdminUsers() {
   const [deleteUser, setDeleteUser] = useState<UserItem | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [actionError, setActionError] = useState('');
+  const loadUsersSeqRef = useRef(0);
 
   const loadUsers = useCallback(() => {
+    const seq = ++loadUsersSeqRef.current;
     setLoading(true);
     adminApi
       .getUsers({
@@ -64,6 +66,7 @@ export default function AdminUsers() {
         status: statusFilter === 'all' ? undefined : statusFilter,
       })
       .then((res: any) => {
+        if (seq !== loadUsersSeqRef.current) return; // 已有更新的请求发出，丢弃过期响应
         const data: UsersResponse = res.data;
         setUsers(data.items || []);
         setTotal(data.total || 0);

@@ -19,38 +19,46 @@ class SENSITIVE_PATTERNS:
     """Regex patterns for sensitive content detection."""
     PASSWORD = re.compile(r"password[:\s=]+\S+|密码[:\s=]+\S+|passwd[:\s=]+\S+|pwd[:\s=]+\S+", re.I)
     API_KEY = re.compile(r"sk-[a-zA-Z0-9]{48}|sk-[a-zA-Z0-9]{32}|api[_-]?key[:\s=]+\S+|apikey[:\s=]+\S+", re.I)
-    ID_CARD = re.compile(r"\d{17}[\dXx]|\d{15}")
-    PHONE = re.compile(r"1[3-9]\d{9}")
-    BANK_CARD = re.compile(r"\d{4}[\s-]?\d{4}[\s-]?\d{4}[\s-]?\d{4}")
+    ID_CARD = re.compile(r"(?<!\d)\d{17}[\dXx](?!\d)|(?<!\d)\d{15}(?!\d)")
+    PHONE = re.compile(r"(?<!\d)1[3-9]\d{9}(?!\d)")
+    BANK_CARD = re.compile(r"(?<!\d)\d{4}[\s-]?\d{4}[\s-]?\d{4}[\s-]?\d{4}(?!\d)")
     PRIVATE_KEY = re.compile(r"-----BEGIN (RSA|OPENSSH|EC|DSA) PRIVATE KEY-----")
-    SECRET_TOKEN = re.compile(r"token[:\s=]+\S+|bearer[\s:]+\S+|secret[:\s=]+\S+", re.I)
+    SECRET_TOKEN = re.compile(r"\btoken[:\s=]+\S+|\bbearer[\s:]+\S+|\bsecret[:\s=]+\S+", re.I)
+
+    SEVERITY_LEVELS = {"low": 1, "medium": 2, "high": 3}
 
     @classmethod
     def detect(cls, text: str) -> Dict[str, Any]:
         """Detect sensitive content in text. Returns findings and severity."""
         findings = []
         severity = "low"
+
+        def update_severity(level: str) -> None:
+            nonlocal severity
+            if cls.SEVERITY_LEVELS.get(level, 0) > cls.SEVERITY_LEVELS.get(severity, 0):
+                severity = level
+
         if cls.PASSWORD.search(text):
             findings.append("password")
-            severity = "high"
+            update_severity("high")
         if cls.API_KEY.search(text):
             findings.append("api_key")
-            severity = "high"
+            update_severity("high")
         if cls.ID_CARD.search(text):
             findings.append("id_card")
-            severity = "high"
+            update_severity("high")
         if cls.PHONE.search(text):
             findings.append("phone")
-            severity = "medium"
+            update_severity("medium")
         if cls.BANK_CARD.search(text):
             findings.append("bank_card")
-            severity = "high"
+            update_severity("high")
         if cls.PRIVATE_KEY.search(text):
             findings.append("private_key")
-            severity = "high"
+            update_severity("high")
         if cls.SECRET_TOKEN.search(text):
             findings.append("secret_token")
-            severity = "medium"
+            update_severity("medium")
         return {"findings": findings, "severity": severity, "has_sensitive": len(findings) > 0}
 
 
@@ -212,11 +220,21 @@ class LLMService:
         if not user_settings:
             return {}
         ai = user_settings.get("ai", {}) or {}
-        return {
+        cfg = {
             "active_provider": ai.get("active_provider"),
             "active_model": ai.get("active_model"),
             "ollama_url": ai.get("ollama_url"),
         }
+        # 校验用户提供的 Ollama URL 协议/主机，防 SSRF/内网探测；非法则回退默认
+        user_ollama_url = cfg.get("ollama_url")
+        if user_ollama_url:
+            import urllib.parse
+            parsed = urllib.parse.urlparse(user_ollama_url)
+            if parsed.scheme in ("http", "https") and parsed.hostname in ("localhost", "127.0.0.1", "::1", "host.docker.internal"):
+                pass
+            elif parsed.scheme != "unix":
+                cfg["ollama_url"] = None
+        return cfg
 
     def _resolve_user_active_model(
         self, user_settings: Optional[Dict[str, Any]]
@@ -447,6 +465,10 @@ class LLMService:
                 async with client.stream(
                     "POST", f"{ollama_url}/api/chat", json=payload
                 ) as response:
+                    if response.status_code != 200:
+                        error_text = await response.aread()
+                        yield f"[Error: Ollama HTTP {response.status_code} - {error_text.decode('utf-8', errors='ignore')[:200]}]"
+                        return
                     async for line in response.aiter_lines():
                         if line.strip():
                             try:
@@ -496,6 +518,16 @@ class LLMService:
             result.append(chunk)
         summary = "".join(result).strip()
 
+        # 失败输出不写入缓存
+        if summary.startswith("[Error:"):
+            return {
+                "summary": summary,
+                "error": True,
+                "original_length": len(text),
+                "compression_ratio": 0,
+                "length": length,
+            }
+
         # Store in cache
         self.summary_cache.set(text, length, summary)
 
@@ -516,11 +548,12 @@ class LLMService:
         """
         # Check cache using hash key (ignore length for tags)
         cache_key = hashlib.sha256(text.encode()).hexdigest()[:32]
-        cached = self.tags_cache._cache.get(cache_key, {}).get("tags")
-        if cached:
+        cache_entry = self.tags_cache._cache.get(cache_key, {})
+        cached_tags = cache_entry.get("tags") if isinstance(cache_entry, dict) else None
+        if cached_tags:
             return {
-                "tags": cached["tags"],
-                "suggested_category": cached.get("suggested_category"),
+                "tags": cached_tags,
+                "suggested_category": cache_entry.get("suggested_category"),
                 "original_length": len(text),
                 "cached": True,
             }
@@ -537,6 +570,15 @@ class LLMService:
         async for chunk in self.chat(prompt, task_type="tag_extraction", preferred_model="ollama-qwen2.5-0.5b"):
             result.append(chunk)
         raw = "".join(result).strip()
+
+        # 失败输出不写入缓存
+        if raw.startswith("[Error:"):
+            return {
+                "tags": [],
+                "suggested_category": None,
+                "original_length": len(text),
+                "error": True,
+            }
 
         # Parse and clean tags
         tags = []
@@ -625,8 +667,9 @@ class LLMService:
 
         try:
             db = SessionLocal()
-            # Upsert: delete existing then insert
+            # Upsert: delete existing then insert（按 user_id 隔离，防跨用户覆盖）
             db.query(Embedding).filter(
+                Embedding.user_id == user_id,
                 Embedding.content_type == content_type,
                 Embedding.content_id == content_id,
             ).delete()

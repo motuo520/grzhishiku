@@ -106,8 +106,14 @@ def import_user_data(db: Session, user_id: str, data: Dict[str, Any]) -> Dict[st
         if not isinstance(rows, list):
             continue
         # 已有行查询限定当前用户：撞到他用户的同 id 行时换新 id 插入，
-        # 不允许收养/覆盖他人数据
-        existing_ids = {r[0] for r in db.query(model.id).filter(model.user_id == user_id).all()}
+        # 不允许收养/覆盖他人数据；只按本次导入的 id 做 IN 查询，避免全表拉取
+        import_ids = [r.get("id") for r in rows if isinstance(r, dict) and r.get("id")]
+        existing_ids = (
+            {r[0] for r in db.query(model.id).filter(
+                model.user_id == user_id, model.id.in_(import_ids)
+            ).all()}
+            if import_ids else set()
+        )
         for raw in rows:
             if not isinstance(raw, dict) or not raw.get("id"):
                 stats["skipped"] += 1

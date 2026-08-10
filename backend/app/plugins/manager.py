@@ -36,6 +36,11 @@ class PluginManager:
         self._manifests: Dict[str, PluginManifest] = {}
         self._mcp: Optional[FastMCP] = None
         self._app: Optional[FastAPI] = None
+        # 已完成 initialize 的插件 id。lifespan 可能多次进入（如测试里每个
+        # TestClient 都跑一遍完整 lifespan），重复 include_router 会让 FastAPI
+        # 每次再套一层 _merge_lifespan_context 包装，启动调用栈随次数线性
+        # 增长直至 RecursionError；路由/MCP 工具全局注册一次即可。
+        self._initialized_ids: set = set()
 
     def discover(self) -> List[PluginManifest]:
         """Scan builtin and user plugin directories and return manifests."""
@@ -97,6 +102,8 @@ class PluginManager:
         self._app = app
         self._mcp = mcp
         for plugin in self.plugins.values():
+            if plugin.manifest.id in self._initialized_ids:
+                continue
             self.initialize_plugin(plugin)
 
     def initialize_plugin(self, plugin: BasePlugin) -> None:
@@ -112,6 +119,8 @@ class PluginManager:
                     )
             if self._mcp is not None:
                 plugin.register_mcp_tools(self._mcp)
+            # 仅成功才计入，失败时下次 lifespan / 重试仍可再初始化
+            self._initialized_ids.add(plugin.manifest.id)
             logger.info("Initialized plugin: %s", plugin.manifest.id)
         except Exception as e:
             logger.exception("Failed to initialize plugin %s: %s", plugin.manifest.id, e)
@@ -149,6 +158,7 @@ class PluginManager:
             raise ValueError("只能卸载用户安装的插件")
         self.plugins.pop(plugin_id, None)
         self._manifests.pop(plugin_id, None)
+        self._initialized_ids.discard(plugin_id)
         logger.info("Removed local plugin: %s", plugin_id)
 
     # ---- user-level enablement / config ----
@@ -217,9 +227,8 @@ class PluginManager:
         configs = state.get("configs") or {}
         configs[plugin_id] = config
         state["configs"] = configs
-        plugin = self.plugins.get(plugin_id)
-        if plugin:
-            plugin.config = config
+        # 配置只按用户持久化、经 get_config(user, ...) 读取；不写进程级共享
+        # 实例 plugin.config，避免后写覆盖先写、跨用户泄露 token
         self._save_user_plugins_state(user, state, db)
 
     async def run_sync_for_user(self, user: User, plugin_id: str, db) -> dict:
