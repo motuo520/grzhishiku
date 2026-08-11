@@ -9,7 +9,6 @@ Super admins bypass all permission checks.
 
 import json
 from enum import Enum
-from functools import wraps
 from typing import List, Optional
 
 from fastapi import Depends, HTTPException, status

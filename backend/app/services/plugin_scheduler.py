@@ -80,10 +80,6 @@ async def _run_sync_job(user_id: str, plugin_id: str) -> None:
             db.close()
 
 
-def get_scheduler() -> Optional[AsyncIOScheduler]:
-    return _scheduler
-
-
 def schedule_user_plugin_sync(user: User, plugin_id: str) -> None:
     """Add or reschedule an interval job for a user's plugin."""
     if _scheduler is None:

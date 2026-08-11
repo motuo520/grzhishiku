@@ -57,20 +57,6 @@ class SystemConfigSnapshot:
         return mode.get("message") or mode.get("estimated_recovery")
 
     @property
-    def max_upload_size(self) -> int:
-        return int(self._get("max_upload_size", 10 * 1024 * 1024))
-
-    @property
-    def allowed_file_types(self) -> List[str]:
-        val = self._get("allowed_file_types", [".jpg", ".png", ".pdf", ".md"])
-        if isinstance(val, str):
-            try:
-                val = json.loads(val)
-            except json.JSONDecodeError:
-                val = []
-        return list(val) if isinstance(val, list) else []
-
-    @property
     def announcement(self) -> Dict[str, Any]:
         val = self._get("announcement", {})
         if isinstance(val, str):

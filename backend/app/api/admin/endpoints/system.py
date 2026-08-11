@@ -60,13 +60,6 @@ class SystemHealthResponse(BaseModel):
     timestamp: str
 
 
-class FeatureFlags(BaseModel):
-    beta_features: bool = False
-    ai_summary: bool = True
-    web_clipper: bool = True
-    public_sharing: bool = False
-
-
 class FeatureFlagItem(BaseModel):
     key: str
     name: str

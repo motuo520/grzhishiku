@@ -1,11 +1,10 @@
 from datetime import datetime, timedelta
-from typing import Optional, Union
+from typing import Optional
 from jose import JWTError, jwt
 import bcrypt
 from fastapi import Depends, HTTPException
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
-import secrets
 import re
 
 from app.core.config import settings
@@ -101,13 +100,3 @@ def get_current_user_optional(
     if not user or user.status != "active":
         return None
     return user
-
-
-def safe_compare_tokens(a: str, b: str) -> bool:
-    """Timing-attack-safe token comparison using secrets.compare_digest."""
-    if not isinstance(a, str) or not isinstance(b, str):
-        return False
-    try:
-        return secrets.compare_digest(a.encode('utf-8'), b.encode('utf-8'))
-    except Exception:
-        return False

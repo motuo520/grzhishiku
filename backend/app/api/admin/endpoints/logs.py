@@ -1,10 +1,8 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from sqlalchemy import func, and_
-from pydantic import BaseModel
-from typing import List, Optional, Dict, Any
+from typing import Optional
 from datetime import datetime, timedelta
-import uuid
 import json
 import csv
 import io
@@ -15,32 +13,6 @@ from app.models.base import AdminAuditLog, AdminUser
 from app.api.admin.endpoints.auth import get_current_admin
 
 router = APIRouter()
-
-
-class LogListParams(BaseModel):
-    action: Optional[str] = None
-    risk_level: Optional[str] = None
-    start_date: Optional[str] = None
-    end_date: Optional[str] = None
-    admin_id: Optional[str] = None
-    search: Optional[str] = None
-    skip: int = 0
-    limit: int = 50
-
-
-class LogEntry(BaseModel):
-    id: str
-    admin_id: str
-    admin_name: str
-    action: str
-    resource_type: str
-    resource_id: str
-    before_state: Optional[Dict[str, Any]]
-    after_state: Optional[Dict[str, Any]]
-    changes: Optional[Dict[str, Any]]
-    risk_level: str
-    ip_address: Optional[str]
-    created_at: datetime
 
 
 @router.get("/", summary="List audit logs", description="List all admin audit logs with filtering, pagination and search.")
@@ -232,39 +204,3 @@ async def get_log_stats(
         "action_counts": action_counts,
         "risk_counts": risk_counts,
     }
-
-
-def create_audit_log(
-    db: Session,
-    admin: AdminUser,
-    action: str,
-    resource_type: str,
-    resource_id: str,
-    before_state: Optional[Dict[str, Any]] = None,
-    after_state: Optional[Dict[str, Any]] = None,
-    changes: Optional[Dict[str, Any]] = None,
-    risk_level: str = "low",
-    risk_reason: str = "",
-    ip_address: str = "",
-    details: str = "",
-):
-    """Helper to create an audit log entry."""
-    log = AdminAuditLog(
-        id=str(uuid.uuid4()),
-        admin_id=admin.id,
-        admin_name=admin.name,
-        admin_role=admin.role,
-        action=action,
-        resource_type=resource_type,
-        resource_id=resource_id,
-        before_state=json.dumps(before_state, default=str) if before_state else None,
-        after_state=json.dumps(after_state, default=str) if after_state else None,
-        changes=json.dumps(changes, default=str) if changes else None,
-        risk_level=risk_level,
-        risk_reason=risk_reason,
-        ip_address=ip_address,
-        details=details,
-    )
-    db.add(log)
-    db.commit()
-    return log

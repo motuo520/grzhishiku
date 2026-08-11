@@ -12,13 +12,6 @@ ALLOWED_ATTRIBUTES = {}
 import html
 
 
-def escape_html(text: Optional[str]) -> Optional[str]:
-    """Escape HTML characters in plain text to prevent XSS."""
-    if text is None:
-        return None
-    return html.escape(text)
-
-
 def sanitize_html(text: Optional[str], allow_tags: Optional[list] = None) -> Optional[str]:
     """Sanitize HTML content using bleach, removing all non-allowed tags."""
     if text is None:

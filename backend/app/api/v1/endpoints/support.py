@@ -24,16 +24,6 @@ class TicketReplyCreate(BaseModel):
     content: str = Field(..., min_length=1, max_length=50000, description="Reply content")
 
 
-class TicketListItem(BaseModel):
-    id: str
-    subject: str
-    status: str
-    priority: str
-    category: str
-    created_at: datetime
-    updated_at: datetime
-
-
 @router.post("/tickets", summary="Create support ticket", description="Create a new support ticket.")
 async def create_ticket(
     data: TicketCreate,

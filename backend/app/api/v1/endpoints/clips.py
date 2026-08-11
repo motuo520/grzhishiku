@@ -286,15 +286,16 @@ def _extract_domain(url: str) -> str:
 
 def _fetch_url_metadata(url: str) -> UrlMetadata:
     try:
-        req = urllib.request.Request(
+        # SSRF 防护：仅 http/https、拒绝内网地址；重定向逐跳校验，响应体限 5MB
+        from app.services.url_guard import open_checked_url, read_capped
+        with open_checked_url(
             url,
+            timeout=8,
             headers={
                 "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
             },
-            timeout=8,
-        )
-        with urllib.request.urlopen(req, timeout=8) as response:
-            html = response.read().decode("utf-8", errors="ignore")
+        ) as response:
+            html = read_capped(response).decode("utf-8", errors="ignore")
         
         title_match = re.search(r"<title[^>]*>(.*?)</title>", html, re.IGNORECASE | re.DOTALL)
         title = title_match.group(1).strip() if title_match else url
@@ -315,8 +316,14 @@ def _fetch_url_metadata(url: str) -> UrlMetadata:
             excerpt = re.sub(r"\s+", " ", excerpt)
         
         return UrlMetadata(url=url, title=title, domain=_extract_domain(url), excerpt=excerpt)
-    except Exception as e:
+    except ValueError as e:
+        # url_guard 的校验提示本身是对外口径（如"地址不能指向内网或本机"），可直接透出
         return UrlMetadata(url=url, title=url, domain=_extract_domain(url), error=str(e))
+    except Exception as e:
+        # 底层异常原文可能含内网地址等细节，只进日志；对外固定文案
+        import logging
+        logging.getLogger(__name__).info("clip metadata fetch failed url=%s err=%s", url, e)
+        return UrlMetadata(url=url, title=url, domain=_extract_domain(url), error="无法访问该地址")
 
 
 @router.post("/batch", response_model=BatchCreateResult, summary="Batch create clips", description="Create multiple browser clips in a single request.")

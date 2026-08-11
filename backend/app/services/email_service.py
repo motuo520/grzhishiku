@@ -36,18 +36,6 @@ def get_imap_preset(provider: str) -> Optional[Dict]:
     return IMAP_PRESETS.get(provider.lower())
 
 
-def decode_str(s: Optional[bytes], default_charset: str = "utf-8") -> str:
-    """Decode an email header string."""
-    if s is None:
-        return ""
-    if isinstance(s, str):
-        return s
-    try:
-        return s.decode(default_charset, errors="replace")
-    except Exception:
-        return s.decode("utf-8", errors="replace")
-
-
 def decode_header_value(value: Optional[str]) -> str:
     """Decode RFC2047 encoded email header."""
     if not value:

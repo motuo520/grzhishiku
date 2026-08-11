@@ -1,7 +1,7 @@
 """Pydantic schemas for LLM endpoints"""
 
 from pydantic import BaseModel, Field
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict
 from enum import Enum
 
 
@@ -111,14 +111,6 @@ class ModelInfoResponse(BaseModel):
     context_window: int
     latency_hint: str
     icon_color: str
-
-
-class HealthStatusResponse(BaseModel):
-    active_provider: Optional[str]
-    active_model: Optional[str]
-    connected: bool
-    latency: int
-    providers: List[Dict[str, Any]]
 
 
 class OllamaModelsResponse(BaseModel):

@@ -15,31 +15,6 @@ class PSBException(Exception):
         self.error_code = error_code
         super().__init__(self.message)
 
-class AuthenticationError(PSBException):
-    """Authentication failed"""
-    def __init__(self, message: str = "Authentication failed"):
-        super().__init__(message, status_code=401, error_code="AUTHENTICATION_ERROR")
-
-class AuthorizationError(PSBException):
-    """Not authorized"""
-    def __init__(self, message: str = "Not authorized"):
-        super().__init__(message, status_code=403, error_code="AUTHORIZATION_ERROR")
-
-class ValidationError(PSBException):
-    """Validation failed"""
-    def __init__(self, message: str = "Validation failed"):
-        super().__init__(message, status_code=400, error_code="VALIDATION_ERROR")
-
-class NotFoundError(PSBException):
-    """Resource not found"""
-    def __init__(self, message: str = "Resource not found"):
-        super().__init__(message, status_code=404, error_code="NOT_FOUND")
-
-class ConflictError(PSBException):
-    """Resource conflict"""
-    def __init__(self, message: str = "Resource conflict"):
-        super().__init__(message, status_code=409, error_code="CONFLICT")
-
 def register_exception_handlers(app: FastAPI):
     """Register all exception handlers with the FastAPI app"""
     

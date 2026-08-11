@@ -15,8 +15,8 @@ from app.core.database import get_db
 from app.schemas.llm import (
     ChatRequest, SummarizeRequest, SummarizeResponse, ExtractTagsRequest, ExtractTagsResponse,
     CompleteRequest, CompleteResponse,
-    EmbedRequest, EmbedResponse, EmbedBatchRequest, EmbedBatchResponse,
-    RouteTestRequest, RouteTestResponse, ModelInfoResponse, OllamaModelsResponse
+    EmbedRequest, EmbedBatchRequest,
+    RouteTestRequest, OllamaModelsResponse
 )
 
 router = APIRouter()

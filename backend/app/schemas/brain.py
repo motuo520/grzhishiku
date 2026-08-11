@@ -83,10 +83,3 @@ class BrainStats(BaseModel):
     fusion_ratio: Optional[float] = None
     collaboration_count: Optional[int] = None
 
-class BrainStatsResponse(BaseModel):
-    personal: BrainStats
-    network: BrainStats
-    fusion: BrainStats
-
-class SearchSuggestion(BaseModel):
-    suggestions: List[str] = Field(..., max_length=20)

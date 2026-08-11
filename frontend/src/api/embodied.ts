@@ -61,11 +61,6 @@ export interface EvolutionReflectionCreate {
 
 export interface EvolutionReflectionUpdate extends Partial<EvolutionReflectionCreate> {}
 
-export interface EvolutionAnalysisRequest {
-  brain_side?: BrainSide;
-  preferred_model?: string;
-}
-
 export interface EvolutionAnalysisResponse {
   summary: string;
   true_evolution_ratio: number;

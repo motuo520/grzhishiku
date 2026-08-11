@@ -102,14 +102,6 @@ class ModelConfig:
             for name, cfg in cls.MODELS.items()
         ]
 
-    @classmethod
-    def get_by_provider(cls, provider: ModelProvider) -> List[Dict[str, Any]]:
-        return [
-            {**cfg, "model_name": name}
-            for name, cfg in cls.MODELS.items()
-            if cfg["provider"] == provider
-        ]
-
 
 class ProviderStatus:
     """Health status for each LLM provider"""
@@ -183,37 +175,9 @@ class LLMRouterService:
         }
 
 
-class SummaryCache:
-    """In-memory cache for summaries to avoid duplicate LLM calls."""
-
-    def __init__(self, max_size: int = 1000):
-        self._cache: Dict[str, Dict[str, Any]] = {}
-        self._max_size = max_size
-
-    def _key(self, text: str, length: str) -> str:
-        return hashlib.sha256(f"{text}:{length}".encode()).hexdigest()[:32]
-
-    def get(self, text: str, length: str) -> Optional[str]:
-        key = self._key(text, length)
-        entry = self._cache.get(key)
-        if entry and (time.time() - entry["ts"]) < 3600:  # 1 hour TTL
-            return entry["summary"]
-        return None
-
-    def set(self, text: str, length: str, summary: str) -> None:
-        key = self._key(text, length)
-        if len(self._cache) >= self._max_size:
-            # Evict oldest
-            oldest = min(self._cache, key=lambda k: self._cache[k]["ts"])
-            del self._cache[oldest]
-        self._cache[key] = {"summary": summary, "ts": time.time()}
-
-
 class LLMService:
     def __init__(self):
         self.ollama_url = settings.OLLAMA_BASE_URL
-        self.summary_cache = SummaryCache()
-        self.tags_cache = SummaryCache(max_size=2000)  # Re-use cache structure for tags
 
     def _get_user_llm_config(self, user_settings: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         """Extract LLM-related config from a user settings dict."""
@@ -481,142 +445,6 @@ class LLMService:
                                 continue
         except Exception as e:
             yield f"[Error: Ollama connection failed - {str(e)}]"
-
-    # ─────────────────────────── Summarize ───────────────────────────
-
-    async def summarize(self, text: str, length: str = "medium") -> Dict[str, Any]:
-        """Summarize text with 3 length options and caching.
-
-        length: 'short' (1-2 sentences), 'medium' (3-5 sentences), 'long' (detailed paragraph)
-        Returns dict with summary, original_length, compression_ratio.
-        """
-        # Validate length
-        if length not in ("short", "medium", "long"):
-            length = "medium"
-
-        # Check cache
-        cached = self.summary_cache.get(text, length)
-        if cached:
-            return {
-                "summary": cached,
-                "original_length": len(text),
-                "compression_ratio": round(len(cached) / max(len(text), 1), 4),
-                "cached": True,
-                "length": length,
-            }
-
-        # Build prompt based on length
-        length_prompts = {
-            "short": "请用1-2句话总结以下内容的要点：",
-            "medium": "请用3-5句话总结以下内容的主要观点和结论：",
-            "long": "请详细总结以下内容，包含主要观点、关键论据、结论和背景：",
-        }
-        prompt = f"{length_prompts[length]}\n\n{text}"
-
-        result = []
-        async for chunk in self.chat(prompt, task_type="summarize", preferred_model="ollama-qwen2.5-0.5b"):
-            result.append(chunk)
-        summary = "".join(result).strip()
-
-        # 失败输出不写入缓存
-        if summary.startswith("[Error:"):
-            return {
-                "summary": summary,
-                "error": True,
-                "original_length": len(text),
-                "compression_ratio": 0,
-                "length": length,
-            }
-
-        # Store in cache
-        self.summary_cache.set(text, length, summary)
-
-        return {
-            "summary": summary,
-            "original_length": len(text),
-            "compression_ratio": round(len(summary) / max(len(text), 1), 4),
-            "cached": False,
-            "length": length,
-        }
-
-    # ─────────────────────────── Extract Tags ───────────────────────────
-
-    async def extract_tags(self, text: str) -> Dict[str, Any]:
-        """Extract 3-10 keyword tags from text using LLM.
-
-        Returns dict with tags, suggested_category, and original_length.
-        """
-        # Check cache using hash key (ignore length for tags)
-        cache_key = hashlib.sha256(text.encode()).hexdigest()[:32]
-        cache_entry = self.tags_cache._cache.get(cache_key, {})
-        cached_tags = cache_entry.get("tags") if isinstance(cache_entry, dict) else None
-        if cached_tags:
-            return {
-                "tags": cached_tags,
-                "suggested_category": cache_entry.get("suggested_category"),
-                "original_length": len(text),
-                "cached": True,
-            }
-
-        prompt = (
-            "请从以下文本中提取3-10个关键词标签。要求："
-            "1. 标签应简洁（1-3个词）"
-            "2. 全部小写"
-            "3. 去除停用词（如'的'、'是'、'和'）"
-            "4. 返回格式：仅逗号分隔的标签列表，不要有其他内容\n\n"
-            f"文本：\n{text}"
-        )
-        result = []
-        async for chunk in self.chat(prompt, task_type="tag_extraction", preferred_model="ollama-qwen2.5-0.5b"):
-            result.append(chunk)
-        raw = "".join(result).strip()
-
-        # 失败输出不写入缓存
-        if raw.startswith("[Error:"):
-            return {
-                "tags": [],
-                "suggested_category": None,
-                "original_length": len(text),
-                "error": True,
-            }
-
-        # Parse and clean tags
-        tags = []
-        for tag in re.split(r"[,，、]", raw):
-            tag = tag.strip().lower()
-            tag = re.sub(r"^[\s\d\.\-•]+", "", tag)  # Remove leading numbers/bullets
-            tag = re.sub(r"[\s\d\.\-•]+$", "", tag)  # Remove trailing numbers/bullets
-            if tag and len(tag) <= 20 and tag not in tags:
-                tags.append(tag)
-
-        tags = tags[:10]  # Cap at 10
-
-        # Suggest category based on known tags
-        categories = {
-            "技术": ["code", "编程", "python", "javascript", "api", "数据库", "算法", "debug", "前端", "后端"],
-            "学术": ["论文", "研究", "理论", "实验", "分析", "数据", "文献"],
-            "商业": ["市场", "产品", "用户", "增长", "营收", "战略", "竞争"],
-            "生活": ["健康", "饮食", "运动", "旅行", "家庭", "心理"],
-            "创意": ["设计", "艺术", "写作", "音乐", "摄影", "灵感"],
-        }
-        suggested_category = None
-        for cat, cat_tags in categories.items():
-            if any(t in cat_tags for t in tags):
-                suggested_category = cat
-                break
-
-        # Store in cache
-        self.tags_cache._cache[cache_key] = {"tags": tags, "suggested_category": suggested_category}
-        # Limit cache size
-        if len(self.tags_cache._cache) > self.tags_cache._max_size:
-            self.tags_cache._cache.pop(next(iter(self.tags_cache._cache)))
-
-        return {
-            "tags": tags,
-            "suggested_category": suggested_category,
-            "original_length": len(text),
-            "cached": False,
-        }
 
     # ─────────────────────────── Embeddings ───────────────────────────
 

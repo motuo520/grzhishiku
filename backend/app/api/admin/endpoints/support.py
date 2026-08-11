@@ -27,23 +27,6 @@ class TicketStatusUpdate(BaseModel):
     status: str = Field(..., max_length=50, description="New status")
 
 
-class TicketResponse(BaseModel):
-    id: str
-    user_id: str
-    user_email: str
-    subject: str
-    description: str
-    status: str
-    priority: str
-    category: str
-    assigned_to: Optional[str]
-    assigned_name: Optional[str]
-    satisfaction: Optional[int]
-    created_at: datetime
-    updated_at: datetime
-    reply_count: int
-
-
 @router.get("/tickets", summary="List support tickets", description="List all support tickets with filtering and pagination.")
 async def list_tickets(
     status: Optional[str] = Query(None, description="Filter by status: open/closed/pending/in_progress/resolved"),

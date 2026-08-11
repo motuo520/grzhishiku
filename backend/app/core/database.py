@@ -51,12 +51,3 @@ def get_db() -> Session:
         yield db
     finally:
         db.close()
-
-async def get_async_db() -> AsyncSession:
-    """Async session dependency for PostgreSQL migration.
-    Falls back to sync session in thread pool if SQLite is used.
-    """
-    if AsyncSessionLocal is None:
-        raise RuntimeError("Async database not configured. Use get_db for sync sessions.")
-    async with AsyncSessionLocal() as session:
-        yield session

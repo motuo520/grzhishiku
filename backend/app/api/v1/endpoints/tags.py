@@ -115,7 +115,7 @@ async def delete_tag(
     if not tag:
         raise HTTPException(status_code=404, detail="Tag not found")
     
-    usage = _get_tag_usage_count(db, tag_id)
+    usage = tag_service.get_tag_usage_count(db, tag_id)
     if usage > 0:
         raise HTTPException(status_code=400, detail=f"Tag is still used by {usage} content items. Please remove associations first.")
     

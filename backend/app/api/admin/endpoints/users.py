@@ -82,25 +82,6 @@ def _get_sync_stats(db: Session, user_id: str):
     return devices_count, last_sync_at
 
 
-def _user_list_item(db: Session, user: User) -> UserListItem:
-    notes_count = db.query(func.count(Note.id)).filter(Note.user_id == user.id).scalar() or 0
-    capsules_count = db.query(func.count(Capsule.id)).filter(Capsule.user_id == user.id).scalar() or 0
-    sync_devices_count, last_sync_at = _get_sync_stats(db, user.id)
-    return UserListItem(
-        id=user.id,
-        email=user.email,
-        username=user.username or "",
-        display_name=user.display_name or "",
-        status=user.status,
-        notes_count=notes_count,
-        capsules_count=capsules_count,
-        sync_devices_count=sync_devices_count,
-        last_sync_at=last_sync_at,
-        created_at=user.created_at,
-        last_login_at=user.last_login_at,
-    )
-
-
 # ─── Member list / search ─────────────────────────────────────────
 
 @router.get("/", response_model=UserListResponse, summary="List members", description="List all members (users) with content/sync stats, search and pagination.")

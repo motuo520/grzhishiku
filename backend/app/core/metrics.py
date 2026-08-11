@@ -50,14 +50,6 @@ llm_request_duration = Histogram(
     ['provider', 'model']
 )
 
-def record_request(method: str, endpoint: str, status: int, duration: float):
-    request_count.labels(method=method, endpoint=endpoint, status=status).inc()
-    request_duration.labels(method=method, endpoint=endpoint).observe(duration)
-
-def record_llm_request(provider: str, model: str, duration: float):
-    llm_requests.labels(provider=provider, model=model).inc()
-    llm_request_duration.labels(provider=provider, model=model).observe(duration)
-
 def update_business_metrics(db):
     from sqlalchemy import func
     from app.models.base import User, Note, Capsule, BrowserClip

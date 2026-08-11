@@ -71,6 +71,14 @@ async def lifespan(app: FastAPI):
                 content_rowid='rowid'
             )
         """))
+        # 存量库迁移：旧版触发器直接 UPDATE/DELETE FTS 外表（会腐蚀索引），
+        # CREATE IF NOT EXISTS 不会替换旧体——命中旧写法则整体 DROP，下方重建
+        _old_trg = conn.execute(text(
+            "SELECT sql FROM sqlite_master WHERE type='trigger' AND name='knowledge_fts_update'"
+        )).fetchone()
+        if _old_trg and _old_trg[0] and "UPDATE knowledge_fts" in _old_trg[0]:
+            for _trg in ("knowledge_fts_insert", "knowledge_fts_update", "knowledge_fts_delete"):
+                conn.execute(text(f"DROP TRIGGER IF EXISTS {_trg}"))
         conn.execute(text("""
             CREATE TRIGGER IF NOT EXISTS knowledge_fts_insert AFTER INSERT ON knowledge_units BEGIN
                 INSERT INTO knowledge_fts(rowid, content_raw) VALUES (new.rowid, new.content_raw);

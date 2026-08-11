@@ -22,11 +22,6 @@ export interface ActiveProvider {
   model: string;
 }
 
-export interface SetActiveProviderRequest {
-  provider: string;
-  model: string;
-}
-
 export interface LLMTestResult {
   provider: string;
   model: string;

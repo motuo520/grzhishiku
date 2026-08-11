@@ -24,14 +24,6 @@ router = APIRouter()
 logger = logging.getLogger(__name__)
 
 
-def _mask_token(token: Optional[str]) -> Optional[str]:
-    if not token:
-        return None
-    if len(token) <= 8:
-        return "*" * len(token)
-    return token[:4] + "*" * (len(token) - 8) + token[-4:]
-
-
 def _build_account_response(account: EmailAccount) -> dict:
     return {
         "id": account.id,

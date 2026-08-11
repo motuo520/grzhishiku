@@ -101,27 +101,6 @@ def _resolve_node_brain_side(db: Session, node_id: str) -> str:
     return "unknown"
 
 
-def _batch_brain_sides(db: Session, ids) -> Dict[str, str]:
-    """Batch-resolve brain_side for many node ids (one query per content table)."""
-    result: Dict[str, str] = {}
-    remaining = set(ids)
-    for Model, default, attr in [
-        (Note, "personal", "brain_side"),
-        (Capsule, "personal", "brain_side"),
-        (BrowserClip, "network", "brain_side"),
-        (KnowledgeUnit, "network", "brain_side"),
-    ]:
-        if not remaining:
-            break
-        rows = db.query(Model.id, getattr(Model, attr)).filter(Model.id.in_(remaining)).all()
-        for rid, side in rows:
-            result[rid] = side if side else default
-            remaining.discard(rid)
-    for rid in remaining:
-        result[rid] = "unknown"
-    return result
-
-
 def _build_node_dict(db: Session, obj: Any, node_type: str) -> Dict[str, Any]:
     """Build a rich node dict with brain_side, source_type and created_at."""
     if node_type == "note":
@@ -188,23 +167,6 @@ def _get_all_nodes_for_user(db: Session, current_user: User) -> List[Dict[str, A
     return nodes
 
 
-def _compute_degrees(edges: List[GraphEdge]) -> Dict[str, int]:
-    degrees: Dict[str, int] = defaultdict(int)
-    for e in edges:
-        degrees[e.source_id] += 1
-        degrees[e.target_id] += 1
-    return degrees
-
-
-def _node_label(db: Session, node_id: str) -> str:
-    for Model, attr in [(Note, "title"), (BrowserClip, "title"), (KnowledgeUnit, "content_raw"), (Capsule, "content_body")]:
-        obj = db.query(Model).filter(Model.id == node_id).first()
-        if obj:
-            val = getattr(obj, attr, None) or node_id
-            return (val if isinstance(val, str) else str(val))[:50]
-    return node_id
-
-
 def _batch_node_labels(db: Session, node_ids) -> Dict[str, str]:
     """Batch-resolve labels for many node ids (one query per content table)."""
     labels: Dict[str, str] = {}
@@ -219,14 +181,6 @@ def _batch_node_labels(db: Session, node_ids) -> Dict[str, str]:
             labels[rid] = (val if isinstance(val, str) else (str(val) if val else rid))[:50] if val else rid
             remaining.discard(rid)
     return labels
-
-
-def _node_brain_side_from_edge(db: Session, edge: GraphEdge, node_id: str) -> str:
-    """Return brain_side for a node referenced by an edge, with fallback."""
-    side = edge.source_brain_side if edge.source_id == node_id else edge.target_brain_side
-    if side:
-        return side
-    return _resolve_node_brain_side(db, node_id)
 
 
 def _auto_link_for_clip(user_id: str, clip_id: str, db: Session):

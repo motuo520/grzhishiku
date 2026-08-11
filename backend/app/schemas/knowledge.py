@@ -5,27 +5,6 @@ from enum import Enum
 
 from app.schemas.tag import TagItem
 
-class VerificationStatus(str, Enum):
-    UNVERIFIED = "unverified"
-    CHECKING = "checking"
-    CONFIRMED = "confirmed"
-    DISPUTED = "disputed"
-    DEBUNKED = "debunked"
-    OUTDATED = "outdated"
-
-class TimelinessStatus(str, Enum):
-    FRESH = "fresh"
-    STABLE = "stable"
-    AGING = "aging"
-    OUTDATED = "outdated"
-    SUPERSEDED = "superseded"
-
-class TrustLevel(str, Enum):
-    TRUSTED = "trusted"
-    TENTATIVE = "tentative"
-    SUSPICIOUS = "suspicious"
-    REJECTED = "rejected"
-
 class OriginType(str, Enum):
     SELF_PRACTICE = "self_practice"
     BOOK_EXCERPT = "book_excerpt"
@@ -152,13 +131,6 @@ class VerificationResult(BaseModel):
     confidence: float = Field(..., description="Confidence score 0-1")
     result: str = Field(..., max_length=200, description="Result: confirmed / disputed / debunked")
     reasoning: Optional[str] = Field(None, max_length=5000, description="Reasoning text")
-
-class VerificationResponse(BaseModel):
-    knowledge_id: str = Field(..., description="Knowledge unit ID")
-    status: str = Field(..., description="Final status")
-    consensus: float = Field(..., description="Consensus score 0-100")
-    results: List[VerificationResult] = Field(..., description="Individual model results")
-    completed_at: datetime = Field(..., description="Completion timestamp")
 
 class CounterEvidenceCreate(BaseModel):
     evidence_url: Optional[str] = Field(None, max_length=2048, description="URL supporting counter-evidence")

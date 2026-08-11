@@ -10,12 +10,6 @@ class UnlockType(str, Enum):
     CONDITIONAL = "conditional"
     COMPOUND = "compound"
 
-class UnlockStatus(str, Enum):
-    LOCKED = "locked"
-    UNLOCKED = "unlocked"
-    OPENED = "opened"
-    REVISITED = "revisited"
-
 class ContentType(str, Enum):
     TEXT = "text"
     VOICE = "voice"

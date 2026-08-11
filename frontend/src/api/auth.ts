@@ -1,4 +1,4 @@
-import api, { apiClient } from './client';
+import api from './client';
 
 export interface LoginData { email: string; password: string; }
 export interface RegisterData { email: string; password: string; }
@@ -55,12 +55,4 @@ export const authApi = {
   me: () => api.get<User>('/api/v1/users/me'),
   updateMe: (data: { name?: string; avatar?: string; display_name?: string; username?: string }) => api.patch<User>('/api/v1/users/me', data),
   seedSamples: () => api.post<{ seeded: Record<string, number> }>('/api/v1/users/me/seed-samples'),
-};
-
-// Backward compat: also expose on apiClient
-export const initAuthToken = () => {
-  const token = getToken();
-  if (token) {
-    apiClient.setToken(token);
-  }
 };

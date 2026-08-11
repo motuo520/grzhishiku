@@ -153,12 +153,16 @@ def _extract_article_text(url: str) -> Optional[str]:
     try:
         validate_fetch_url(url)
         from readability import Document
-        import requests
-        headers = {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
-        }
-        resp = requests.get(url, headers=headers, timeout=10)
-        doc = Document(resp.text)
+        # 用 url_guard.open_checked_url 取代 requests.get：重定向逐跳校验 + 响应体上限
+        # （requests 无逐跳钩子，自动跟随的 302 会绕过入口校验）
+        from app.services.url_guard import open_checked_url, read_capped
+        with open_checked_url(
+            url,
+            timeout=10,
+            headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"},
+        ) as resp:
+            html_text = read_capped(resp).decode("utf-8", errors="ignore")
+        doc = Document(html_text)
         html = doc.summary()
         import re
         text = re.sub(r"<[^>]+>", " ", html)
