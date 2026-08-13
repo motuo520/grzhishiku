@@ -290,13 +290,17 @@ async def emergence_sources(
     brain_side: Optional[str] = Query(None, description="personal / network / both"),
     type_filter: Optional[str] = Query(None, description="Comma-separated source types"),
     q: Optional[str] = Query(None, description="Search keyword"),
-    limit: int = Query(100, ge=1, le=200),
+    # 上限放宽到 1000：时间轴页要一次拉回全量做批次回顾；该接口本就是全量读内存再切片，个人规模无压力
+    limit: int = Query(100, ge=1, le=1000),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     """Return candidate source contents for emergence tools."""
     items: List[EmergenceSourceItem] = []
-    allowed_types = type_filter.split(",") if type_filter else list(SOURCE_TYPE_CONFIG.keys())
+    # 默认列表隐藏「标签」类型：标签是组织工具不是素材，混进来会灌水成
+    # 「暂无摘要且删不了」的幽灵卡片（296 个标签=296 张废卡）；显式
+    # type_filter=tag 的调用不受影响，已有画布/想法里的标签引用不破坏
+    allowed_types = type_filter.split(",") if type_filter else [t for t in SOURCE_TYPE_CONFIG if t != "tag"]
     allowed_types = [t.strip() for t in allowed_types if t.strip() in SOURCE_TYPE_CONFIG]
 
     for source_type in allowed_types:

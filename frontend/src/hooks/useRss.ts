@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { rssApi, FeedUpdateData } from '@/api/rss';
+import { invalidateContentQueries } from '@/utils/invalidateContent';
 
 export const useRssFeeds = () => {
   const queryClient = useQueryClient();
@@ -16,30 +17,28 @@ export const useRssFeeds = () => {
   const createMutation = useMutation({
     mutationFn: rssApi.createFeed,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['rss-feeds'] });
+      invalidateContentQueries(queryClient);
     },
   });
 
   const updateMutation = useMutation({
     mutationFn: ({ id, data }: { id: string; data: FeedUpdateData }) => rssApi.updateFeed(id, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['rss-feeds'] });
+      invalidateContentQueries(queryClient);
     },
   });
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => rssApi.deleteFeed(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['rss-feeds'] });
-      queryClient.invalidateQueries({ queryKey: ['rss-entries'] });
+      invalidateContentQueries(queryClient);
     },
   });
 
   const fetchMutation = useMutation({
     mutationFn: (id: string) => rssApi.fetchFeed(id),
-    onSuccess: (_, id) => {
-      queryClient.invalidateQueries({ queryKey: ['rss-feeds'] });
-      queryClient.invalidateQueries({ queryKey: ['rss-entries', id] });
+    onSuccess: () => {
+      invalidateContentQueries(queryClient);
     },
   });
 
@@ -82,16 +81,14 @@ export const useRssEntries = (feedId: string | null, options?: { unread_only?: b
   const saveMutation = useMutation({
     mutationFn: (entryId: string) => rssApi.saveEntry(entryId),
     onSuccess: () => {
-      if (feedId) queryClient.invalidateQueries({ queryKey: ['rss-entries', feedId] });
-      queryClient.invalidateQueries({ queryKey: ['clips'] });
+      invalidateContentQueries(queryClient);
     },
   });
 
   const deleteMutation = useMutation({
     mutationFn: (entryId: string) => rssApi.deleteEntry(entryId),
     onSuccess: () => {
-      if (feedId) queryClient.invalidateQueries({ queryKey: ['rss-entries', feedId] });
-      queryClient.invalidateQueries({ queryKey: ['rss-feeds'] });
+      invalidateContentQueries(queryClient);
     },
   });
 

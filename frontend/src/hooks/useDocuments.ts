@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { documentApi, DocumentFilters } from '@/api/document';
+import { invalidateContentQueries } from '@/utils/invalidateContent';
 
 export const useDocuments = (filters?: DocumentFilters) => {
   const queryClient = useQueryClient();
@@ -16,29 +17,28 @@ export const useDocuments = (filters?: DocumentFilters) => {
   const uploadMutation = useMutation({
     mutationFn: ({ file, title }: { file: File; title?: string }) => documentApi.upload(file, title),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['documents'], refetchType: 'all' });
+      invalidateContentQueries(queryClient);
     },
   });
 
   const reextractMutation = useMutation({
     mutationFn: (id: string) => documentApi.reextract(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['documents'], refetchType: 'all' });
+      invalidateContentQueries(queryClient);
     },
   });
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => documentApi.delete(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['documents'], refetchType: 'all' });
+      invalidateContentQueries(queryClient);
     },
   });
 
   const saveToKnowledgeMutation = useMutation({
     mutationFn: ({ id, tagIds }: { id: string; tagIds?: string[] }) => documentApi.saveToKnowledge(id, tagIds),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['documents'], refetchType: 'all' });
-      queryClient.invalidateQueries({ queryKey: ['knowledge'] });
+      invalidateContentQueries(queryClient);
     },
   });
 

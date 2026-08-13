@@ -7,6 +7,7 @@ import {
   FileText, Link, Tag
 } from 'lucide-react';
 import { knowledgeApi } from '@/api/knowledge';
+import { invalidateContentQueries } from '@/utils/invalidateContent';
 
 const KnowledgeCreatePage: FC = () => {
   const navigate = useNavigate();
@@ -44,7 +45,7 @@ const KnowledgeCreatePage: FC = () => {
         source_title: sourceTitle || undefined,
         source_author: sourceAuthor || undefined,
       });
-      await queryClient.invalidateQueries({ queryKey: ['knowledge'], refetchType: 'all' });
+      invalidateContentQueries(queryClient);
       setSuccessMsg('知识单元已创建');
       setTimeout(() => navigate(`/knowledge/${brainSide}`), 1000);
     } catch (err: any) {

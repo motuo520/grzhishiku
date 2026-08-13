@@ -1,8 +1,12 @@
 import { FC, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Clock, Loader2, AlertCircle, FileText, Scissors, BookOpen, Package, HelpCircle } from 'lucide-react';
-import { useGraphNodes } from '@/hooks/useGraph';
-import type { GraphNodeItem } from '@/api/graph';
+import { useQuery } from '@tanstack/react-query';
+import {
+  Clock, Loader2, AlertCircle, FileText, Scissors, BookOpen, Package, HelpCircle,
+  Rss, Mail, MessageCircle, Bookmark, FolderOpen,
+} from 'lucide-react';
+import { emergenceApi } from '@/api/emergence';
+import type { EmergenceSource } from '@/api/emergence';
 
 interface TypeConfig {
   label: string;
@@ -10,11 +14,17 @@ interface TypeConfig {
   path?: string;
 }
 
+// 数据源是涌现素材池的跨类型聚合（非图谱节点），图标风格对齐 SourcePool
 const TYPE_CONFIG: Record<string, TypeConfig> = {
   note: { label: '笔记', icon: FileText, path: '/ingest/notes' },
   clip: { label: '剪藏', icon: Scissors, path: '/ingest/clipper' },
   knowledge: { label: '知识单元', icon: BookOpen, path: '/knowledge/network' },
   capsule: { label: '胶囊', icon: Package, path: '/capsules/my' },
+  read_later: { label: '稍后读', icon: Bookmark, path: '/ingest/read-later' },
+  document: { label: '文档', icon: FolderOpen, path: '/ingest/documents' },
+  rss_entry: { label: 'RSS', icon: Rss, path: '/ingest/rss' },
+  email: { label: '邮件', icon: Mail, path: '/ingest/email' },
+  social: { label: '社交', icon: MessageCircle, path: '/ingest/social' },
 };
 
 const BRAIN_SIDE_COLORS: Record<string, string> = {
@@ -29,40 +39,87 @@ const dayKey = (iso: string) => {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 };
 
+const minuteKey = (iso: string) => {
+  const d = new Date(iso);
+  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+};
+
+// 日内的二级分组：批次簇（同一分钟的连续条目）或孤立单条
+type Segment =
+  | { kind: 'cluster'; time: string; items: EmergenceSource[] }
+  | { kind: 'single'; item: EmergenceSource };
+
+// 同一分钟内 created_at 相同的连续条目聚成一簇（一次批量导入的产物）；
+// 孤立单条不分簇，直接列在当日下
+const buildSegments = (items: EmergenceSource[]): Segment[] => {
+  const segments: Segment[] = [];
+  let i = 0;
+  while (i < items.length) {
+    const item = items[i];
+    if (!item.created_at) {
+      segments.push({ kind: 'single', item });
+      i++;
+      continue;
+    }
+    const mk = minuteKey(item.created_at);
+    let j = i + 1;
+    while (j < items.length && items[j].created_at && minuteKey(items[j].created_at!) === mk) {
+      j++;
+    }
+    if (j - i >= 2) {
+      segments.push({ kind: 'cluster', time: mk, items: items.slice(i, j) });
+    } else {
+      segments.push({ kind: 'single', item });
+    }
+    i = j;
+  }
+  return segments;
+};
+
 const GraphTimelinePage: FC = () => {
   const navigate = useNavigate();
-  const { data, isLoading, error } = useGraphNodes();
-  const nodes = useMemo(() => data?.nodes || [], [data]);
+  // 全量内容（跨类型聚合，不要求建过图谱），一次拉够做全量批次回顾
+  // queryKey 挂 'emergence' 前缀：导入完成后 invalidateContentQueries 会连带失效本页
+  const { data, isLoading, error } = useQuery({
+    queryKey: ['emergence', 'sources', 'timeline'],
+    queryFn: async () => {
+      const response = await emergenceApi.getSources(undefined, undefined, undefined, 1000);
+      return response.data;
+    },
+  });
+  const items = useMemo(() => data?.items || [], [data]);
 
-  // 按日分组（降序），无 created_at 的归入「未知日期」
+  // 按日分组（降序），无 created_at 的归入「未知日期」；日内再按批次簇分段
   const groups = useMemo(() => {
-    const map = new Map<string, GraphNodeItem[]>();
-    nodes.forEach((n) => {
+    const map = new Map<string, EmergenceSource[]>();
+    items.forEach((n) => {
       const key = n.created_at ? dayKey(n.created_at) : '未知日期';
       if (!map.has(key)) map.set(key, []);
       map.get(key)!.push(n);
     });
-    return [...map.entries()].sort((a, b) => {
-      if (a[0] === '未知日期') return 1;
-      if (b[0] === '未知日期') return -1;
-      return b[0].localeCompare(a[0]);
-    });
-  }, [nodes]);
+    return [...map.entries()]
+      .sort((a, b) => {
+        if (a[0] === '未知日期') return 1;
+        if (b[0] === '未知日期') return -1;
+        return b[0].localeCompare(a[0]);
+      })
+      .map(([day, dayItems]) => ({ day, segments: buildSegments(dayItems), count: dayItems.length }));
+  }, [items]);
 
   // 顶部汇总：总数、时间跨度、各类型计数
   const summary = useMemo(() => {
-    if (nodes.length === 0) return null;
-    const days = groups.map(([key]) => key).filter((k) => k !== '未知日期');
+    if (items.length === 0) return null;
+    const days = groups.map((g) => g.day).filter((k) => k !== '未知日期');
     const typeCounts: Record<string, number> = {};
-    nodes.forEach((n) => {
+    items.forEach((n) => {
       typeCounts[n.type] = (typeCounts[n.type] || 0) + 1;
     });
     return {
-      total: data?.total ?? nodes.length,
+      total: data?.total ?? items.length,
       span: days.length > 0 ? `${days[days.length - 1]} ~ ${days[0]}` : null,
       typeCounts,
     };
-  }, [nodes, groups, data]);
+  }, [items, groups, data]);
 
   if (isLoading) {
     return (
@@ -81,7 +138,7 @@ const GraphTimelinePage: FC = () => {
     );
   }
 
-  if (nodes.length === 0) {
+  if (items.length === 0) {
     return (
       <div className="h-full flex flex-col items-center justify-center text-center px-6">
         <Clock className="w-12 h-12 text-text-muted mb-4" />
@@ -93,12 +150,46 @@ const GraphTimelinePage: FC = () => {
     );
   }
 
+  const renderItem = (item: EmergenceSource) => {
+    const config = TYPE_CONFIG[item.type];
+    const Icon = config?.icon || HelpCircle;
+    const clickable = Boolean(config?.path);
+    return (
+      <button
+        key={`${item.type}-${item.id}`}
+        onClick={() => { if (config?.path) navigate(config.path); }}
+        disabled={!clickable}
+        className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-left transition-colors ${
+          clickable
+            ? 'hover:bg-white/[0.04] cursor-pointer'
+            : 'cursor-default opacity-70'
+        }`}
+      >
+        <Icon className="w-3.5 h-3.5 text-text-muted shrink-0" />
+        <span className="text-[10px] text-text-muted shrink-0 w-14">
+          {config?.label || item.type}
+        </span>
+        <div className="flex-1 min-w-0">
+          <div className="text-sm text-text-primary truncate">{item.title || '（无标题）'}</div>
+          {item.excerpt && (
+            <div className="text-xs text-text-secondary truncate mt-0.5">{item.excerpt}</div>
+          )}
+        </div>
+        <span
+          className="w-2 h-2 rounded-full shrink-0"
+          style={{ background: BRAIN_SIDE_COLORS[item.brain_side] || BRAIN_SIDE_COLORS.unknown }}
+          title={item.brain_side}
+        />
+      </button>
+    );
+  };
+
   return (
     <div className="h-full overflow-y-auto p-6">
       <div className="max-w-3xl mx-auto space-y-6">
         <div>
           <h1 className="text-2xl font-bold text-text-primary">时间轴</h1>
-          <p className="text-sm text-text-secondary mt-1">按时间回顾你的知识积累</p>
+          <p className="text-sm text-text-secondary mt-1">按时间回顾你的知识积累，同一批导入的内容会聚成一簇</p>
         </div>
 
         {summary && (
@@ -126,44 +217,34 @@ const GraphTimelinePage: FC = () => {
         )}
 
         <div className="space-y-6">
-          {groups.map(([day, items]) => (
+          {groups.map(({ day, segments, count }) => (
             <div key={day}>
               {/* 日期分隔线 */}
               <div className="flex items-center gap-3 mb-3">
                 <span className="text-xs font-semibold text-text-primary whitespace-nowrap">{day}</span>
-                <span className="text-[10px] text-text-muted">{items.length} 条</span>
+                <span className="text-[10px] text-text-muted">{count} 条</span>
                 <div className="flex-1 h-px bg-white/[0.06]" />
               </div>
 
-              <div className="space-y-1.5 ml-2 border-l border-white/[0.08] pl-4">
-                {items.map((node) => {
-                  const config = TYPE_CONFIG[node.type];
-                  const Icon = config?.icon || HelpCircle;
-                  const clickable = Boolean(config?.path);
-                  return (
-                    <button
-                      key={node.id}
-                      onClick={() => { if (config?.path) navigate(config.path); }}
-                      disabled={!clickable}
-                      className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-left transition-colors ${
-                        clickable
-                          ? 'hover:bg-white/[0.04] cursor-pointer'
-                          : 'cursor-default opacity-70'
-                      }`}
-                    >
-                      <Icon className="w-3.5 h-3.5 text-text-muted shrink-0" />
-                      <span className="text-[10px] text-text-muted shrink-0 w-14">
-                        {config?.label || node.type}
-                      </span>
-                      <span className="text-sm text-text-primary truncate flex-1">{node.label}</span>
-                      <span
-                        className="w-2 h-2 rounded-full shrink-0"
-                        style={{ background: BRAIN_SIDE_COLORS[node.brain_side] || BRAIN_SIDE_COLORS.unknown }}
-                        title={node.brain_side}
-                      />
-                    </button>
-                  );
-                })}
+              <div className="space-y-3 ml-2 border-l border-white/[0.08] pl-4">
+                {segments.map((seg, idx) =>
+                  seg.kind === 'cluster' ? (
+                    <div key={`${seg.time}-${idx}`} className="rounded-lg bg-white/[0.03] border border-white/[0.06]">
+                      {/* 批次簇头：同一分钟的连续条目 = 一次批量导入 */}
+                      <div className="flex items-center gap-2 px-3 pt-2 pb-1">
+                        <Clock className="w-3 h-3 text-info shrink-0" />
+                        <span className="text-[10px] font-medium text-info">
+                          {seg.time} · {seg.items.length} 条
+                        </span>
+                      </div>
+                      <div className="space-y-1.5 px-1 pb-1">
+                        {seg.items.map(renderItem)}
+                      </div>
+                    </div>
+                  ) : (
+                    <div key={`${seg.item.type}-${seg.item.id}-${idx}`}>{renderItem(seg.item)}</div>
+                  )
+                )}
               </div>
             </div>
           ))}

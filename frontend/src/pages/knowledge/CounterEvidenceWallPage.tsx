@@ -5,8 +5,10 @@ import {
   XCircle, AlertTriangle, Search, MessageSquarePlus, ArrowRight,
   ShieldCheck, HelpCircle, Loader2, Clock, Pencil, Eye, Trash2, Check, X
 } from 'lucide-react';
+import { useQueryClient } from '@tanstack/react-query';
 import { useCounterEvidence, useUpdateKnowledgeUnit } from '@/hooks/useKnowledge';
 import { knowledgeApi } from '@/api/knowledge';
+import { invalidateContentQueries } from '@/utils/invalidateContent';
 import ErrorState from '@/components/ErrorState';
 import type { KnowledgeUnit } from '@/types';
 
@@ -23,6 +25,7 @@ const CounterEvidenceWallPage: FC = () => {
   const navigate = useNavigate();
   const { units, isLoading, error, refetch } = useCounterEvidence();
   const updateUnit = useUpdateKnowledgeUnit();
+  const queryClient = useQueryClient();
   const [searchQuery, setSearchQuery] = useState('');
   const [busyId, setBusyId] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
@@ -53,6 +56,7 @@ const CounterEvidenceWallPage: FC = () => {
     setBusyId(unit.id);
     try {
       await knowledgeApi.delete(unit.id);
+      invalidateContentQueries(queryClient);
       showToast('已移除');
       refetch();
     } catch (e: any) {
@@ -71,6 +75,7 @@ const CounterEvidenceWallPage: FC = () => {
         data: { content_raw: editText.trim() || undefined },
       });
       await knowledgeApi.verify(editingUnit.id);
+      invalidateContentQueries(queryClient);
       showToast('已保存修正并重新验证');
       setEditingUnit(null);
       refetch();

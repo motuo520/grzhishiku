@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { knowledgeApi, type KnowledgeUpdateData } from '@/api/knowledge';
+import { invalidateContentQueries } from '@/utils/invalidateContent';
 import type { KnowledgeSourcesResponse, SourceCredibilityResponse, KnowledgeStatsResponse } from '@/types';
 
 const KNOWLEDGE_KEY = ['knowledge'] as const;
@@ -40,7 +41,7 @@ export const useKnowledge = (brain_side?: string) => {
   const createMutation = useMutation({
     mutationFn: knowledgeApi.create,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [...KNOWLEDGE_KEY] });
+      invalidateContentQueries(queryClient);
     },
   });
 
@@ -48,7 +49,7 @@ export const useKnowledge = (brain_side?: string) => {
     mutationFn: ({ id, preferred_model }: { id: string; preferred_model?: string }) =>
       knowledgeApi.verify(id, preferred_model),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [...KNOWLEDGE_KEY] });
+      invalidateContentQueries(queryClient);
     },
   });
 
@@ -114,7 +115,7 @@ export const useKnowledgeUnit = (id: string) => {
   const verifyMutation = useMutation({
     mutationFn: (preferred_model?: string) => knowledgeApi.verify(id, preferred_model),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [...KNOWLEDGE_KEY] });
+      invalidateContentQueries(queryClient);
     },
   });
 
@@ -122,7 +123,7 @@ export const useKnowledgeUnit = (id: string) => {
     mutationFn: (data: { evidence_text: string; evidence_url?: string }) =>
       knowledgeApi.counterEvidence(id, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [...KNOWLEDGE_KEY] });
+      invalidateContentQueries(queryClient);
     },
   });
 
@@ -166,10 +167,8 @@ export const useUpdateKnowledgeUnit = () => {
   return useMutation({
     mutationFn: ({ id, data }: { id: string; data: KnowledgeUpdateData }) =>
       knowledgeApi.update(id, data),
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: [...KNOWLEDGE_KEY, variables.id] });
-      queryClient.invalidateQueries({ queryKey: [...KNOWLEDGE_KEY, 'list'] });
-      queryClient.invalidateQueries({ queryKey: ['pipeline'] });
+    onSuccess: () => {
+      invalidateContentQueries(queryClient);
     },
   });
 };

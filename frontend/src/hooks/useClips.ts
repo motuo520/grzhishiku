@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { clipsApi, ClipUpdateData } from '@/api/clips';
+import { invalidateContentQueries } from '@/utils/invalidateContent';
 
 export interface ClipFilters {
   q?: string;
@@ -31,40 +32,35 @@ export const useClips = (filters: ClipFilters = {}) => {
   const createMutation = useMutation({
     mutationFn: clipsApi.create,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['clips'] });
-      queryClient.invalidateQueries({ queryKey: ['tags'] });
+      invalidateContentQueries(queryClient);
     },
   });
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => clipsApi.delete(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['clips'] });
-      queryClient.invalidateQueries({ queryKey: ['tags'] });
+      invalidateContentQueries(queryClient);
     },
   });
 
   const batchCreateMutation = useMutation({
     mutationFn: clipsApi.batchCreate,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['clips'] });
-      queryClient.invalidateQueries({ queryKey: ['tags'] });
+      invalidateContentQueries(queryClient);
     },
   });
 
   const updateMutation = useMutation({
     mutationFn: ({ id, data }: { id: string; data: ClipUpdateData }) => clipsApi.update(id, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['clips'] });
-      queryClient.invalidateQueries({ queryKey: ['tags'] });
+      invalidateContentQueries(queryClient);
     },
   });
 
   const saveToKnowledgeMutation = useMutation({
     mutationFn: (id: string) => clipsApi.saveToKnowledge(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['knowledge'] });
-      queryClient.invalidateQueries({ queryKey: ['tags'] });
+      invalidateContentQueries(queryClient);
     },
   });
 
@@ -87,8 +83,7 @@ export const useClips = (filters: ClipFilters = {}) => {
       return results;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['clips'] });
-      queryClient.invalidateQueries({ queryKey: ['tags'] });
+      invalidateContentQueries(queryClient);
     },
   });
 

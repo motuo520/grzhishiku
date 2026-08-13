@@ -31,7 +31,7 @@ const SOURCE_TYPES = [
   { key: 'social', label: '社交', icon: MessageCircle },
   { key: 'read_later', label: '稍后读', icon: Bookmark },
   { key: 'document', label: '文档', icon: FolderOpen },
-  { key: 'tag', label: '标签', icon: Tag },
+  // 「标签」不再作为素材类型展示（组织工具不是素材，混进来是删不了的幽灵卡片）
 ];
 
 const BRAIN_SIDES: { key: BrainSide | 'all'; label: string; color: string }[] = [

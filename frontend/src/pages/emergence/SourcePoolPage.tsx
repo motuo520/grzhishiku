@@ -13,6 +13,7 @@ import { readLaterApi } from '@/api/readLater';
 import { rssApi } from '@/api/rss';
 import { documentApi } from '@/api/document';
 import type { EmergenceSource } from '@/api/emergence';
+import { invalidateContentQueries } from '@/utils/invalidateContent';
 
 // 素材池类型 → 管线 content_type（管线只接受这几类，其余类型提示不可转）
 const TO_PIPELINE_TYPE: Record<string, string> = {
@@ -55,8 +56,9 @@ const SourcePoolPage: FC = () => {
   const deletable = selectedSources.filter((s) => DELETE_BY_TYPE[s.type]);
   const untransferable = selectedSources.length - transferable.length;
 
+  // 素材删除会影响各内容列表与聚合视图，统一走全局内容失效
   const refreshPool = () => {
-    queryClient.invalidateQueries({ queryKey: ['emergence', 'sources'] });
+    invalidateContentQueries(queryClient);
   };
 
   const deleteOne = async (s: SelectedSource) => {

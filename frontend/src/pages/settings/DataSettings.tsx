@@ -9,6 +9,7 @@ import { knowledgeApi } from '@/api/knowledge';
 import { detectFullExport } from '@/utils/importParsers';
 import { Download, Upload, Trash2, AlertTriangle, Check, Loader2, FileJson, FileText } from 'lucide-react';
 import { downloadBlob, filenameFromDisposition } from '@/utils/download';
+import { invalidateContentQueries } from '@/utils/invalidateContent';
 
 interface ImportPreviewItem {
   type: 'note' | 'capsule' | 'clip' | 'knowledge';
@@ -116,9 +117,7 @@ const DataSettings: FC = () => {
       } catch { /* 不是 JSON，走逐条预览 */ }
       if (fe) {
         const res = await settingsApi.importData(fe.payload);
-        await Promise.all(['notes', 'capsules', 'clips', 'knowledge'].map((key) =>
-          queryClient.invalidateQueries({ queryKey: [key], refetchType: 'all' })
-        ));
+        invalidateContentQueries(queryClient);
         showToast(`数据包合并完成：新增 ${res.data.inserted} 条，更新 ${res.data.updated} 条，跳过 ${res.data.skipped} 条`, 'success');
         return;
       }
@@ -162,10 +161,7 @@ const DataSettings: FC = () => {
         failed++;
       }
     }
-    await queryClient.invalidateQueries({ queryKey: ['notes'], refetchType: 'all' });
-    await queryClient.invalidateQueries({ queryKey: ['capsules'], refetchType: 'all' });
-    await queryClient.invalidateQueries({ queryKey: ['clips'], refetchType: 'all' });
-    await queryClient.invalidateQueries({ queryKey: ['knowledge'], refetchType: 'all' });
+    invalidateContentQueries(queryClient);
     setImportLoading(false);
     setPreview(null);
     showToast(`导入完成：成功 ${success} 条，失败 ${failed} 条`, failed === 0 ? 'success' : 'error');

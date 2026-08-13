@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { notesApi, NoteUpdateData, Note } from '@/api/notes';
+import { invalidateContentQueries } from '@/utils/invalidateContent';
 
 export const useNotes = (filters?: { q?: string; tag_ids?: string; brain_side?: string; limit?: number }) => {
   const queryClient = useQueryClient();
@@ -32,36 +33,35 @@ export const useNotes = (filters?: { q?: string; tag_ids?: string; brain_side?: 
   const createMutation = useMutation({
     mutationFn: notesApi.create,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['notes'], refetchType: 'all' });
+      invalidateContentQueries(queryClient);
     },
   });
 
   const updateMutation = useMutation({
     mutationFn: ({ id, data }: { id: string; data: NoteUpdateData }) => notesApi.update(id, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['notes'], refetchType: 'all' });
+      invalidateContentQueries(queryClient);
     },
   });
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => notesApi.delete(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['notes'], refetchType: 'all' });
+      invalidateContentQueries(queryClient);
     },
   });
 
   const batchCreateMutation = useMutation({
     mutationFn: notesApi.batchCreate,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['notes'], refetchType: 'all' });
+      invalidateContentQueries(queryClient);
     },
   });
 
   const batchDeleteMutation = useMutation({
     mutationFn: notesApi.batchDelete,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['notes'], refetchType: 'all' });
-      queryClient.invalidateQueries({ queryKey: ['tags'] });
+      invalidateContentQueries(queryClient);
     },
   });
 
@@ -84,8 +84,7 @@ export const useNotes = (filters?: { q?: string; tag_ids?: string; brain_side?: 
       return results;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['notes'], refetchType: 'all' });
-      queryClient.invalidateQueries({ queryKey: ['tags'] });
+      invalidateContentQueries(queryClient);
     },
   });
 

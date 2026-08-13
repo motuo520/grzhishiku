@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { capsulesApi } from '@/api/capsules';
+import { invalidateContentQueries } from '@/utils/invalidateContent';
 
 export const useCapsules = (brainSide?: string) => {
   const queryClient = useQueryClient();
@@ -23,8 +24,7 @@ export const useCapsules = (brainSide?: string) => {
   const createMutation = useMutation({
     mutationFn: capsulesApi.create,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['capsules'] });
-      queryClient.invalidateQueries({ queryKey: ['capsules', 'stats'] });
+      invalidateContentQueries(queryClient);
     },
   });
 
@@ -38,15 +38,14 @@ export const useCapsules = (brainSide?: string) => {
   const collectMutation = useMutation({
     mutationFn: (id: string) => capsulesApi.collect(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['capsules'] });
-      queryClient.invalidateQueries({ queryKey: ['capsules', 'stats'] });
+      invalidateContentQueries(queryClient);
     },
   });
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => capsulesApi.delete(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['capsules'] });
+      invalidateContentQueries(queryClient);
     },
   });
 
@@ -88,8 +87,7 @@ export const useCapsulePlaza = () => {
   const collectMutation = useMutation({
     mutationFn: (id: string) => capsulesApi.collect(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['capsules'] });
-      queryClient.invalidateQueries({ queryKey: ['capsules', 'stats'] });
+      invalidateContentQueries(queryClient);
     },
   });
 

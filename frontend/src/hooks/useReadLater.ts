@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { readLaterApi, ReadLaterUpdateData, ReadLaterFilters } from '@/api/readLater';
+import { invalidateContentQueries } from '@/utils/invalidateContent';
 
 export const useReadLater = (filters?: ReadLaterFilters) => {
   const queryClient = useQueryClient();
@@ -16,36 +17,35 @@ export const useReadLater = (filters?: ReadLaterFilters) => {
   const createMutation = useMutation({
     mutationFn: readLaterApi.create,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['read-later'] });
+      invalidateContentQueries(queryClient);
     },
   });
 
   const updateMutation = useMutation({
     mutationFn: ({ id, data }: { id: string; data: ReadLaterUpdateData }) => readLaterApi.update(id, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['read-later'] });
+      invalidateContentQueries(queryClient);
     },
   });
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => readLaterApi.delete(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['read-later'] });
+      invalidateContentQueries(queryClient);
     },
   });
 
   const fetchContentMutation = useMutation({
     mutationFn: (id: string) => readLaterApi.fetchContent(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['read-later'] });
+      invalidateContentQueries(queryClient);
     },
   });
 
   const saveToKnowledgeMutation = useMutation({
     mutationFn: ({ id, tagIds }: { id: string; tagIds?: string[] }) => readLaterApi.saveToKnowledge(id, tagIds),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['read-later'] });
-      queryClient.invalidateQueries({ queryKey: ['knowledge'] });
+      invalidateContentQueries(queryClient);
     },
   });
 

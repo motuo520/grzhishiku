@@ -1,6 +1,6 @@
 import { FC } from 'react';
 import { Outlet, NavLink, useLocation, Navigate } from 'react-router-dom';
-import { Network, Sparkles, Route, FileText, GitMerge, Tag, Clock } from 'lucide-react';
+import { Network, Sparkles, Route, FileText, GitMerge, Tag } from 'lucide-react';
 import { useSettings } from '@/store/settings';
 
 // 简化版的图谱页签与经典版同款（命名对齐简化版菜单：智能查询→AI 问答）。
@@ -12,7 +12,7 @@ const tabsSimple = [
   { id: 'report', label: '图谱报告', icon: FileText, path: '/graph/report' },
   { id: 'bridges', label: '跨脑桥梁', icon: GitMerge, path: '/graph/bridges' },
   { id: 'tags', label: '标签图谱', icon: Tag, path: '/graph/tags' },
-  { id: 'timeline', label: '时间轴', icon: Clock, path: '/graph/timeline' },
+  // 时间轴已搬到「存进来/采集」菜单（/ingest/timeline，旧路径重定向保留）
 ];
 
 const tabsClassic = [
@@ -22,7 +22,6 @@ const tabsClassic = [
   { id: 'report', label: '图谱报告', icon: FileText, path: '/graph/report' },
   { id: 'bridges', label: '跨脑桥梁', icon: GitMerge, path: '/graph/bridges' },
   { id: 'tags', label: '标签图谱', icon: Tag, path: '/graph/tags' },
-  { id: 'timeline', label: '时间轴', icon: Clock, path: '/graph/timeline' },
 ];
 
 const GraphLayout: FC = () => {
