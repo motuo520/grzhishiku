@@ -75,6 +75,7 @@ const SourcePoolPage = lazy(() => import('./pages/emergence/SourcePoolPage'));
 const CanvasPage = lazy(() => import('./pages/emergence/CanvasPage'));
 const IdeaLibraryPage = lazy(() => import('./pages/emergence/IdeaLibraryPage'));
 const SearchPage = lazy(() => import('./pages/search/SearchPage'));
+const ChatHistoryPage = lazy(() => import('./pages/chat/ChatHistoryPage'));
 const CommunityPage = lazy(() => import('./pages/community/CommunityPage'));
 const GuidePage = lazy(() => import('./pages/community/GuidePage'));
 
@@ -247,6 +248,8 @@ const App: FC = () => {
               <Route path="social" element={<SocialPage />} />
               <Route path="read-later" element={<ReadLaterPage />} />
               <Route path="documents" element={<DocumentLibraryPage />} />
+              {/* 时间轴已从图谱搬到采集模块：全量内容批次回顾，不再是图谱节点视图 */}
+              <Route path="timeline" element={<GraphTimelinePage />} />
               {!isClassic && <Route path="sources" element={<SourcePoolPage />} />}
               {isClassic && <Route path="sources" element={<Navigate to="/emergence/sources" replace />} />}
             </Route>
@@ -262,10 +265,22 @@ const App: FC = () => {
               <Route path="report" element={<GraphReportPage />} />
               <Route path="bridges" element={<GraphBridgesPage />} />
               <Route path="tags" element={<GraphTagsPage />} />
-              <Route path="timeline" element={<GraphTimelinePage />} />
+              {/* 旧路径重定向：时间轴已搬到 /ingest/timeline（见上注释） */}
+              <Route path="timeline" element={<Navigate to="/ingest/timeline" replace />} />
             </Route>
 
             <Route path="search" element={<SearchPage />} />
+            {/* 对话历史：双界面版本可用（问出来的答案沉淀，语义属「问出来」，见 navigation.ts 菜单注释） */}
+            {/* 对话历史：挂模块布局以显示二级菜单（简化版在「问出来」、经典版在「图谱」） */}
+            {isClassic ? (
+              <Route path="chat" element={<ModuleLayout menuId="graph" showOverview={false} />}>
+                <Route index element={<ChatHistoryPage />} />
+              </Route>
+            ) : (
+              <Route path="chat" element={<ModuleLayout menuId="ask" showOverview={false} />}>
+                <Route index element={<ChatHistoryPage />} />
+              </Route>
+            )}
             <Route path="community" element={<CommunityPage />} />
             <Route path="community/guide" element={<GuidePage />} />
             {isClassic ? (

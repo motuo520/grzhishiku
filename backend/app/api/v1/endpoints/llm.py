@@ -11,6 +11,7 @@ from app.services.llm_service import llm_service, chat_completion, LLMRouterServ
 from app.core.config import settings
 from app.core.security import get_current_user, get_current_user_optional
 from app.models.base import User, KnowledgeUnit
+from app.api.v1.endpoints.chat import get_owned_conversation, save_chat_turn
 from app.core.database import get_db
 from app.schemas.llm import (
     ChatRequest, SummarizeRequest, SummarizeResponse, ExtractTagsRequest, ExtractTagsResponse,
@@ -477,6 +478,12 @@ async def chat(
 ):
     user_settings = json.loads(current_user.settings or '{}')
 
+    # 对话历史落库：传了 conversation_id 时本轮问答写入该会话（必须属于当前用户）；
+    # 不传则行为与旧版完全一致（兼容旧客户端）。
+    chat_conversation = None
+    if request.conversation_id:
+        chat_conversation = get_owned_conversation(db, request.conversation_id, current_user.id)
+
     # Retrieve relevant knowledge units as citations / RAG context.
     sources = await _retrieve_knowledge_sources(
         db=db,
@@ -511,7 +518,14 @@ async def chat(
     # User-supplied system prompt takes precedence if provided.
     final_system_prompt = request.system_prompt or rag_system_prompt
 
-    async def event_generator():
+    # 落库用户消息：assistant 回答在流式结束后由 event_generator 的 finally 落库。
+    if chat_conversation is not None:
+        save_chat_turn(db, chat_conversation, user_content=request.message)
+
+    # 流式回答的累计文本：中途断连时 finally 里仍能拿到已生成部分
+    answer_parts: List[str] = []
+
+    async def _chat_event_stream():
         yield "data: " + '{"type": "start"}' + "\n\n"
         try:
             async for chunk in llm_service.chat(
@@ -524,6 +538,8 @@ async def chat(
                 system_prompt=final_system_prompt,
                 user_settings=user_settings,
             ):
+                if isinstance(chunk, str):
+                    answer_parts.append(chunk)
                 yield "data: " + json.dumps({"type": "chunk", "content": chunk}) + "\n\n"
         except Exception as e:
             yield "data: " + json.dumps({"type": "error", "message": str(e)}) + "\n\n"
@@ -532,6 +548,27 @@ async def chat(
         if sources:
             yield "data: " + json.dumps({"type": "sources", "sources": sources}) + "\n\n"
         yield "data: " + '{"type": "end"}' + "\n\n"
+
+    async def event_generator():
+        try:
+            async for event in _chat_event_stream():
+                yield event
+        finally:
+            # 落库 assistant 回答：流式完成或中途断连都尽量写入已生成部分；
+            # 空内容/[Error: 开头的失败输出由 save_chat_turn 挡掉，宁可少不错。
+            if chat_conversation is not None:
+                answer = "".join(answer_parts).strip()
+                if answer:
+                    try:
+                        save_chat_turn(
+                            db,
+                            chat_conversation,
+                            assistant_content=answer,
+                            refs=sources or None,
+                            model=request.preferred_model,
+                        )
+                    except Exception:
+                        pass  # 落库失败不影响已发出的回答
 
     return StreamingResponse(
         event_generator(),

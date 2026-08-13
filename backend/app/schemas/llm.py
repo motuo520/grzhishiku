@@ -19,6 +19,7 @@ class ChatRequest(BaseModel):
     task_type: str = Field("chat", description="Task type")
     preferred_model: Optional[str] = Field(None, description="Override routing model")
     system_prompt: Optional[str] = Field(None, description="System prompt override")
+    conversation_id: Optional[str] = Field(None, description="会话 ID（传入则本轮问答落库到该会话）")
 
 
 class SummarizeRequest(BaseModel):

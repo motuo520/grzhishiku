@@ -3,6 +3,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useQueryClient } from '@tanstack/react-query';
 import { useNavigation } from '@/store/navigation';
 import { useSettings } from '@/store/settings';
+import { useChat } from '@/store/chat';
+import { chatApi } from '@/api/chat';
 import { useBrain } from '@/hooks/useBrain';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
@@ -15,7 +17,7 @@ import {
   Brain, Globe,
   Download, Send, ChevronDown, ChevronUp,
   CheckCircle2, XCircle, FileJson, FileText, Trash2, X,
-  Home, LogIn
+  Home, LogIn, History, MessageSquarePlus
 } from 'lucide-react';
 
 
@@ -44,7 +46,12 @@ const ChatInputBar: FC<ChatInputBarProps> = ({ sidebarOpen = true, onLoginClick 
     ollamaModel,
   } = useSettings();
   const { activeBrain, switchBrain } = useBrain();
-  const { isLoggedIn } = useAuth();
+  const { isLoggedIn, isLoading: isAuthLoading } = useAuth();
+  // 面板开合与活动会话放全局 store：/chat 历史页的「继续对话」可跨页面唤起本组件
+  const {
+    activeConversationId, setActiveConversationId,
+    panelOpen: showChatPanel, setPanelOpen: setShowChatPanel,
+  } = useChat();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [message, setMessage] = useState('');
@@ -53,7 +60,6 @@ const ChatInputBar: FC<ChatInputBarProps> = ({ sidebarOpen = true, onLoginClick 
   const [showAttachmentMenu, setShowAttachmentMenu] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isStreaming, setIsStreaming] = useState(false);
-  const [showChatPanel, setShowChatPanel] = useState(false);
   const [currentModel, setCurrentModel] = useState(
     getModelIdByProviderModel(activeProvider, activeModel) || defaultLLM
   );
@@ -95,6 +101,58 @@ const ChatInputBar: FC<ChatInputBarProps> = ({ sidebarOpen = true, onLoginClick 
     }
   }, [isCollapsed]);
 
+  // 对话历史落库：登录用户以服务端会话为准。发送时新建/复用活动会话（见 handleSend），
+  // 从 /chat 历史页「继续对话」进入时按 activeConversationId 拉取服务端消息。
+  // skipLoadRef：发送中刚创建/复用的会话本地状态最新，跳过一次回拉防覆盖流式气泡。
+  const skipConversationLoadRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!isLoggedIn || !activeConversationId) return;
+    if (skipConversationLoadRef.current === activeConversationId) {
+      skipConversationLoadRef.current = null;
+      return;
+    }
+    chatApi.getConversation(activeConversationId)
+      .then((res) => {
+        setMessages(res.data.messages.map((m) => ({
+          id: m.id,
+          role: m.role === 'user' ? 'user' : 'ai',
+          content: m.content,
+          model: m.model || undefined,
+          timestamp: m.created_at ? new Date(m.created_at) : new Date(),
+        })));
+      })
+      .catch(() => {
+        // 会话可能已被删除/服务端异常：清掉活动会话，保留本地消息作为回退
+        setActiveConversationId(null);
+      });
+  }, [activeConversationId, isLoggedIn, setActiveConversationId]);
+
+  // 未登录/异常回退：本地消息快照存 localStorage（最近 20 条）；
+  // 仅未登录时恢复——登录用户以服务端会话为准，避免旧快照盖住服务端数据
+  useEffect(() => {
+    try {
+      localStorage.setItem('chatLocalHistory', JSON.stringify(messages.slice(-20)));
+    } catch {
+      // ignore
+    }
+  }, [messages]);
+
+  useEffect(() => {
+    if (isAuthLoading || isLoggedIn) return;
+    try {
+      const raw = localStorage.getItem('chatLocalHistory');
+      if (!raw) return;
+      const saved = JSON.parse(raw) as Array<Omit<ChatMessage, 'timestamp'> & { timestamp: string }>;
+      if (Array.isArray(saved) && saved.length > 0) {
+        setMessages(saved.map((m) => ({ ...m, timestamp: new Date(m.timestamp) })));
+      }
+    } catch {
+      // ignore
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAuthLoading, isLoggedIn]);
+
   useEffect(() => {
     const handleOpenChat = () => setShowChatPanel(true);
     window.addEventListener('psb:chat:open', handleOpenChat);
@@ -128,6 +186,19 @@ const ChatInputBar: FC<ChatInputBarProps> = ({ sidebarOpen = true, onLoginClick 
     setMessages((prev) => [...prev, { id: aiMsgId, role: 'ai', content: '', model: currentModel, timestamp: new Date(), isStreaming: true }]);
 
     try {
+      // 对话落库：登录用户无活动会话则先创建再带上 conversation_id；
+      // 创建失败不阻塞对话（本轮按旧行为不落库）
+      let conversationId = activeConversationId;
+      if (isLoggedIn && !conversationId) {
+        try {
+          const res = await chatApi.createConversation();
+          conversationId = res.data.id;
+          skipConversationLoadRef.current = conversationId;
+          setActiveConversationId(conversationId);
+        } catch {
+          conversationId = null;
+        }
+      }
       const token = apiClient.getToken();
       // 停止按钮依赖这个 controller（此前从未创建/接线，停止形同虚设）
       const abortController = new AbortController();
@@ -150,6 +221,7 @@ const ChatInputBar: FC<ChatInputBarProps> = ({ sidebarOpen = true, onLoginClick 
               content: m.content,
             })),
           preferred_model: getBackendModelId(currentModel, ollamaModel),
+          conversation_id: conversationId || undefined,
           brain_style: effectiveBrain === 'personal' ? 'warm_personal' : effectiveBrain === 'network' ? 'objective_network' : 'balanced',
         }),
       });
@@ -213,6 +285,10 @@ const ChatInputBar: FC<ChatInputBarProps> = ({ sidebarOpen = true, onLoginClick 
       setMessages((prev) =>
         prev.map((m) => (m.id === aiMsgId ? { ...m, content: fullContent, isStreaming: false } : m))
       );
+      // 流式完成：会话的标题/updated_at/消息已落库，失效 chat 前缀查询让历史页刷新
+      if (conversationId) {
+        queryClient.invalidateQueries({ queryKey: ['chat'] });
+      }
     } catch (error: any) {
       // 用户主动停止：保留已生成的部分内容，不当错误处理
       if (error?.name === 'AbortError') {
@@ -598,6 +674,25 @@ const ChatInputBar: FC<ChatInputBarProps> = ({ sidebarOpen = true, onLoginClick 
                   </div>
                 </div>
                 <div className="flex items-center gap-0.5">
+                  {/* 历史入口：跳 /chat 会话列表 */}
+                  <button
+                    onClick={() => navigate('/chat')}
+                    className="p-1.5 rounded-[2px] hover:bg-bg-tertiary text-text-secondary hover:text-text-primary transition-colors"
+                    title="对话历史"
+                  >
+                    <History size={14} />
+                  </button>
+                  {/* 新对话：清空本地消息并脱离当前会话，下一条消息自动新建会话 */}
+                  <button
+                    onClick={() => {
+                      setMessages([]);
+                      setActiveConversationId(null);
+                    }}
+                    className="p-1.5 rounded-[2px] hover:bg-bg-tertiary text-text-secondary hover:text-text-primary transition-colors"
+                    title="新对话"
+                  >
+                    <MessageSquarePlus size={14} />
+                  </button>
                   {/* Export */}
                   <div className="relative group">
                     <button
@@ -624,7 +719,10 @@ const ChatInputBar: FC<ChatInputBarProps> = ({ sidebarOpen = true, onLoginClick 
                     </div>
                   </div>
                   <button
-                    onClick={() => setMessages([])}
+                    onClick={() => {
+                      setMessages([]);
+                      setActiveConversationId(null);
+                    }}
                     className="p-1.5 rounded-[2px] hover:bg-bg-tertiary text-text-secondary hover:text-danger transition-colors"
                     title="清空对话"
                   >

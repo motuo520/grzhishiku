@@ -124,6 +124,7 @@ export const MENU_DATA_SIMPLE: Record<SimpleMenuId, MenuData> = {
       { id: 'sticky-notes', label: '便签墙', description: '随手记、提醒与彩色便签', icon: 'StickyNote', path: '/ingest/sticky-notes', brainSide: 'personal' },
       { id: 'clipper', label: '浏览器剪藏', description: '一键保存网页内容', icon: 'Globe', path: '/ingest/clipper', brainSide: 'network' },
       { id: 'batch-import', label: '批量导入', description: '批量导入笔记、剪藏和链接', icon: 'Upload', path: '/ingest/batch-import', brainSide: 'both' },
+      { id: 'timeline', label: '时间轴', description: '按时间回顾全部内容与导入批次', icon: 'Clock', path: '/ingest/timeline', brainSide: 'both' },
       { id: 'rss', label: 'RSS 聚合', description: '订阅源自动采集', icon: 'Rss', path: '/ingest/rss', brainSide: 'network' },
       { id: 'read-later', label: '稍后读', description: '收藏链接，稍后阅读', icon: 'BookOpen', path: '/ingest/read-later', brainSide: 'network' },
       { id: 'documents', label: '文件/文档库', description: '本地文档提取与管理', icon: 'FolderOpen', path: '/ingest/documents', brainSide: 'both' },
@@ -138,7 +139,7 @@ export const MENU_DATA_SIMPLE: Record<SimpleMenuId, MenuData> = {
     defaultBrainSide: 'both',
     items: [
       { id: 'overview', label: '管线总览', description: '原始→卡片→抽取→碰撞→注卡', icon: 'Workflow', path: '/pipeline', brainSide: 'both', preferredBrainSide: 'both' },
-      { id: 'raw', label: '原始素材', description: '未经处理的输入、剪藏、书摘', icon: 'Database', path: '/pipeline/raw', brainSide: 'network', preferredBrainSide: 'network' },
+      { id: 'raw', label: '原始素材', description: '未经处理的输入、剪藏、书摘', icon: 'Database', path: '/pipeline/raw', brainSide: 'both', preferredBrainSide: 'both' },
       { id: 'cards', label: '卡片化', description: '将素材切割为可复用卡片', icon: 'SquareStack', path: '/pipeline/cards', brainSide: 'both', preferredBrainSide: 'both' },
       { id: 'extract', label: '抽取', description: '提取概念、模型与行动建议', icon: 'Filter', path: '/pipeline/extract', brainSide: 'both', preferredBrainSide: 'both' },
       { id: 'collision', label: '碰撞', description: '跨领域连接与创意杂交', icon: 'Shuffle', path: '/pipeline/collision', brainSide: 'both', preferredBrainSide: 'both' },
@@ -157,7 +158,7 @@ export const MENU_DATA_SIMPLE: Record<SimpleMenuId, MenuData> = {
       { id: 'report', label: '图谱报告', description: '知识网络的统计与结构概览', icon: 'FileText', path: '/graph/report', brainSide: 'both' },
       { id: 'bridges', label: '跨脑桥梁', description: '连接个人脑与网络脑的关键关联', icon: 'GitMerge', path: '/graph/bridges', brainSide: 'both' },
       { id: 'tags', label: '标签图谱', description: '标签共现关系网络', icon: 'Tag', path: '/graph/tags', brainSide: 'both' },
-      { id: 'timeline', label: '时间轴', description: '按时间回顾知识积累', icon: 'Clock', path: '/graph/timeline', brainSide: 'both' },
+      // 时间轴已搬到「存进来/采集」菜单（/ingest/timeline）：它现在是全量内容的批次回顾，不再是图谱节点视图
     ],
   },
   daily: {
@@ -184,6 +185,8 @@ export const MENU_DATA_SIMPLE: Record<SimpleMenuId, MenuData> = {
     defaultBrainSide: 'both',
     items: [
       { id: 'query', label: 'AI 问答', description: '用自然语言提问，答案带引用', icon: 'Sparkles', path: '/graph/query', brainSide: 'both' },
+      // 对话历史语义上属于「问出来」（问答的沉淀），故挂在这个一级菜单下
+      { id: 'chat-history', label: '对话历史', description: '问答会话沉淀，可继续聊、可存成知识', icon: 'MessageSquare', path: '/chat', brainSide: 'both' },
       { id: 'knowledge-network', label: '网络脑知识', description: '从外部采集的可验证知识', icon: 'Globe', path: '/knowledge/network', brainSide: 'network' },
       { id: 'knowledge-personal', label: '个人脑知识', description: '个人思考与沉淀的知识单元', icon: 'User', path: '/knowledge/personal', brainSide: 'personal' },
       { id: 'verify', label: '做到了没', description: '多模型验证与共识裁决', icon: 'CheckCircle', path: '/knowledge/verify', brainSide: 'both' },
@@ -284,6 +287,7 @@ export const MENU_DATA_CLASSIC: Record<ClassicMenuId, MenuData> = {
       { id: 'bookmarks', label: '浏览器书签', description: '导入浏览器书签 HTML', icon: 'Bookmark', path: '/ingest/bookmarks', brainSide: 'network' },
       { id: 'notes', label: '笔记管理', description: '个人想法与记录', icon: 'FileText', path: '/ingest/notes', brainSide: 'personal' },
       { id: 'batch-import', label: '批量导入', description: '批量导入笔记、剪藏和链接', icon: 'Upload', path: '/ingest/batch-import', brainSide: 'both' },
+      { id: 'timeline', label: '时间轴', description: '按时间回顾全部内容与导入批次', icon: 'Clock', path: '/ingest/timeline', brainSide: 'both' },
       { id: 'rss', label: 'RSS 聚合', description: '订阅源自动采集', icon: 'Rss', path: '/ingest/rss', brainSide: 'network' },
       { id: 'tags', label: '标签系统', description: '多维度内容组织', icon: 'Tags', path: '/ingest/tags', brainSide: 'both' },
       { id: 'email', label: '邮件集成', description: '邮件内容自动归档', icon: 'Mail', path: '/ingest/email', brainSide: 'network' },
@@ -301,11 +305,13 @@ export const MENU_DATA_CLASSIC: Record<ClassicMenuId, MenuData> = {
     items: [
       { id: 'network', label: '知识网络', description: '全局关系图谱', icon: 'Network', path: '/graph/network', brainSide: 'both' },
       { id: 'query', label: '智能查询', description: '用自然语言查询知识图谱', icon: 'Sparkles', path: '/graph/query', brainSide: 'both' },
+      // 经典版没有「问出来」桶：对话历史是问答的沉淀，挂在语义最近的「图谱」（智能查询旁）
+      { id: 'chat-history', label: '对话历史', description: '问答会话沉淀，可继续聊、可存成知识', icon: 'MessageSquare', path: '/chat', brainSide: 'both' },
       { id: 'path', label: '路径探索', description: '发现知识路径', icon: 'Route', path: '/graph/path', brainSide: 'both' },
       { id: 'report', label: '图谱报告', description: '知识网络的统计与结构概览', icon: 'FileText', path: '/graph/report', brainSide: 'both' },
       { id: 'bridges', label: '跨脑桥梁', description: '连接个人脑与网络脑的关键关联', icon: 'GitMerge', path: '/graph/bridges', brainSide: 'both' },
       { id: 'tags', label: '标签图谱', description: '标签共现关系网络', icon: 'Tag', path: '/graph/tags', brainSide: 'both' },
-      { id: 'timeline', label: '时间轴', description: '按时间回顾知识积累', icon: 'Clock', path: '/graph/timeline', brainSide: 'both' },
+      // 时间轴已搬到「存进来/采集」菜单（/ingest/timeline）：它现在是全量内容的批次回顾，不再是图谱节点视图
     ],
   },
   cognitive: {
@@ -395,7 +401,7 @@ export const MENU_DATA_CLASSIC: Record<ClassicMenuId, MenuData> = {
     defaultBrainSide: 'both',
     items: [
       { id: 'overview', label: '管线总览', description: '原始→卡片→抽取→碰撞→注卡', icon: 'Workflow', path: '/pipeline', brainSide: 'both', preferredBrainSide: 'both' },
-      { id: 'raw', label: '原始素材', description: '未经处理的输入、剪藏、书摘', icon: 'Database', path: '/pipeline/raw', brainSide: 'network', preferredBrainSide: 'network' },
+      { id: 'raw', label: '原始素材', description: '未经处理的输入、剪藏、书摘', icon: 'Database', path: '/pipeline/raw', brainSide: 'both', preferredBrainSide: 'both' },
       { id: 'cards', label: '卡片化', description: '将素材切割为可复用卡片', icon: 'SquareStack', path: '/pipeline/cards', brainSide: 'both', preferredBrainSide: 'both' },
       { id: 'extract', label: '抽取', description: '提取概念、模型与行动建议', icon: 'Filter', path: '/pipeline/extract', brainSide: 'both', preferredBrainSide: 'both' },
       { id: 'collision', label: '碰撞', description: '跨领域连接与创意杂交', icon: 'Shuffle', path: '/pipeline/collision', brainSide: 'both', preferredBrainSide: 'both' },
