@@ -255,6 +255,30 @@ async def patch_note(
     return await update_note(note_id, note_data, db, current_user)
 
 
+@router.delete("/batch", response_model=dict, summary="Batch delete notes", description="Soft-delete multiple notes by IDs.")
+async def batch_delete_notes(
+    request: BatchNoteDelete,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    deleted = 0
+    for note_id in request.ids:
+        note = db.query(Note).filter(Note.id == note_id, Note.user_id == current_user.id, Note.status == "active").first()
+        if note:
+            note.status = "deleted"
+            db.execute(
+                content_tags.delete().where(
+                    and_(
+                        content_tags.c.content_id == note_id,
+                        content_tags.c.content_type == "note"
+                    )
+                )
+            )
+            deleted += 1
+    db.commit()
+    return {"success": True, "deleted_count": deleted}
+
+
 @router.delete("/{note_id}", status_code=status.HTTP_204_NO_CONTENT, summary="Delete note", description="Soft-delete a note by setting status to deleted.")
 async def delete_note(
     note_id: str,
@@ -345,26 +369,3 @@ async def batch_create_notes(
         "skipped": skipped,
     }
 
-
-@router.delete("/batch", response_model=dict, summary="Batch delete notes", description="Soft-delete multiple notes by IDs.")
-async def batch_delete_notes(
-    request: BatchNoteDelete,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
-):
-    deleted = 0
-    for note_id in request.ids:
-        note = db.query(Note).filter(Note.id == note_id, Note.user_id == current_user.id, Note.status == "active").first()
-        if note:
-            note.status = "deleted"
-            db.execute(
-                content_tags.delete().where(
-                    and_(
-                        content_tags.c.content_id == note_id,
-                        content_tags.c.content_type == "note"
-                    )
-                )
-            )
-            deleted += 1
-    db.commit()
-    return {"success": True, "deleted_count": deleted}

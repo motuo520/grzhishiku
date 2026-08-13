@@ -81,3 +81,19 @@ class TestNotes:
         data2 = resp2.json()
         assert data2["success_count"] == 0
         assert data2["skipped_count"] == 3
+
+    def test_batch_delete_notes(self, client: TestClient, auth_headers):
+        """批量删除：DELETE /batch 不得被 /{note_id} 路由抢先（曾因此 404 批量删除全灭）。"""
+        ids = []
+        for i in range(2):
+            r = client.post("/api/v1/notes/", headers=auth_headers, json={"title": f"批删{i}", "content": f"正文{i}"})
+            assert r.status_code in (200, 201), r.text
+            ids.append(r.json()["id"])
+        resp = client.request("DELETE", "/api/v1/notes/batch", headers=auth_headers, json={"ids": ids})
+        assert resp.status_code == 200, resp.text
+        assert resp.json()["deleted_count"] == 2
+        # 已删笔记不再出现于列表
+        listed = client.get("/api/v1/notes/", headers=auth_headers).json()
+        listed_ids = [n["id"] for n in (listed if isinstance(listed, list) else listed.get("items", []))]
+        for nid in ids:
+            assert nid not in listed_ids
