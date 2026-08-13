@@ -49,7 +49,10 @@ class StaticFilesCacheMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
         response = await call_next(request)
         path = request.url.path
-        if path.startswith("/uploads/") or path.startswith("/assets/"):
+        # 只有 200 才可永久缓存：版本切换窗口里新 hash 的 chunk 会被旧进程 404，
+        # 若 404 也带 immutable，渲染器会把失败缓存一年——重启/刷新都救不回来
+        # （主仓 0.2.54 更新后 Dashboard chunk 白屏事故的根因）
+        if (path.startswith("/uploads/") or path.startswith("/assets/")) and response.status_code == 200:
             response.headers["Cache-Control"] = "public, max-age=31536000, immutable"
         elif "text/html" in response.headers.get("content-type", ""):
             response.headers["Cache-Control"] = "no-cache"

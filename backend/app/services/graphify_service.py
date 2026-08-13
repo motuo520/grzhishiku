@@ -231,10 +231,15 @@ def build_graph(db: Session, user_id: str, preferred_model: Optional[str] = None
 
     _set_build_status(user_id, state="building", progress=f"正在用 {backend} 提取 {total_docs} 篇文档…")
     try:
-        proc = _run_cli(["extract", "corpus_building", "--backend", backend], cwd=tmp_root, env=cli_env)
+        # token-budget 25000：graphify 默认 60k token 预算打出的大块
+        # （~17 万字符）容易超出模型上下文/服务端上限而全灭（主仓 08-11 复现实锤）；
+        # 超时按语料量放大（30 分钟硬超时对千篇级语料必杀）
+        _cli_timeout = max(1800, min(14400, total_docs * 5))
+        proc = _run_cli(["extract", "corpus_building", "--backend", backend,
+                         "--token-budget", "25000"], cwd=tmp_root, env=cli_env, timeout=_cli_timeout)
     except subprocess.TimeoutExpired:
         shutil.rmtree(tmp_root, ignore_errors=True)
-        _set_build_status(user_id, state="failed", error="构建超时（30 分钟）")
+        _set_build_status(user_id, state="failed", error="构建超时，语料量较大，建议分批或稍后重试")
         return get_build_status(user_id)
 
     if proc.returncode != 0 or not new_graph_json.exists():
