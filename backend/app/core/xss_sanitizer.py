@@ -24,16 +24,9 @@ def sanitize_markdown(text: Optional[str]) -> Optional[str]:
     """Sanitize markdown content: escape HTML tags but preserve markdown syntax."""
     if text is None:
         return None
-    # First, escape HTML
-    text = html.escape(text)
-    # Then restore markdown syntax that was escaped (safely)
-    # These replacements are safe because we only restore exact markdown syntax
-    markdown_restores = [
-        ("&lt;!--", "<!--"),  # HTML comments used for markdown extensions
-    ]
-    for escaped, original in markdown_restores:
-        text = text.replace(escaped, original)
-    return text
+    # 全量 HTML 转义，不做任何还原：曾把 &lt;!-- 还原回 <!--，但 markdown
+    # 渲染会透传裸 HTML 注释，攻击者可注入未闭合注释吞掉页面后续内容
+    return html.escape(text)
 
 
 def sanitize_url(url: Optional[str]) -> Optional[str]:

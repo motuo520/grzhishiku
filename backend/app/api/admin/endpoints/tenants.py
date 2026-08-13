@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from sqlalchemy import func
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import List, Optional
 from datetime import datetime, timedelta
 import uuid
@@ -17,12 +17,12 @@ router = APIRouter()
 
 class TenantCreate(BaseModel):
     name: str
-    slug: str
+    slug: str = Field(..., min_length=1, max_length=64, pattern=r"^[a-z0-9-]+$")
     domain: Optional[str] = None
     description: Optional[str] = None
     plan: str = "free"
-    max_users: int = 10
-    max_storage: int = 10737418240
+    max_users: int = Field(10, ge=0)
+    max_storage: int = Field(10737418240, ge=0)
     owner_id: Optional[str] = None
     admin_email: Optional[str] = None
 
@@ -31,8 +31,8 @@ class TenantUpdate(BaseModel):
     name: Optional[str] = None
     status: Optional[str] = None
     plan: Optional[str] = None
-    max_users: Optional[int] = None
-    max_storage: Optional[int] = None
+    max_users: Optional[int] = Field(None, ge=0)
+    max_storage: Optional[int] = Field(None, ge=0)
     domain: Optional[str] = None
 
 
@@ -61,6 +61,8 @@ async def create_tenant(
     if current_admin.role not in ["super_admin", "platform_admin"]:
         raise HTTPException(status_code=403, detail="Insufficient permissions")
     
+    # slug 查重是 check-then-act：并发下两个请求可能同时通过检查，
+    # 残留极小的重复窗口（无唯一索引兜底，加索引需 DB 迁移，暂不做）
     existing = db.query(Tenant).filter(Tenant.slug == data.slug).first()
     if existing:
         raise HTTPException(status_code=400, detail="Tenant slug already exists")

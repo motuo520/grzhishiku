@@ -6,6 +6,7 @@
 - 自动刷新配置存 user.settings["rss_auto"][feed_id]，不动表结构
 """
 import json
+import logging
 import re
 import urllib.error
 import uuid
@@ -17,6 +18,8 @@ from sqlalchemy.orm import Session
 
 from app.models.base import User, RssFeed, RssEntry
 from app.services.url_guard import open_checked_url, read_capped
+
+logger = logging.getLogger(__name__)
 
 AUTO_FETCH_INTERVALS = {30, 60, 360, 1440}
 
@@ -59,12 +62,16 @@ def fetch_feed_xml(url: str) -> str:
             raise RuntimeError("域名解析失败，请检查 URL") from e
         if "ssl" in lowered:
             raise RuntimeError("SSL 证书错误") from e
-        raise RuntimeError(f"无法访问该地址：{reason}") from e
+        # reason 原文可能含内网地址等细节，只进日志；对外固定文案
+        logger.info("RSS fetch failed url=%s reason=%s", url, reason)
+        raise RuntimeError("无法访问该地址，请检查网络或稍后重试") from e
     except ValueError as e:
         # SSRF 校验失败 / 重定向过多 / 响应过大，直接透出原始提示
         raise RuntimeError(str(e)) from e
     except Exception as e:
-        raise RuntimeError(f"请求失败：{e}") from e
+        # 底层异常原文可能含服务器细节，只进日志；对外固定文案
+        logger.warning("RSS fetch unexpected error url=%s: %s", url, e)
+        raise RuntimeError("请求失败，请稍后重试") from e
 
     # Basic sanity check: valid RSS/Atom should start with '<' and ideally be XML
     if not data.strip().startswith(b"<"):
@@ -75,7 +82,7 @@ def fetch_feed_xml(url: str) -> str:
     try:
         return data.decode("utf-8", errors="ignore")
     except Exception as e:
-        raise RuntimeError(f"无法解析返回内容：{e}") from e
+        raise RuntimeError("无法解析返回内容") from e
 
 
 def parse_feed(xml: str, feed_id: str, user_id: str):

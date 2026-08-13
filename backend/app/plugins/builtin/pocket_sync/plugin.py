@@ -1,6 +1,7 @@
 from datetime import datetime, timezone
 from typing import Any, List, Optional
 from urllib.parse import urlparse
+import logging
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
@@ -12,6 +13,8 @@ from app.core.security import get_current_user
 from app.models.base import ReadLaterItem, User
 from app.plugins.base import BasePlugin
 from app.plugins.manager import plugin_manager
+
+logger = logging.getLogger(__name__)
 
 POCKET_GET_URL = "https://getpocket.com/v3/get"
 
@@ -44,7 +47,9 @@ class PocketSyncPlugin(BasePlugin):
         async with httpx.AsyncClient(timeout=60.0) as client:
             response = await client.post(POCKET_GET_URL, json=payload)
             if response.status_code != 200:
-                raise RuntimeError(f"Pocket API error: {response.status_code} {response.text}")
+                # 上游错误体原文只进日志；用户面只留 status_code
+                logger.warning("Pocket API error %s: %s", response.status_code, response.text)
+                raise RuntimeError(f"Pocket API error: {response.status_code}")
             data = response.json()
 
         items = data.get("list") or {}

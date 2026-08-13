@@ -45,6 +45,13 @@ def resolve_tag_inputs(
             continue
 
         # Create new tag
+        # 自动建标签的名称上限 50 字符：超长截断后再查一次重名，避免重复建
+        if len(raw) > 50:
+            raw = raw[:50]
+            tag = db.query(Tag).filter(Tag.user_id == user_id, Tag.name == raw).first()
+            if tag:
+                tag_ids.append(tag.id)
+                continue
         new_tag = Tag(
             id=str(uuid.uuid4()),
             user_id=user_id,
@@ -120,7 +127,10 @@ def get_tag_usage_count(db: Session, tag_id: str) -> int:
 def get_tag_usage_breakdown(db: Session, tag_id: str, user_id: str) -> Dict[str, int]:
     """
     Return usage count per content type for a tag.
-    Only counts content owned by the given user (for privacy).
+
+    口径说明：user_id 是签名留位，实际不过滤计数——content_tags 表无 user_id
+    列，标签归属由调用端点前置校验（tag_id 属于该用户），标签下的关联均为该
+    用户所挂，直接按 tag_id 统计即为该用户的用量。
     """
     breakdown = {"note": 0, "clip": 0, "knowledge": 0}
 

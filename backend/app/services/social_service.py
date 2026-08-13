@@ -101,7 +101,9 @@ def process_upload(db: Session, user: User, account: SocialAccount, uploaded_fil
         db.commit()
 
     except Exception as e:
-        error_msg = str(e)
+        # 异常原文可能含服务器绝对路径等细节，只进日志；用户面存通用文案
+        logger.exception("Social import failed account=%s", account.id)
+        error_msg = "导入失败，请检查文件格式是否正确或稍后重试"
         account.sync_status = "error"
         account.last_error = error_msg
         db.commit()

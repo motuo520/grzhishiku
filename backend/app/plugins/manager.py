@@ -3,6 +3,7 @@ import json
 import logging
 import os
 import sys
+import threading
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -41,6 +42,15 @@ class PluginManager:
         # 每次再套一层 _merge_lifespan_context 包装，启动调用栈随次数线性
         # 增长直至 RecursionError；路由/MCP 工具全局注册一次即可。
         self._initialized_ids: set = set()
+        # user.settings 读-改-写（set_enabled/set_config）的进程内 per-user 锁，
+        # 防同一用户的并发请求交错导致后写覆盖先写。仅覆盖单进程；
+        # 多 worker 部署下不跨进程生效（当前桌面/单实例口径下够用）。
+        self._settings_locks: Dict[str, threading.Lock] = {}
+        self._settings_locks_guard = threading.Lock()
+
+    def _settings_lock(self, user_id: str) -> threading.Lock:
+        with self._settings_locks_guard:
+            return self._settings_locks.setdefault(user_id, threading.Lock())
 
     def discover(self) -> List[PluginManifest]:
         """Scan builtin and user plugin directories and return manifests."""
@@ -192,22 +202,23 @@ class PluginManager:
         return manifest.enabled_default if manifest else False
 
     def set_enabled(self, user: User, plugin_id: str, enabled: bool, db) -> None:
-        state = self._user_plugins_state(user)
-        enabled_list = list(state.get("enabled") or [])
-        disabled_list = list(state.get("disabled") or [])
-        if enabled:
-            if plugin_id not in enabled_list:
-                enabled_list.append(plugin_id)
-            if plugin_id in disabled_list:
-                disabled_list.remove(plugin_id)
-        else:
-            if plugin_id in enabled_list:
-                enabled_list.remove(plugin_id)
-            if plugin_id not in disabled_list:
-                disabled_list.append(plugin_id)
-        state["enabled"] = enabled_list
-        state["disabled"] = disabled_list
-        self._save_user_plugins_state(user, state, db)
+        with self._settings_lock(user.id):
+            state = self._user_plugins_state(user)
+            enabled_list = list(state.get("enabled") or [])
+            disabled_list = list(state.get("disabled") or [])
+            if enabled:
+                if plugin_id not in enabled_list:
+                    enabled_list.append(plugin_id)
+                if plugin_id in disabled_list:
+                    disabled_list.remove(plugin_id)
+            else:
+                if plugin_id in enabled_list:
+                    enabled_list.remove(plugin_id)
+                if plugin_id not in disabled_list:
+                    disabled_list.append(plugin_id)
+            state["enabled"] = enabled_list
+            state["disabled"] = disabled_list
+            self._save_user_plugins_state(user, state, db)
         plugin = self.plugins.get(plugin_id)
         if plugin:
             try:
@@ -223,13 +234,14 @@ class PluginManager:
         return (state.get("configs") or {}).get(plugin_id) or {}
 
     def set_config(self, user: User, plugin_id: str, config: dict, db) -> None:
-        state = self._user_plugins_state(user)
-        configs = state.get("configs") or {}
-        configs[plugin_id] = config
-        state["configs"] = configs
-        # 配置只按用户持久化、经 get_config(user, ...) 读取；不写进程级共享
-        # 实例 plugin.config，避免后写覆盖先写、跨用户泄露 token
-        self._save_user_plugins_state(user, state, db)
+        with self._settings_lock(user.id):
+            state = self._user_plugins_state(user)
+            configs = state.get("configs") or {}
+            configs[plugin_id] = config
+            state["configs"] = configs
+            # 配置只按用户持久化、经 get_config(user, ...) 读取；不写进程级共享
+            # 实例 plugin.config，避免后写覆盖先写、跨用户泄露 token
+            self._save_user_plugins_state(user, state, db)
 
     async def run_sync_for_user(self, user: User, plugin_id: str, db) -> dict:
         """Run a plugin's background sync logic for a specific user."""

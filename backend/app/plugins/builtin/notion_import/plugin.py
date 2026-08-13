@@ -1,5 +1,6 @@
 from datetime import datetime, timezone
 from typing import Any, List, Optional
+import logging
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
@@ -11,6 +12,8 @@ from app.core.security import get_current_user
 from app.models.base import KnowledgeUnit, User
 from app.plugins.base import BasePlugin
 from app.plugins.manager import plugin_manager
+
+logger = logging.getLogger(__name__)
 
 NOTION_SEARCH_URL = "https://api.notion.com/v1/search"
 NOTION_VERSION = "2022-06-28"
@@ -53,7 +56,9 @@ class NotionImportPlugin(BasePlugin):
         async with httpx.AsyncClient(timeout=60.0) as client:
             response = await client.post(NOTION_SEARCH_URL, headers=headers, json=payload)
             if response.status_code != 200:
-                raise RuntimeError(f"Notion API error: {response.status_code} {response.text}")
+                # 上游错误体可能含 token 提示等细节，只进日志；用户面只留 status_code
+                logger.warning("Notion API error %s: %s", response.status_code, response.text)
+                raise RuntimeError(f"Notion API error: {response.status_code}")
             data = response.json()
 
         created = 0

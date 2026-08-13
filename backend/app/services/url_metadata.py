@@ -1,9 +1,12 @@
+import logging
 import urllib.error
 import re
 from typing import Optional
 from pydantic import BaseModel
 
 from app.services.url_guard import validate_fetch_url, UrlNotAllowed, open_checked_url, read_capped
+
+logger = logging.getLogger(__name__)
 
 
 class UrlMetadata(BaseModel):
@@ -69,6 +72,12 @@ def fetch_url_metadata(url: str, timeout: int = 8) -> UrlMetadata:
     except urllib.error.HTTPError as e:
         return UrlMetadata(url=url, title=url, domain=extract_domain(url), error=f"HTTP {e.code}")
     except urllib.error.URLError as e:
-        return UrlMetadata(url=url, title=url, domain=extract_domain(url), error=str(e.reason))
-    except Exception as e:
+        # reason 原文可能含内网地址等细节，只进日志；对外固定文案
+        logger.info("URL metadata fetch failed url=%s reason=%s", url, e.reason)
+        return UrlMetadata(url=url, title=url, domain=extract_domain(url), error="无法访问该地址")
+    except ValueError as e:
+        # core.ssrf 的校验提示本身是对外口径（如"地址不能指向内网或本机"），可直接透出
         return UrlMetadata(url=url, title=url, domain=extract_domain(url), error=str(e))
+    except Exception as e:
+        logger.warning("URL metadata fetch unexpected error url=%s: %s", url, e)
+        return UrlMetadata(url=url, title=url, domain=extract_domain(url), error="获取失败，请稍后重试")

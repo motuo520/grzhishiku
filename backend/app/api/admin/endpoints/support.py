@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from sqlalchemy import func, and_, or_
 from pydantic import BaseModel, Field
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict, Any, Literal
 from datetime import datetime, timedelta
 import uuid
 
@@ -24,7 +24,8 @@ class TicketAssign(BaseModel):
 
 
 class TicketStatusUpdate(BaseModel):
-    status: str = Field(..., max_length=50, description="New status")
+    # 合法值与列表筛选说明、stats 统计口径一致
+    status: Literal["open", "pending", "in_progress", "resolved", "closed"] = Field(..., description="New status")
 
 
 @router.get("/tickets", summary="List support tickets", description="List all support tickets with filtering and pagination.")
@@ -148,6 +149,14 @@ async def assign_ticket(
     ticket = db.query(SupportTicket).filter(SupportTicket.id == ticket_id).first()
     if not ticket:
         raise HTTPException(status_code=404, detail="Ticket not found")
+
+    # 指派目标必须是存在的管理员，避免把工单挂到悬空 id 上
+    if data.assigned_to:
+        assignee = db.query(AdminUser).filter(
+            AdminUser.id == data.assigned_to, AdminUser.status != "deleted"
+        ).first()
+        if not assignee:
+            raise HTTPException(status_code=400, detail="Assigned admin not found")
 
     ticket.assigned_to = data.assigned_to or current_admin.id
     ticket.updated_at = datetime.utcnow()

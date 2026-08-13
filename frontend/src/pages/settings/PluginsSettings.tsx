@@ -237,7 +237,12 @@ const PluginsSettings: FC = () => {
             {`${window.location.origin}/api/v1/mcp/sse`}
           </code>
           <p>
-            当前内置工具包括：搜索知识库、创建笔记、创建知识单元、查看管线统计。启用更多插件后，它们贡献的工具会自动加入。
+            连接必须携带用户令牌（自 0.2.53 起强制鉴权，未携带将返回 401）。在客户端配置中加请求头
+            <code className="text-info"> Authorization: Bearer &lt;access_token&gt;</code>；
+            令牌在登录后签发，可从浏览器开发者工具 → Application → Local Storage 的登录态中取得，过期后需重新获取。
+          </p>
+          <p>
+            当前内置工具包括：搜索知识库、创建笔记、创建知识单元、查看管线统计。工具以令牌对应的用户身份操作数据。启用更多插件后，它们贡献的工具会自动加入。
           </p>
         </div>
       </section>

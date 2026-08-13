@@ -1,5 +1,6 @@
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
+import logging
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
@@ -11,6 +12,8 @@ from app.core.security import get_current_user
 from app.models.base import KnowledgeUnit, User
 from app.plugins.base import BasePlugin
 from app.plugins.manager import plugin_manager
+
+logger = logging.getLogger(__name__)
 
 READWISE_EXPORT_URL = "https://readwise.io/api/v2/export/"
 
@@ -43,7 +46,9 @@ class ReadwiseSyncPlugin(BasePlugin):
             while True:
                 response = await client.get(READWISE_EXPORT_URL, headers=headers, params=params)
                 if response.status_code != 200:
-                    raise RuntimeError(f"Readwise API error: {response.status_code} {response.text}")
+                    # 上游错误体原文只进日志；用户面只留 status_code
+                    logger.warning("Readwise API error %s: %s", response.status_code, response.text)
+                    raise RuntimeError(f"Readwise API error: {response.status_code}")
                 data = response.json()
                 for book in data.get("results", []):
                     user_book = book.get("user_book") or {}

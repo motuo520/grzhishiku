@@ -15,6 +15,14 @@ from app.api.admin.endpoints.auth import get_current_admin
 router = APIRouter()
 
 
+def _csv_cell(value) -> str:
+    """CSV 公式注入防护：以 = + - @ 开头的单元格前置单引号（Excel/WPS 会当公式执行）。"""
+    s = "" if value is None else str(value)
+    if s[:1] in ("=", "+", "-", "@"):
+        return "'" + s
+    return s
+
+
 @router.get("/", summary="List audit logs", description="List all admin audit logs with filtering, pagination and search.")
 async def list_logs(
     action: Optional[str] = Query(None, description="Filter by action type: CREATE/UPDATE/DELETE/LOGIN/EXPORT/MODERATE_CONTENT/UPDATE_USER_STATUS/UPDATE_SUBSCRIPTION"),
@@ -141,15 +149,15 @@ async def export_logs(
         for log in logs:
             admin = admins.get(log.admin_id)
             writer.writerow([
-                log.id,
-                admin.name if admin else "Unknown",
-                log.action,
-                log.resource_type or "",
-                log.resource_id or "",
-                log.risk_level or "low",
-                log.ip_address or "",
-                log.details or "",
-                log.created_at.isoformat() if log.created_at else "",
+                _csv_cell(log.id),
+                _csv_cell(admin.name if admin else "Unknown"),
+                _csv_cell(log.action),
+                _csv_cell(log.resource_type or ""),
+                _csv_cell(log.resource_id or ""),
+                _csv_cell(log.risk_level or "low"),
+                _csv_cell(log.ip_address or ""),
+                _csv_cell(log.details or ""),
+                _csv_cell(log.created_at.isoformat() if log.created_at else ""),
             ])
         output.seek(0)
         from fastapi.responses import PlainTextResponse

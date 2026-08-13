@@ -190,7 +190,11 @@ class FeiShuParser(BaseSocialParser):
             ts = int(value)
             if ts > 1_000_000_000_000:
                 ts = ts // 1000
-            return datetime.fromtimestamp(ts)
+            try:
+                return datetime.fromtimestamp(ts)
+            except (OverflowError, OSError, ValueError):
+                # 超大/非法时间戳（fromtimestamp 范围外）按无时间处理而非炸掉整个解析
+                return None
         formats = [
             "%Y-%m-%d %H:%M:%S",
             "%Y-%m-%d %H:%M",

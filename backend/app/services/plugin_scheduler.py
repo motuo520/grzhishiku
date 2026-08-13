@@ -70,7 +70,7 @@ async def _run_sync_job(user_id: str, plugin_id: str) -> None:
                 if user:
                     cfg = plugin_manager.get_config(user, plugin_id)
                     auto = cfg.get("auto_sync") or {}
-                    auto["last_sync_error"] = str(e)
+                    auto["last_sync_error"] = "同步失败，请检查插件配置或稍后重试"
                     auto["last_sync_at"] = datetime.now(timezone.utc).isoformat()
                     cfg["auto_sync"] = auto
                     plugin_manager.set_config(user, plugin_id, cfg, db)

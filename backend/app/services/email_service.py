@@ -139,6 +139,26 @@ def extract_main_text(body_text: Optional[str], body_html: Optional[str]) -> str
     return ""
 
 
+def sanitize_email_html(html_body: Optional[str]) -> Optional[str]:
+    """入库前的最小 XSS 清洗：剥离 script/iframe/object/embed 标签与 on* 事件属性。
+
+    取舍：不用 core.xss_sanitizer.sanitize_html 的全标签白名单——正常邮件 HTML
+    依赖 table/style 等排版标签，白名单清洗会把邮件洗成纯文本、破坏展示。这里只
+    去掉可执行面，保留展示结构；剩余风险（如 javascript: 链接）由前端渲染侧控制。
+    """
+    if not html_body:
+        return html_body
+    cleaned = re.sub(
+        r"<\s*(script|iframe|object|embed)\b[^>]*>.*?<\s*/\s*\1\s*>",
+        "", html_body, flags=re.IGNORECASE | re.DOTALL,
+    )
+    # 自闭合或残缺（无配对闭合标签）的写法
+    cleaned = re.sub(r"<\s*/?\s*(script|iframe|object|embed)\b[^>]*>", "", cleaned, flags=re.IGNORECASE)
+    # on* 事件属性（onclick= 等），覆盖引号/无引号两种写法
+    cleaned = re.sub(r"""\s+on[a-zA-Z]+\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)""", "", cleaned)
+    return cleaned
+
+
 def connect_imap(account: EmailAccount) -> imaplib.IMAP4_SSL:
     """Connect to IMAP server using account credentials."""
     host = account.imap_host
@@ -237,7 +257,7 @@ def sync_account(db: Session, account: EmailAccount, user: User, max_messages: i
                     recipients_to=json.dumps(to_list, ensure_ascii=False),
                     recipients_cc=json.dumps(cc_list, ensure_ascii=False),
                     body_text=bodies["text"],
-                    body_html=bodies["html"],
+                    body_html=sanitize_email_html(bodies["html"]),
                     received_at=received_at,
                     is_read=False,
                     labels=json.dumps(["INBOX"], ensure_ascii=False),
@@ -257,7 +277,9 @@ def sync_account(db: Session, account: EmailAccount, user: User, max_messages: i
         db.commit()
 
     except Exception as e:
-        error_msg = str(e)
+        # IMAP 异常细节（服务器地址/账号等）只进日志；用户面存通用文案，避免回显
+        logger.exception("Email sync failed for account %s", account.id)
+        error_msg = "同步失败，请检查邮箱服务器配置或稍后重试"
         account.sync_status = "error"
         account.last_error = error_msg
         db.commit()

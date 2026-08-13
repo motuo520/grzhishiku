@@ -38,7 +38,8 @@ async def sweep_due_feeds() -> dict:
                     continue
                 stats["feeds_due"] += 1
                 try:
-                    result = rss_service.refresh_feed(db, feed, user_id)
+                    # refresh_feed 内是同步阻塞网络 I/O，丢到线程池避免卡住事件循环
+                    result = await asyncio.to_thread(rss_service.refresh_feed, db, feed, user_id)
                     stats["entries_added"] += result["added"]
                     logger.info("RSS auto-fetch ok feed=%s added=%s", feed.id, result["added"])
                 except Exception as e:

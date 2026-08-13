@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.orm import Session
 from pydantic import BaseModel, EmailStr, Field
 from datetime import datetime, timedelta
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, Literal
 import json
 import uuid
 
@@ -34,7 +34,18 @@ def get_current_admin(
     return admin
 
 
+# 固定 dummy bcrypt hash：账号不存在时也执行一次 verify_password，
+# 抹平「邮箱是否注册」的响应时序差，防登录接口用户枚举
+_DUMMY_PASSWORD_HASH = "$2b$12$qE4.oSZdBERv/iREWKuaPOnbb.2.Wo0ovWDFzTie0S9CFtkrVyCUK"
+
+
 # ─── Schemas ──────────────────────────────────────────────────────
+
+# 角色白名单与 admin_permissions.ROLE_PERMISSIONS 保持一致；
+# status 取模型与现有流程实际用到的值（deleted 走 DELETE 软删除，不经 PATCH）
+AdminRole = Literal["super_admin", "platform_admin", "finance_admin", "support", "operator", "auditor", "readonly"]
+AdminStatus = Literal["active", "inactive", "pending"]
+
 
 class AdminLogin(BaseModel):
     email: EmailStr
@@ -45,13 +56,13 @@ class AdminCreate(BaseModel):
     email: EmailStr
     password: str = Field(..., min_length=8, max_length=128)
     name: str = Field(..., min_length=1, max_length=200, pattern=r'^[a-zA-Z0-9_\u4e00-\u9fff]+$')
-    role: str = Field("operator", max_length=50)
+    role: AdminRole = "operator"
 
 
 class AdminUpdate(BaseModel):
     name: Optional[str] = Field(None, min_length=1, max_length=200, pattern=r'^[a-zA-Z0-9_\u4e00-\u9fff]+$')
-    role: Optional[str] = None
-    status: Optional[str] = None
+    role: Optional[AdminRole] = None
+    status: Optional[AdminStatus] = None
     permissions: Optional[Dict[str, Any]] = None
 
 
@@ -77,7 +88,9 @@ class TokenResponse(BaseModel):
 @router.post("/login", summary="Admin login", description="Authenticate as admin user.")
 async def admin_login(login_data: AdminLogin, request: Request, db: Session = Depends(get_db)):
     admin = db.query(AdminUser).filter(AdminUser.email == login_data.email).first()
-    if not admin or not verify_password(login_data.password, admin.password_hash):
+    # admin 不存在也对 dummy hash 验一次，保持失败路径耗时一致
+    password_hash = admin.password_hash if admin else _DUMMY_PASSWORD_HASH
+    if not admin or not verify_password(login_data.password, password_hash):
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
     admin.last_login_at = datetime.utcnow()

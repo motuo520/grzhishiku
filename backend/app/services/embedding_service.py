@@ -148,6 +148,9 @@ class EmbeddingService:
         NOTE: For production, use ChromaDB or vector DB. SQLite is used here
         as a lightweight fallback with brute-force comparison.
         """
+        # clamp top_k：下方是全表载入 + 逐条比对（已知 fallback 口径，待迁移向量库），
+        # 上限 100 防调用方传入超大 top_k 放大返回体
+        top_k = max(1, min(int(top_k), 100))
         try:
             db: Session = SessionLocal()
             query = db.query(EmbeddingModel)
