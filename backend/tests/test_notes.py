@@ -62,3 +62,22 @@ class TestNotes:
         data = resp.json()
         tag_names = [t["name"] for t in data.get("tags", [])]
         assert "python" in tag_names or "ai" in tag_names
+
+    def test_batch_create_notes_dedup(self, client: TestClient, auth_headers):
+        """批量导入防重：标题+正文完全一致的条目跳过，批内重复也跳过。"""
+        items = [
+            {"title": "防重笔记", "content": "同样正文"},
+            {"title": "防重笔记", "content": "同样正文"},  # 批内重复
+            {"title": "防重笔记2", "content": "不同正文"},
+        ]
+        resp = client.post("/api/v1/notes/batch", headers=auth_headers, json={"items": items})
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["success_count"] == 2
+        assert data["skipped_count"] == 1
+
+        # 再导一次同内容：两条都应跳过
+        resp2 = client.post("/api/v1/notes/batch", headers=auth_headers, json={"items": items})
+        data2 = resp2.json()
+        assert data2["success_count"] == 0
+        assert data2["skipped_count"] == 3

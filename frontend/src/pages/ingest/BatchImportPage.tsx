@@ -1,12 +1,14 @@
 import { FC, useState, useRef, useEffect, useMemo } from 'react';
-import { useSearchParams, useNavigate } from 'react-router-dom';
+import { useSearchParams, useNavigate, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Upload, FileText, Link2, FileJson, Trash2, AlertCircle, Check, Loader2,
   X, Download, Globe, FileSpreadsheet, HardDrive, BookOpen, Rss, Brain
 } from 'lucide-react';
+import { useQueryClient } from '@tanstack/react-query';
 import { useNotes } from '@/hooks/useNotes';
 import { useClips } from '@/hooks/useClips';
+import { invalidateContentQueries } from '@/utils/invalidateContent';
 import { settingsApi } from '@/api/settings';
 import { readLaterApi } from '@/api/readLater';
 import { rssApi } from '@/api/rss';
@@ -67,13 +69,14 @@ const BatchImportPage: FC = () => {
   const [textInput, setTextInput] = useState('');
   const [isParsing, setIsParsing] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
-  const [result, setResult] = useState<{ success: number; failed: number; skipped?: number } | null>(null);
+  const [result, setResult] = useState<{ success: number; failed: number; skipped?: number; deduped?: number } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const localFileInputRef = useRef<HTMLInputElement>(null);
 
   const { batchCreateNotes } = useNotes();
   const { batchCreateClips, fetchMetadata } = useClips();
+  const queryClient = useQueryClient();
 
   const notePreviews = useMemo(() => previews.filter(p => p.type === 'note'), [previews]);
   const clipPreviews = useMemo(() => previews.filter(p => p.type === 'clip'), [previews]);
@@ -265,6 +268,7 @@ const BatchImportPage: FC = () => {
         const res = await settingsApi.importData(fullExport.payload);
         setExportResult(res.data);
         setFullExport(null);
+        invalidateContentQueries(queryClient);
       } catch (e: any) {
         addError('数据包导入失败：' + (e?.response?.data?.detail || e.message || '未知错误'));
       } finally {
@@ -277,6 +281,7 @@ const BatchImportPage: FC = () => {
     setResult(null);
     let success = 0;
     let failed = 0;
+    let deduped = 0;
     try {
       if (targetType === 'note') {
         const items: NoteCreateData[] = notePreviews.map(p => ({
@@ -288,6 +293,7 @@ const BatchImportPage: FC = () => {
         const res = await batchCreateNotes({ items });
         success += res.data.success_count;
         failed += res.data.failed_count;
+        deduped += res.data.skipped_count || 0;
       } else if (targetType === 'clip') {
         const items: ClipCreateData[] = clipPreviews
           .filter(p => p.url?.trim())
@@ -301,8 +307,9 @@ const BatchImportPage: FC = () => {
         const res = await batchCreateClips({ items });
         success += res.data.success_count;
         failed += res.data.failed_count;
+        deduped += res.data.skipped_count || 0;
       } else if (targetType === 'readlater') {
-        // 稍后读：无批量端点，逐条创建（URL 类条目）
+        // 稍后读：无批量端点，逐条创建（URL 类条目）；409 = 同 URL 已存在，计跳过
         for (const p of clipPreviews.filter(p => p.url?.trim())) {
           try {
             await readLaterApi.create({
@@ -312,8 +319,9 @@ const BatchImportPage: FC = () => {
               source: 'batch-import',
             });
             success++;
-          } catch {
-            failed++;
+          } catch (e: any) {
+            if (e?.response?.status === 409) deduped++;
+            else failed++;
           }
         }
       } else if (targetType === 'rss') {
@@ -341,11 +349,15 @@ const BatchImportPage: FC = () => {
           }
         }
       }
-      setResult({ success, failed, skipped: skippedCount });
+      setResult({ success, failed, skipped: skippedCount, deduped });
+      // 导入完成后全局失效内容查询，列表页与聚合视图（管线/素材池/统计）即时刷新
+      invalidateContentQueries(queryClient);
       // 只清掉已导入类型，跳过的条目留在预览里（切换目标类型后可继续导）
       setPreviews(prev => prev.filter(p => p.type !== TARGET_ACCEPTS[targetType]));
       if (failed === 0 && success > 0) {
-        // 全部成功：素材已就位，自动进入管线原始素材页衔接后续生产
+        // 全部成功：素材已就位，自动进入管线原始素材页衔接后续生产。
+        // 先把 pipeline 数据拉进缓存再跳转，落地即见新素材（不等挂载后再拉）
+        await queryClient.refetchQueries({ queryKey: ['pipeline'] });
         navigate('/pipeline/raw');
       }
     } catch (e: any) {
@@ -397,7 +409,12 @@ const BatchImportPage: FC = () => {
         >
           <Check className="w-4 h-4" />
           导入完成：成功 {result.success} 条，失败 {result.failed} 条
+          {result.deduped ? `，跳过重复 ${result.deduped} 条（已存在的相同内容/链接）` : ''}
           {result.skipped ? `，跳过 ${result.skipped} 条非所选类型（仍保留在预览中）` : ''}
+          {/* 刚导入的批次在时间轴里会聚成一簇，直接跳过去看 */}
+          <Link to="/ingest/timeline" className="ml-auto underline underline-offset-2 hover:opacity-80 whitespace-nowrap">
+            按时间轴查看 →
+          </Link>
         </motion.div>
       )}
 

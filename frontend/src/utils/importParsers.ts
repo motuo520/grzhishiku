@@ -141,12 +141,49 @@ export function parseLocalJson(text: string, fileName?: string): ImportItem[] {
   return items;
 }
 
+// 真正的 CSV 解析：状态机识别引号包裹，字段内换行/逗号/"" 转义都不拆行断列
+// （此前 split(/\r?\n/) + split(',') 的朴素写法会把多行正文的一条笔记拆成多条——
+// 200 条笔记解析出 522 条的根因）
+// 引号风格自检：微信/WPS/Word 复制的文本常用全角弯引号“”包裹字段，只认直引号
+// 会同样拆行——按样本里哪种引号跟随逗号/行首出现得多就选哪种
+function parseCsvRows(text: string): string[][] {
+  const sample = text.slice(0, 4000);
+  const straightHits = (sample.match(/,"|^"/gm) || []).length;
+  const curlyHits = (sample.match(/,“|^“/gm) || []).length;
+  const qOpen = curlyHits > straightHits ? '“' : '"';
+  const qClose = curlyHits > straightHits ? '”' : '"';
+  const rows: string[][] = [];
+  let row: string[] = [];
+  let field = '';
+  let inQuotes = false;
+  let i = 0;
+  const pushField = () => { row.push(field); field = ''; };
+  const pushRow = () => { pushField(); rows.push(row); row = []; };
+  while (i < text.length) {
+    const ch = text[i];
+    if (inQuotes) {
+      if (ch === qClose) {
+        if (qOpen === '"' && text[i + 1] === '"') { field += '"'; i += 2; continue; } // "" 转义
+        inQuotes = false; i++; continue;
+      }
+      field += ch; i++; continue; // 引号内的换行/逗号都原样收入
+    }
+    if (ch === qOpen && field === '') { inQuotes = true; i++; continue; }
+    if (ch === ',') { pushField(); i++; continue; }
+    if (ch === '\r') { i++; continue; }
+    if (ch === '\n') { pushRow(); i++; continue; }
+    field += ch; i++;
+  }
+  if (field !== '' || row.length > 0) pushRow();
+  return rows;
+}
+
 export function parseLocalCsv(text: string): ImportItem[] {
   const items: ImportItem[] = [];
   try {
-    const lines = text.split(/\r?\n/).filter(Boolean);
-    if (lines.length < 2) return items;
-    const header = lines[0].split(',').map((h) => h.trim().toLowerCase());
+    const rows = parseCsvRows(text).filter((r) => r.some((c) => c.trim() !== ''));
+    if (rows.length < 2) return items;
+    const header = rows[0].map((h) => h.trim().toLowerCase());
     const titleIdx = header.indexOf('title');
     const contentIdx = header.indexOf('content');
     const urlIdx = header.indexOf('url');
@@ -154,8 +191,8 @@ export function parseLocalCsv(text: string): ImportItem[] {
     const excerptIdx = header.indexOf('excerpt');
     const tagsIdx = header.indexOf('tags');
 
-    for (let i = 1; i < lines.length; i++) {
-      const cols = lines[i].split(',');
+    for (let i = 1; i < rows.length; i++) {
+      const cols = rows[i];
       if (urlIdx >= 0 && cols[urlIdx]?.trim()) {
         const url = cols[urlIdx].trim();
         items.push({

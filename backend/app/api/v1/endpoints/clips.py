@@ -29,6 +29,9 @@ class BatchCreateResult(PydanticBaseModel):
     failed_count: int
     failures: List[dict] = []
     items: List[ClipResponse] = []
+    # 防重：同用户 active 且 URL 相同的条目跳过
+    skipped_count: int = 0
+    skipped: List[dict] = []
 
 class UrlMetadataRequest(PydanticBaseModel):
     urls: List[str]
@@ -334,11 +337,21 @@ async def batch_create_clips(
 ):
     created = []
     failures = []
+    skipped = []
+    # 防重：同用户 active 剪藏按 URL 判重，批量导入同一份文件两次不产生重复
+    existing_urls = {
+        u for (u,) in db.query(BrowserClip.url).filter(
+            BrowserClip.user_id == current_user.id, BrowserClip.status == "active"
+        ).all()
+    }
     for index, clip_data in enumerate(batch.items):
         try:
             safe_title, safe_excerpt, safe_full_text, safe_url = sanitize_clip_input(
                 clip_data.title, clip_data.excerpt, clip_data.full_text, clip_data.url
             )
+            if safe_url in existing_urls:
+                skipped.append({"index": index, "title": clip_data.title, "reason": "已存在相同链接，跳过"})
+                continue
             clip = BrowserClip(
                 id=str(uuid.uuid4()),
                 user_id=current_user.id,
@@ -366,6 +379,7 @@ async def batch_create_clips(
                 logger.warning(f"Auto-link failed for clip {clip.id}: {e}")
             db.refresh(clip)
             created.append(_build_clip_response(clip, db))
+            existing_urls.add(safe_url)  # 批内防重
         except Exception as e:
             failures.append({"index": index, "title": clip_data.title, "reason": str(e)})
     
@@ -375,6 +389,8 @@ async def batch_create_clips(
         "failed_count": len(failures),
         "failures": failures,
         "items": created,
+        "skipped_count": len(skipped),
+        "skipped": skipped,
     }
 
 

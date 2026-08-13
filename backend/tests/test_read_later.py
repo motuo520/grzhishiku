@@ -84,3 +84,13 @@ def test_save_read_later_to_knowledge(client: TestClient, db_session: Session):
     res = client.post(f"/api/v1/read-later/items/{item_id}/save-to-knowledge", json={}, headers=headers)
     assert res.status_code == 200
     assert res.json()["knowledge_id"]
+
+
+def test_create_read_later_duplicate_url_409(client: TestClient, db_session: Session):
+    """稍后读防重：同用户同 URL 未归档条目重复添加返回 409。"""
+    user = _make_user(db_session, "rl-dup@example.com")
+    headers = _make_auth_headers(user)
+    res1 = client.post("/api/v1/read-later/items", json={"url": "https://example.com/dup"}, headers=headers)
+    assert res1.status_code == 201
+    res2 = client.post("/api/v1/read-later/items", json={"url": "https://example.com/dup"}, headers=headers)
+    assert res2.status_code == 409

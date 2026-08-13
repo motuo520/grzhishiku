@@ -27,6 +27,9 @@ class BatchCreateResult(PydanticBaseModel):
     failed_count: int
     failures: List[dict] = []
     items: List[NoteResponse] = []
+    # 防重：同用户 active 且标题+正文完全一致的条目跳过
+    skipped_count: int = 0
+    skipped: List[dict] = []
 from app.schemas.tag import TagItem
 from app.api.v1.endpoints.graph import auto_link_note
 from app.services import tag_service
@@ -289,9 +292,19 @@ async def batch_create_notes(
 ):
     created = []
     failures = []
+    skipped = []
+    # 防重：同用户 active 笔记按（标题+正文）完全一致判重，批量导入同一份文件两次不产生重复
+    existing_pairs = {
+        (t, c) for t, c in db.query(Note.title, Note.content).filter(
+            Note.user_id == current_user.id, Note.status == "active"
+        ).all()
+    }
     for index, note_data in enumerate(batch.items):
         try:
             safe_title, safe_content = sanitize_note_input(note_data.title, note_data.content)
+            if (safe_title, safe_content) in existing_pairs:
+                skipped.append({"index": index, "title": note_data.title, "reason": "已存在相同内容，跳过"})
+                continue
             note = Note(
                 id=str(uuid.uuid4()),
                 user_id=current_user.id,
@@ -318,6 +331,7 @@ async def batch_create_notes(
                 logger.warning(f"Auto-link failed for note {note.id}: {e}")
             db.refresh(note)
             created.append(_build_note_response(note, db))
+            existing_pairs.add((safe_title, safe_content))  # 批内防重
         except Exception as e:
             failures.append({"index": index, "title": note_data.title, "reason": str(e)})
     
@@ -327,6 +341,8 @@ async def batch_create_notes(
         "failed_count": len(failures),
         "failures": failures,
         "items": created,
+        "skipped_count": len(skipped),
+        "skipped": skipped,
     }
 
 

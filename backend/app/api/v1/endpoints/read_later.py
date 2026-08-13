@@ -59,6 +59,12 @@ async def create_item(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
+    # 防重：同用户已有相同 URL 的未归档条目则冲突提示（批量导入/重复添加不产重复）
+    _dup = db.query(ReadLaterItem).filter(
+        ReadLaterItem.user_id == current_user.id, ReadLaterItem.url == data.url, ReadLaterItem.item_status == "active"
+    ).first()
+    if _dup:
+        raise HTTPException(status_code=409, detail="该链接已在稍后读列表中")
     item = read_later_service.create_item(
         db, current_user,
         url=data.url,

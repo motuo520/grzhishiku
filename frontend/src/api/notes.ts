@@ -40,6 +40,9 @@ export interface BatchCreateResult<T> {
   failed_count: number;
   failures: { index: number; title?: string; reason: string }[];
   items: T[];
+  // 防重：已存在的相同内容/链接被跳过（可选，旧后端无此字段）
+  skipped_count?: number;
+  skipped?: { index: number; title?: string; reason: string }[];
 }
 
 export const notesApi = {
