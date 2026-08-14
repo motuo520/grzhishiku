@@ -1,15 +1,23 @@
 import { FC, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import {
   Database, SquareStack, Search, Globe, BookOpen, FileText, FolderOpen, Rss,
   Layers, Clock, Loader2, AlertCircle, X, CheckSquare, Square,
-  ArrowRight,
+  ArrowRight, Trash2,
 } from 'lucide-react';
 import PipelineBrainToggle from './components/PipelineBrainToggle';
 import PipelineStageBar from './components/PipelineStageBar';
 import { useNavigation } from '@/store/navigation';
 import { usePipelineStats, usePipelineItems, useTransitionItem } from '@/hooks/usePipeline';
 import type { PipelineItem } from '@/api/pipeline';
+import { notesApi } from '@/api/notes';
+import { clipsApi } from '@/api/clips';
+import { knowledgeApi } from '@/api/knowledge';
+import { readLaterApi } from '@/api/readLater';
+import { rssApi } from '@/api/rss';
+import { documentApi } from '@/api/document';
+import { invalidateContentQueries } from '@/utils/invalidateContent';
 import StageContextBanner from './components/StageContextBanner';
 import ErrorState from '@/components/ErrorState';
 import { BrainSideBadge, SourceLink } from './components/PipelineHelpers';
@@ -23,6 +31,16 @@ const CONTENT_TYPE_CONFIG: Record<string, { label: string; icon: React.ElementTy
   document: { label: '文档', icon: FolderOpen, color: 'text-text-secondary' },
 };
 
+// content_type → 删除 API（软删底层内容后 raw 列表自动消失：管线查询只取 active）
+const DELETE_BY_TYPE: Record<string, (id: string) => Promise<any>> = {
+  note: (id) => notesApi.delete(id),
+  knowledge: (id) => knowledgeApi.delete(id),
+  clip: (id) => clipsApi.delete(id),
+  rss: (id) => rssApi.deleteEntry(id),
+  read_later: (id) => readLaterApi.delete(id),
+  document: (id) => documentApi.delete(id),
+};
+
 const RawMaterialsPage: FC = () => {
   const navigate = useNavigate();
   const { brainSide } = useNavigation();
@@ -33,6 +51,8 @@ const RawMaterialsPage: FC = () => {
   const [isBatchRunning, setIsBatchRunning] = useState(false);
   const [batchProgress, setBatchProgress] = useState(0);
   const [actingId, setActingId] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const queryClient = useQueryClient();
 
   const { stats } = usePipelineStats(brainSide);
   const { items, isLoading: isItemsLoading, error: queryError, refetch } = usePipelineItems('raw', brainSide);
@@ -87,6 +107,50 @@ const RawMaterialsPage: FC = () => {
     } else {
       setSelectedIds(new Set(filteredItems.map((item) => item.id)));
     }
+  };
+
+  const handleDelete = async (item: PipelineItem) => {
+    const fn = DELETE_BY_TYPE[item.content_type];
+    if (!fn) {
+      setError('该类型素材暂不支持删除');
+      return;
+    }
+    if (!confirm(`确定删除「${item.title || '无标题'}」？此操作不可恢复。`)) return;
+    setError(null);
+    setActingId(item.id);
+    try {
+      await fn(item.content_id);
+      setSelectedIds((prev) => {
+        const next = new Set(prev);
+        next.delete(item.id);
+        return next;
+      });
+      invalidateContentQueries(queryClient);
+    } catch (err: any) {
+      setError(err?.response?.data?.detail || err.message || '删除失败');
+    } finally {
+      setActingId(null);
+    }
+  };
+
+  const handleBatchDelete = async () => {
+    const selected = filteredItems.filter((item) => selectedIds.has(item.id) && DELETE_BY_TYPE[item.content_type]);
+    if (selected.length === 0 || deleting) return;
+    if (!confirm(`确定删除选中的 ${selected.length} 条素材？此操作不可恢复。`)) return;
+    setDeleting(true);
+    setError(null);
+    let failed = 0;
+    for (const item of selected) {
+      try {
+        await DELETE_BY_TYPE[item.content_type](item.content_id);
+      } catch {
+        failed++;
+      }
+    }
+    setDeleting(false);
+    setSelectedIds(new Set());
+    invalidateContentQueries(queryClient);
+    if (failed > 0) setError(`${selected.length - failed} 条已删除，${failed} 条失败`);
   };
 
   const handleCardize = async (item: PipelineItem) => {
@@ -264,14 +328,26 @@ const RawMaterialsPage: FC = () => {
               </button>
             )}
           </div>
-          <button
-            onClick={handleBatchCardize}
-            disabled={selectedIds.size === 0 || isBatchRunning}
-            className="flex items-center gap-2 px-4 py-2 bg-accent text-white rounded-[2px] text-sm font-medium hover:bg-[var(--accent-hover)] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {isBatchRunning ? <Loader2 className="w-4 h-4 animate-spin" /> : <SquareStack className="w-4 h-4" />}
-            {isBatchRunning ? `卡片化中 ${batchProgress}/${selectedIds.size}` : '一键卡片化'}
-          </button>
+          <div className="flex items-center gap-2">
+            {selectedIds.size > 0 && (
+              <button
+                onClick={handleBatchDelete}
+                disabled={deleting || isBatchRunning}
+                className="flex items-center gap-1.5 px-3 py-2 rounded-[2px] text-xs bg-danger/10 border border-danger/30 text-danger hover:bg-danger/20 transition-colors disabled:opacity-50"
+              >
+                {deleting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+                {deleting ? '删除中...' : '删除所选'}
+              </button>
+            )}
+            <button
+              onClick={handleBatchCardize}
+              disabled={selectedIds.size === 0 || isBatchRunning || deleting}
+              className="flex items-center gap-2 px-4 py-2 bg-accent text-white rounded-[2px] text-sm font-medium hover:bg-[var(--accent-hover)] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isBatchRunning ? <Loader2 className="w-4 h-4 animate-spin" /> : <SquareStack className="w-4 h-4" />}
+              {isBatchRunning ? `卡片化中 ${batchProgress}/${selectedIds.size}` : '一键卡片化'}
+            </button>
+          </div>
         </div>
       </div>
 
@@ -324,14 +400,26 @@ const RawMaterialsPage: FC = () => {
                     </span>
                   </div>
                 </div>
-                <button
-                  onClick={() => handleCardize(item)}
-                  disabled={isActing || isBatchRunning}
-                  className="flex items-center gap-1.5 px-3 py-1.5 bg-white/[0.05] border border-white/[0.08] rounded-[2px] text-xs text-text-primary hover:bg-info/10 hover:border-info/30 hover:text-info transition-all disabled:opacity-50 shrink-0"
-                >
-                  {isActing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <SquareStack className="w-3.5 h-3.5" />}
-                  卡片化
-                </button>
+                <div className="flex items-center gap-1.5 shrink-0">
+                  {DELETE_BY_TYPE[item.content_type] && (
+                    <button
+                      onClick={() => handleDelete(item)}
+                      disabled={isActing || isBatchRunning || deleting}
+                      title="删除该素材"
+                      className="p-1.5 rounded-[2px] text-text-muted hover:text-danger hover:bg-danger/10 transition-colors disabled:opacity-50"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  )}
+                  <button
+                    onClick={() => handleCardize(item)}
+                    disabled={isActing || isBatchRunning || deleting}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-white/[0.05] border border-white/[0.08] rounded-[2px] text-xs text-text-primary hover:bg-info/10 hover:border-info/30 hover:text-info transition-all disabled:opacity-50 shrink-0"
+                  >
+                    {isActing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <SquareStack className="w-3.5 h-3.5" />}
+                    卡片化
+                  </button>
+                </div>
               </div>
             );
           })}

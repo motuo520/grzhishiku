@@ -150,12 +150,19 @@ const SourcePoolPage: FC = () => {
         从个人脑、网络脑以及双脑内容中挑选素材，作为涌现工具的灵感来源。
       </p>
 
+      {/* 删除/转入的反馈常驻可见——只在选中横条里显示时，无选中场景报错被吞成「没反应」 */}
+      {error && (
+        <div className="glass-card px-4 py-2.5 text-xs text-danger border-danger/30 flex items-center justify-between">
+          <span>{error}</span>
+          <button onClick={() => setError(null)} className="text-text-muted hover:text-text-primary ml-3">✕</button>
+        </div>
+      )}
+
       {selectedSources.length > 0 && (
         <div className="glass-card px-4 py-3 flex items-center justify-between gap-3 border-info/30">
           <div className="text-xs text-text-secondary">
             已选 {selectedSources.length} 项
             {untransferable > 0 && `（其中 ${untransferable} 项类型不支持入管线）`}
-            {error && <span className="text-danger ml-2">{error}</span>}
           </div>
           <div className="flex items-center gap-2 shrink-0">
             <button
