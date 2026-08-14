@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { useNotes } from '@/hooks/useNotes';
 import { useTags } from '@/hooks/useTags';
+import { useNavigation } from '@/store/navigation';
 import TagSelector from '@/components/TagSelector';
 import type { Note } from '@/api/notes';
 
@@ -37,6 +38,8 @@ const NotesPage: FC = () => {
     return selectedTagIds.join(',');
   }, [selectedTagIds]);
 
+  // 跟随侧边栏全局脑侧：个人脑只看个人脑笔记、网络脑只看网络脑笔记、整合脑（both）不过滤
+  const { brainSide } = useNavigation();
   const {
     notes,
     isLoading,
@@ -50,7 +53,11 @@ const NotesPage: FC = () => {
     isDeleting,
     isBatchDeleting,
     isBatchUpdatingTags,
-  } = useNotes({ q: searchQuery || undefined, tag_ids: tagIdsParam });
+  } = useNotes({
+    q: searchQuery || undefined,
+    tag_ids: tagIdsParam,
+    brain_side: brainSide === 'both' ? undefined : brainSide,
+  });
   const { tags: allTags, isLoading: isTagsLoading } = useTags();
 
   const filteredNotes = useMemo(() => notes || [], [notes]);

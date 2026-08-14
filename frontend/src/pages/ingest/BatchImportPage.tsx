@@ -64,6 +64,10 @@ const BatchImportPage: FC = () => {
     const type = searchParams.get('type');
     return type === 'clips' ? 'clip' : 'note';
   });
+  // 导入脑侧：笔记/知识默认个人脑、剪藏默认网络脑，用户可改（read_later/rss 无脑侧字段不生效）
+  const [brainChoice, setBrainChoice] = useState<'personal' | 'network'>(
+    searchParams.get('type') === 'clips' ? 'network' : 'personal'
+  );
   const [fullExport, setFullExport] = useState<FullExportDetection | null>(null);
   const [exportResult, setExportResult] = useState<{ inserted: number; updated: number; skipped: number } | null>(null);
   const [textInput, setTextInput] = useState('');
@@ -287,7 +291,7 @@ const BatchImportPage: FC = () => {
         const items: NoteCreateData[] = notePreviews.map(p => ({
           title: p.title || '未命名',
           content: p.content || '',
-          brain_side: 'personal',
+          brain_side: brainChoice,
           tags: Array.isArray(p.tags) ? p.tags : undefined,
         }));
         const res = await batchCreateNotes({ items });
@@ -302,7 +306,7 @@ const BatchImportPage: FC = () => {
             url: p.url!.trim(),
             domain: p.domain?.trim() || 'unknown',
             excerpt: p.excerpt,
-            brain_side: 'network',
+            brain_side: brainChoice,
           }));
         const res = await batchCreateClips({ items });
         success += res.data.success_count;
@@ -341,7 +345,7 @@ const BatchImportPage: FC = () => {
             await knowledgeApi.create({
               content_raw: p.content || p.title || '',
               source_title: p.title || undefined,
-              brain_side: 'personal',
+              brain_side: brainChoice,
             });
             success++;
           } catch {
@@ -481,6 +485,7 @@ const BatchImportPage: FC = () => {
                 onClick={() => {
                   setTargetType(t.id);
                   setActiveTab(t.tab);
+                  setBrainChoice(t.id === 'clip' ? 'network' : 'personal');
                 }}
                 className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-[2px] text-sm transition-all ${
                   active
@@ -495,6 +500,27 @@ const BatchImportPage: FC = () => {
           })}
         </div>
         <span className="text-xs text-text-muted">先选类型再添加内容；不属于所选类型的条目会被跳过</span>
+        {['note', 'clip', 'knowledge'].includes(targetType) && (
+          <div className="flex items-center gap-1 bg-bg-tertiary p-1 rounded-[2px]">
+            <span className="text-xs text-text-muted px-1.5">存入</span>
+            {([
+              { id: 'personal' as const, label: '个人脑' },
+              { id: 'network' as const, label: '网络脑' },
+            ]).map(b => (
+              <button
+                key={b.id}
+                onClick={() => setBrainChoice(b.id)}
+                className={`px-3 py-1.5 rounded-[2px] text-xs transition-all ${
+                  brainChoice === b.id
+                    ? 'bg-white/[0.08] text-info font-medium'
+                    : 'text-text-secondary hover:text-text-primary'
+                }`}
+              >
+                {b.label}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Tabs */}

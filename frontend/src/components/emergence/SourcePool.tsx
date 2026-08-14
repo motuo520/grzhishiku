@@ -20,6 +20,7 @@ import {
   Trash2,
 } from 'lucide-react';
 import { emergenceApi, EmergenceSource, type BrainSide, type SelectedSource } from '@/api/emergence';
+import { useNavigation } from '@/store/navigation';
 
 const SOURCE_TYPES = [
   { key: 'note', label: '笔记', icon: FileText },
@@ -34,11 +35,11 @@ const SOURCE_TYPES = [
   // 「标签」不再作为素材类型展示（组织工具不是素材，混进来是删不了的幽灵卡片）
 ];
 
+// 脑侧筛选跟随全局侧边栏脑切换（both 即全部）；本地不再单设「双脑」项——后端 both 本就不过滤
 const BRAIN_SIDES: { key: BrainSide | 'all'; label: string; color: string }[] = [
   { key: 'all', label: '全部', color: 'text-text-secondary' },
   { key: 'personal', label: '个人脑', color: 'text-personal-primary' },
   { key: 'network', label: '网络脑', color: 'text-network-primary' },
-  { key: 'both', label: '双脑', color: 'text-fusion-primary' },
 ];
 
 const TYPE_ICON_MAP: Record<string, React.ElementType> = {
@@ -95,7 +96,10 @@ const SourcePool: FC<SourcePoolProps> = ({
     ? externalSelectedSources.map((s) => s.id)
     : (externalSelectedIds ?? []);
 
-  const [brainSide, setBrainSide] = useState<BrainSide | 'all'>('all');
+  // 脑侧筛选直接读写全局导航 store（侧边栏脑切换器的同一状态），素材池跟着全局切
+  const { brainSide: globalBrain, setBrainSide: setGlobalBrain } = useNavigation();
+  const brainSide: BrainSide | 'all' = globalBrain === 'personal' || globalBrain === 'network' ? globalBrain : 'all';
+  const setBrainSide = (side: BrainSide | 'all') => setGlobalBrain(side === 'all' ? 'both' : side);
   const [typeFilter, setTypeFilter] = useState<string>('all');
   const [query, setQuery] = useState('');
 
