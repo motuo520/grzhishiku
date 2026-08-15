@@ -125,6 +125,7 @@ export const MENU_DATA_SIMPLE: Record<SimpleMenuId, MenuData> = {
       { id: 'clipper', label: '浏览器剪藏', description: '一键保存网页内容', icon: 'Globe', path: '/ingest/clipper', brainSide: 'network' },
       { id: 'batch-import', label: '批量导入', description: '批量导入笔记、剪藏和链接', icon: 'Upload', path: '/ingest/batch-import', brainSide: 'both' },
       { id: 'timeline', label: '时间轴', description: '按时间回顾全部内容与导入批次', icon: 'Clock', path: '/ingest/timeline', brainSide: 'both' },
+      { id: 'tags', label: '标签档夹', description: '按标签自动归集的内容（无需手动整理）', icon: 'Tags', path: '/ingest/tags', brainSide: 'both' },
       { id: 'rss', label: 'RSS 聚合', description: '订阅源自动采集', icon: 'Rss', path: '/ingest/rss', brainSide: 'network' },
       { id: 'read-later', label: '稍后读', description: '收藏链接，稍后阅读', icon: 'BookOpen', path: '/ingest/read-later', brainSide: 'network' },
       { id: 'documents', label: '文件/文档库', description: '本地文档提取与管理', icon: 'FolderOpen', path: '/ingest/documents', brainSide: 'both' },
