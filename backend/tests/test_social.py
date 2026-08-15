@@ -207,6 +207,48 @@ def test_save_message_to_knowledge(client: TestClient, db_session: Session):
     assert msg_res.json()["status"] == "imported_to_knowledge"
 
 
+def test_save_message_to_knowledge_idempotent(client: TestClient, db_session: Session):
+    """BUG-M31：重复保存同一消息应返回既有知识单元（200 幂等），不新建。"""
+    from app.models.base import KnowledgeUnit
+
+    user = _make_user(db_session, "social8b@example.com")
+    headers = _make_auth_headers(user)
+
+    create_res = client.post("/api/v1/social/accounts", json={"provider": "wechat"}, headers=headers)
+    account_id = create_res.json()["id"]
+
+    chat_text = "2023-01-15 14:32 张三: 幂等保存测试消息"
+    file = io.BytesIO(chat_text.encode("utf-8"))
+    client.post(
+        f"/api/v1/social/accounts/{account_id}/upload",
+        files={"file": ("chat.txt", file, "text/plain")},
+        headers=headers,
+    )
+    message_id = client.get("/api/v1/social/messages", headers=headers).json()[0]["id"]
+
+    res1 = client.post(
+        f"/api/v1/social/messages/{message_id}/save-to-knowledge",
+        json={},
+        headers=headers,
+    )
+    assert res1.status_code == 200, res1.text
+    kid1 = res1.json()["knowledge_id"]
+
+    res2 = client.post(
+        f"/api/v1/social/messages/{message_id}/save-to-knowledge",
+        json={},
+        headers=headers,
+    )
+    assert res2.status_code == 200, res2.text
+    assert res2.json()["knowledge_id"] == kid1
+
+    units = db_session.query(KnowledgeUnit).filter(
+        KnowledgeUnit.id == kid1,
+        KnowledgeUnit.user_id == user.id,
+    ).all()
+    assert len(units) == 1
+
+
 def test_delete_message(client: TestClient, db_session: Session):
     user = _make_user(db_session, "social9@example.com")
     headers = _make_auth_headers(user)

@@ -195,6 +195,16 @@ def delete_message(db: Session, user: User, message_id: str) -> None:
 
 
 def save_to_knowledge(db: Session, user: User, message: SocialMessage, tag_ids: Optional[List[str]] = None, brain_side: Optional[str] = "network") -> str:
+    # 幂等：已保存过则直接返回既有知识单元（同 email 模块口径），
+    # 重复调用不产生重复知识单元
+    if message.knowledge_id:
+        existing_unit = db.query(KnowledgeUnit).filter(
+            KnowledgeUnit.id == message.knowledge_id,
+            KnowledgeUnit.user_id == user.id,
+        ).first()
+        if existing_unit:
+            return existing_unit.id
+
     content = message.content_text or message.content_raw or ""
     if not content.strip():
         content = f"来自 {message.sender_name or '未知发送者'} 的社交消息"

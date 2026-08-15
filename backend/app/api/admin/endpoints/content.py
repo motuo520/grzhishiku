@@ -8,6 +8,7 @@ import uuid
 from app.core.database import get_db
 from app.core.admin_permissions import Permission, require_permission
 from app.models.base import Note, Capsule, BrowserClip, KnowledgeUnit, AdminAuditLog, User, AdminUser
+from app.models.community import CommunityPost
 from app.api.admin.endpoints.auth import get_current_admin
 
 router = APIRouter()
@@ -115,6 +116,7 @@ async def moderate_content(
         (Capsule, "capsule"),
         (BrowserClip, "clip"),
         (KnowledgeUnit, "knowledge"),
+        (CommunityPost, "community_post"),
     ]:
         item = db.query(Model).filter(Model.id == content_id).first()
         if item:
@@ -124,10 +126,17 @@ async def moderate_content(
     if not item:
         raise HTTPException(status_code=404, detail="Content not found")
     
+    # CommunityPost 无 status 字段，审核口径映射到 is_spam（approve=正常，reject=标记垃圾隐藏）
     if data.action == "approve":
-        item.status = "active"
+        if item_type == "community_post":
+            item.is_spam = False
+        else:
+            item.status = "active"
     elif data.action == "reject":
-        item.status = "rejected"
+        if item_type == "community_post":
+            item.is_spam = True
+        else:
+            item.status = "rejected"
     else:
         raise HTTPException(status_code=400, detail="Invalid action")
     

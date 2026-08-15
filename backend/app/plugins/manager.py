@@ -275,6 +275,7 @@ class PluginManager:
                 "version": manifest.version,
                 "description": manifest.description,
                 "type": manifest.type,
+                "permissions": manifest.permissions,
                 "enabled": self.is_enabled(user, manifest.id),
                 "config": self.get_config(user, manifest.id),
                 "config_schema": plugin.get_config_schema(),

@@ -53,7 +53,8 @@ async def enable_plugin(
     plugin_manager.set_enabled(current_user, plugin_id, request.enabled, db)
     if not request.enabled:
         schedule_user_plugin_sync(current_user, plugin_id)
-    return {"id": plugin_id, "enabled": request.enabled}
+    manifest = plugin_manager.plugins[plugin_id].manifest
+    return {"id": plugin_id, "enabled": request.enabled, "permissions": manifest.permissions}
 
 
 @router.put("/{plugin_id}/config", summary="Update plugin configuration")

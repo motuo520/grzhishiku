@@ -121,7 +121,8 @@ def _aggregate_user_content(
     if brain_side in ("both", "personal", None):
         notes = (
             db.query(Note)
-            .filter(Note.user_id == user.id)
+            # BUG-M04：软删/已拒绝内容不计入思维指纹等认知分析
+            .filter(Note.user_id == user.id, Note.status == "active")
             .order_by(Note.created_at.desc())
             .limit(per_side_limit)
             .all()
@@ -139,7 +140,8 @@ def _aggregate_user_content(
     if brain_side in ("both", "network", None):
         knowledge = (
             db.query(KnowledgeUnit)
-            .filter(KnowledgeUnit.user_id == user.id)
+            # BUG-M04：KnowledgeUnit 同样有 status 软删口径，只统计 active
+            .filter(KnowledgeUnit.user_id == user.id, KnowledgeUnit.status == "active")
             .order_by(KnowledgeUnit.created_at.desc())
             .limit(per_side_limit)
             .all()

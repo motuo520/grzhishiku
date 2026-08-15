@@ -6,12 +6,19 @@
   "type": "builtin",
   "entrypoint": "plugin:McpServerPlugin",
   "enabled_default": true,
+  "permissions": [
+    "storage.read",
+    "storage.write",
+    "mcp.expose"
+  ],
   "config_schema": {
     "type": "object",
     "properties": {
       "expose_tools": {
         "type": "array",
-        "items": { "type": "string" },
+        "items": {
+          "type": "string"
+        },
         "description": "允许暴露的工具列表，留空表示全部"
       },
       "require_user_id": {

@@ -6,9 +6,15 @@
   "type": "builtin",
   "entrypoint": "plugin:NotionImportPlugin",
   "enabled_default": false,
+  "permissions": [
+    "network.outbound",
+    "storage.write"
+  ],
   "config_schema": {
     "type": "object",
-    "required": ["integration_token"],
+    "required": [
+      "integration_token"
+    ],
     "properties": {
       "integration_token": {
         "type": "string",
@@ -16,7 +22,10 @@
       },
       "brain_side": {
         "type": "string",
-        "enum": ["personal", "network"],
+        "enum": [
+          "personal",
+          "network"
+        ],
         "default": "network",
         "title": "默认脑侧"
       },
@@ -32,7 +41,12 @@
           },
           "interval_minutes": {
             "type": "integer",
-            "enum": [30, 60, 360, 1440],
+            "enum": [
+              30,
+              60,
+              360,
+              1440
+            ],
             "default": 60,
             "title": "同步间隔"
           },
