@@ -1,4 +1,5 @@
 import { FC, useState, useMemo } from 'react';
+import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Tag,
@@ -160,10 +161,25 @@ const TagsPage: FC = () => {
     const icon = item.type === 'note' ? <FileText className="w-3.5 h-3.5" />
       : item.type === 'clip' ? <Scissors className="w-3.5 h-3.5" />
       : <BookOpen className="w-3.5 h-3.5" />;
+    // 原文内链：笔记/知识单元跳应用内详情页（不用再回去找）；剪藏有 URL 走外链
+    const internalTo = item.type === 'note' ? `/ingest/notes/${item.id}`
+      : item.type === 'knowledge' ? `/knowledge/${item.id}`
+      : null;
     return (
       <div key={item.id} className="flex items-center gap-2 py-1.5 text-sm text-text-primary">
         <span className="text-text-muted">{icon}</span>
-        <span className="truncate flex-1">{item.title}</span>
+        {internalTo ? (
+          <Link
+            to={internalTo}
+            onClick={() => setAssociationsTag(null)}
+            className="truncate flex-1 hover:text-info hover:underline"
+            title="打开原文"
+          >
+            {item.title}
+          </Link>
+        ) : (
+          <span className="truncate flex-1">{item.title}</span>
+        )}
         {item.url && (
           <a
             href={item.url}
