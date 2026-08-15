@@ -213,7 +213,7 @@ const AppearanceSettings: FC = () => {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {([
             { value: 'classic' as const, label: '经典版', desc: '旧版完整功能：全部 12 个模块' },
-            { value: 'simple' as const, label: '简化版', desc: '只保留三个动作：存进来 / 自动理好 / 问出来' },
+            { value: 'simple' as const, label: '简化版', desc: '只保留五个动作：存进来 / 自动理好 / 知识地图 / 每日 / 问出来' },
           ]).map(opt => {
             const selected = uiMode === opt.value;
             return (

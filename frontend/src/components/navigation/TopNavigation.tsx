@@ -157,7 +157,7 @@ const TopNavigation: FC<TopNavigationProps> = ({ onLoginClick }) => {
             <button
               onClick={() => setUiMode(uiMode === 'classic' ? 'simple' : 'classic')}
               className="p-2 rounded-[2px] hover:bg-bg-tertiary text-text-secondary hover:text-accent transition-colors duration-200"
-              title={`界面版本：${uiMode === 'classic' ? '经典版（完整功能）' : '简化版（三个动作）'} (点击切换)`}
+              title={`界面版本：${uiMode === 'classic' ? '经典版（完整功能）' : '简化版（五个动作）'} (点击切换)`}
             >
               {uiMode === 'classic' ? <LayoutGrid className="w-4 h-4" /> : <Layers className="w-4 h-4" />}
             </button>

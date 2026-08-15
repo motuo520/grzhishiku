@@ -16,7 +16,7 @@ interface SettingsState {
   theme: 'dark' | 'light' | 'system';
   fontSize: 'small' | 'medium' | 'large';
   density: 'compact' | 'comfortable';
-  /** 界面版本：classic=旧版完整功能，simple=简化版三动作 */
+  /** 界面版本：classic=旧版完整功能，simple=简化版五动作 */
   uiMode: 'classic' | 'simple';
 
   defaultLLM: string;

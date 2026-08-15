@@ -199,7 +199,7 @@ const RouteFallback: FC = () => {
 const App: FC = () => {
   const { isLoggedIn } = useAuth();
   const syncActiveProvider = useSettings((state) => state.syncActiveProvider);
-  // 界面版本：classic=旧版完整功能（默认），simple=简化版三动作
+  // 界面版本：classic=旧版完整功能（默认），simple=简化版五动作
   const uiMode = useSettings((state) => state.uiMode);
   const isClassic = uiMode === 'classic';
 
