@@ -157,23 +157,40 @@ const AuthGuard: FC<{ children: React.ReactNode }> = ({ children }) => {
   return <>{children}</>;
 };
 
-// 未匹配路由兜底：多数是另一界面版本的专属路由。给出说明并可一键切经典版，
-// 2.5 秒后自动回首页，避免静默跳转造成的「打不开」困惑。
+// 未匹配路由兜底（404 页面）。SPA 折中说明：nginx 用 try_files 把所有未知路径都回退到
+// index.html 并返回 200（服务端无法判断前端路由是否存在），「软 404」只能在前端补——
+// 渲染真正的 404 页面并动态写入 noindex，告诉搜索引擎不要收录这个地址。
+// 多数未匹配路径其实是另一界面版本的专属路由，因此保留「切到经典版打开」入口；
+// 不再 2.5 秒自动跳转（自动跳转既不告诉用户真相，也让爬虫看到和首页相同的内容）。
 const RouteFallback: FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const setUiMode = useSettings((s) => s.setUiMode);
 
   useEffect(() => {
-    const t = setTimeout(() => navigate('/app', { replace: true }), 2500);
-    return () => clearTimeout(t);
-  }, [navigate]);
+    const prevTitle = document.title;
+    document.title = '页面不存在（404）· 钤记';
+    // index.html 自带 <meta name="robots" content="index,follow">：直接改写它的 content，
+    // 避免页面上同时存在两个 robots meta 互相冲突；离开时恢复原值
+    const robotsMeta = document.querySelector<HTMLMetaElement>('meta[name="robots"]');
+    const prevRobots = robotsMeta?.getAttribute('content') ?? null;
+    robotsMeta?.setAttribute('content', 'noindex,nofollow');
+    return () => {
+      document.title = prevTitle;
+      if (robotsMeta) {
+        if (prevRobots !== null) robotsMeta.setAttribute('content', prevRobots);
+        else robotsMeta.removeAttribute('content');
+      }
+    };
+  }, [location.pathname]);
 
   return (
-    <div className="h-full flex flex-col items-center justify-center text-center px-6 gap-3">
-      <div className="text-text-primary font-semibold">该页面在当前界面版本不可用</div>
+    <div className="h-full flex flex-col items-center justify-center text-center px-6 gap-4">
+      <div className="text-5xl font-bold text-text-muted tracking-widest">404</div>
+      <div className="text-text-primary font-semibold">页面不存在，或在当前界面版本不可用</div>
       <div className="text-sm text-text-secondary max-w-md">
-        <span className="font-mono">{location.pathname}</span> 属于经典版功能。即将自动返回首页…
+        <span className="font-mono">{location.pathname}</span> 没有对应的页面。
+        如果它是经典版专属功能，可以切换界面版本后再打开。
       </div>
       <div className="flex items-center gap-3">
         <button
@@ -187,7 +204,7 @@ const RouteFallback: FC = () => {
         </button>
         <button
           onClick={() => navigate('/app', { replace: true })}
-          className="text-xs text-text-secondary hover:text-text-primary"
+          className="text-xs px-3 py-1.5 rounded-[2px] border border-border-color text-text-secondary hover:text-text-primary hover:bg-bg-hover transition-colors"
         >
           返回首页
         </button>

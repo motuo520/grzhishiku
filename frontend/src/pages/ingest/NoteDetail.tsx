@@ -203,6 +203,16 @@ const NoteDetail: FC = () => {
     }
   };
 
+  // 轻量 HTML 净化（无 DOMPurify 依赖）：去 script/iframe 等危险标签、on* 事件
+  // 属性、javascript: 协议。renderMarkdown 输出进 dangerouslySetInnerHTML 前必过。
+  const sanitizeHtml = (html: string): string => {
+    return html
+      .replace(/<\s*(script|iframe|object|embed|form|link|meta|base)\b[^>]*>[\s\S]*?<\s*\/\s*\1\s*>/gi, '')
+      .replace(/<\s*\/?\s*(script|iframe|object|embed|form|link|meta|base)\b[^>]*>/gi, '')
+      .replace(/\son\w+\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/gi, '')
+      .replace(/(href|src|xlink:href)\s*=\s*(["']?)\s*javascript:[^"'>\s]*\2/gi, '$1=$2about:blank$2');
+  };
+
   // Simple markdown preview renderer
   const renderMarkdown = (md: string) => {
     return md
@@ -397,7 +407,7 @@ const NoteDetail: FC = () => {
           {showPreview ? (
             <div
               className="w-full min-h-[400px] bg-bg-secondary border border-border-color rounded-[2px] px-4 py-3 text-sm text-text-primary leading-relaxed overflow-y-auto"
-              dangerouslySetInnerHTML={{ __html: renderMarkdown(content) || '<span class="text-text-secondary">暂无内容</span>' }}
+              dangerouslySetInnerHTML={{ __html: sanitizeHtml(renderMarkdown(content)) || '<span class="text-text-secondary">暂无内容</span>' }}
             />
           ) : (
             <textarea

@@ -28,6 +28,8 @@ interface ChatMessage {
   model?: string;
   timestamp: Date;
   isStreaming?: boolean;
+  /** 本轮回答零引用源（SSE 未下发非空 sources 事件）→ 显示「去导入」引导 */
+  noSources?: boolean;
 }
 
 interface ChatInputBarProps {
@@ -234,6 +236,8 @@ const ChatInputBar: FC<ChatInputBarProps> = ({ sidebarOpen = true, onLoginClick 
       const reader = response.body?.getReader();
       const decoder = new TextDecoder();
       let fullContent = '';
+      // 后端在流末尾（end 之前）下发 {"type":"sources","sources":[...]}，仅当引用源非空时才有此事件
+      let receivedSources = false;
 
       if (reader) {
         let streamDone = false;
@@ -273,6 +277,10 @@ const ChatInputBar: FC<ChatInputBarProps> = ({ sidebarOpen = true, onLoginClick 
                       m.id === aiMsgId ? { ...m, content: fullContent, isStreaming: true } : m
                     )
                   );
+                } else if (data.type === 'sources') {
+                  if (Array.isArray(data.sources) && data.sources.length > 0) {
+                    receivedSources = true;
+                  }
                 }
               } catch {
                 // ignore parse errors
@@ -283,7 +291,17 @@ const ChatInputBar: FC<ChatInputBarProps> = ({ sidebarOpen = true, onLoginClick 
       }
 
       setMessages((prev) =>
-        prev.map((m) => (m.id === aiMsgId ? { ...m, content: fullContent, isStreaming: false } : m))
+        prev.map((m) =>
+          m.id === aiMsgId
+            ? {
+                ...m,
+                content: fullContent,
+                isStreaming: false,
+                // 空知识库引导（R04）：有正文但全程没收到引用源 → 标记，回答下方显示「去导入」
+                noSources: Boolean(fullContent.trim()) && !receivedSources,
+              }
+            : m
+        )
       );
       // 流式完成：会话的标题/updated_at/消息已落库，失效 chat 前缀查询让历史页刷新
       if (conversationId) {
@@ -757,6 +775,18 @@ const ChatInputBar: FC<ChatInputBarProps> = ({ sidebarOpen = true, onLoginClick 
                       }`}
                     >
                       <div className="whitespace-pre-wrap break-keep">{msg.content}</div>
+                      {/* 空知识库引导：本轮回答零引用源时，给出导入入口而不是只有泛泛拒答 */}
+                      {msg.role === 'ai' && msg.noSources && !msg.isStreaming && (
+                        <button
+                          onClick={() => {
+                            setShowChatPanel(false);
+                            navigate('/ingest/batch-import');
+                          }}
+                          className="mt-2 flex items-center gap-1 text-xs text-info hover:underline"
+                        >
+                          知识库还没有相关内容，去导入 →
+                        </button>
+                      )}
                       {msg.isStreaming && (
                         <span className="inline-block w-1.5 h-3 bg-info animate-pulse ml-1 rounded-sm" />
                       )}

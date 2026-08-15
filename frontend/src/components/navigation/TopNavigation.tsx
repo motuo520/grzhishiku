@@ -156,10 +156,12 @@ const TopNavigation: FC<TopNavigationProps> = ({ onLoginClick }) => {
 
             <button
               onClick={() => setUiMode(uiMode === 'classic' ? 'simple' : 'classic')}
-              className="p-2 rounded-[2px] hover:bg-bg-tertiary text-text-secondary hover:text-accent transition-colors duration-200"
-              title={`界面版本：${uiMode === 'classic' ? '经典版（完整功能）' : '简化版（五个动作）'} (点击切换)`}
+              className="flex items-center gap-1.5 px-2 py-2 rounded-[2px] hover:bg-bg-tertiary text-text-secondary hover:text-accent transition-colors duration-200"
+              title={`界面版本：当前为${uiMode === 'classic' ? '经典版（完整功能）' : '简化版（五个动作）'}，点击切换到${uiMode === 'classic' ? '简化版' : '经典版'}`}
             >
               {uiMode === 'classic' ? <LayoutGrid className="w-4 h-4" /> : <Layers className="w-4 h-4" />}
+              {/* 版本切换入口对 QA/新用户太隐蔽（纯图标无文字）：与左侧桶导航一样标注文字 */}
+              <span className="hidden md:inline text-xs">{uiMode === 'classic' ? '经典版' : '简化版'}</span>
             </button>
 
             <button

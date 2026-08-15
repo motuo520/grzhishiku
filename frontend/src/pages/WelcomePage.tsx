@@ -52,9 +52,26 @@ class BgErrorBoundary extends React.Component<{ children: React.ReactNode }, { h
 const WelcomePage: FC = () => {
   const navigate = useNavigate();
   const [mounted, setMounted] = useState(false);
+  // LCP 快赢：three.js 3D 球体（独立大 chunk）延到首屏绘制后再挂载，
+  // 避免它在 LCP 窗口内抢占带宽与主线程
+  const [load3D, setLoad3D] = useState(false);
 
   useEffect(() => {
     setMounted(true);
+  }, []);
+
+  // 浏览器空闲时再加载 3D 背景（requestIdleCallback；Safari 不支持则回退 setTimeout）
+  useEffect(() => {
+    const w = window as Window & {
+      requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number;
+      cancelIdleCallback?: (id: number) => void;
+    };
+    if (w.requestIdleCallback) {
+      const id = w.requestIdleCallback(() => setLoad3D(true), { timeout: 2000 });
+      return () => w.cancelIdleCallback?.(id);
+    }
+    const t = setTimeout(() => setLoad3D(true), 1200);
+    return () => clearTimeout(t);
   }, []);
 
   const handleEnter = () => {
@@ -75,13 +92,15 @@ const WelcomePage: FC = () => {
           </Suspense>
         </BgErrorBoundary>
       </div>
-      <div className="fixed inset-0 z-[1]">
-        <BgErrorBoundary>
-          <Suspense fallback={null}>
-            <WelcomeNetwork3D />
-          </Suspense>
-        </BgErrorBoundary>
-      </div>
+      {load3D && (
+        <div className="fixed inset-0 z-[1]">
+          <BgErrorBoundary>
+            <Suspense fallback={null}>
+              <WelcomeNetwork3D />
+            </Suspense>
+          </BgErrorBoundary>
+        </div>
+      )}
       <div
         className="fixed inset-0 z-[2] pointer-events-none"
         style={{
@@ -97,7 +116,7 @@ const WelcomePage: FC = () => {
         </div>
         <button
           onClick={handleEnter}
-          className="pointer-events-auto group inline-flex items-center gap-2 px-4 py-2 rounded-[2px] bg-[#bd4a2e] hover:bg-[#a83c22] text-[#f6ece6] text-sm font-medium transition-colors duration-200"
+          className="pointer-events-auto group inline-flex items-center gap-2 px-4 py-2 max-sm:min-h-[44px] rounded-[2px] bg-[#bd4a2e] hover:bg-[#a83c22] text-[#f6ece6] text-sm font-medium transition-colors duration-200"
         >
           进入应用
           <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
@@ -145,7 +164,7 @@ const WelcomePage: FC = () => {
               href={GITHUB_URL}
               target="_blank"
               rel="noreferrer"
-              className="group inline-flex items-center gap-2 px-7 py-3.5 rounded-[2px] bg-[#bd4a2e] hover:bg-[#a83c22] text-[#f6ece6] text-base font-medium transition-colors duration-200"
+              className="group inline-flex items-center gap-2 px-7 py-3.5 max-sm:min-h-[44px] rounded-[2px] bg-[#bd4a2e] hover:bg-[#a83c22] text-[#f6ece6] text-base font-medium transition-colors duration-200"
             >
               <Github className="w-5 h-5" />
               快速开始
@@ -153,7 +172,7 @@ const WelcomePage: FC = () => {
             </a>
             <button
               onClick={handleEnter}
-              className="inline-flex items-center gap-2 px-7 py-3.5 rounded-[2px] border border-[rgba(232,226,216,0.18)] hover:border-[#bd4a2e]/60 text-[#e8e2d8] text-base font-medium transition-colors duration-200"
+              className="inline-flex items-center gap-2 px-7 py-3.5 max-sm:min-h-[44px] rounded-[2px] border border-[rgba(232,226,216,0.18)] hover:border-[#bd4a2e]/60 text-[#e8e2d8] text-base font-medium transition-colors duration-200"
             >
               进入在线演示
             </button>
@@ -165,7 +184,7 @@ const WelcomePage: FC = () => {
           animate={{ opacity: mounted ? 1 : 0 }}
           transition={{ duration: 0.9, delay: 0.5 }}
           onClick={scrollToContent}
-          className="absolute bottom-8 text-[#6b655c] hover:text-[#9a9286] text-xs flex flex-col items-center gap-1 pointer-events-auto transition-colors"
+          className="absolute bottom-8 text-[#6b655c] hover:text-[#9a9286] text-xs flex flex-col items-center justify-center gap-1 pointer-events-auto transition-colors max-sm:min-h-[44px] max-sm:min-w-[44px]"
         >
           了解更多
           <ChevronDown className="w-4 h-4 animate-bounce" />
@@ -332,14 +351,14 @@ const WelcomePage: FC = () => {
               href={GITHUB_URL}
               target="_blank"
               rel="noreferrer"
-              className="inline-flex items-center gap-2 px-7 py-3.5 rounded-[2px] bg-[#bd4a2e] hover:bg-[#a83c22] text-[#f6ece6] text-base font-medium transition-colors duration-200"
+              className="inline-flex items-center gap-2 px-7 py-3.5 max-sm:min-h-[44px] rounded-[2px] bg-[#bd4a2e] hover:bg-[#a83c22] text-[#f6ece6] text-base font-medium transition-colors duration-200"
             >
               <Github className="w-5 h-5" />
               访问 GitHub
             </a>
             <button
               onClick={handleEnter}
-              className="inline-flex items-center gap-2 px-7 py-3.5 rounded-[2px] border border-[rgba(232,226,216,0.18)] hover:border-[#bd4a2e]/60 text-[#e8e2d8] text-base font-medium transition-colors duration-200"
+              className="inline-flex items-center gap-2 px-7 py-3.5 max-sm:min-h-[44px] rounded-[2px] border border-[rgba(232,226,216,0.18)] hover:border-[#bd4a2e]/60 text-[#e8e2d8] text-base font-medium transition-colors duration-200"
             >
               进入在线演示
               <ArrowRight className="w-5 h-5" />
@@ -356,7 +375,7 @@ const WelcomePage: FC = () => {
             <span>钤记 · grzhishiku.com</span>
           </div>
           <div className="flex items-center gap-6">
-            <a href={GITHUB_URL} target="_blank" rel="noreferrer" className="hover:text-[#9a9286] transition-colors">
+            <a href={GITHUB_URL} target="_blank" rel="noreferrer" className="inline-flex items-center justify-center max-sm:min-h-[44px] max-sm:min-w-[44px] hover:text-[#9a9286] transition-colors">
               GitHub
             </a>
             <span>开源协议：AGPL-3.0</span>
