@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from datetime import datetime
+import asyncio
 import uuid
 import json
 
@@ -302,9 +303,10 @@ async def save_email_to_knowledge(
         db.commit()
         db.refresh(unit)
 
-    # Auto-link graph
+    # Auto-link graph（同步全表扫描，线程池卸载避免阻塞事件循环；失败不影响导入）
     try:
-        await auto_link_knowledge(db, unit, current_user.id)
+        loop = asyncio.get_running_loop()
+        await loop.run_in_executor(None, auto_link_knowledge, db, unit, current_user.id)
         db.commit()
     except Exception as e:
         logger.warning(f"Auto-link failed for email knowledge {unit.id}: {e}")

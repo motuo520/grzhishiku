@@ -219,12 +219,95 @@ async def delete_account(
     if not verify_password(request.password, current_user.password_hash):
         raise HTTPException(status_code=400, detail="密码不正确")
 
+    # BUG-Y06：注销不能只软删用户行——其 notes/clips/knowledge 等内容全留库。
+    # 先硬删该用户全部内容（与 /me/data 同一口径），再软删账号主体。
+    user_id = current_user.id
+    _delete_user_content(db, user_id)
+
     # Soft delete: mark status as deleted
     current_user.status = "deleted"
     current_user.email = f"deleted_{current_user.id}@deleted.local"
     db.commit()
 
     return {"success": True, "message": "账户已删除"}
+
+
+def _delete_user_content(db: Session, user_id: str) -> None:
+    """硬删一个用户的全部内容数据（不提交事务，由调用方统一 commit）。
+
+    覆盖：内容表（notes/capsules/clips/knowledge/sticky_notes/reminders/
+    read_later/documents/rss）、标签及其关联（content_tags）、向量
+    （embeddings）、聊天会话与消息（chat_conversations/chat_messages）。
+    删除顺序考虑外键：先删依赖子表（dialogues/email 关联/content_tags/
+    chat_messages），再删主表。
+    """
+    # --- 先收集内容 id（主表删除后就查不到了），用于清 content_tags 关联 ---
+    note_ids = db.query(Note.id).filter(Note.user_id == user_id).all()
+    clip_ids = db.query(BrowserClip.id).filter(BrowserClip.user_id == user_id).all()
+    knowledge_ids = db.query(KnowledgeUnit.id).filter(KnowledgeUnit.user_id == user_id).all()
+    tag_ids = db.query(Tag.id).filter(Tag.user_id == user_id).all()
+
+    # Delete capsule dialogues for user's capsules first (foreign key on capsule_id)
+    capsule_id_subq = db.query(Capsule.id).filter(Capsule.user_id == user_id).subquery()
+    db.query(CapsuleDialogue).filter(
+        CapsuleDialogue.capsule_id.in_(capsule_id_subq.select())
+    ).delete(synchronize_session=False)
+
+    # 解除 EmailMessage.knowledge_id 关联，避免外键残留
+    EmailMessage = None
+    try:
+        from app.models.base import EmailMessage
+    except ImportError:
+        try:
+            from app.models.email import EmailMessage
+        except ImportError:
+            EmailMessage = None
+    if EmailMessage is not None and hasattr(EmailMessage, "knowledge_id"):
+        knowledge_id_subq = db.query(KnowledgeUnit.id).filter(KnowledgeUnit.user_id == user_id).subquery()
+        db.query(EmailMessage).filter(
+            EmailMessage.knowledge_id.in_(knowledge_id_subq.select())
+        ).delete(synchronize_session=False)
+
+    # 聊天消息 -> 会话（外键：chat_messages.conversation_id）
+    from app.models.chat import ChatConversation, ChatMessage
+    conv_id_subq = db.query(ChatConversation.id).filter(ChatConversation.user_id == user_id).subquery()
+    db.query(ChatMessage).filter(
+        ChatMessage.conversation_id.in_(conv_id_subq.select())
+    ).delete(synchronize_session=False)
+    db.query(ChatConversation).filter(ChatConversation.user_id == user_id).delete(synchronize_session=False)
+
+    # 标签关联（content_tags.tag_id 外键指向 tags，必须先于 tags 删除；
+    # 同时按内容 id 清掉指向该用户笔记/剪藏/知识单元的关联行）
+    from app.models.base import content_tags, Embedding
+    from sqlalchemy import or_ as _or
+    ct_conditions = []
+    for ids, ctype in ((note_ids, "note"), (clip_ids, "clip"), (knowledge_ids, "knowledge")):
+        id_list = [row[0] for row in ids]
+        if id_list:
+            ct_conditions.append(
+                (content_tags.c.content_type == ctype) & content_tags.c.content_id.in_(id_list)
+            )
+    tag_id_list = [row[0] for row in tag_ids]
+    if tag_id_list:
+        ct_conditions.append(content_tags.c.tag_id.in_(tag_id_list))
+    if ct_conditions:
+        db.execute(content_tags.delete().where(_or(*ct_conditions)))
+
+    # 向量（按 user_id 归属，含块向量）
+    db.query(Embedding).filter(Embedding.user_id == user_id).delete(synchronize_session=False)
+
+    # Delete user content
+    db.query(Note).filter(Note.user_id == user_id).delete(synchronize_session=False)
+    db.query(Capsule).filter(Capsule.user_id == user_id).delete(synchronize_session=False)
+    db.query(BrowserClip).filter(BrowserClip.user_id == user_id).delete(synchronize_session=False)
+    db.query(KnowledgeUnit).filter(KnowledgeUnit.user_id == user_id).delete(synchronize_session=False)
+    db.query(Tag).filter(Tag.user_id == user_id).delete(synchronize_session=False)
+    db.query(StickyNote).filter(StickyNote.user_id == user_id).delete(synchronize_session=False)
+    db.query(Reminder).filter(Reminder.user_id == user_id).delete(synchronize_session=False)
+    db.query(ReadLaterItem).filter(ReadLaterItem.user_id == user_id).delete(synchronize_session=False)
+    db.query(Document).filter(Document.user_id == user_id).delete(synchronize_session=False)
+    db.query(RssEntry).filter(RssEntry.user_id == user_id).delete(synchronize_session=False)
+    db.query(RssFeed).filter(RssFeed.user_id == user_id).delete(synchronize_session=False)
 
 
 def _row_to_dict(row: Any) -> Dict[str, Any]:
@@ -271,6 +354,15 @@ async def import_user_data_endpoint(
     data = payload.get("data") if isinstance(payload, dict) else None
     if not isinstance(data, dict):
         raise HTTPException(status_code=400, detail="格式不正确：缺少 data 字段")
+    # 存储型 XSS 防护：导入通道与 notes.py 创建/更新同口径，笔记标题/正文写入前转义
+    from app.core.xss_sanitizer import sanitize_note_input
+    for row in data.get("notes") or []:
+        if isinstance(row, dict) and (isinstance(row.get("title"), str) or isinstance(row.get("content"), str)):
+            safe_title, safe_content = sanitize_note_input(row.get("title"), row.get("content"))
+            if isinstance(row.get("title"), str):
+                row["title"] = safe_title
+            if isinstance(row.get("content"), str):
+                row["content"] = safe_content
     stats = import_user_data(db, current_user.id, data)
     return {"success": True, **stats}
 
@@ -282,23 +374,8 @@ async def clear_user_data(
 ):
     user_id = current_user.id
 
-    # Delete capsule dialogues for user's capsules first (foreign key on capsule_id)
-    capsule_ids = [row[0] for row in db.query(Capsule.id).filter(Capsule.user_id == user_id).all()]
-    if capsule_ids:
-        db.query(CapsuleDialogue).filter(CapsuleDialogue.capsule_id.in_(capsule_ids)).delete(synchronize_session=False)
-
-    # Delete user content
-    db.query(Note).filter(Note.user_id == user_id).delete(synchronize_session=False)
-    db.query(Capsule).filter(Capsule.user_id == user_id).delete(synchronize_session=False)
-    db.query(BrowserClip).filter(BrowserClip.user_id == user_id).delete(synchronize_session=False)
-    db.query(KnowledgeUnit).filter(KnowledgeUnit.user_id == user_id).delete(synchronize_session=False)
-    db.query(Tag).filter(Tag.user_id == user_id).delete(synchronize_session=False)
-    db.query(StickyNote).filter(StickyNote.user_id == user_id).delete(synchronize_session=False)
-    db.query(Reminder).filter(Reminder.user_id == user_id).delete(synchronize_session=False)
-    db.query(ReadLaterItem).filter(ReadLaterItem.user_id == user_id).delete(synchronize_session=False)
-    db.query(Document).filter(Document.user_id == user_id).delete(synchronize_session=False)
-    db.query(RssEntry).filter(RssEntry.user_id == user_id).delete(synchronize_session=False)
-    db.query(RssFeed).filter(RssFeed.user_id == user_id).delete(synchronize_session=False)
+    # 与注销同口径的内容硬删（BUG-Y06 抽出共用，含 content_tags/embeddings/chat 清理）
+    _delete_user_content(db, user_id)
 
     # Reset storage usage
     current_user.storage_used = 0

@@ -23,6 +23,7 @@ class User(Base):
     mfa_enabled = Column(Boolean, default=False)
     settings = Column(Text, default='{}')
     active_brain = Column(String, default="personal")
+    token_version = Column(Integer, default=0)
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
     tenant_id = Column(String)

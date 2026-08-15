@@ -114,6 +114,9 @@ async def lifespan(app: FastAPI):
         if 'active_brain' not in columns:
             with engine.begin() as conn:
                 conn.execute(text("ALTER TABLE users ADD COLUMN active_brain TEXT DEFAULT 'personal'"))
+        if 'token_version' not in columns:
+            with engine.begin() as conn:
+                conn.execute(text("ALTER TABLE users ADD COLUMN token_version INTEGER DEFAULT 0"))
     
     # Ensure graph_edges columns exist
     if 'graph_edges' in inspector.get_table_names():
@@ -199,6 +202,12 @@ async def lifespan(app: FastAPI):
     from app.services import graphify_service as _gfs
     _gfs.register_evolve_listener()
 
+    # 笔记向量化（BUG-R02）：事件驱动（笔记新增/更新/删除 after_commit → 后台重嵌）
+    from app.services import note_embedding_service as _nes
+    _nes.register_note_embedding_listener()
+    # 存量回填：监听就绪后后台补嵌缺向量覆盖的 active 笔记（幂等，每次启动只跑一轮）
+    _nes.start_backfill_once()
+
     yield
     # Shutdown
     from app.services.plugin_scheduler import shutdown_scheduler
@@ -206,11 +215,18 @@ async def lifespan(app: FastAPI):
     from app.services.rss_scheduler import shutdown_rss_scheduler
     shutdown_rss_scheduler()
 
+# 生产关闭交互式 API 文档：/docs /redoc /openapi.json 公开会泄露全部端点清单
+# （QA BUG-003，最小暴露原则）；本地/测试环境 ENV!=production 照常开启
+_is_prod = str(settings.ENV or "").strip().lower() == "production"
+
 app = FastAPI(
     title="Qianji API",
     description="AI-enhanced personal knowledge management system",
     version="0.1.0",
     lifespan=lifespan,
+    docs_url=None if _is_prod else "/docs",
+    redoc_url=None if _is_prod else "/redoc",
+    openapi_url=None if _is_prod else "/openapi.json",
 )
 
 register_exception_handlers(app)

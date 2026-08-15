@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from typing import List, Optional
+import asyncio
 import uuid
 import json
 import os
@@ -20,6 +21,13 @@ from app.schemas.knowledge import (
 from app.services.llm_service import chat_completion
 from app.services import tag_service
 from app.api.v1.endpoints.graph import auto_link_knowledge
+from app.utils.search import build_search_filter
+
+async def _auto_link_knowledge_async(db: Session, unit, user_id: str) -> None:
+    """auto_link_knowledge 是同步全表扫描，用线程池卸载避免阻塞事件循环。"""
+    loop = asyncio.get_running_loop()
+    await loop.run_in_executor(None, auto_link_knowledge, db, unit, user_id)
+
 
 router = APIRouter()
 
@@ -328,7 +336,8 @@ async def list_knowledge(
     if min_relevance is not None:
         query = query.filter(KnowledgeUnit.personal_relevance_score >= min_relevance)
     if q:
-        query = query.filter(KnowledgeUnit.content_raw.ilike(f"%{q}%"))
+        # 中文长句 bigram 兜底，同 notes 列表口径（BUG-N01）
+        query = query.filter(build_search_filter(q, KnowledgeUnit.content_raw))
 
     if tag_ids:
         tag_id_list = [t.strip() for t in tag_ids.split(",") if t.strip()]
@@ -438,7 +447,7 @@ async def add_knowledge(
     
     # Auto-link graph edges
     try:
-        await auto_link_knowledge(db, unit, current_user.id)
+        await _auto_link_knowledge_async(db, unit, current_user.id)
         db.commit()
     except Exception as e:
         print(f"Auto-link failed for knowledge {unit.id}: {e}")
@@ -650,7 +659,7 @@ async def update_knowledge(
     db.refresh(unit)
     
     try:
-        await auto_link_knowledge(db, unit, current_user.id)
+        await _auto_link_knowledge_async(db, unit, current_user.id)
         db.commit()
     except Exception as e:
         print(f"Auto-link failed for knowledge {unit.id}: {e}")
@@ -750,7 +759,7 @@ async def verify_knowledge(
     
     # Re-compute auto links after verification
     try:
-        await auto_link_knowledge(db, unit, current_user.id)
+        await _auto_link_knowledge_async(db, unit, current_user.id)
         db.commit()
     except Exception as e:
         print(f"Auto-link failed for knowledge {unit.id}: {e}")

@@ -36,6 +36,28 @@ def _headers_for(user: User) -> dict:
     return {"Authorization": f"Bearer {token}"}
 
 
+def _patch_stream_session(monkeypatch, db_session, calls=None):
+    """/llm/chat 流式生成器内的独立 SessionLocal（生产：请求 session 已被依赖清理关闭）
+    映射到测试会话；close() 空操作以保留测试事务。calls 传入列表可记录工厂调用次数。"""
+
+    class _NoCloseSession:
+        def __init__(self, session):
+            self._session = session
+
+        def __getattr__(self, name):
+            return getattr(self._session, name)
+
+        def close(self):
+            pass
+
+    def _factory():
+        if calls is not None:
+            calls.append(1)
+        return _NoCloseSession(db_session)
+
+    monkeypatch.setattr("app.api.v1.endpoints.llm.SessionLocal", _factory)
+
+
 class TestConversationCRUD:
     def test_create_empty_and_with_title(self, client: TestClient, auth_headers):
         resp = client.post("/api/v1/chat/conversations", headers=auth_headers)
@@ -139,6 +161,7 @@ class TestChatPersistenceHook:
             yield "这是回答。"
 
         monkeypatch.setattr(_svc, "chat", fake_chat)
+        _patch_stream_session(monkeypatch, db_session)
 
         conv = client.post("/api/v1/chat/conversations", headers=auth_headers).json()
         resp = client.post(
@@ -160,6 +183,36 @@ class TestChatPersistenceHook:
         assert detail["messages"][1]["model"] == "qwen2.5:0.5b"
         # 标题取首条用户消息前 20 字
         assert detail["title"] == "什么是 PARA 方法？"
+
+    def test_chat_assistant_saved_via_fresh_stream_session(self, client: TestClient, auth_headers, db_session, test_user, monkeypatch):
+        """BUG-1 回归：带 conversation_id 的聊天，assistant 回答必须在流式生成器内
+        用新建 session 落库——生产里请求作用域的 db/current_user 在生成器执行前
+        已随依赖清理关闭/脱管（DetachedInstanceError），生成器只能持有普通值。"""
+        from app.api.v1.endpoints.llm import llm_service as _svc
+
+        async def fake_chat(**kwargs):
+            yield "完整回答"
+
+        monkeypatch.setattr(_svc, "chat", fake_chat)
+        factory_calls = []
+        _patch_stream_session(monkeypatch, db_session, calls=factory_calls)
+
+        conv = client.post("/api/v1/chat/conversations", headers=auth_headers).json()
+        resp = client.post(
+            "/api/v1/llm/chat",
+            headers=auth_headers,
+            json={
+                "message": "什么是 PARA 方法？",
+                "preferred_model": "qwen2.5:0.5b",
+                "conversation_id": conv["id"],
+            },
+        )
+        assert resp.status_code == 200
+        assert factory_calls, "流式生成器必须使用独立 session（SessionLocal 工厂未被调用）"
+
+        detail = client.get(f"/api/v1/chat/conversations/{conv['id']}", headers=auth_headers).json()
+        assert [m["role"] for m in detail["messages"]] == ["user", "assistant"]
+        assert detail["messages"][1]["content"] == "完整回答"
 
     def test_chat_without_conversation_id_unchanged(self, client: TestClient, auth_headers, db_session, test_user, monkeypatch):
         """不传 conversation_id：行为与旧版一致，不落库。"""

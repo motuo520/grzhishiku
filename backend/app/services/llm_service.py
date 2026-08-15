@@ -189,6 +189,10 @@ class LLMService:
             "active_model": ai.get("active_model"),
             "ollama_url": ai.get("ollama_url"),
         }
+        # provider 大小写归一化：设置里可能存的是 "Ollama" 等形态，
+        # 下游 ModelProvider(...) 构造与 .value 比较都按小写 slug 口径
+        if cfg["active_provider"]:
+            cfg["active_provider"] = str(cfg["active_provider"]).strip().lower()
         # 校验用户提供的 Ollama URL 协议/主机，防 SSRF/内网探测；非法则回退默认
         user_ollama_url = cfg.get("ollama_url")
         if user_ollama_url:

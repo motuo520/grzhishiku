@@ -2,9 +2,10 @@ import logging
 
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
-from sqlalchemy import or_, and_
+from sqlalchemy import and_
 from typing import List, Optional
 from datetime import datetime, timedelta
+import asyncio
 import uuid
 import json
 
@@ -33,10 +34,17 @@ class BatchCreateResult(PydanticBaseModel):
 from app.schemas.tag import TagItem
 from app.api.v1.endpoints.graph import auto_link_note
 from app.services import tag_service
+from app.utils.search import build_search_filter
 
 router = APIRouter()
 
 logger = logging.getLogger(__name__)
+
+
+async def _auto_link_note_async(db: Session, note: Note, user_id: str) -> None:
+    """auto_link_note 是同步的全表扫描（O(N)），用线程池卸载避免阻塞事件循环。"""
+    loop = asyncio.get_running_loop()
+    await loop.run_in_executor(None, auto_link_note, db, note, user_id)
 
 
 def _get_note_tags(db: Session, note_id: str) -> List[TagItem]:
@@ -109,8 +117,8 @@ async def list_notes(
         query = query.filter(Note.brain_side == brain_side)
     
     if q:
-        search = f"%{q}%"
-        query = query.filter(or_(Note.title.ilike(search), Note.content.ilike(search)))
+        # 中文长句无空格分词，整串 ilike 之外加 bigram 命中比例兜底（BUG-N01）
+        query = query.filter(build_search_filter(q, Note.title, Note.content))
     
     if tag_ids:
         tag_id_list = [t.strip() for t in tag_ids.split(",") if t.strip()]
@@ -169,7 +177,7 @@ async def create_note(
 
     # Auto-link graph edges
     try:
-        await auto_link_note(db, note, current_user.id)
+        await _auto_link_note_async(db, note, current_user.id)
     except Exception as e:
         # Non-blocking: don't fail note creation if auto-link fails
         logger.warning(f"Auto-link failed for note {note.id}: {e}")
@@ -237,7 +245,7 @@ async def update_note(
     
     # Re-compute auto links after update
     try:
-        await auto_link_note(db, note, current_user.id)
+        await _auto_link_note_async(db, note, current_user.id)
         db.commit()
     except Exception as e:
         logger.warning(f"Auto-link failed for note {note.id}: {e}")
@@ -350,7 +358,7 @@ async def batch_create_notes(
             _sync_capsule_refs(note, db)
             db.flush()
             try:
-                await auto_link_note(db, note, current_user.id)
+                await _auto_link_note_async(db, note, current_user.id)
             except Exception as e:
                 logger.warning(f"Auto-link failed for note {note.id}: {e}")
             db.refresh(note)

@@ -2,9 +2,9 @@ import logging
 
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
-from sqlalchemy import or_
 from typing import List, Optional
 from datetime import datetime
+import asyncio
 import uuid
 
 from app.core.database import get_db
@@ -43,10 +43,17 @@ class UrlMetadata(PydanticBaseModel):
     excerpt: Optional[str] = None
     error: Optional[str] = None
 from app.api.v1.endpoints.graph import auto_link_clip, auto_link_knowledge
+from app.utils.search import build_search_filter
 
 router = APIRouter()
 
 logger = logging.getLogger(__name__)
+
+
+async def _auto_link_async(link_fn, db: Session, obj, user_id: str) -> None:
+    """auto_link_* 是同步的全表扫描，用线程池卸载避免阻塞事件循环。"""
+    loop = asyncio.get_running_loop()
+    await loop.run_in_executor(None, link_fn, db, obj, user_id)
 
 
 def _build_clip_response(clip: BrowserClip, db: Session) -> dict:
@@ -81,8 +88,8 @@ async def list_clips(
         query = query.filter(BrowserClip.domain == domain)
     
     if q:
-        search = f"%{q}%"
-        query = query.filter(or_(BrowserClip.title.ilike(search), BrowserClip.excerpt.ilike(search)))
+        # 中文长句 bigram 兜底，同 notes 列表口径（BUG-N01）
+        query = query.filter(build_search_filter(q, BrowserClip.title, BrowserClip.excerpt))
     
     if tag_ids:
         tag_id_list = [t.strip() for t in tag_ids.split(",") if t.strip()]
@@ -144,7 +151,7 @@ async def create_clip(
 
     # Auto-link graph edges
     try:
-        await auto_link_clip(db, clip, current_user.id)
+        await _auto_link_async(auto_link_clip, db, clip, current_user.id)
     except Exception as e:
         logger.warning(f"Auto-link failed for clip {clip.id}: {e}")
 
@@ -250,7 +257,7 @@ async def save_clip_to_knowledge(
         db.refresh(unit)
     
     try:
-        await auto_link_knowledge(db, unit, current_user.id)
+        await _auto_link_async(auto_link_knowledge, db, unit, current_user.id)
         db.commit()
     except Exception as e:
         logger.warning(f"Auto-link failed for knowledge {unit.id}: {e}")
@@ -374,7 +381,7 @@ async def batch_create_clips(
                     tag_inputs=clip_data.tags,
                 )
             try:
-                await auto_link_clip(db, clip, current_user.id)
+                await _auto_link_async(auto_link_clip, db, clip, current_user.id)
             except Exception as e:
                 logger.warning(f"Auto-link failed for clip {clip.id}: {e}")
             db.refresh(clip)
@@ -399,4 +406,9 @@ async def fetch_url_metadata(
     request: UrlMetadataRequest,
     current_user: User = Depends(get_current_user)
 ):
-    return [_fetch_url_metadata(url) for url in request.urls]
+    # _fetch_url_metadata 是同步 urllib 抓取（带 8s 超时），慢页会拖死事件循环；
+    # 参照 _auto_link_async 的 run_in_executor 模式卸载到线程池并发执行。
+    loop = asyncio.get_running_loop()
+    return list(await asyncio.gather(*[
+        loop.run_in_executor(None, _fetch_url_metadata, url) for url in request.urls
+    ]))

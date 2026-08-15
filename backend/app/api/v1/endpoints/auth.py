@@ -63,13 +63,16 @@ class ChangePasswordRequest(BaseModel):
 
 def _create_token_pair(user: User) -> TokenResponse:
     """签发 access/refresh 双 token；token_use 声明区分，防止 access token 无限续期。"""
+    token_version = int(getattr(user, "token_version", None) or 0)
     access_token = create_access_token(
         data={"sub": user.id, "email": user.email, "token_use": "access"},
         expires_delta=timedelta(days=7),
+        token_version=token_version,
     )
     refresh_token = create_access_token(
         data={"sub": user.id, "email": user.email, "token_use": "refresh"},
         expires_delta=timedelta(days=30),
+        token_version=token_version,
     )
     return TokenResponse(
         access_token=access_token,
@@ -86,14 +89,17 @@ async def register(user_data: UserRegister, db: Session = Depends(get_db)):
     if not sys_config.registration_open:
         raise HTTPException(status_code=403, detail="Registration is currently closed")
 
-    existing = db.query(User).filter(User.email == user_data.email).first()
+    # 邮箱统一归一化（strip+lower），避免 Foo@x.com / foo@x.com 注册出重复账号
+    email = user_data.email.strip().lower()
+
+    existing = db.query(User).filter(User.email == email).first()
     if existing:
         raise HTTPException(status_code=400, detail="Email already registered")
 
     user = User(
         id=str(uuid.uuid4()),
-        email=user_data.email,
-        name=user_data.email.split('@')[0],
+        email=email,
+        name=email.split('@')[0],
         password_hash=get_password_hash(user_data.password),
     )
     db.add(user)
@@ -110,9 +116,14 @@ async def register(user_data: UserRegister, db: Session = Depends(get_db)):
     return _create_token_pair(user)
 
 @router.post("/login", response_model=TokenResponse, summary="User login", description="Authenticate with email and password. Returns an access token.")
-async def login(user_data: UserLogin, db: Session = Depends(get_db)):
-    user = db.query(User).filter(User.email == user_data.email).first()
+async def login(user_data: UserLogin, request: Request, db: Session = Depends(get_db)):
+    # 与注册口径一致：邮箱归一化后查询（strip+lower）
+    email = user_data.email.strip().lower()
+    user = db.query(User).filter(User.email == email).first()
     if not user or not verify_password(user_data.password, user.password_hash):
+        # BUG-S03：登录失败落安全日志；只记邮箱+IP，不记密码
+        from app.core.security import security_logger, _client_ip
+        security_logger.warning("security_event type=login_failed ip=%s email=%s", _client_ip(request), email)
         raise HTTPException(status_code=401, detail="Incorrect email or password")
     if user.status != "active":
         raise HTTPException(status_code=403, detail="Account disabled")
@@ -141,6 +152,11 @@ async def refresh_token(
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
+
+    # 改密/登出会递增 token_version，旧 refresh token 一并失效
+    if int(payload.get("token_version") or 0) != int(getattr(user, "token_version", None) or 0):
+        raise HTTPException(status_code=401, detail="Token has been revoked")
+
     if user.status != "active":
         raise HTTPException(status_code=403, detail="Account disabled")
 
@@ -149,7 +165,8 @@ async def refresh_token(
 @router.post("/logout", summary="User logout", description="Invalidate the current access token. Client should discard the token.")
 async def logout(
     request: Request,
-    credentials: HTTPAuthorizationCredentials = Depends(security)
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    db: Session = Depends(get_db)
 ):
     if not credentials:
         raise HTTPException(status_code=401, detail="Not authenticated")
@@ -158,6 +175,14 @@ async def logout(
     if not payload:
         raise HTTPException(status_code=401, detail="Invalid token")
     
+    # 服务端使旧 token 失效：递增 token_version，之后所有旧 access/refresh token 均被拒绝
+    user_id = payload.get("sub")
+    if user_id:
+        user = db.query(User).filter(User.id == user_id).first()
+        if user:
+            user.token_version = int(getattr(user, "token_version", None) or 0) + 1
+            db.commit()
+
     return {"success": True, "message": "Logged out successfully"}
 
 @router.post("/change-password", summary="Change password", description="Change the current user's password.")
@@ -187,6 +212,8 @@ async def change_password(
         raise HTTPException(status_code=400, detail="New password must be at least 8 characters.")
 
     user.password_hash = get_password_hash(req.new_password)
+    # 改密后使所有旧 token（含本次请求所用 access token）失效，强制重登
+    user.token_version = int(getattr(user, "token_version", None) or 0) + 1
     db.commit()
     db.refresh(user)
     return {"success": True, "message": "Password updated successfully."}

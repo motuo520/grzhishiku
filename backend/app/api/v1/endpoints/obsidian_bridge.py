@@ -24,6 +24,7 @@ except ImportError:  # pragma: no cover - pyyaml 不可用时降级为不解析 
 
 from app.core.database import get_db
 from app.core.security import get_current_user
+from app.core.xss_sanitizer import sanitize_note_input
 from app.models.base import User, Note, KnowledgeUnit, GraphEdge, Tag, content_tags
 
 router = APIRouter()
@@ -178,6 +179,8 @@ async def import_obsidian_vault(
             continue
 
         meta, body = _parse_frontmatter(raw)
+        # 存储型 XSS 防护：与 notes.py 创建/更新同口径，写入前转义原始 HTML
+        safe_title, safe_body = sanitize_note_input(title, body)
         wiki_targets = [m.group(1).strip() for m in WIKI_LINK_RE.finditer(body)]
         forward_links = json.dumps(wiki_targets, ensure_ascii=False)
         aliases = _as_str_list(meta.get("aliases")) + _as_str_list(meta.get("alias"))
@@ -185,12 +188,12 @@ async def import_obsidian_vault(
 
         note = (
             db.query(Note)
-            .filter(Note.user_id == current_user.id, Note.title == title)
+            .filter(Note.user_id == current_user.id, Note.title == safe_title)
             .first()
         )
         if note:
             # 幂等：重复导入 = 增量同步，更新内容但不动 created_at
-            note.content = body
+            note.content = safe_body
             note.forward_links = forward_links
             note.content_format = "markdown"
             if note.status != "active":
@@ -200,8 +203,8 @@ async def import_obsidian_vault(
             note = Note(
                 id=str(uuid.uuid4()),
                 user_id=current_user.id,
-                title=title,
-                content=body,
+                title=safe_title,
+                content=safe_body,
                 content_format="markdown",
                 brain_side="personal",
                 origin_type="obsidian_import",

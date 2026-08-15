@@ -1,6 +1,7 @@
 """Pydantic schemas for LLM endpoints"""
 
 from pydantic import BaseModel, Field
+from app.schemas.base import BaseModel  # BUG-A01：统一 naive datetime 按 UTC 序列化
 from typing import Optional, List, Dict
 from enum import Enum
 

@@ -43,6 +43,9 @@ def set_sqlite_pragma(dbapi_conn, connection_record):
     cursor.execute("PRAGMA foreign_keys=ON")
     cursor.execute("PRAGMA journal_mode=WAL")
     cursor.execute("PRAGMA cache_size=-64000")  # 64MB page cache
+    # 写锁等待 5s 再报错：多写者（请求路径+后台监听/回填线程）并发时
+    # 立即报 database is locked 会把删除等写操作打 500（QA BUG-009 生产实捕）
+    cursor.execute("PRAGMA busy_timeout=5000")
     cursor.close()
 
 def get_db() -> Session:
