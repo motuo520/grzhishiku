@@ -224,6 +224,10 @@ async def delete_account(
     user_id = current_user.id
     _delete_user_content(db, user_id)
 
+    # 账号级关联（同步设备）只随注销清，/me/data 保留（开源版无云端绑定/租户成员表）
+    from app.models.sync import SyncDevice
+    db.query(SyncDevice).filter(SyncDevice.user_id == user_id).delete(synchronize_session=False)
+
     # Soft delete: mark status as deleted
     current_user.status = "deleted"
     current_user.email = f"deleted_{current_user.id}@deleted.local"
@@ -236,10 +240,14 @@ def _delete_user_content(db: Session, user_id: str) -> None:
     """硬删一个用户的全部内容数据（不提交事务，由调用方统一 commit）。
 
     覆盖：内容表（notes/capsules/clips/knowledge/sticky_notes/reminders/
-    read_later/documents/rss）、标签及其关联（content_tags）、向量
-    （embeddings）、聊天会话与消息（chat_conversations/chat_messages）。
-    删除顺序考虑外键：先删依赖子表（dialogues/email 关联/content_tags/
-    chat_messages），再删主表。
+    read_later/documents/rss/folders）、标签及其关联（content_tags）、向量
+    （embeddings）、聊天会话与消息（chat_conversations/chat_messages）、
+    注意力/认知/涌现/图谱/知识流水线等功能数据、邮件与社媒账号消息、
+    社区帖子、支持工单及回复、同步与备份数据（data_packages/
+    user_cloud_drives/sync_operations/sync_snapshots）。
+    不碰：账号级关联（sync_devices，仅注销时清）。
+    删除顺序考虑外键：先删依赖子表（dialogues/email 消息/content_tags/
+    chat_messages/工单回复），再删主表。
     """
     # --- 先收集内容 id（主表删除后就查不到了），用于清 content_tags 关联 ---
     note_ids = db.query(Note.id).filter(Note.user_id == user_id).all()
@@ -253,20 +261,12 @@ def _delete_user_content(db: Session, user_id: str) -> None:
         CapsuleDialogue.capsule_id.in_(capsule_id_subq.select())
     ).delete(synchronize_session=False)
 
-    # 解除 EmailMessage.knowledge_id 关联，避免外键残留
-    EmailMessage = None
-    try:
-        from app.models.base import EmailMessage
-    except ImportError:
-        try:
-            from app.models.email import EmailMessage
-        except ImportError:
-            EmailMessage = None
-    if EmailMessage is not None and hasattr(EmailMessage, "knowledge_id"):
-        knowledge_id_subq = db.query(KnowledgeUnit.id).filter(KnowledgeUnit.user_id == user_id).subquery()
-        db.query(EmailMessage).filter(
-            EmailMessage.knowledge_id.in_(knowledge_id_subq.select())
-        ).delete(synchronize_session=False)
+    # 邮件账号与消息全量清（含邮箱凭据；原实现只删关联了知识单元的消息，残留严重）
+    from app.models.messaging import EmailAccount, EmailMessage, SocialAccount, SocialMessage
+    db.query(EmailMessage).filter(EmailMessage.user_id == user_id).delete(synchronize_session=False)
+    db.query(EmailAccount).filter(EmailAccount.user_id == user_id).delete(synchronize_session=False)
+    db.query(SocialMessage).filter(SocialMessage.user_id == user_id).delete(synchronize_session=False)
+    db.query(SocialAccount).filter(SocialAccount.user_id == user_id).delete(synchronize_session=False)
 
     # 聊天消息 -> 会话（外键：chat_messages.conversation_id）
     from app.models.chat import ChatConversation, ChatMessage
@@ -308,6 +308,38 @@ def _delete_user_content(db: Session, user_id: str) -> None:
     db.query(Document).filter(Document.user_id == user_id).delete(synchronize_session=False)
     db.query(RssEntry).filter(RssEntry.user_id == user_id).delete(synchronize_session=False)
     db.query(RssFeed).filter(RssFeed.user_id == user_id).delete(synchronize_session=False)
+
+    # --- 功能数据与各模块残留（移植自主仓 08-16 补强：原实现只删核心内容表，以下全漏）---
+    from app.models import base as _m
+    from app.models.community import CommunityPost
+    from app.models.storage import DataPackage, UserCloudDrive
+    from app.models.sync import SyncOperation, SyncSnapshot
+
+    # 支持工单：先删回复（含管理员回复，ticket_id 外键），再删工单
+    ticket_id_subq = db.query(_m.SupportTicket.id).filter(_m.SupportTicket.user_id == user_id).subquery()
+    db.query(_m.SupportTicketReply).filter(
+        _m.SupportTicketReply.ticket_id.in_(ticket_id_subq.select())
+    ).delete(synchronize_session=False)
+
+    feature_models = [
+        # 注意力/深工
+        _m.AttentionActivity, _m.AttentionCategory, _m.AttentionGuardianRule,
+        _m.AttentionRation, _m.DeepWorkSession,
+        # 认知
+        _m.BiasDetectionRecord, _m.DecisionAudit, _m.FutureSimulation,
+        _m.CognitiveChallenge, _m.CognitiveWeeklyReport,
+        # 涌现/图谱（开源版无 graph_build_state 表，不补）
+        _m.EmergenceResult, _m.EmergenceIdea, _m.EmergenceCanvas,
+        _m.GraphEdge,
+        # 知识流水线与回顾
+        _m.PracticeRecord, _m.PipelineTransition, _m.DailyReview, _m.ContextGuide,
+        _m.ExperimentLog, _m.DepthCheckLog, _m.EvolutionReflection,
+        # 文件夹/社区/支持/同步与备份数据
+        _m.Folder, CommunityPost, _m.SupportTicket,
+        DataPackage, UserCloudDrive, SyncOperation, SyncSnapshot,
+    ]
+    for model in feature_models:
+        db.query(model).filter(model.user_id == user_id).delete(synchronize_session=False)
 
 
 def _row_to_dict(row: Any) -> Dict[str, Any]:

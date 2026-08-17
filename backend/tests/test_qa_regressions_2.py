@@ -5,6 +5,7 @@ S03 安全事件日志、Y06 注销内容硬删、A01 时间戳 UTC 标记、P06
 import logging
 import threading
 import uuid
+from datetime import datetime
 
 import pytest
 from fastapi.testclient import TestClient
@@ -12,8 +13,11 @@ from fastapi.testclient import TestClient
 from app.models.base import (
     Note, BrowserClip, KnowledgeUnit, Capsule, Tag, RssFeed, RssEntry,
     ReadLaterItem, Embedding, content_tags,
+    AttentionActivity, GraphEdge, SupportTicket, SupportTicketReply, Folder,
 )
 from app.models.chat import ChatConversation, ChatMessage
+from app.models.messaging import EmailAccount, EmailMessage
+from app.models.sync import SyncSnapshot, SyncDevice
 
 
 class TestChineseBigramSearch:
@@ -166,6 +170,18 @@ class TestAccountDeleteHardDeletesContent:
         db_session.add(Embedding(id=emb_id, user_id=uid, content_type="note", content_id=note_id, embedding_json="[0.1]"))
         db_session.add(ChatConversation(id=conv_id, user_id=uid, title="会话"))
         db_session.add(ChatMessage(id=msg_id, conversation_id=conv_id, role="user", content="问"))
+        # 主仓 08-16 补删覆盖适配：功能数据 / 邮件账号 / 工单 / 文件夹 / 同步与账号级关联
+        # （开源版无 CloudBinding/TenantMember/GraphBuildState，settings 无 BYOK key 不抹）
+        ticket_id, reply_id, email_acc_id = (str(uuid.uuid4()) for _ in range(3))
+        db_session.add(AttentionActivity(id=str(uuid.uuid4()), user_id=uid, category_id="c1", start_time=datetime.utcnow()))
+        db_session.add(GraphEdge(id=str(uuid.uuid4()), user_id=uid, source_id=note_id, target_id=ku_id, edge_type="link"))
+        db_session.add(SupportTicket(id=ticket_id, user_id=uid, user_email="t@x.example", subject="s", description="d"))
+        db_session.add(SupportTicketReply(id=reply_id, ticket_id=ticket_id, user_id="admin", user_email="a@x.example", is_admin=True, content="r"))
+        db_session.add(EmailAccount(id=email_acc_id, user_id=uid, email_address="t@x.example", provider="imap"))
+        db_session.add(EmailMessage(id=str(uuid.uuid4()), user_id=uid, account_id=email_acc_id, message_uid="u1", subject="m"))
+        db_session.add(SyncSnapshot(id=str(uuid.uuid4()), user_id=uid, device_id="d1", s3_key=str(uuid.uuid4()), salt="s", iv="i"))
+        db_session.add(SyncDevice(id=str(uuid.uuid4()), user_id=uid, name="dev", fingerprint="fp1"))
+        db_session.add(Folder(id=str(uuid.uuid4()), user_id=uid, brain_side="personal", name="夹"))
         db_session.commit()
         db_session.execute(content_tags.insert().values(
             content_id=note_id, content_type="note", tag_id=tag_id,
@@ -179,10 +195,14 @@ class TestAccountDeleteHardDeletesContent:
 
         db_session.expire_all()
         for model in (Note, BrowserClip, KnowledgeUnit, Capsule, Tag,
-                      ReadLaterItem, RssFeed, RssEntry, Embedding, ChatConversation):
+                      ReadLaterItem, RssFeed, RssEntry, Embedding, ChatConversation,
+                      AttentionActivity, GraphEdge, SupportTicket, EmailAccount,
+                      EmailMessage, SyncSnapshot, SyncDevice, Folder):
             remaining = db_session.query(model).filter(model.user_id == uid).count()
             assert remaining == 0, f"{model.__tablename__} 注销后残留 {remaining} 行"
         assert db_session.query(ChatMessage).filter(ChatMessage.conversation_id == conv_id).count() == 0
+        # 工单下的管理员回复也要清
+        assert db_session.query(SupportTicketReply).filter(SupportTicketReply.ticket_id == ticket_id).count() == 0
         assert db_session.execute(
             content_tags.select().where(content_tags.c.tag_id == tag_id)
         ).first() is None, "content_tags 关联注销后残留"
