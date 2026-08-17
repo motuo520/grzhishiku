@@ -50,6 +50,7 @@ class KnowledgeUnit(Base):
     evolution_stage = Column(String, default="collected")
     attached_practice_ids = Column(Text, default='[]')
     pipeline_stage = Column(String, default="raw")
+    folder_id = Column(String, index=True)  # 所属文件夹，空=未归档（与笔记共用同一套树）
     content_subtype = Column(String, default="note")
     source_id = Column(String)
     source_content_type = Column(String)

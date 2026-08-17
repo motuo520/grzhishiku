@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from app.api.v1.endpoints import auth, users, capsules, attention, knowledge, graph, graphify, llm, brain, notes, clips, tags, cognitive, emergence, support, rss, email, social, read_later, documents, jianghu, pipeline, plugins, storage, system, embodied, community, sticky_notes, sync, obsidian_bridge, chat
+from app.api.v1.endpoints import auth, users, capsules, attention, knowledge, graph, graphify, llm, brain, notes, folders, clips, tags, cognitive, emergence, support, rss, email, social, read_later, documents, jianghu, pipeline, plugins, storage, system, embodied, community, sticky_notes, sync, obsidian_bridge, chat
 
 api_router = APIRouter()
 
@@ -13,6 +13,7 @@ api_router.include_router(graphify.router, prefix="/graphify", tags=["Graphify"]
 api_router.include_router(llm.router, prefix="/llm", tags=["LLM"])
 api_router.include_router(brain.router, prefix="/brain", tags=["Brain"])
 api_router.include_router(notes.router, prefix="/notes", tags=["Notes"])
+api_router.include_router(folders.router, prefix="/folders", tags=["Folders"])
 api_router.include_router(clips.router, prefix="/clips", tags=["Clips"])
 api_router.include_router(tags.router, prefix="/tags", tags=["Tags"])
 api_router.include_router(cognitive.router, prefix="/cognitive", tags=["Cognitive"])

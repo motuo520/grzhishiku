@@ -2,11 +2,11 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { notesApi, NoteUpdateData, Note } from '@/api/notes';
 import { invalidateContentQueries } from '@/utils/invalidateContent';
 
-export const useNotes = (filters?: { q?: string; tag_ids?: string; brain_side?: string; limit?: number }) => {
+export const useNotes = (filters?: { q?: string; tag_ids?: string; brain_side?: string; folder_id?: string; limit?: number }) => {
   const queryClient = useQueryClient();
 
   const { data: notes, isLoading } = useQuery({
-    queryKey: ['notes', filters?.q, filters?.tag_ids, filters?.brain_side, filters?.limit],
+    queryKey: ['notes', filters?.q, filters?.tag_ids, filters?.brain_side, filters?.folder_id, filters?.limit],
     queryFn: async () => {
       // 后端单页上限 100；请求量超出时自动分页拉取并合并（如进化轨迹要全量笔记）
       const limit = filters?.limit;

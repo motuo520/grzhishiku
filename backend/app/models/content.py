@@ -87,6 +87,7 @@ class Note(Base):
     evolution_stage = Column(String, default="collected")
     attached_practice_ids = Column(Text, default='[]')
     pipeline_stage = Column(String, default="raw")
+    folder_id = Column(String, index=True)  # 所属文件夹，空=未归档
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
 

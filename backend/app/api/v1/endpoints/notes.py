@@ -2,7 +2,7 @@ import logging
 
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
-from sqlalchemy import and_
+from sqlalchemy import and_, or_
 from typing import List, Optional
 from datetime import datetime, timedelta
 import asyncio
@@ -13,7 +13,7 @@ from app.core.database import get_db
 from app.core.security import get_current_user
 from app.core.xss_sanitizer import sanitize_note_input
 from app.services.quota_service import QuotaService
-from app.models.base import User, Note, Tag, content_tags
+from app.models.base import User, Note, Tag, Folder, content_tags
 from app.schemas.note import NoteCreate, NoteUpdate, NoteResponse
 from pydantic import BaseModel as PydanticBaseModel
 
@@ -33,6 +33,7 @@ class BatchCreateResult(PydanticBaseModel):
     skipped: List[dict] = []
 from app.schemas.tag import TagItem
 from app.api.v1.endpoints.graph import auto_link_note
+from app.api.v1.endpoints.folders import validate_folder_assignment
 from app.services import tag_service
 from app.utils.search import build_search_filter
 
@@ -95,6 +96,7 @@ def _build_note_response(note: Note, db: Session) -> dict:
         "evolution_stage": note.evolution_stage or "collected",
         "attached_practice_ids": attached_practice_ids,
         "pipeline_stage": note.pipeline_stage or "raw",
+        "folder_id": note.folder_id,
         "created_at": note.created_at,
         "updated_at": note.updated_at,
     }
@@ -109,12 +111,25 @@ async def list_notes(
     q: Optional[str] = Query(None, description="Search in title or content"),
     tag_ids: Optional[str] = Query(None, description="Filter by comma-separated tag IDs"),
     brain_side: Optional[str] = Query(None, description="Filter by brain side: personal / network / both"),
+    folder_id: Optional[str] = Query(None, description="Filter by folder id; 'none' = 未归档"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
     query = db.query(Note).filter(Note.user_id == current_user.id, Note.status == "active")
-    if brain_side and brain_side != "both":
+    # 带 folder_id 过滤时脑侧由文件夹归属规则约束（夹内笔记天然脑侧兼容），不再做严格等值过滤
+    if brain_side and brain_side != "both" and not folder_id:
         query = query.filter(Note.brain_side == brain_side)
+
+    if folder_id == "none":
+        # 未归档（按查看脑 P）：note.brain_side ∈ {P,'both'} 且（folder_id 为空 或 文件夹不属 P 脑）
+        p = brain_side if brain_side in ("personal", "network") else "personal"
+        own_folder_ids = db.query(Folder.id).filter(
+            Folder.user_id == current_user.id, Folder.brain_side == p
+        )
+        query = query.filter(Note.brain_side.in_([p, "both"]))
+        query = query.filter(or_(Note.folder_id.is_(None), ~Note.folder_id.in_(own_folder_ids)))
+    elif folder_id:
+        query = query.filter(Note.folder_id == folder_id)
     
     if q:
         # 中文长句无空格分词，整串 ilike 之外加 bigram 命中比例兜底（BUG-N01）
@@ -167,6 +182,9 @@ async def create_note(
         pipeline_stage=note_data.pipeline_stage.value if note_data.pipeline_stage else "raw",
         attached_practice_ids='[]',
     )
+    if note_data.folder_id:
+        validate_folder_assignment(db, current_user.id, note_data.brain_side, note_data.folder_id)
+        note.folder_id = note_data.folder_id
     db.add(note)
     db.flush()
 
@@ -238,6 +256,17 @@ async def update_note(
     if note_data.tags is not None:
         _set_note_tags(db, note_id, current_user.id, note_data.tags)
         _sync_capsule_refs(note, db)
+    # folder_id 显式传了才处理（含显式 null = 移出文件夹，未归档）
+    if "folder_id" in note_data.model_fields_set:
+        if note_data.folder_id is not None:
+            target_brain = note_data.brain_side if note_data.brain_side is not None else note.brain_side
+            validate_folder_assignment(db, current_user.id, target_brain, note_data.folder_id)
+        note.folder_id = note_data.folder_id
+    elif note_data.brain_side is not None and note.folder_id:
+        # 单改脑侧的兜底：既有文件夹与新脑侧不兼容时自动移出（未归档），不留跨脑脏数据
+        folder = db.query(Folder).filter(Folder.id == note.folder_id).first()
+        if folder and note.brain_side != "both" and folder.brain_side != note.brain_side:
+            note.folder_id = None
 
     note.updated_at = datetime.now()
     db.commit()

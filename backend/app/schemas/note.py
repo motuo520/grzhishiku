@@ -40,6 +40,7 @@ class NoteCreate(BaseModel):
     personal_relevance_score: Optional[float] = Field(0.5, ge=0, le=1, description="Personal relevance 0-1")
     evolution_stage: Optional[EvolutionStage] = Field(EvolutionStage.COLLECTED, description="Evolution stage")
     pipeline_stage: Optional[PipelineStage] = Field(PipelineStage.RAW, description="Pipeline stage")
+    folder_id: Optional[str] = Field(None, description="所属文件夹 id，空=未归档")
 
 class NoteUpdate(BaseModel):
     title: Optional[str] = Field(None, min_length=1, max_length=200, description="Updated title")
@@ -51,6 +52,7 @@ class NoteUpdate(BaseModel):
     personal_relevance_score: Optional[float] = Field(None, ge=0, le=1, description="Personal relevance 0-1")
     evolution_stage: Optional[EvolutionStage] = Field(None, description="Evolution stage")
     pipeline_stage: Optional[PipelineStage] = Field(None, description="Pipeline stage")
+    folder_id: Optional[str] = Field(None, description="所属文件夹 id；显式传 null 表示移出文件夹（未归档）")
 
 class NoteResponse(BaseModel):
     id: str = Field(..., description="Note ID (UUID)")
@@ -68,6 +70,7 @@ class NoteResponse(BaseModel):
     evolution_stage: str = Field("collected", description="Evolution stage")
     attached_practice_ids: List[str] = Field(default_factory=list, description="Associated practice record IDs")
     pipeline_stage: str = Field("raw", description="Pipeline stage: raw / card / extracted / collided / approved")
+    folder_id: Optional[str] = Field(None, description="所属文件夹 id，空=未归档")
     created_at: datetime = Field(..., description="Creation timestamp")
     updated_at: datetime = Field(..., description="Last update timestamp")
 

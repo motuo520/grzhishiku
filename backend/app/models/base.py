@@ -13,3 +13,4 @@ from app.models.emergence import *
 from app.models.support import *
 from app.models.cognitive import *
 from app.models.messaging import *
+from app.models.folder import *

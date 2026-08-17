@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
-from sqlalchemy import func
+from sqlalchemy import func, or_
 from typing import List, Optional
 import asyncio
 import uuid
@@ -13,7 +13,7 @@ from pydantic import BaseModel, Field
 from app.core.database import get_db
 from app.core.security import get_current_user
 from app.core.xss_sanitizer import sanitize_knowledge_input
-from app.models.base import User, KnowledgeUnit, content_tags
+from app.models.base import User, KnowledgeUnit, Folder, content_tags
 from app.schemas.knowledge import (
     KnowledgeUnitCreate, KnowledgeUnitUpdate, KnowledgeUnitResponse, CounterEvidenceCreate,
     SourceInfoResponse, DomainCredibilityResponse
@@ -21,6 +21,7 @@ from app.schemas.knowledge import (
 from app.services.llm_service import chat_completion
 from app.services import tag_service
 from app.api.v1.endpoints.graph import auto_link_knowledge
+from app.api.v1.endpoints.folders import validate_folder_assignment
 from app.utils.search import build_search_filter
 
 async def _auto_link_knowledge_async(db: Session, unit, user_id: str) -> None:
@@ -99,6 +100,7 @@ def _build_knowledge_response(unit: KnowledgeUnit, db: Session) -> dict:
         "content_subtype": unit.content_subtype or "note",
         "source_id": unit.source_id,
         "source_content_type": unit.source_content_type,
+        "folder_id": unit.folder_id,
         "tags": tag_service.get_tags_for(db, tag_service.CONTENT_TYPE_KNOWLEDGE, unit.id),
         "created_at": unit.created_at,
         "updated_at": unit.updated_at,
@@ -312,6 +314,7 @@ async def list_knowledge(
     min_relevance: Optional[float] = None,
     q: Optional[str] = None,
     tag_ids: Optional[str] = Query(None, description="Filter by comma-separated tag IDs"),
+    folder_id: Optional[str] = Query(None, description="Filter by folder id; 'none' = 未归档"),
     sort_by: Optional[str] = "created_at",
     sort_order: Optional[str] = "desc",
     db: Session = Depends(get_db),
@@ -323,8 +326,19 @@ async def list_knowledge(
     )
     if status:
         query = query.filter(KnowledgeUnit.verification_status == status)
-    if brain_side and brain_side != "both":
+    # 带 folder_id 过滤时脑侧由文件夹归属规则约束，不再做严格等值过滤（同 notes 列表口径）
+    if brain_side and brain_side != "both" and not folder_id:
         query = query.filter(KnowledgeUnit.brain_side == brain_side)
+    if folder_id == "none":
+        # 未归档（按查看脑 P）：brain_side ∈ {P,'both'} 且（folder_id 为空 或 文件夹不属 P 脑）
+        p = brain_side if brain_side in ("personal", "network") else "personal"
+        own_folder_ids = db.query(Folder.id).filter(
+            Folder.user_id == current_user.id, Folder.brain_side == p
+        )
+        query = query.filter(KnowledgeUnit.brain_side.in_([p, "both"]))
+        query = query.filter(or_(KnowledgeUnit.folder_id.is_(None), ~KnowledgeUnit.folder_id.in_(own_folder_ids)))
+    elif folder_id:
+        query = query.filter(KnowledgeUnit.folder_id == folder_id)
     if content_type:
         query = query.filter(KnowledgeUnit.content_type == content_type)
     if source_domain:
@@ -645,6 +659,8 @@ async def update_knowledge(
         unit.source_id = unit_data.source_id
     if unit_data.source_content_type is not None:
         unit.source_content_type = unit_data.source_content_type
+    if unit_data.brain_side is not None:
+        unit.brain_side = unit_data.brain_side
     if unit_data.tags is not None:
         tag_service.set_tags_for(
             db,
@@ -653,6 +669,17 @@ async def update_knowledge(
             user_id=current_user.id,
             tag_inputs=unit_data.tags,
         )
+    # folder_id 显式传了才处理（含显式 null = 移出文件夹，未归档），归属校验与笔记同规则
+    if "folder_id" in unit_data.model_fields_set:
+        if unit_data.folder_id is not None:
+            target_brain = unit_data.brain_side if unit_data.brain_side is not None else unit.brain_side
+            validate_folder_assignment(db, current_user.id, target_brain, unit_data.folder_id)
+        unit.folder_id = unit_data.folder_id
+    elif unit_data.brain_side is not None and unit.folder_id:
+        # 单改脑侧的兜底：既有文件夹与新脑侧不兼容时自动移出（未归档），不留跨脑脏数据
+        folder = db.query(Folder).filter(Folder.id == unit.folder_id).first()
+        if folder and unit.brain_side != "both" and folder.brain_side != unit.brain_side:
+            unit.folder_id = None
 
     unit.updated_at = datetime.now()
     db.commit()

@@ -13,6 +13,7 @@ import {
 import { useBrain } from '@/hooks/useBrain';
 import { useAuth } from '@/hooks/useAuth';
 import { useSettings } from '@/store/settings';
+import SidebarFolderTree from '@/components/navigation/SidebarFolderTree';
 import {
   useMenuData,
   SETTINGS_ITEMS,
@@ -33,7 +34,7 @@ const ICON_MAP: Record<string, React.ElementType> = {
 
 const Sidebar: FC = () => {
   const { activeBrain, switchBrain, isSwitching } = useBrain();
-  const { user } = useAuth();
+  const { user, isLoggedIn } = useAuth();
   const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -145,6 +146,9 @@ const Sidebar: FC = () => {
           )}
         </AnimatePresence>
       </div>
+
+      {/* 文件夹树（每脑一棵，仅登录可见；点节点跳 /folders/:id） */}
+      {isLoggedIn && <SidebarFolderTree brainSide={effectiveBrain} />}
 
       {/* Quick Actions */}
       <div className="mb-4">

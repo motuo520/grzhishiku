@@ -13,6 +13,7 @@ import { getActiveProvider } from '@/api/llm';
 
 // ── Lazy-loaded pages ───────────────────────────────
 const Dashboard = lazy(() => import('./pages/Dashboard'));
+const FolderPage = lazy(() => import('./pages/folders/FolderPage'));
 const IngestPage = lazy(() => import('./pages/ingest/IngestPage'));
 const GraphLayout = lazy(() => import('./pages/graph/GraphLayout'));
 const GraphNetworkPage = lazy(() => import('./pages/graph/GraphNetworkPage'));
@@ -287,6 +288,8 @@ const App: FC = () => {
             </Route>
 
             <Route path="search" element={<SearchPage />} />
+            {/* 文件夹内容页：双界面版本共用（树在全局侧边栏，两版都可见） */}
+            <Route path="folders/:id" element={<FolderPage />} />
             {/* 对话历史：双界面版本可用（问出来的答案沉淀，语义属「问出来」，见 navigation.ts 菜单注释） */}
             {/* 对话历史：挂模块布局以显示二级菜单（简化版在「问出来」、经典版在「图谱」） */}
             {isClassic ? (

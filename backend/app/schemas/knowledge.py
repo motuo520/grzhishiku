@@ -81,6 +81,7 @@ class KnowledgeUnitUpdate(BaseModel):
         pattern=r"^(unverified|checking|confirmed|disputed|debunked|outdated)$",
         description="Verification status（反证墙处置台「保留观察」重置为 unverified）",
     )
+    folder_id: Optional[str] = Field(None, description="所属文件夹 id；显式传 null 表示移出文件夹（未归档）")
 
 class KnowledgeUnitResponse(BaseModel):
     id: str = Field(..., description="Knowledge unit ID (UUID)")
@@ -120,6 +121,7 @@ class KnowledgeUnitResponse(BaseModel):
     content_subtype: str = Field("note", description="Content subtype: note / concept / collision_result")
     source_id: Optional[str] = Field(None, description="Source content ID")
     source_content_type: Optional[str] = Field(None, description="Source content type")
+    folder_id: Optional[str] = Field(None, description="所属文件夹 id，空=未归档")
     tags: List[TagItem] = Field(default_factory=list, description="Associated tags")
     created_at: datetime = Field(..., description="Creation timestamp")
     updated_at: datetime = Field(..., description="Last update timestamp")

@@ -35,6 +35,8 @@ export interface KnowledgeUpdateData {
   evolution_stage?: string;
   pipeline_stage?: string;
   content_subtype?: string;
+  // 显式传 null = 移出文件夹（未归档）
+  folder_id?: string | null;
 }
 
 export interface KnowledgeSourceAggregate {
@@ -89,6 +91,7 @@ export const knowledgeApi = {
     evolution_stage?: string;
     origin_type?: string;
     min_relevance?: number;
+    folder_id?: string;
     sort_by?: string;
     sort_order?: string;
   }) => api.get<KnowledgeUnit[]>('/api/v1/knowledge/', { params }),

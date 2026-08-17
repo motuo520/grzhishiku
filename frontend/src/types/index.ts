@@ -36,6 +36,7 @@ export interface KnowledgeUnit {
   content_subtype?: string;
   source_id?: string;
   source_content_type?: string;
+  folder_id?: string | null;
   tags?: Array<{ id: string; name: string; color?: string | null }>;
   created_at: string;
   updated_at: string;

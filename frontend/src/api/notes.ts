@@ -29,6 +29,8 @@ export interface NoteUpdateData {
   content?: string;
   brain_side?: string;
   tags?: string[];
+  // 显式传 null = 移出文件夹（未归档）
+  folder_id?: string | null;
 }
 
 export interface BatchCreateNotesData {
@@ -46,7 +48,7 @@ export interface BatchCreateResult<T> {
 }
 
 export const notesApi = {
-  list: (params?: { q?: string; tag_ids?: string; sort?: string; order?: string; brain_side?: string; skip?: number; limit?: number }) =>
+  list: (params?: { q?: string; tag_ids?: string; sort?: string; order?: string; brain_side?: string; folder_id?: string; skip?: number; limit?: number }) =>
     api.get<Note[]>('/api/v1/notes/', { params }),
   create: (data: NoteCreateData) => api.post<Note>('/api/v1/notes/', data),
   batchCreate: (data: BatchCreateNotesData) => api.post<BatchCreateResult<Note>>('/api/v1/notes/batch', data),

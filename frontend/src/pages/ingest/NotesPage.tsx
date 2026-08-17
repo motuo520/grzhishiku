@@ -1,15 +1,17 @@
 import { FC, useState, useMemo, useEffect, memo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   FileText, Plus, Search, Trash2, Edit3, X, Save, AlertCircle, Loader2, Tag,
-  Clock, Filter, Upload, Download, Square, CheckSquare, LayoutGrid, List,
+  Clock, Filter, Upload, Download, Square, CheckSquare, LayoutGrid, List, Folder as FolderIcon,
 } from 'lucide-react';
 import { useNotes } from '@/hooks/useNotes';
 import { useTags } from '@/hooks/useTags';
+import { useFolders } from '@/hooks/useFolders';
 import { useNavigation } from '@/store/navigation';
 import TagSelector from '@/components/TagSelector';
 import type { Note } from '@/api/notes';
+import type { Folder } from '@/api/folders';
 
 const VIEW_MODES = [
   { key: 'grid', icon: LayoutGrid, label: '网格' },
@@ -18,6 +20,12 @@ const VIEW_MODES = [
 
 const MAX_DISPLAY_NOTES = 200;
 const MOTION_THRESHOLD = 20;
+
+// 文件夹下拉选项（flat，按树深度缩进；both 模式下带脑侧前缀）
+interface FolderOption {
+  id: string;
+  label: string;
+}
 
 const NotesPage: FC = () => {
   const navigate = useNavigate();
@@ -32,6 +40,9 @@ const NotesPage: FC = () => {
   const [formTags, setFormTags] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  // 文件夹过滤来自 URL query（?folder_id=xxx / none），树上移全局侧边栏后页内不再放面板
+  const [searchParams, setSearchParams] = useSearchParams();
+  const folderParam = searchParams.get('folder_id');
 
   const tagIdsParam = useMemo(() => {
     if (selectedTagIds.length === 0) return undefined;
@@ -40,6 +51,16 @@ const NotesPage: FC = () => {
 
   // 跟随侧边栏全局脑侧：个人脑只看个人脑笔记、网络脑只看网络脑笔记、整合脑（both）不过滤
   const { brainSide } = useNavigation();
+  // 切换脑侧时清除 URL 上的文件夹过滤（夹属另一个脑，过滤随之失效）
+  useEffect(() => {
+    if (searchParams.get('folder_id')) {
+      const next = new URLSearchParams(searchParams);
+      next.delete('folder_id');
+      setSearchParams(next, { replace: true });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [brainSide]);
+
   const {
     notes,
     isLoading,
@@ -57,8 +78,55 @@ const NotesPage: FC = () => {
     q: searchQuery || undefined,
     tag_ids: tagIdsParam,
     brain_side: brainSide === 'both' ? undefined : brainSide,
+    folder_id: folderParam || undefined,
   });
   const { tags: allTags, isLoading: isTagsLoading } = useTags();
+  const { personalFolders, networkFolders } = useFolders(brainSide);
+
+  // 「移动到文件夹」下拉的选项：当前脑文件夹 flat 列表（both 模式两脑合并、带前缀）
+  const moveOptions = useMemo<FolderOption[]>(() => {
+    const sides: { label: string; folders?: Folder[] }[] =
+      brainSide === 'both'
+        ? [{ label: '个人', folders: personalFolders }, { label: '网络', folders: networkFolders }]
+        : brainSide === 'network'
+          ? [{ label: '', folders: networkFolders }]
+          : [{ label: '', folders: personalFolders }];
+    const out: FolderOption[] = [];
+    for (const side of sides) {
+      if (!side.folders) continue;
+      const idSet = new Set(side.folders.map((f) => f.id));
+      const childrenOf = new Map<string | null, Folder[]>();
+      for (const f of side.folders) {
+        // 父级不在本列表（异常数据）时按根级处理
+        const key = f.parent_id && idSet.has(f.parent_id) ? f.parent_id : null;
+        if (!childrenOf.has(key)) childrenOf.set(key, []);
+        childrenOf.get(key)!.push(f);
+      }
+      const walk = (parentKey: string | null, depth: number) => {
+        for (const f of childrenOf.get(parentKey) || []) {
+          out.push({
+            id: f.id,
+            label: `${side.label ? `[${side.label}] ` : ''}${'　'.repeat(depth)}${f.name}`,
+          });
+          walk(f.id, depth + 1);
+        }
+      };
+      walk(null, 0);
+    }
+    return out;
+  }, [brainSide, personalFolders, networkFolders]);
+
+  // 移动笔记到文件夹（folderId 为 null = 未归档）；更新后由 useNotes 的失效逻辑刷新列表与计数
+  const moveNotesToFolder = async (ids: string[], folderId: string | null) => {
+    try {
+      await Promise.all(ids.map((id) => updateNote({ id, data: { folder_id: folderId } })));
+      setSelectedIds(new Set());
+    } catch (err: any) {
+      setError(err.message || '移动到文件夹失败');
+    }
+  };
+
+  const handleMoveNote = (id: string, folderId: string | null) => moveNotesToFolder([id], folderId);
 
   const filteredNotes = useMemo(() => notes || [], [notes]);
 
@@ -365,6 +433,26 @@ const NotesPage: FC = () => {
         )}
       </AnimatePresence>
 
+      {/* 文件夹过滤提示（来自 URL ?folder_id=，树在全局侧边栏；此处仅作提示与清除） */}
+      {folderParam && (
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-xs text-text-muted">当前文件夹：</span>
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs rounded-full border border-info/40 bg-info/10 text-info">
+            <FolderIcon className="w-3 h-3" />
+            {folderParam === 'none'
+              ? '未归档'
+              : [...(personalFolders || []), ...(networkFolders || [])].find((f) => f.id === folderParam)?.name || '文件夹'}
+            <button onClick={() => {
+              const next = new URLSearchParams(searchParams);
+              next.delete('folder_id');
+              setSearchParams(next, { replace: true });
+            }}>
+              <X className="w-3 h-3" />
+            </button>
+          </span>
+        </div>
+      )}
+
       {/* Active filters */}
       {selectedTagIds.length > 0 && (
         <div className="flex items-center gap-2 flex-wrap">
@@ -409,6 +497,22 @@ const NotesPage: FC = () => {
           </div>
           {selectedIds.size > 0 && (
             <div className="flex items-center gap-2">
+              <select
+                value="__move"
+                onChange={(e) => {
+                  const v = e.target.value;
+                  if (v === '__move') return;
+                  moveNotesToFolder(Array.from(selectedIds), v === '' ? null : v);
+                }}
+                className="bg-bg-secondary border border-border-color rounded-[2px] text-xs text-text-secondary py-1.5 px-2"
+                title="移动到文件夹"
+              >
+                <option value="__move">移动到文件夹...</option>
+                <option value="">未归档</option>
+                {moveOptions.map((o) => (
+                  <option key={o.id} value={o.id}>{o.label}</option>
+                ))}
+              </select>
               <TagSelector
                 availableTags={allTags || []}
                 value={[]}
@@ -473,7 +577,7 @@ const NotesPage: FC = () => {
                   exit={{ opacity: 0, scale: 0.95 }}
                   className={`card flex flex-col justify-between group ${selectedIds.has(note.id) ? 'border-info/40 bg-info/5' : ''}`}
                 >
-                  <NoteGridContent note={note} selectedIds={selectedIds} toggleSelect={toggleSelect} openEdit={openEdit} openQuickEditor={openQuickEditor} handleDelete={handleDelete} isDeleting={isDeleting} />
+                  <NoteGridContent note={note} selectedIds={selectedIds} toggleSelect={toggleSelect} openEdit={openEdit} openQuickEditor={openQuickEditor} handleDelete={handleDelete} isDeleting={isDeleting} moveOptions={moveOptions} onMoveNote={handleMoveNote} />
                 </motion.div>
               ))}
             </AnimatePresence>
@@ -483,7 +587,7 @@ const NotesPage: FC = () => {
                 key={note.id}
                 className={`card flex flex-col justify-between group ${selectedIds.has(note.id) ? 'border-info/40 bg-info/5' : ''}`}
               >
-                <NoteGridContent note={note} selectedIds={selectedIds} toggleSelect={toggleSelect} openEdit={openEdit} openQuickEditor={openQuickEditor} handleDelete={handleDelete} isDeleting={isDeleting} />
+                <NoteGridContent note={note} selectedIds={selectedIds} toggleSelect={toggleSelect} openEdit={openEdit} openQuickEditor={openQuickEditor} handleDelete={handleDelete} isDeleting={isDeleting} moveOptions={moveOptions} onMoveNote={handleMoveNote} />
               </div>
             ))
           )}
@@ -500,7 +604,7 @@ const NotesPage: FC = () => {
                   exit={{ opacity: 0, scale: 0.95 }}
                   className={`card flex items-center gap-4 group ${selectedIds.has(note.id) ? 'border-info/40 bg-info/5' : ''}`}
                 >
-                  <NoteListContent note={note} selectedIds={selectedIds} toggleSelect={toggleSelect} openEdit={openEdit} openQuickEditor={openQuickEditor} handleDelete={handleDelete} isDeleting={isDeleting} />
+                  <NoteListContent note={note} selectedIds={selectedIds} toggleSelect={toggleSelect} openEdit={openEdit} openQuickEditor={openQuickEditor} handleDelete={handleDelete} isDeleting={isDeleting} moveOptions={moveOptions} onMoveNote={handleMoveNote} />
                 </motion.div>
               ))}
             </AnimatePresence>
@@ -510,7 +614,7 @@ const NotesPage: FC = () => {
                 key={note.id}
                 className={`card flex items-center gap-4 group ${selectedIds.has(note.id) ? 'border-info/40 bg-info/5' : ''}`}
               >
-                <NoteListContent note={note} selectedIds={selectedIds} toggleSelect={toggleSelect} openEdit={openEdit} openQuickEditor={openQuickEditor} handleDelete={handleDelete} isDeleting={isDeleting} />
+                <NoteListContent note={note} selectedIds={selectedIds} toggleSelect={toggleSelect} openEdit={openEdit} openQuickEditor={openQuickEditor} handleDelete={handleDelete} isDeleting={isDeleting} moveOptions={moveOptions} onMoveNote={handleMoveNote} />
               </div>
             ))
           )}
@@ -606,6 +710,31 @@ interface PreparedNote extends Note {
   updatedText: string;
 }
 
+// 单条笔记的「移动到文件夹」下拉（网格/列表两种视图共用同一份选项）
+const NoteMoveSelect: FC<{
+  note: Note;
+  moveOptions: FolderOption[];
+  onMoveNote: (id: string, folderId: string | null) => void;
+}> = ({ note, moveOptions, onMoveNote }) => (
+  <select
+    value="__keep"
+    onChange={(e) => {
+      const v = e.target.value;
+      if (v === '__keep') return;
+      onMoveNote(note.id, v === '' ? null : v);
+    }}
+    onClick={(e) => e.stopPropagation()}
+    className="bg-transparent border border-border-color rounded-[2px] text-[10px] text-text-muted py-1 px-1 opacity-0 group-hover:opacity-100 transition-opacity"
+    title="移动到文件夹"
+  >
+    <option value="__keep">移动到...</option>
+    <option value="">未归档</option>
+    {moveOptions.map((o) => (
+      <option key={o.id} value={o.id}>{o.label}</option>
+    ))}
+  </select>
+);
+
 const NoteGridContent: FC<{
   note: PreparedNote;
   selectedIds: Set<string>;
@@ -614,7 +743,9 @@ const NoteGridContent: FC<{
   openQuickEditor: (note: Note) => void;
   handleDelete: (id: string) => void;
   isDeleting: boolean;
-}> = memo(({ note, selectedIds, toggleSelect, openEdit, openQuickEditor, handleDelete, isDeleting }) => (
+  moveOptions: FolderOption[];
+  onMoveNote: (id: string, folderId: string | null) => void;
+}> = memo(({ note, selectedIds, toggleSelect, openEdit, openQuickEditor, handleDelete, isDeleting, moveOptions, onMoveNote }) => (
   <>
     <div className="flex items-start justify-between mb-2">
       <div className="flex-1 min-w-0 cursor-pointer" onClick={() => openEdit(note)}>
@@ -662,6 +793,7 @@ const NoteGridContent: FC<{
         {note.updatedText}
       </div>
       <div className="flex items-center gap-1">
+        <NoteMoveSelect note={note} moveOptions={moveOptions} onMoveNote={onMoveNote} />
         <button
           onClick={() => openQuickEditor(note)}
           className="p-1.5 rounded-[2px] hover:bg-white/[0.05] text-text-muted hover:text-info transition-colors"
@@ -690,7 +822,9 @@ const NoteListContent: FC<{
   openQuickEditor: (note: Note) => void;
   handleDelete: (id: string) => void;
   isDeleting: boolean;
-}> = memo(({ note, selectedIds, toggleSelect, openEdit, openQuickEditor, handleDelete, isDeleting }) => (
+  moveOptions: FolderOption[];
+  onMoveNote: (id: string, folderId: string | null) => void;
+}> = memo(({ note, selectedIds, toggleSelect, openEdit, openQuickEditor, handleDelete, isDeleting, moveOptions, onMoveNote }) => (
   <>
     <input
       type="checkbox"
@@ -725,6 +859,7 @@ const NoteListContent: FC<{
     )}
     <div className="text-xs text-text-muted whitespace-nowrap">{note.updatedText}</div>
     <div className="flex items-center gap-1">
+      <NoteMoveSelect note={note} moveOptions={moveOptions} onMoveNote={onMoveNote} />
       <button
         onClick={() => openQuickEditor(note)}
         className="p-1.5 rounded-[2px] hover:bg-white/[0.05] text-text-muted hover:text-info transition-colors"

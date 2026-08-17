@@ -141,6 +141,22 @@ async def lifespan(app: FastAPI):
             with engine.begin() as conn:
                 conn.execute(text("ALTER TABLE admin_audit_logs ADD COLUMN details TEXT"))
 
+    # Ensure folder_id column exists in notes（每脑文件夹树，存量数据 NULL=未归档）
+    if 'notes' in inspector.get_table_names():
+        columns = [c['name'] for c in inspector.get_columns('notes')]
+        if 'folder_id' not in columns:
+            with engine.begin() as conn:
+                conn.execute(text("ALTER TABLE notes ADD COLUMN folder_id TEXT"))
+                conn.execute(text("CREATE INDEX IF NOT EXISTS ix_notes_folder_id ON notes (folder_id)"))
+
+    # Ensure folder_id column exists in knowledge_units（知识单元纳入同一套文件夹树）
+    if 'knowledge_units' in inspector.get_table_names():
+        columns = [c['name'] for c in inspector.get_columns('knowledge_units')]
+        if 'folder_id' not in columns:
+            with engine.begin() as conn:
+                conn.execute(text("ALTER TABLE knowledge_units ADD COLUMN folder_id TEXT"))
+                conn.execute(text("CREATE INDEX IF NOT EXISTS ix_knowledge_units_folder_id ON knowledge_units (folder_id)"))
+
     # Ensure system_configs table exists and seed default configs
     if 'system_configs' not in inspector.get_table_names():
         from app.models.base import SystemConfig
