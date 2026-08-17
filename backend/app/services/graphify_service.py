@@ -509,6 +509,28 @@ async def query_graph(user_id: str, question: str, preferred_model: Optional[str
         "- 若检索结果与问题无关，如实说明知识库中暂未找到相关内容\n"
         "- 回答控制在 300 字以内，条理清晰\n"
     )
+    # 把检索 trace 的 NODE 行解析成可跳转来源（内链直达）：
+    # 形如 NODE 标题 [src=note__<uuid>.md ...]，按 id 核库后带出，
+    # 前端把《标题》渲染成直达链接，而不是让用户自己回去找
+    _src_models = {"note": Note, "knowledge": KnowledgeUnit, "clip": BrowserClip}
+    sources = []
+    seen = set()
+    db = SessionLocal()
+    try:
+        for m in re.finditer(
+            r"^NODE\s+(.+?)\s+\[src=(note|knowledge|clip)__([0-9a-fA-F-]{36})\.md",
+            trace, re.M,
+        ):
+            title, ctype, cid = m.group(1).strip(), m.group(2), m.group(3)
+            if cid in seen:
+                continue
+            seen.add(cid)
+            model = _src_models[ctype]
+            if db.query(model.id).filter(model.id == cid, model.user_id == user_id).first():
+                sources.append({"content_type": ctype, "id": cid, "title": title})
+    finally:
+        db.close()
+
     answer = await chat_completion(
         prompt=prompt,
         task_type="graph_query",
@@ -516,7 +538,7 @@ async def query_graph(user_id: str, question: str, preferred_model: Optional[str
         preferred_model=preferred_model,
     )
     answer = answer.strip() or "暂时无法生成回答，请重试。"
-    return {"ok": True, "result": answer, "evidence": trace}
+    return {"ok": True, "result": answer, "evidence": trace, "sources": sources}
 
 
 def path_graph(user_id: str, a: str, b: str) -> Dict[str, Any]:

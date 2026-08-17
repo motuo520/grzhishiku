@@ -51,10 +51,17 @@ export interface GraphifyGraph {
   community_labels: Record<string, string>;
 }
 
+export interface GraphifySource {
+  content_type: 'note' | 'knowledge' | 'clip';
+  id: string;
+  title: string;
+}
+
 export interface GraphifyTextResult {
   ok: boolean;
   result?: string;
   error?: string;
+  sources?: GraphifySource[];
 }
 
 export interface AutoEvolveConfig {

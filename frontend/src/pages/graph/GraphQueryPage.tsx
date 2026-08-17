@@ -1,14 +1,49 @@
 import { FC, useEffect, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
-import { Sparkles, Send, Loader2, AlertCircle } from 'lucide-react';
+import { useSearchParams, Link } from 'react-router-dom';
+import { Sparkles, Send, Loader2, AlertCircle, FileText, BookOpen, Scissors } from 'lucide-react';
 import { useGraphifyStatus, useGraphifyQuery } from '@/hooks/useGraphify';
 import ModelSelector from '@/components/llm/ModelSelector';
+import type { GraphifySource } from '@/api/graphify';
 
 interface QAItem {
   question: string;
   answer: string;
   ok: boolean;
+  sources?: GraphifySource[];
 }
+
+// 来源内链直达：笔记→笔记详情，知识单元→知识详情，剪藏→剪藏列表
+const sourceLink = (s: GraphifySource): string => {
+  if (s.content_type === 'note') return `/ingest/notes/${s.id}`;
+  if (s.content_type === 'knowledge') return `/knowledge/${s.id}`;
+  return '/ingest/clipper';
+};
+
+const sourceIcon = (t: GraphifySource['content_type']) =>
+  t === 'note' ? <FileText className="w-3 h-3" /> : t === 'knowledge' ? <BookOpen className="w-3 h-3" /> : <Scissors className="w-3 h-3" />;
+
+// 把答案里的《条目名》渲染成直达链接（能匹配到检索来源的才加链）
+const AnswerWithLinks: FC<{ text: string; sources: GraphifySource[] }> = ({ text, sources }) => {
+  const parts = text.split(/(《[^》]+》)/g);
+  return (
+    <div className="text-sm text-text-secondary leading-relaxed whitespace-pre-wrap">
+      {parts.map((part, i) => {
+        if (part.startsWith('《') && part.endsWith('》')) {
+          const title = part.slice(1, -1);
+          const hit = sources.find((s) => s.title === title);
+          if (hit) {
+            return (
+              <Link key={i} to={sourceLink(hit)} className="text-info hover:underline">
+                {part}
+              </Link>
+            );
+          }
+        }
+        return <span key={i}>{part}</span>;
+      })}
+    </div>
+  );
+};
 
 const EXAMPLE_QUESTIONS = [
   '我的知识图谱里有哪些核心主题？',
@@ -37,7 +72,7 @@ const GraphQueryPage: FC = () => {
     query.mutate({ question: trimmed, preferred_model: modelId || undefined }, {
       onSuccess: (data) => {
         setHistory((prev) => [
-          { question: trimmed, answer: data.ok ? (data.result || '') : (data.error || '查询失败'), ok: data.ok },
+          { question: trimmed, answer: data.ok ? (data.result || '') : (data.error || '查询失败'), ok: data.ok, sources: data.sources },
           ...prev,
         ]);
       },
@@ -145,7 +180,24 @@ const GraphQueryPage: FC = () => {
                     : 'bg-red-400/10 border-red-400/25'
                 }`}>
                   {item.ok ? (
-                    <div className="text-sm text-text-secondary leading-relaxed whitespace-pre-wrap">{item.answer}</div>
+                    <div className="space-y-2.5">
+                      <AnswerWithLinks text={item.answer} sources={item.sources || []} />
+                      {(item.sources?.length ?? 0) > 0 && (
+                        <div className="flex flex-wrap items-center gap-1.5 pt-1 border-t border-white/[0.06]">
+                          <span className="text-[10px] text-text-muted">来源：</span>
+                          {item.sources!.map((s) => (
+                            <Link
+                              key={s.id}
+                              to={sourceLink(s)}
+                              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] text-text-secondary bg-white/[0.04] border border-white/[0.08] hover:border-info/40 hover:text-info transition-colors"
+                            >
+                              {sourceIcon(s.content_type)}
+                              {s.title}
+                            </Link>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                   ) : (
                     <div className="text-xs text-red-400 flex items-center gap-1.5">
                       <AlertCircle className="w-3.5 h-3.5 shrink-0" />
