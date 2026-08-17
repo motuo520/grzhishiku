@@ -79,11 +79,11 @@ const AppLayout: FC = () => {
           <div className="flex-1 overflow-auto">
             <Outlet />
           </div>
+          {/* Bottom Chat Input Bar：放在 main 内（内容列底部），
+              展开/收起只影响内容滚动区，绝不动侧边栏 */}
+          <ChatInputBar sidebarOpen={sidebarOpen} onLoginClick={() => setLoginOpen(true)} />
         </main>
       </div>
-
-      {/* Bottom Chat Input Bar */}
-      <ChatInputBar sidebarOpen={sidebarOpen} onLoginClick={() => setLoginOpen(true)} />
 
       {/* Login modal: triggered by nav button or protected actions */}
       <LoginModal isOpen={loginOpen} onClose={() => setLoginOpen(false)} />
