@@ -96,8 +96,10 @@ services:
     volumes:
       - minio-data:/data
     ports:
-      - "9000:9000"
-      - "9001:9001"
+      # 只绑回环：S3 API 与控制台不暴露公网（默认凭据仅用于本机快速起步，
+      # 对外暴露必须先在 .env 设置 MINIO_ROOT_USER/MINIO_ROOT_PASSWORD 强凭据）
+      - "127.0.0.1:9000:9000"
+      - "127.0.0.1:9001:9001"
     command: server /data --console-address ":9001"
     restart: unless-stopped
     healthcheck:
