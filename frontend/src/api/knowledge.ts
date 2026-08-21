@@ -1,5 +1,5 @@
 import api from './client';
-import type { KnowledgeUnit, KnowledgeSourcesResponse, SourceCredibilityResponse } from '@/types';
+import type { KnowledgeUnit, CounterEvidenceItem, KnowledgeSourcesResponse, SourceCredibilityResponse } from '@/types';
 
 export interface KnowledgeCreateData {
   content_raw: string;
@@ -92,6 +92,8 @@ export const knowledgeApi = {
     origin_type?: string;
     min_relevance?: number;
     folder_id?: string;
+    content_subtype?: string;
+    tag_ids?: string;
     sort_by?: string;
     sort_order?: string;
   }) => api.get<KnowledgeUnit[]>('/api/v1/knowledge/', { params }),
@@ -107,8 +109,15 @@ export const knowledgeApi = {
   counterEvidence: (id: string, data: { evidence_text: string; evidence_url?: string }) =>
     api.post(`/api/v1/knowledge/${id}/counter-evidence`, data),
   stats: () => api.get<KnowledgeStatsResponse>('/api/v1/knowledge/stats'),
-  counterEvidenceList: (brain_side?: string) =>
-    api.get<KnowledgeUnit[]>('/api/v1/knowledge/counter-evidence', { params: brain_side ? { brain_side } : undefined }),
+  counterEvidenceList: (brain_side?: string, include_resolved?: boolean) =>
+    api.get<CounterEvidenceItem[]>('/api/v1/knowledge/counter-evidence', {
+      params: {
+        ...(brain_side ? { brain_side } : {}),
+        ...(include_resolved ? { include_resolved: true } : {}),
+      },
+    }),
+  disputeResolution: (id: string, data: { resolution: 'kept' | 'rejected' }) =>
+    api.post<KnowledgeUnit>(`/api/v1/knowledge/${id}/dispute-resolution`, data),
   timelinessList: (brain_side?: string) =>
     api.get<KnowledgeUnit[]>('/api/v1/knowledge/timeliness', { params: brain_side ? { brain_side } : undefined }),
   sourceAggregates: () => api.get<KnowledgeSourceAggregate[]>('/api/v1/knowledge/sources'),

@@ -107,6 +107,11 @@ async def lifespan(app: FastAPI):
         if 'verification_history' not in columns:
             with engine.begin() as conn:
                 conn.execute(text("ALTER TABLE knowledge_units ADD COLUMN verification_history TEXT DEFAULT '[]'"))
+        # 争议决议列（corrected/kept/rejected，NULL=未决议）；重新取列防上面 ALTER 后快照过期
+        columns = [c['name'] for c in inspect(engine).get_columns('knowledge_units')]
+        if 'dispute_resolution' not in columns:
+            with engine.begin() as conn:
+                conn.execute(text("ALTER TABLE knowledge_units ADD COLUMN dispute_resolution TEXT"))
     
     # Ensure active_brain column exists in users table
     if 'users' in inspector.get_table_names():

@@ -1,10 +1,10 @@
 import { FC, useState, useMemo, memo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   BookOpen, ShieldCheck, AlertTriangle, XCircle, HelpCircle, Clock,
   Search, Filter, ArrowUpDown, Plus, ExternalLink, Layers,
-  BarChart3, Globe, Loader2, Activity, Dumbbell, Zap, Sprout
+  BarChart3, Globe, Loader2, Activity, Dumbbell, Zap, Sprout, Sparkles
 } from 'lucide-react';
 import { useKnowledge } from '@/hooks/useKnowledge';
 import ErrorState from '@/components/ErrorState';
@@ -55,7 +55,12 @@ const extractDomain = (url?: string | null) => {
 
 type StatusFilter = 'all' | 'confirmed' | 'disputed' | 'debunked' | 'unverified' | 'checking' | 'outdated';
 type EvolutionFilter = 'all' | 'collected' | 'understood' | 'practiced' | 'validated' | 'internalized';
-type SortBy = 'created_at' | 'confidence' | 'verification_status' | 'invoke_count' | 'practice_depth' | 'personal_relevance_score' | 'value_score';
+type SubtypeFilter = 'all' | 'collision_result';
+type SortBy = 'created_at' | 'updated_at' | 'confidence' | 'verification_status' | 'invoke_count' | 'practice_depth' | 'personal_relevance_score' | 'value_score' | 'last_invoked_at';
+
+const STATUS_FILTERS: StatusFilter[] = ['all', 'confirmed', 'disputed', 'debunked', 'unverified', 'checking', 'outdated'];
+const EVOLUTION_FILTERS: EvolutionFilter[] = ['all', 'collected', 'understood', 'practiced', 'validated', 'internalized'];
+const SORT_BY_VALUES: SortBy[] = ['created_at', 'updated_at', 'confidence', 'verification_status', 'invoke_count', 'practice_depth', 'personal_relevance_score', 'value_score', 'last_invoked_at'];
 
 interface KnowledgeUnitListProps {
   brainSide: 'personal' | 'network' | 'both';
@@ -97,6 +102,12 @@ const KnowledgeUnitRow = memo<KnowledgeUnitRowProps>(({ unit, brainSide, useMoti
             <span className="flex items-center gap-1"><ShieldCheck className="w-3 h-3" />审查 {unit.review_count} 次</span>
           </div>
           <div className="flex items-center gap-2 text-xs mt-2 flex-wrap">
+            {unit.content_subtype === 'collision_result' && (
+              <span className="flex items-center gap-1 px-2 py-0.5 rounded-md border bg-purple-500/10 text-purple-400 border-purple-500/30">
+                <Sparkles className="w-3 h-3" />
+                碰撞产物
+              </span>
+            )}
             {unit.evolution_stage && (
               <span className={`flex items-center gap-1 px-2 py-0.5 rounded-md border ${evolutionConfig[unit.evolution_stage]?.badgeClass || evolutionConfig.collected.badgeClass}`}>
                 <Sprout className="w-3 h-3" />
@@ -144,16 +155,41 @@ KnowledgeUnitRow.displayName = 'KnowledgeUnitRow';
 
 const KnowledgeUnitList: FC<KnowledgeUnitListProps> = ({ brainSide, title, subtitle, showCreate = true }) => {
   const navigate = useNavigate();
-  const { units, isLoading, error, refetch } = useKnowledge(brainSide === 'both' ? undefined : brainSide);
+  // 钻取入口：从 URL query 读初始过滤（evolution_stage/status/content_subtype/sort_by/tag_ids/folder_id）
+  const [searchParams] = useSearchParams();
+  const urlStatus = searchParams.get('status');
+  const urlEvolution = searchParams.get('evolution_stage');
+  const urlSubtype = searchParams.get('content_subtype');
+  const urlSortBy = searchParams.get('sort_by');
+  const urlSortOrder = searchParams.get('sort_order');
+  const urlTagIds = searchParams.get('tag_ids') || undefined;
+  const urlFolderId = searchParams.get('folder_id') || undefined;
 
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
-  const [evolutionFilter, setEvolutionFilter] = useState<EvolutionFilter>('all');
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>(
+    STATUS_FILTERS.includes(urlStatus as StatusFilter) ? (urlStatus as StatusFilter) : 'all'
+  );
+  const [evolutionFilter, setEvolutionFilter] = useState<EvolutionFilter>(
+    EVOLUTION_FILTERS.includes(urlEvolution as EvolutionFilter) ? (urlEvolution as EvolutionFilter) : 'all'
+  );
+  const [subtypeFilter, setSubtypeFilter] = useState<SubtypeFilter>(
+    urlSubtype === 'collision_result' ? 'collision_result' : 'all'
+  );
   const [typeFilter, setTypeFilter] = useState<string>('all');
   const [domainFilter, setDomainFilter] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
-  const [sortBy, setSortBy] = useState<SortBy>('created_at');
-  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
-  const [showFilters, setShowFilters] = useState(false);
+  const [sortBy, setSortBy] = useState<SortBy>(
+    SORT_BY_VALUES.includes(urlSortBy as SortBy) ? (urlSortBy as SortBy) : 'created_at'
+  );
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>(urlSortOrder === 'asc' ? 'asc' : 'desc');
+  const [showFilters, setShowFilters] = useState(
+    Boolean(urlStatus || urlEvolution || urlSubtype || urlTagIds || urlFolderId)
+  );
+
+  const { units, isLoading, error, refetch } = useKnowledge(brainSide === 'both' ? undefined : brainSide, {
+    tag_ids: urlTagIds,
+    folder_id: urlFolderId,
+    content_subtype: subtypeFilter !== 'all' ? subtypeFilter : undefined,
+  });
 
   const filteredUnits = useMemo(() => {
     let data = (units || []) as KnowledgeUnit[];
@@ -183,6 +219,11 @@ const KnowledgeUnitList: FC<KnowledgeUnitListProps> = ({ brainSide, title, subti
       let cmp = 0;
       if (sortBy === 'created_at') {
         cmp = new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+      } else if (sortBy === 'updated_at') {
+        cmp = new Date(a.updated_at).getTime() - new Date(b.updated_at).getTime();
+      } else if (sortBy === 'last_invoked_at') {
+        // 从未调用过的排最前（升序时），便于定位僵尸/沉睡知识
+        cmp = new Date(a.last_invoked_at || 0).getTime() - new Date(b.last_invoked_at || 0).getTime();
       } else if (sortBy === 'confidence') {
         cmp = (a.verification_consensus || 0) - (b.verification_consensus || 0);
       } else if (sortBy === 'verification_status') {
@@ -287,7 +328,7 @@ const KnowledgeUnitList: FC<KnowledgeUnitListProps> = ({ brainSide, title, subti
                 <div>
                   <label className="text-xs text-text-secondary mb-1.5 block">验证状态</label>
                   <div className="flex flex-wrap gap-2">
-                    {(['all', 'confirmed', 'disputed', 'debunked', 'unverified', 'checking', 'outdated'] as StatusFilter[]).map((s) => (
+                    {STATUS_FILTERS.map((s) => (
                       <button key={s} onClick={() => setStatusFilter(s)}
                         className={`px-2.5 py-1 rounded-[2px] text-xs border transition-all ${statusFilter === s ? 'bg-info/15 text-info border-info/30' : 'bg-[var(--glass-bg)] text-text-secondary border-[var(--glass-border)]'}`}>
                         {s === 'all' ? '全部' : statusConfig[s]?.label || s}
@@ -298,7 +339,7 @@ const KnowledgeUnitList: FC<KnowledgeUnitListProps> = ({ brainSide, title, subti
                 <div>
                   <label className="text-xs text-text-secondary mb-1.5 block">进化阶段</label>
                   <div className="flex flex-wrap gap-2">
-                    {(['all', 'collected', 'understood', 'practiced', 'validated', 'internalized'] as EvolutionFilter[]).map((s) => (
+                    {EVOLUTION_FILTERS.map((s) => (
                       <button key={s} onClick={() => setEvolutionFilter(s)}
                         className={`px-2.5 py-1 rounded-[2px] text-xs border transition-all ${evolutionFilter === s ? 'bg-info/15 text-info border-info/30' : 'bg-[var(--glass-bg)] text-text-secondary border-[var(--glass-border)]'}`}>
                         {s === 'all' ? '全部' : s === 'collected' ? '已收集' : s === 'understood' ? '已理解' : s === 'practiced' ? '已践行' : s === 'validated' ? '已验证' : '已内化'}
@@ -325,6 +366,17 @@ const KnowledgeUnitList: FC<KnowledgeUnitListProps> = ({ brainSide, title, subti
                       placeholder="例如: github.com"
                       className="w-full bg-[var(--glass-bg)] border border-[var(--glass-border)] rounded-[2px] pl-9 pr-3 py-1.5 text-xs text-text-primary placeholder-text-muted focus:outline-none focus:border-info/40 transition-colors" />
                   </div>
+                </div>
+                <div>
+                  <label className="text-xs text-text-secondary mb-1.5 block">来源/亚型</label>
+                  <select
+                    value={subtypeFilter}
+                    onChange={(e) => setSubtypeFilter(e.target.value as SubtypeFilter)}
+                    className="w-full bg-[var(--glass-bg)] border border-[var(--glass-border)] rounded-[2px] px-3 py-1.5 text-xs text-text-primary focus:outline-none focus:border-info/40 transition-colors"
+                  >
+                    <option value="all">全部</option>
+                    <option value="collision_result">碰撞产物</option>
+                  </select>
                 </div>
               </div>
             </div>

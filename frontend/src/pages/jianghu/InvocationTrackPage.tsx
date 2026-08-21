@@ -213,9 +213,14 @@ const InvocationTrackPage: FC = () => {
                   const total = health?.total_items || 1;
                   const pct = Math.round((count / total) * 100);
                   return (
-                    <div key={stage}>
+                    <div
+                      key={stage}
+                      className="cursor-pointer group"
+                      onClick={() => navigate(`/knowledge/${brainSide === 'personal' ? 'personal' : 'network'}?evolution_stage=${stage}`)}
+                      title={`查看「${evolutionLabel[stage] || stage}」知识列表`}
+                    >
                       <div className="flex items-center justify-between text-xs mb-1">
-                        <span className="text-text-secondary">{evolutionLabel[stage] || stage}</span>
+                        <span className="text-text-secondary group-hover:text-info transition-colors">{evolutionLabel[stage] || stage}</span>
                         <span className="text-text-primary">{count} ({pct}%)</span>
                       </div>
                       <div className="h-2 bg-white/[0.05] rounded-full overflow-hidden">

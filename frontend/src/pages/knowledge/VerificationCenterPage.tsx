@@ -97,15 +97,27 @@ const VerificationCenterPage: FC = () => {
           <p className="text-sm text-text-secondary mt-1">批量审查知识可信度，触发 LLM 多模型验证</p>
         </div>
         <div className="flex items-center gap-3">
-          <div className="glass-card px-3 py-2 text-center min-w-[80px]">
+          <div
+            className="glass-card px-3 py-2 text-center min-w-[80px] cursor-pointer hover:border-info/30 transition-colors"
+            onClick={() => navigate('/knowledge/network?status=unverified')}
+            title="查看待验证知识列表"
+          >
             <div className="text-lg font-bold text-warning">{pending.length}</div>
             <div className="text-[10px] text-text-muted">待验证</div>
           </div>
-          <div className="glass-card px-3 py-2 text-center min-w-[80px]">
+          <div
+            className="glass-card px-3 py-2 text-center min-w-[80px] cursor-pointer hover:border-info/30 transition-colors"
+            onClick={() => navigate('/knowledge/network?status=confirmed')}
+            title="查看已确认知识列表"
+          >
             <div className="text-lg font-bold text-success">{verified.length}</div>
             <div className="text-[10px] text-text-muted">已确认</div>
           </div>
-          <div className="glass-card px-3 py-2 text-center min-w-[80px]">
+          <div
+            className="glass-card px-3 py-2 text-center min-w-[80px] cursor-pointer hover:border-info/30 transition-colors"
+            onClick={() => navigate('/knowledge/network?status=disputed')}
+            title="查看争议知识列表"
+          >
             <div className="text-lg font-bold text-danger">{disputed.length}</div>
             <div className="text-[10px] text-text-muted">争议</div>
           </div>

@@ -34,6 +34,7 @@ class BatchCreateResult(PydanticBaseModel):
 from app.schemas.tag import TagItem
 from app.api.v1.endpoints.graph import auto_link_note
 from app.api.v1.endpoints.folders import validate_folder_assignment
+from app.api.v1.endpoints.jianghu import record_evolution_transition
 from app.services import tag_service
 from app.utils.search import build_search_filter
 
@@ -251,6 +252,8 @@ async def update_note(
     if note_data.personal_relevance_score is not None:
         note.personal_relevance_score = note_data.personal_relevance_score
     if note_data.evolution_stage is not None:
+        # 手动推进/回退阶段记流水（trigger=manual），同值重写不记
+        record_evolution_transition(db, note, "note", note_data.evolution_stage.value, "manual")
         note.evolution_stage = note_data.evolution_stage.value
     if note_data.pipeline_stage is not None:
         note.pipeline_stage = note_data.pipeline_stage.value

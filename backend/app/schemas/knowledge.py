@@ -79,7 +79,7 @@ class KnowledgeUnitUpdate(BaseModel):
     verification_status: Optional[str] = Field(
         None,
         pattern=r"^(unverified|checking|confirmed|disputed|debunked|outdated)$",
-        description="Verification status（反证墙处置台「保留观察」重置为 unverified）",
+        description="已废弃：核验状态不可直写（端点返回 400）。保留观察/驳回反证走 POST /knowledge/{id}/dispute-resolution，重验走 POST /knowledge/{id}/verify",
     )
     folder_id: Optional[str] = Field(None, description="所属文件夹 id；显式传 null 表示移出文件夹（未归档）")
 
@@ -102,6 +102,8 @@ class KnowledgeUnitResponse(BaseModel):
     verification_status: str = Field(..., description="Verification status: unverified / checking / confirmed / disputed / debunked / outdated")
     verification_consensus: Optional[float] = Field(None, description="Consensus score 0-100")
     verification_history: Optional[str] = Field(None, description="JSON string of verification history")
+    dispute_resolution: Optional[str] = Field(None, description="争议决议：corrected / kept / rejected，null=未决议")
+    latest_evidence: Optional[Dict[str, Any]] = Field(None, description="最近一条反证 {evidence_text, evidence_url, created_at}，无反证为 null")
     last_verified: Optional[datetime] = Field(None, description="Last verification timestamp")
     next_scheduled: Optional[datetime] = Field(None, description="Next scheduled verification")
     timeliness_status: Optional[str] = Field(None, description="Timeliness status: fresh / stable / aging / outdated / superseded")
@@ -139,6 +141,13 @@ class CounterEvidenceCreate(BaseModel):
     evidence_url: Optional[str] = Field(None, max_length=2048, description="URL supporting counter-evidence")
     evidence_text: str = Field(..., min_length=1, max_length=50000, description="Counter-evidence text")
     source_authority: Optional[str] = Field(None, max_length=500, description="Authority of the source")
+
+class DisputeResolutionCreate(BaseModel):
+    resolution: str = Field(
+        ...,
+        pattern=r"^(kept|rejected)$",
+        description="kept=保留观察（维持 disputed 不变）；rejected=驳回反证（恢复反证前状态）。corrected 由修正重验路径自动打",
+    )
 
 class SourceInfoResponse(BaseModel):
     source_url: Optional[str] = Field(None, description="Source URL")

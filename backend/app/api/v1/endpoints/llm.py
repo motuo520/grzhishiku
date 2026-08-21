@@ -551,6 +551,24 @@ async def chat(
     # Build RAG system prompt.
     rag_system_prompt = None
     if sources:
+        # RAG 引用计入调用：真正写进 prompt 上下文的知识单元 invoke_count+1、
+        # 记 last_invoked_at。每对话每单元只计一次（本请求内按 id 去重），不做
+        # 30 分钟防抖（检索引用是离散真实使用）；老数据不回补。
+        # 口径自此变化：invoke_count = 「打开详情 + 被 AI 引用」。
+        # （开源版无游客演示账号，无 guest 跳过分支）
+        try:
+            from datetime import datetime as _dt
+            cited_ids = list({s["id"] for s in sources if s.get("id")})
+            if cited_ids:
+                _now = _dt.now()
+                for _u in db.query(KnowledgeUnit).filter(KnowledgeUnit.id.in_(cited_ids)).all():
+                    _u.invoke_count = (_u.invoke_count or 0) + 1
+                    _u.last_invoked_at = _now
+                db.commit()
+        except Exception as _invoke_err:
+            # 计数失败不阻断对话，但必须 warning 留痕
+            import logging as _logging
+            _logging.getLogger("app.llm").warning("RAG 引用计数失败（不影响对话）: %s", _invoke_err)
         type_labels = {
             "note": "个人笔记",
             "clip": "网页剪藏",

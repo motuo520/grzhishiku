@@ -1,4 +1,5 @@
 import { FC } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useKnowledgeHealth } from '@/hooks/useJianghu';
 import { useNavigation } from '@/store/navigation';
 import { HeartPulse, Loader2, TrendingUp, Zap, Skull, Activity, BarChart3, HelpCircle } from 'lucide-react';
@@ -6,14 +7,19 @@ import type { KnowledgeHealthResponse } from '@/api/jianghu';
 
 const KnowledgeHealthPage: FC = () => {
   const { brainSide } = useNavigation();
+  const navigate = useNavigate();
   const { data: health, isLoading, isError, error } = useKnowledgeHealth(brainSide);
 
+  // 钻取到知识列表（脑侧随当前页，both 时落到默认的网络脑列表）
+  const knowledgeListPath = (query: string) =>
+    `/knowledge/${brainSide === 'personal' ? 'personal' : 'network'}?${query}`;
+
   const stages = health ? [
-    { label: '已收集', count: health.evolution_distribution.collected, color: 'bg-text-muted' },
-    { label: '已理解', count: health.evolution_distribution.understood, color: 'bg-info' },
-    { label: '已践行', count: health.evolution_distribution.practiced, color: 'bg-success' },
-    { label: '已验证', count: health.evolution_distribution.validated, color: 'bg-warning' },
-    { label: '已内化', count: health.evolution_distribution.internalized, color: 'bg-fusion-primary' },
+    { id: 'collected', label: '已收集', count: health.evolution_distribution.collected, color: 'bg-text-muted' },
+    { id: 'understood', label: '已理解', count: health.evolution_distribution.understood, color: 'bg-info' },
+    { id: 'practiced', label: '已践行', count: health.evolution_distribution.practiced, color: 'bg-success' },
+    { id: 'validated', label: '已验证', count: health.evolution_distribution.validated, color: 'bg-warning' },
+    { id: 'internalized', label: '已内化', count: health.evolution_distribution.internalized, color: 'bg-fusion-primary' },
   ] : [];
 
   const maxStageCount = stages.length > 0 ? Math.max(...stages.map((s) => s.count), 1) : 1;
@@ -46,8 +52,8 @@ const KnowledgeHealthPage: FC = () => {
             <StatCard icon={BarChart3} label="总条目" value={health.total_items} color="text-info" bg="bg-info/10" />
             <StatCard icon={TrendingUp} label="平均践行深度" value={health.avg_practice_depth} color="text-success" bg="bg-success/10" />
             <StatCard icon={Activity} label="平均调用次数" value={health.avg_invoke_count} color="text-warning" bg="bg-warning/10" />
-            <StatCard icon={Zap} label="高价值条目" value={health.high_value_items} color="text-fusion-primary" bg="bg-fusion-primary/10" />
-            <StatCard icon={Skull} label="僵尸条目" value={health.zombie_items} color="text-danger" bg="bg-danger/10" />
+            <StatCard icon={Zap} label="高价值条目" value={health.high_value_items} color="text-fusion-primary" bg="bg-fusion-primary/10" onClick={() => navigate(knowledgeListPath('sort_by=invoke_count&sort_order=desc'))} />
+            <StatCard icon={Skull} label="僵尸条目" value={health.zombie_items} color="text-danger" bg="bg-danger/10" onClick={() => navigate(knowledgeListPath('sort_by=last_invoked_at&sort_order=asc'))} />
             <StatCard icon={Activity} label="日活跃率" value={`${(health.daily_active_rate * 100).toFixed(0)}%`} color="text-network-primary" bg="bg-network-primary/10" />
             <StatCard icon={Zap} label="价值总分" value={health.value_score_total} color="text-warning" bg="bg-warning/10" />
             <StatCard icon={HeartPulse} label="健康度" value={health.health_score} color="text-success" bg="bg-success/10" suffix="%" tooltip="健康度 = 活跃占比×50 + 践行占比×30 + 高价值占比×20（满分100）。活跃=非僵尸条目比例，践行=有实操记录条目比例" />
@@ -60,15 +66,20 @@ const KnowledgeHealthPage: FC = () => {
             </h2>
             <div className="space-y-3">
               {stages.map((stage) => (
-                <div key={stage.label} className="flex items-center gap-3">
-                  <div className="w-16 text-xs text-text-secondary text-right shrink-0">{stage.label}</div>
+                <div
+                  key={stage.id}
+                  className="flex items-center gap-3 cursor-pointer group"
+                  onClick={() => navigate(knowledgeListPath(`evolution_stage=${stage.id}`))}
+                  title={`查看「${stage.label}」知识列表`}
+                >
+                  <div className="w-16 text-xs text-text-secondary text-right shrink-0 group-hover:text-info transition-colors">{stage.label}</div>
                   <div className="flex-1 h-2 rounded-full bg-bg-primary overflow-hidden">
                     <div
                       className={`h-full rounded-full ${stage.color} transition-all duration-500`}
                       style={{ width: `${(stage.count / maxStageCount) * 100}%` }}
                     />
                   </div>
-                  <div className="w-10 text-xs text-text-primary text-right shrink-0">{stage.count}</div>
+                  <div className="w-10 text-xs text-text-primary text-right shrink-0 group-hover:text-info transition-colors">{stage.count}</div>
                 </div>
               ))}
             </div>
@@ -112,10 +123,14 @@ const buildSuggestions = (health: KnowledgeHealthResponse): string[] => {
   return items.length > 0 ? items : ['状态良好，继续保持'];
 };
 
-const StatCard: FC<{ icon: React.ElementType; label: string; value: string | number; color: string; bg: string; suffix?: string; tooltip?: string }> = ({
-  icon: Icon, label, value, color, bg, suffix, tooltip,
+const StatCard: FC<{ icon: React.ElementType; label: string; value: string | number; color: string; bg: string; suffix?: string; tooltip?: string; onClick?: () => void }> = ({
+  icon: Icon, label, value, color, bg, suffix, tooltip, onClick,
 }) => (
-  <div className="p-4 rounded-[2px] border border-white/[0.06] bg-bg-secondary">
+  <div
+    className={`p-4 rounded-[2px] border border-white/[0.06] bg-bg-secondary ${onClick ? 'cursor-pointer hover:border-info/30 transition-colors' : ''}`}
+    onClick={onClick}
+    title={onClick ? '点击查看对应知识列表' : undefined}
+  >
     <div className="flex items-center gap-2 mb-2">
       <div className={`w-7 h-7 rounded-[2px] ${bg} flex items-center justify-center`}>
         <Icon className={`w-3.5 h-3.5 ${color}`} />

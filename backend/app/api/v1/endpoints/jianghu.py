@@ -8,7 +8,7 @@ from datetime import datetime, date, timedelta
 
 from app.core.database import get_db
 from app.core.security import get_current_user
-from app.models.base import User, Note, KnowledgeUnit, PracticeRecord, DailyReview, ContextGuide, ExperimentLog, CognitivePotentialResult
+from app.models.base import User, Note, KnowledgeUnit, PracticeRecord, DailyReview, ContextGuide, ExperimentLog, CognitivePotentialResult, EvolutionTransition
 from app.schemas.jianghu import (
     PracticeRecordCreate, PracticeRecordResponse,
     DailyReviewGenerateRequest, DailyReviewResponse, DailyReviewUpdate,
@@ -70,6 +70,27 @@ def _build_daily_review_response(review: DailyReview) -> dict:
     }
 
 
+def record_evolution_transition(db: Session, target, content_type: str, to_stage: str, trigger: str) -> None:
+    """evolution_stage 变化记流水（只在值真变时记；不 commit，由调用方统一提交）。
+
+    所有 stage 写点（践行推进 / 手动改）都走这里，knowledge.py 与 notes.py 的手动
+    改 stage 同样调用，保证 from→to 口径唯一。
+    """
+    from_stage = target.evolution_stage or "collected"
+    if from_stage == to_stage:
+        return
+    db.add(EvolutionTransition(
+        id=str(uuid.uuid4()),
+        user_id=target.user_id,
+        tenant_id=getattr(target, "tenant_id", None),
+        content_type=content_type,
+        content_id=target.id,
+        from_stage=from_stage,
+        to_stage=to_stage,
+        trigger=trigger,
+    ))
+
+
 def _update_target_practice_depth(db: Session, target_type: str, target_id: str, user_id: str):
     """Bump practice_depth on the target note/knowledge unit based on practice records."""
     if target_type == "note":
@@ -90,7 +111,9 @@ def _update_target_practice_depth(db: Session, target_type: str, target_id: str,
 
     # Map record count to practice_depth 0-5; keep attached ids in sync with the source rows
     target.practice_depth = min(len(records), 5)
-    target.evolution_stage = _evolution_stage_from_depth(target.practice_depth)
+    new_stage = _evolution_stage_from_depth(target.practice_depth)
+    record_evolution_transition(db, target, target_type, new_stage, "practice")
+    target.evolution_stage = new_stage
     target.attached_practice_ids = json.dumps([r.id for r in records], ensure_ascii=False)
     db.commit()
 
@@ -1049,3 +1072,36 @@ async def delete_experiment_log(
     db.delete(log)
     db.commit()
     return None
+
+
+@router.get("/evolution-transitions", summary="Evolution transitions", description="Recent evolution_stage change history (practice / manual) for the current user, newest first.")
+async def list_evolution_transitions(
+    limit: int = Query(50, ge=1, le=200),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    rows = db.query(EvolutionTransition).filter(
+        EvolutionTransition.user_id == current_user.id,
+    ).order_by(EvolutionTransition.created_at.desc()).limit(limit).all()
+
+    # 标题批量补齐：note→标题，knowledge_unit→正文前 60 字；内容已删则 title 为 None
+    note_ids = [r.content_id for r in rows if r.content_type == "note"]
+    ku_ids = [r.content_id for r in rows if r.content_type == "knowledge_unit"]
+    titles = {}
+    if note_ids:
+        for nid, title in db.query(Note.id, Note.title).filter(Note.id.in_(note_ids)):
+            titles[("note", nid)] = title
+    if ku_ids:
+        for kid, raw in db.query(KnowledgeUnit.id, KnowledgeUnit.content_raw).filter(KnowledgeUnit.id.in_(ku_ids)):
+            titles[("knowledge_unit", kid)] = (raw or "")[:60]
+
+    return [{
+        "id": r.id,
+        "content_type": r.content_type,
+        "content_id": r.content_id,
+        "title": titles.get((r.content_type, r.content_id)),
+        "from_stage": r.from_stage,
+        "to_stage": r.to_stage,
+        "trigger": r.trigger,
+        "created_at": r.created_at.isoformat() if r.created_at else None,
+    } for r in rows]

@@ -1,8 +1,8 @@
-import { FC, useMemo } from 'react';
+import { FC, useMemo, useState } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import {
-  ArrowLeft, Folder as FolderIcon, Inbox, FileText, BookOpen, Loader2, FolderMinus,
+  ArrowLeft, Folder as FolderIcon, Inbox, FileText, BookOpen, Loader2, FolderMinus, Search,
 } from 'lucide-react';
 import { useNavigation } from '@/store/navigation';
 import { useFolders } from '@/hooks/useFolders';
@@ -50,6 +50,22 @@ const FolderPage: FC = () => {
     staleTime: 60 * 1000,
   });
   const { mutateAsync: updateUnit } = useUpdateKnowledgeUnit();
+  const [searchQuery, setSearchQuery] = useState('');
+
+  // 页内检索：客户端过滤当前文件夹的笔记标题/正文与知识正文
+  const filteredNotes = useMemo(() => {
+    const all = notes || [];
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return all;
+    return all.filter((n) => n.title?.toLowerCase().includes(q) || n.content?.toLowerCase().includes(q));
+  }, [notes, searchQuery]);
+
+  const filteredUnits = useMemo(() => {
+    const all = units || [];
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return all;
+    return all.filter((u) => u.content_raw?.toLowerCase().includes(q) || u.source_title?.toLowerCase().includes(q));
+  }, [units, searchQuery]);
 
   const handleRemoveNote = async (noteId: string) => {
     try {
@@ -96,6 +112,20 @@ const FolderPage: FC = () => {
         </div>
       </div>
 
+      {/* 页内搜索 */}
+      {!isLoading && (
+        <div className="relative max-w-md">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="搜索本文件夹的笔记与知识..."
+            className="w-full bg-bg-secondary border border-border-color rounded-[2px] pl-10 pr-4 py-2 text-sm text-text-primary placeholder-text-secondary focus:outline-none focus:border-info/50 transition-colors"
+          />
+        </div>
+      )}
+
       {isLoading ? (
         <div className="flex items-center justify-center h-64">
           <Loader2 className="w-8 h-8 text-info animate-spin" />
@@ -107,13 +137,13 @@ const FolderPage: FC = () => {
             <h2 className="text-sm font-semibold text-text-secondary flex items-center gap-1.5">
               <FileText className="w-4 h-4" />
               笔记
-              <span className="text-[10px] text-text-muted">{(notes || []).length}</span>
+              <span className="text-[10px] text-text-muted">{filteredNotes.length}</span>
             </h2>
-            {(notes || []).length === 0 ? (
-              <div className="card py-8 text-center text-xs text-text-muted">此文件夹下暂无笔记</div>
+            {filteredNotes.length === 0 ? (
+              <div className="card py-8 text-center text-xs text-text-muted">{searchQuery.trim() ? '没有匹配的笔记' : '此文件夹下暂无笔记'}</div>
             ) : (
               <div className="space-y-2">
-                {(notes || []).map((note) => (
+                {filteredNotes.map((note) => (
                   <div key={note.id} className="card flex items-center gap-4 group">
                     <div
                       className="flex-1 min-w-0 cursor-pointer"
@@ -144,13 +174,13 @@ const FolderPage: FC = () => {
             <h2 className="text-sm font-semibold text-text-secondary flex items-center gap-1.5">
               <BookOpen className="w-4 h-4" />
               知识卡片
-              <span className="text-[10px] text-text-muted">{(units || []).length}</span>
+              <span className="text-[10px] text-text-muted">{filteredUnits.length}</span>
             </h2>
-            {(units || []).length === 0 ? (
-              <div className="card py-8 text-center text-xs text-text-muted">此文件夹下暂无知识卡片</div>
+            {filteredUnits.length === 0 ? (
+              <div className="card py-8 text-center text-xs text-text-muted">{searchQuery.trim() ? '没有匹配的知识卡片' : '此文件夹下暂无知识卡片'}</div>
             ) : (
               <div className="space-y-2">
-                {(units || []).map((unit) => (
+                {filteredUnits.map((unit) => (
                   <div key={unit.id} className="card flex items-center gap-4 group">
                     <div
                       className="flex-1 min-w-0 cursor-pointer"

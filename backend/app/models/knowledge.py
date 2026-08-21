@@ -5,7 +5,7 @@ from app.core.database import Base
 __all__ = [
     "KnowledgeUnit", "PracticeRecord", "PipelineTransition", "DailyReview",
     "ContextGuide", "ExperimentLog", "DepthCheckLog", "EvolutionReflection",
-    "CognitivePotentialResult",
+    "CognitivePotentialResult", "EvolutionTransition",
 ]
 
 
@@ -30,6 +30,9 @@ class KnowledgeUnit(Base):
     source_funding_source = Column(String)
     verification_history = Column(Text, default='[]')
     verification_status = Column(String, default="unverified", index=True)
+    # 争议决议：corrected（修正重验通过）/ kept（保留观察）/ rejected（驳回反证），NULL=未决议；
+    # 反证墙默认只列未决议条目，决议后下墙但 verification_status 不再被抹回 unverified
+    dispute_resolution = Column(String, nullable=True)
     verification_consensus = Column(Float)
     last_verified = Column(DateTime)
     next_scheduled = Column(DateTime)
@@ -104,6 +107,29 @@ class PipelineTransition(Base):
     __table_args__ = (
         Index('ix_pipeline_transition_user_content', 'user_id', 'content_type', 'content_id'),
         Index('ix_pipeline_transition_created', 'user_id', 'created_at'),
+    )
+
+
+class EvolutionTransition(Base):
+    """evolution_stage 变化流水：每次进阶/回退记一条 from→to（trigger=practice/manual）。
+
+    stage 字段本身是覆盖写，没有这张表之前「什么时候、被什么推到当前阶段」完全无痕。
+    tenant_id 口径与内容一致：团队空间记租户 id，个人空间为 NULL。
+    """
+    __tablename__ = "evolution_transitions"
+
+    id = Column(String, primary_key=True)
+    user_id = Column(String, nullable=False, index=True)
+    tenant_id = Column(String)
+    content_type = Column(String, nullable=False)  # note / knowledge_unit
+    content_id = Column(String, nullable=False, index=True)
+    from_stage = Column(String)
+    to_stage = Column(String, nullable=False)
+    trigger = Column(String, nullable=False)  # practice / manual
+    created_at = Column(DateTime, server_default=func.now())
+
+    __table_args__ = (
+        Index('ix_evolution_transitions_user_content', 'user_id', 'content_type', 'content_id'),
     )
 
 

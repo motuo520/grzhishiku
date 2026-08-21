@@ -16,12 +16,13 @@ from app.core.xss_sanitizer import sanitize_knowledge_input
 from app.models.base import User, KnowledgeUnit, Folder, content_tags
 from app.schemas.knowledge import (
     KnowledgeUnitCreate, KnowledgeUnitUpdate, KnowledgeUnitResponse, CounterEvidenceCreate,
-    SourceInfoResponse, DomainCredibilityResponse
+    DisputeResolutionCreate, SourceInfoResponse, DomainCredibilityResponse
 )
 from app.services.llm_service import chat_completion
 from app.services import tag_service
 from app.api.v1.endpoints.graph import auto_link_knowledge
 from app.api.v1.endpoints.folders import validate_folder_assignment
+from app.api.v1.endpoints.jianghu import record_evolution_transition
 from app.utils.search import build_search_filter
 
 async def _auto_link_knowledge_async(db: Session, unit, user_id: str) -> None:
@@ -54,6 +55,42 @@ def _calculate_value_score(unit: KnowledgeUnit) -> float:
     return round(density * frequency * depth, 2)
 
 
+def _parse_history(unit: KnowledgeUnit) -> list:
+    """verification_history 解析为 list，坏 JSON 回退空数组。"""
+    try:
+        history = json.loads(unit.verification_history or '[]')
+    except (json.JSONDecodeError, TypeError):
+        return []
+    return history if isinstance(history, list) else []
+
+
+def _serialize_history(unit: KnowledgeUnit) -> str:
+    """verification_history 序列化出口：counter_evidence 条目的 evidence_text /
+    evidence_url / created_at 必须透出（早期条目只有 timestamp，补 created_at 别名），
+    详情页与反证墙的反证正文靠这些字段渲染。"""
+    history = _parse_history(unit)
+    normalized = False
+    for entry in history:
+        if isinstance(entry, dict) and entry.get("type") == "counter_evidence" and not entry.get("created_at"):
+            entry["created_at"] = entry.get("timestamp")
+            normalized = True
+    if normalized:
+        return json.dumps(history, ensure_ascii=False)
+    return unit.verification_history or '[]'
+
+
+def _extract_latest_evidence(unit: KnowledgeUnit) -> Optional[dict]:
+    """最近一条反证的正文/链接/时间（无反证返回 None）。"""
+    for entry in reversed(_parse_history(unit)):
+        if isinstance(entry, dict) and entry.get("type") == "counter_evidence":
+            return {
+                "evidence_text": entry.get("evidence_text"),
+                "evidence_url": entry.get("evidence_url"),
+                "created_at": entry.get("created_at") or entry.get("timestamp"),
+            }
+    return None
+
+
 def _build_knowledge_response(unit: KnowledgeUnit, db: Session) -> dict:
     try:
         attached_practice_ids = json.loads(unit.attached_practice_ids or '[]') if unit.attached_practice_ids else []
@@ -78,7 +115,9 @@ def _build_knowledge_response(unit: KnowledgeUnit, db: Session) -> dict:
         "source_funding_source": unit.source_funding_source,
         "verification_status": unit.verification_status,
         "verification_consensus": unit.verification_consensus,
-        "verification_history": unit.verification_history,
+        "verification_history": _serialize_history(unit),
+        "dispute_resolution": unit.dispute_resolution,
+        "latest_evidence": _extract_latest_evidence(unit),
         "last_verified": unit.last_verified,
         "next_scheduled": unit.next_scheduled,
         "timeliness_status": unit.timeliness_status,
@@ -308,6 +347,7 @@ async def list_knowledge(
     status: Optional[str] = None,
     brain_side: Optional[str] = None,
     content_type: Optional[str] = None,
+    content_subtype: Optional[str] = None,
     source_domain: Optional[str] = None,
     evolution_stage: Optional[str] = None,
     origin_type: Optional[str] = None,
@@ -341,6 +381,9 @@ async def list_knowledge(
         query = query.filter(KnowledgeUnit.folder_id == folder_id)
     if content_type:
         query = query.filter(KnowledgeUnit.content_type == content_type)
+    if content_subtype:
+        # 碰撞产物等二级分类过滤（collision_result / concept / note）
+        query = query.filter(KnowledgeUnit.content_subtype == content_subtype)
     if source_domain:
         query = query.filter(KnowledgeUnit.source_url.ilike(f"%{source_domain}%"))
     if evolution_stage:
@@ -513,6 +556,7 @@ async def get_knowledge_stats(
 @router.get("/counter-evidence", response_model=List[KnowledgeUnitResponse], summary="Counter-evidence wall", description="Get knowledge units with counter-evidence or disputed/debunked status.")
 async def list_counter_evidence(
     brain_side: Optional[str] = None,
+    include_resolved: bool = Query(False, description="true 时含已决议（kept/rejected/corrected）条目；默认只列未决议"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
@@ -521,6 +565,9 @@ async def list_counter_evidence(
         KnowledgeUnit.verification_status.in_(['disputed', 'debunked', 'outdated']),
         KnowledgeUnit.status != 'deleted'
     )
+    if not include_resolved:
+        # 未决议才上墙：kept/rejected 已处置的条目不再出现在待审列表
+        query = query.filter(KnowledgeUnit.dispute_resolution.is_(None))
     if brain_side and brain_side != "both":
         query = query.filter(KnowledgeUnit.brain_side == brain_side)
     units = query.order_by(KnowledgeUnit.updated_at.desc()).all()
@@ -617,7 +664,19 @@ async def update_knowledge(
     unit = db.query(KnowledgeUnit).filter(KnowledgeUnit.id == unit_id, KnowledgeUnit.user_id == current_user.id, KnowledgeUnit.status != 'deleted').first()
     if not unit:
         raise HTTPException(status_code=404, detail="Knowledge unit not found")
-    
+
+    if unit_data.verification_status is not None:
+        # 状态直写口子已废弃（原反证墙「保留观察」把 disputed 抹回 unverified 的路径）：
+        # 核验状态只由 verify / counter-evidence / dispute-resolution 三个专用端点写，
+        # 保持只有一种写法，避免多写入方口径漂移
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "verification_status 不可直接修改：保留观察/驳回反证请用 "
+                "POST /knowledge/{id}/dispute-resolution，重验请用 POST /knowledge/{id}/verify"
+            ),
+        )
+
     if unit_data.content_raw is not None:
         safe_content, safe_url, safe_title = sanitize_knowledge_input(unit_data.content_raw, unit_data.source_url, unit_data.source_title)
         unit.content_raw = safe_content
@@ -648,13 +707,13 @@ async def update_knowledge(
     if unit_data.personal_relevance_score is not None:
         unit.personal_relevance_score = unit_data.personal_relevance_score
     if unit_data.evolution_stage is not None:
+        # 手动推进/回退阶段记流水（trigger=manual），同值重写不记
+        record_evolution_transition(db, unit, "knowledge_unit", unit_data.evolution_stage.value, "manual")
         unit.evolution_stage = unit_data.evolution_stage.value
     if unit_data.pipeline_stage is not None:
         unit.pipeline_stage = unit_data.pipeline_stage.value
     if unit_data.content_subtype is not None:
         unit.content_subtype = unit_data.content_subtype.value
-    if unit_data.verification_status is not None:
-        unit.verification_status = unit_data.verification_status
     if unit_data.source_id is not None:
         unit.source_id = unit_data.source_id
     if unit_data.source_content_type is not None:
@@ -732,12 +791,8 @@ async def verify_knowledge(
     if not unit:
         raise HTTPException(status_code=404, detail="Knowledge unit not found")
 
-    # Mark as checking
-    original_status = unit.verification_status
-    unit.verification_status = 'checking'
-    db.commit()
-
-    # Run LLM verification
+    # 顺序口径：先跑 LLM 验证拿到结果，再落状态——
+    # 不先置 checking，失败不会留下卡死的 checking 中间态。
     try:
         result = await _run_llm_verification(
             unit.content_raw,
@@ -747,17 +802,25 @@ async def verify_knowledge(
             user_id=current_user.id,
         )
     except HTTPException:
-        # 计费不足等业务异常：回滚状态，避免永久卡在 checking
-        unit.verification_status = original_status
-        db.commit()
+        # 业务异常：状态未被改动，直接抛
         raise
     except Exception:
         unit.verification_status = 'failed'
         db.commit()
         raise
 
+    # 修正重验口径：裁决前在反证墙上（disputed/debunked 或已有决议）的单元，
+    # 裁决为 confirmed 视为「修正后重验通过」→ dispute_resolution='corrected'；
+    # 仍有争议则清空决议（NULL），让条目留在/回到反证墙待处置
+    was_on_wall = unit.dispute_resolution is not None or unit.verification_status in ('disputed', 'debunked')
+
     # Update unit
     unit.verification_status = result["verdict"]
+    if was_on_wall:
+        if result["verdict"] == "confirmed":
+            unit.dispute_resolution = "corrected"
+        elif result["verdict"] in ("disputed", "debunked"):
+            unit.dispute_resolution = None
     unit.verification_consensus = round(result["confidence"] * 100, 2)
     unit.source_bias_indicator = json.dumps(result["bias_indicators"], ensure_ascii=False)
     unit.last_verified = datetime.now()
@@ -826,14 +889,67 @@ async def submit_counter_evidence(
         "evidence_text": evidence.evidence_text,
         "evidence_url": evidence.evidence_url,
         "source_authority": evidence.source_authority,
+        # created_at 与 timestamp 同值：反证墙/详情页渲染统一读 created_at
+        "created_at": datetime.now().isoformat(),
     })
     history = history[-20:]
     unit.verification_history = json.dumps(history, ensure_ascii=False)
-    
+    # 新反证出现即回到「未决议」：之前的 kept/rejected 决议不适用于新证据
+    unit.dispute_resolution = None
+
     db.commit()
     db.refresh(unit)
-    
+
     return {"unit_id": unit_id, "status": "disputed", "evidence_submitted": True}
+
+
+def _pre_dispute_status(unit: KnowledgeUnit) -> str:
+    """反证前的核验状态：verification_history 里最近一条非反证/非决议的 verdict，找不到回退 unverified。"""
+    for entry in reversed(_parse_history(unit)):
+        if not isinstance(entry, dict):
+            continue
+        if entry.get("type") in ("counter_evidence", "dispute_resolution"):
+            continue
+        verdict = entry.get("verdict")
+        if verdict:
+            return verdict
+    return "unverified"
+
+
+@router.post("/{unit_id}/dispute-resolution", response_model=KnowledgeUnitResponse, summary="Resolve dispute", description="Resolve a disputed unit: kept=保留观察（状态保持 disputed）；rejected=驳回反证（恢复反证前状态）。")
+async def resolve_dispute(
+    unit_id: str,
+    data: DisputeResolutionCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    unit = db.query(KnowledgeUnit).filter(KnowledgeUnit.id == unit_id, KnowledgeUnit.user_id == current_user.id, KnowledgeUnit.status != 'deleted').first()
+    if not unit:
+        raise HTTPException(status_code=404, detail="Knowledge unit not found")
+
+    if data.resolution == "kept":
+        # 保留观察：verification_status 保持 disputed 不动（不再抹回 unverified），
+        # 只记决议——反证墙默认只列未决议条目，kept 自然下墙但争议标记留痕
+        unit.dispute_resolution = "kept"
+    else:
+        # 驳回反证：恢复反证前的核验状态
+        unit.dispute_resolution = "rejected"
+        unit.verification_status = _pre_dispute_status(unit)
+
+    # 决议留痕：凡改动争议处置状态都必须可溯（不许无痕改状态）
+    history = _parse_history(unit)
+    history.append({
+        "type": "dispute_resolution",
+        "resolution": data.resolution,
+        "created_at": datetime.now().isoformat(),
+    })
+    history = history[-20:]
+    unit.verification_history = json.dumps(history, ensure_ascii=False)
+
+    unit.updated_at = datetime.now()
+    db.commit()
+    db.refresh(unit)
+    return _build_knowledge_response(unit, db)
 
 @router.get("/{unit_id}/sources", response_model=SourceInfoResponse, summary="Get knowledge sources", description="Get full source chain for a knowledge unit.")
 async def get_knowledge_sources(

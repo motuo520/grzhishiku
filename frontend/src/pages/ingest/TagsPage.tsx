@@ -1,4 +1,4 @@
-import { FC, useState, useMemo } from 'react';
+import { FC, useState, useMemo, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -49,8 +49,21 @@ const TagsPage: FC = () => {
   const [mergeSourceTag, setMergeSourceTag] = useState<TagType | null>(null);
   const [mergeTargetId, setMergeTargetId] = useState('');
   const [associationsTag, setAssociationsTag] = useState<TagType | null>(null);
+  const [assocSearch, setAssocSearch] = useState('');
 
   const { data: associations, isLoading: isAssociationsLoading } = useTagAssociations(associationsTag?.id || null);
+
+  // 切换标签时清空抽屉内搜索
+  useEffect(() => {
+    setAssocSearch('');
+  }, [associationsTag?.id]);
+
+  // 抽屉内检索：过滤关联条目标题
+  const filterAssocItems = <T extends { title: string }>(items: T[]): T[] => {
+    const q = assocSearch.trim().toLowerCase();
+    if (!q) return items;
+    return items.filter((item) => item.title?.toLowerCase().includes(q));
+  };
 
   const filteredTags = useMemo(() => {
     if (!tags) return [];
@@ -587,39 +600,60 @@ const TagsPage: FC = () => {
                   <div className="text-sm text-text-secondary">加载失败</div>
                 ) : (
                   <div className="space-y-4">
-                    {associations.note.length > 0 && (
-                      <div>
-                        <div className="flex items-center gap-2 text-xs text-text-muted mb-1.5">
-                          <FileText className="w-3.5 h-3.5" /> 笔记 ({associations.note.length})
-                        </div>
-                        <div className="space-y-1">
-                          {associations.note.map(renderAssociationItem)}
-                        </div>
-                      </div>
-                    )}
-                    {associations.clip.length > 0 && (
-                      <div>
-                        <div className="flex items-center gap-2 text-xs text-text-muted mb-1.5">
-                          <Scissors className="w-3.5 h-3.5" /> 剪藏 ({associations.clip.length})
-                        </div>
-                        <div className="space-y-1">
-                          {associations.clip.map(renderAssociationItem)}
-                        </div>
-                      </div>
-                    )}
-                    {associations.knowledge.length > 0 && (
-                      <div>
-                        <div className="flex items-center gap-2 text-xs text-text-muted mb-1.5">
-                          <BookOpen className="w-3.5 h-3.5" /> 知识单元 ({associations.knowledge.length})
-                        </div>
-                        <div className="space-y-1">
-                          {associations.knowledge.map(renderAssociationItem)}
-                        </div>
-                      </div>
-                    )}
-                    {associations.note.length === 0 && associations.clip.length === 0 && associations.knowledge.length === 0 && (
-                      <div className="text-sm text-text-secondary text-center py-6">暂无关联内容</div>
-                    )}
+                    <div className="relative">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-text-muted" />
+                      <input
+                        type="text"
+                        value={assocSearch}
+                        onChange={(e) => setAssocSearch(e.target.value)}
+                        placeholder="搜索关联内容..."
+                        className="w-full bg-bg-primary border border-border-color rounded-[2px] pl-9 pr-3 py-2 text-xs text-text-primary placeholder-text-secondary focus:outline-none focus:border-info/50 transition-colors"
+                      />
+                    </div>
+                    {(() => {
+                      const notes = filterAssocItems(associations.note);
+                      const clips = filterAssocItems(associations.clip);
+                      const knowledge = filterAssocItems(associations.knowledge);
+                      return (
+                        <>
+                          {notes.length > 0 && (
+                            <div>
+                              <div className="flex items-center gap-2 text-xs text-text-muted mb-1.5">
+                                <FileText className="w-3.5 h-3.5" /> 笔记 ({notes.length})
+                              </div>
+                              <div className="space-y-1">
+                                {notes.map(renderAssociationItem)}
+                              </div>
+                            </div>
+                          )}
+                          {clips.length > 0 && (
+                            <div>
+                              <div className="flex items-center gap-2 text-xs text-text-muted mb-1.5">
+                                <Scissors className="w-3.5 h-3.5" /> 剪藏 ({clips.length})
+                              </div>
+                              <div className="space-y-1">
+                                {clips.map(renderAssociationItem)}
+                              </div>
+                            </div>
+                          )}
+                          {knowledge.length > 0 && (
+                            <div>
+                              <div className="flex items-center gap-2 text-xs text-text-muted mb-1.5">
+                                <BookOpen className="w-3.5 h-3.5" /> 知识单元 ({knowledge.length})
+                              </div>
+                              <div className="space-y-1">
+                                {knowledge.map(renderAssociationItem)}
+                              </div>
+                            </div>
+                          )}
+                          {notes.length === 0 && clips.length === 0 && knowledge.length === 0 && (
+                            <div className="text-sm text-text-secondary text-center py-6">
+                              {assocSearch.trim() ? '没有匹配的关联内容' : '暂无关联内容'}
+                            </div>
+                          )}
+                        </>
+                      );
+                    })()}
                   </div>
                 )}
               </div>

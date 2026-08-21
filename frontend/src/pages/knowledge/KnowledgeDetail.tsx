@@ -10,6 +10,7 @@ import {
 import { useKnowledgeUnit } from '@/hooks/useKnowledge';
 import ErrorState from '@/components/ErrorState';
 import ModelSelector from '@/components/llm/ModelSelector';
+import type { VerificationHistoryEntry } from '@/types';
 
 const statusConfig: Record<string, { icon: React.ElementType; label: string; badgeClass: string; desc: string }> = {
   confirmed: {
@@ -132,7 +133,24 @@ const KnowledgeDetail: FC = () => {
   const status = statusConfig[unit.verification_status] || statusConfig.unverified;
   const StatusIcon = status.icon;
   const consensus = unit.verification_consensus ?? 0;
-  const history = sources?.verification_history || [];
+  // 验证历史：优先取详情接口的 verification_history（JSON 字符串，含反证条目），兜底 sources 接口
+  const history: VerificationHistoryEntry[] = (() => {
+    if (unit.verification_history) {
+      try {
+        const parsed = JSON.parse(unit.verification_history);
+        if (Array.isArray(parsed)) return parsed;
+      } catch {
+        // 落回 sources 接口数据
+      }
+    }
+    return sources?.verification_history || [];
+  })();
+  // 反证争议决议结果
+  const disputeResolution = unit.dispute_resolution
+    ? { corrected: { label: '已修正', badgeClass: 'bg-success/10 text-success border-success/30' },
+        kept: { label: '保留观察', badgeClass: 'bg-info/10 text-info border-info/30' },
+        rejected: { label: '已驳回', badgeClass: 'bg-danger/10 text-danger border-danger/30' } }[unit.dispute_resolution]
+    : null;
 
   return (
     <div className="max-w-screen-2xl mx-auto p-6 space-y-6">
@@ -161,6 +179,11 @@ const KnowledgeDetail: FC = () => {
             <StatusIcon className={`w-3.5 h-3.5 ${unit.verification_status === 'checking' ? 'animate-spin' : ''}`} />
             {status.label}
           </div>
+          {disputeResolution && (
+            <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-xs font-medium ${disputeResolution.badgeClass}`}>
+              争议决议：{disputeResolution.label}
+            </div>
+          )}
           <span className="text-xs text-text-muted">{status.desc}</span>
         </div>
       </div>
@@ -249,7 +272,31 @@ const KnowledgeDetail: FC = () => {
                       <p className="text-xs text-text-muted">暂无验证历史</p>
                     ) : (
                       [...history].reverse().map((entry, idx) => {
-                        const entryStatus = statusConfig[entry.verdict] || statusConfig.unverified;
+                        // 反证条目：徽标 + 反证正文 + 来源链接 + 时间
+                        if (entry.type === 'counter_evidence') {
+                          const counterTime = entry.created_at || entry.timestamp;
+                          return (
+                            <div key={idx} className="flex items-start gap-3">
+                              <div className="mt-0.5"><AlertTriangle className="w-4 h-4 text-warning" /></div>
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2">
+                                  <span className="px-1.5 py-0.5 rounded bg-warning/10 text-warning text-[10px] border border-warning/20">反证</span>
+                                  {counterTime && <span className="text-[10px] text-text-muted">{new Date(counterTime).toLocaleString('zh-CN')}</span>}
+                                </div>
+                                {entry.evidence_text && (
+                                  <div className="text-xs text-text-secondary mt-1 break-words">{entry.evidence_text}</div>
+                                )}
+                                {entry.evidence_url && (
+                                  <a href={entry.evidence_url} target="_blank" rel="noreferrer"
+                                    className="flex items-center gap-1 text-[10px] text-info hover:underline mt-1 break-all">
+                                    <ExternalLink className="w-3 h-3 shrink-0" />{entry.evidence_url}
+                                  </a>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        }
+                        const entryStatus = statusConfig[entry.verdict || ''] || statusConfig.unverified;
                         const EntryIcon = entryStatus.icon;
                         return (
                           <div key={idx} className="flex items-start gap-3">
@@ -257,7 +304,7 @@ const KnowledgeDetail: FC = () => {
                             <div className="flex-1">
                               <div className="flex items-center gap-2">
                                 <span className="text-xs font-medium text-text-primary">{entryStatus.label}</span>
-                                <span className="text-[10px] text-text-muted">{new Date(entry.timestamp).toLocaleString('zh-CN')}</span>
+                                <span className="text-[10px] text-text-muted">{entry.timestamp ? new Date(entry.timestamp).toLocaleString('zh-CN') : ''}</span>
                               </div>
                               <div className="text-xs text-text-secondary mt-0.5">
                                 可信度: {Math.round((entry.confidence || 0) * 100)}% · 来源可靠度: {Math.round((entry.source_reliability || 0) * 100)}%

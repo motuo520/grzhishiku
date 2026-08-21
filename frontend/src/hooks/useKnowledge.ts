@@ -5,7 +5,13 @@ import type { KnowledgeSourcesResponse, SourceCredibilityResponse, KnowledgeStat
 
 const KNOWLEDGE_KEY = ['knowledge'] as const;
 
-export const useKnowledge = (brain_side?: string) => {
+export interface KnowledgeListFilters {
+  tag_ids?: string;
+  folder_id?: string;
+  content_subtype?: string;
+}
+
+export const useKnowledge = (brain_side?: string, filters?: KnowledgeListFilters) => {
   const queryClient = useQueryClient();
 
   const {
@@ -14,9 +20,14 @@ export const useKnowledge = (brain_side?: string) => {
     error,
     refetch,
   } = useQuery({
-    queryKey: [...KNOWLEDGE_KEY, 'list', brain_side ?? 'all'],
+    queryKey: [...KNOWLEDGE_KEY, 'list', brain_side ?? 'all', filters ?? {}],
     queryFn: async () => {
-      const response = await knowledgeApi.list(brain_side ? { brain_side } : undefined);
+      const response = await knowledgeApi.list({
+        ...(brain_side ? { brain_side } : {}),
+        ...(filters?.tag_ids ? { tag_ids: filters.tag_ids } : {}),
+        ...(filters?.folder_id ? { folder_id: filters.folder_id } : {}),
+        ...(filters?.content_subtype ? { content_subtype: filters.content_subtype } : {}),
+      });
       return response.data;
     },
     staleTime: 5 * 60 * 1000,

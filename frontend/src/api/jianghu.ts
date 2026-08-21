@@ -162,6 +162,18 @@ export interface ExperimentLogUpdateData {
   brain_side?: string;
 }
 
+export interface EvolutionTransition {
+  id: string;
+  content_type: 'note' | 'knowledge_unit';
+  content_id: string;
+  // 内容已删除时后端返回 null
+  title: string | null;
+  from_stage: string;
+  to_stage: string;
+  trigger: 'practice' | 'manual';
+  created_at: string;
+}
+
 export const jianghuApi = {
   // Practice records
   listPracticeRecords: (params?: { target_type?: string; target_id?: string; practice_type?: string; brain_side?: string; limit?: number; offset?: number }) =>
@@ -189,6 +201,9 @@ export const jianghuApi = {
   checkRelevance: (data: RelevanceCheckRequest, preferred_model?: string) =>
     api.post<RelevanceCheckResponse>('/api/v1/jianghu/relevance-check', { ...data, preferred_model }),
   getKnowledgeHealth: (brain_side?: string) => api.get<KnowledgeHealthResponse>('/api/v1/jianghu/knowledge-health', { params: { brain_side } }),
+  // 最近的进化阶段跃迁记录（知识自进化线）
+  listEvolutionTransitions: (limit = 50) =>
+    api.get<EvolutionTransition[]>('/api/v1/jianghu/evolution-transitions', { params: { limit } }),
 
   // Context guides
   listContextGuides: (is_active?: boolean) =>

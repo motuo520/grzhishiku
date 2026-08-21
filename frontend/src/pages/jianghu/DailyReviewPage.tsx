@@ -1,17 +1,39 @@
 import { FC, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { useNavigate } from 'react-router-dom';
 import { useDailyReviews, useGenerateDailyReview, useUpdateDailyReview } from '@/hooks/useJianghu';
 import { useNavigation } from '@/store/navigation';
+import { knowledgeApi } from '@/api/knowledge';
 import ModelSelector from '@/components/llm/ModelSelector';
-import { Calendar, Loader2, Sparkles, CheckCircle2, AlertCircle, Lightbulb, Star, ChevronDown, ChevronUp } from 'lucide-react';
+import { Calendar, Loader2, Sparkles, CheckCircle2, AlertCircle, Lightbulb, Star, ChevronDown, ChevronUp, ShieldCheck } from 'lucide-react';
 
 const DailyReviewPage: FC = () => {
   const { brainSide } = useNavigation();
+  const navigate = useNavigate();
   const [limit, setLimit] = useState(30);
   const { data: reviews, isLoading, isFetching, isError, error, refetch } = useDailyReviews({ limit });
   const generate = useGenerateDailyReview();
   const updateReview = useUpdateDailyReview();
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [modelId, setModelId] = useState<string>();
+
+  // 可信回顾：最近确认的可信结论（验证通过的知识单元）
+  const { data: trustedUnits } = useQuery({
+    queryKey: ['knowledge', 'trusted-review', brainSide],
+    queryFn: () =>
+      knowledgeApi
+        .list({
+          status: 'confirmed',
+          sort_by: 'updated_at',
+          sort_order: 'desc',
+          brain_side: brainSide === 'both' ? undefined : brainSide,
+        })
+        .then((r) => r.data.slice(0, 20)),
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const isThisWeek = (dateStr: string) =>
+    Date.now() - new Date(dateStr).getTime() < 7 * 24 * 60 * 60 * 1000;
 
   const handleGenerate = () => {
     generate.mutate(
@@ -221,6 +243,41 @@ const DailyReviewPage: FC = () => {
           </button>
         </div>
       )}
+
+      {/* 可信回顾：验证通过的结论沉淀区 */}
+      <div className="mt-8 rounded-[2px] border border-white/[0.06] bg-bg-secondary p-5">
+        <h2 className="text-sm font-semibold text-text-primary flex items-center gap-2">
+          <ShieldCheck className="w-4 h-4 text-success" />
+          可信回顾
+        </h2>
+        <p className="text-xs text-text-muted mt-1 mb-4">验证通过的结论会沉淀在这里，建议每周回顾一次</p>
+        {!trustedUnits || trustedUnits.length === 0 ? (
+          <div className="py-6 text-center text-sm text-text-secondary">本周还没有新确认的可信结论</div>
+        ) : (
+          <div className="space-y-2">
+            {trustedUnits.map((unit) => (
+              <div
+                key={unit.id}
+                onClick={() => navigate(`/knowledge/${unit.id}`)}
+                className="flex items-center gap-3 p-2.5 rounded-[2px] bg-white/[0.02] hover:bg-white/[0.05] cursor-pointer transition-all"
+              >
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm text-text-primary truncate">
+                    {(unit.content_raw || '').slice(0, 60)}
+                  </div>
+                  <div className="flex items-center gap-2 text-xs text-text-muted mt-1">
+                    <span>{unit.brain_side === 'network' ? '网络脑' : unit.brain_side === 'both' ? '双脑' : '个人脑'}</span>
+                    <span>确认于 {new Date(unit.updated_at).toLocaleDateString('zh-CN')}</span>
+                  </div>
+                </div>
+                {isThisWeek(unit.updated_at) && (
+                  <span className="px-2 py-0.5 rounded-[2px] bg-success/10 text-success text-xs border border-success/30 shrink-0">本周新增</span>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 };

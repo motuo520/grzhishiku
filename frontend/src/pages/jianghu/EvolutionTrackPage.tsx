@@ -1,9 +1,11 @@
 import { FC, useEffect, useMemo, useRef, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { useKnowledge } from '@/hooks/useKnowledge';
 import { useNotes } from '@/hooks/useNotes';
 import { useNavigation } from '@/store/navigation';
-import { TrendingUp, ChevronDown, ChevronUp, Loader2 } from 'lucide-react';
+import { TrendingUp, ChevronDown, ChevronUp, Loader2, History, ArrowRight } from 'lucide-react';
 import { Link, useSearchParams } from 'react-router-dom';
+import { jianghuApi } from '@/api/jianghu';
 import type { Note } from '@/api/notes';
 import type { KnowledgeUnit } from '@/types';
 
@@ -17,6 +19,7 @@ const STAGES = [
 
 const STAGE_IDS = new Set(STAGES.map((s) => s.id));
 const normalizeStage = (stage?: string): string => (stage && STAGE_IDS.has(stage) ? stage : 'collected');
+const stageLabel = (stage?: string): string => STAGES.find((s) => s.id === stage)?.label || stage || '已收集';
 
 const EvolutionTrackPage: FC = () => {
   const { brainSide } = useNavigation();
@@ -29,6 +32,13 @@ const EvolutionTrackPage: FC = () => {
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [searchParams] = useSearchParams();
   const focusId = searchParams.get('id');
+
+  // 最近进化：知识/笔记的阶段跃迁时间线
+  const { data: transitions } = useQuery({
+    queryKey: ['jianghu', 'evolution-transitions'],
+    queryFn: () => jianghuApi.listEvolutionTransitions(50).then((r) => r.data),
+    staleTime: 60 * 1000,
+  });
 
   const items = useMemo(() => {
     const all = [
@@ -108,6 +118,44 @@ const EvolutionTrackPage: FC = () => {
         进化轨迹
       </h1>
       <p className="text-sm text-text-secondary mb-6">追踪知识单元与笔记从收集到内化的完整历程。</p>
+
+      {/* 最近进化时间线 */}
+      <div className="mb-6 rounded-[2px] border border-white/[0.06] bg-bg-secondary p-5">
+        <h2 className="text-sm font-semibold text-text-primary flex items-center gap-2 mb-4">
+          <History className="w-4 h-4 text-fusion-primary" />
+          最近进化
+        </h2>
+        {!transitions || transitions.length === 0 ? (
+          <div className="py-4 text-center text-sm text-text-secondary">还没有进化记录，去写践行记录推进知识</div>
+        ) : (
+          <div className="space-y-2">
+            {transitions.map((t) => (
+              <Link
+                key={t.id}
+                to={t.content_type === 'note' ? `/ingest/notes/${t.content_id}` : `/knowledge/${t.content_id}`}
+                className="flex items-center gap-3 p-2.5 rounded-[2px] bg-white/[0.02] hover:bg-white/[0.05] transition-all group"
+              >
+                <span className="text-xs text-text-muted shrink-0 w-32">
+                  {new Date(t.created_at).toLocaleString('zh-CN', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                </span>
+                <span className="flex-1 min-w-0 text-sm text-text-secondary group-hover:text-text-primary truncate">{t.title || '（内容已删除）'}</span>
+                <span className="flex items-center gap-1 text-xs shrink-0">
+                  <span className="text-text-muted">{stageLabel(t.from_stage)}</span>
+                  <ArrowRight className="w-3 h-3 text-text-muted" />
+                  <span className="text-fusion-primary">{stageLabel(t.to_stage)}</span>
+                </span>
+                <span className={`px-1.5 py-0.5 rounded text-[10px] border shrink-0 ${
+                  t.trigger === 'practice'
+                    ? 'bg-success/10 text-success border-success/30'
+                    : 'bg-info/10 text-info border-info/30'
+                }`}>
+                  {t.trigger === 'practice' ? '践行' : '手动'}
+                </span>
+              </Link>
+            ))}
+          </div>
+        )}
+      </div>
 
       {(knowledgeError || notesLoadFailed) && (
         <div className="p-3 rounded-[2px] bg-danger/10 border border-danger/30 text-sm text-danger mb-4">

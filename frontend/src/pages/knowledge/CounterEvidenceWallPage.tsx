@@ -10,7 +10,7 @@ import { useCounterEvidence, useUpdateKnowledgeUnit } from '@/hooks/useKnowledge
 import { knowledgeApi } from '@/api/knowledge';
 import { invalidateContentQueries } from '@/utils/invalidateContent';
 import ErrorState from '@/components/ErrorState';
-import type { KnowledgeUnit } from '@/types';
+import type { KnowledgeUnit, CounterEvidenceItem } from '@/types';
 
 const statusConfig: Record<string, { icon: React.ElementType; label: string; badgeClass: string }> = {
   confirmed: { icon: ShieldCheck, label: '已验证', badgeClass: 'bg-success/10 text-success border-success/30' },
@@ -37,15 +37,32 @@ const CounterEvidenceWallPage: FC = () => {
     setTimeout(() => setToast(null), 3000);
   };
 
-  // 处置台：修正重验 / 保留观察 / 移除
+  // 处置台：修正重验 / 保留观察 / 驳回反证 / 移除
+  // 保留观察与驳回反证走 dispute-resolution 端点，已决议条目会从反证墙消失
   const handleKeep = async (unit: KnowledgeUnit) => {
     setBusyId(unit.id);
     try {
-      await updateUnit.mutateAsync({ id: unit.id, data: { verification_status: 'unverified' } as any });
-      showToast('已转为待验证，移出反证墙');
+      await knowledgeApi.disputeResolution(unit.id, { resolution: 'kept' });
+      invalidateContentQueries(queryClient);
+      showToast('已保留观察，移出反证墙');
       refetch();
     } catch (e: any) {
-      showToast(e?.message || '操作失败');
+      showToast(e?.response?.data?.detail || e?.message || '操作失败');
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const handleReject = async (unit: KnowledgeUnit) => {
+    if (!confirm('确定驳回这条反证？知识将恢复原有验证状态。')) return;
+    setBusyId(unit.id);
+    try {
+      await knowledgeApi.disputeResolution(unit.id, { resolution: 'rejected' });
+      invalidateContentQueries(queryClient);
+      showToast('已驳回反证，移出反证墙');
+      refetch();
+    } catch (e: any) {
+      showToast(e?.response?.data?.detail || e?.message || '操作失败');
     } finally {
       setBusyId(null);
     }
@@ -87,7 +104,7 @@ const CounterEvidenceWallPage: FC = () => {
   };
 
   const filtered = useMemo(() => {
-    const all = (units || []) as KnowledgeUnit[];
+    const all = (units || []) as CounterEvidenceItem[];
     if (!searchQuery.trim()) return all;
     const q = searchQuery.toLowerCase();
     return all.filter((u) =>
@@ -215,6 +232,17 @@ const CounterEvidenceWallPage: FC = () => {
                         <span className="flex items-center gap-1"><MessageSquarePlus className="w-3 h-3" /> 审查 {unit.review_count} 次</span>
                         {unit.source_url && <span className="flex items-center gap-1 break-all max-w-full"><XCircle className="w-3 h-3 shrink-0" />{unit.source_url}</span>}
                       </div>
+                      {/* 最新反证 */}
+                      {unit.latest_evidence && (
+                        <div className="mt-2 px-3 py-2 rounded-[2px] bg-warning/[0.06] border border-warning/20">
+                          <div className="text-xs text-text-secondary line-clamp-2 leading-relaxed break-words">
+                            {unit.latest_evidence.evidence_text}
+                          </div>
+                          <div className="text-[10px] text-text-muted mt-1">
+                            反证于 {new Date(unit.latest_evidence.created_at).toLocaleString('zh-CN')}
+                          </div>
+                        </div>
+                      )}
                       {/* 处置台 */}
                       <div className="flex items-center gap-2 mt-3" onClick={(e) => e.stopPropagation()}>
                         <button
@@ -228,9 +256,17 @@ const CounterEvidenceWallPage: FC = () => {
                           onClick={() => handleKeep(unit)}
                           disabled={busyId === unit.id}
                           className="flex items-center gap-1 px-2.5 py-1 rounded-[2px] text-xs text-text-secondary border border-white/[0.08] bg-white/[0.04] hover:bg-white/[0.08] transition-colors disabled:opacity-50"
-                          title="转为待验证，移出反证墙，稍后再审"
+                          title="反证不足以推翻，保留观察，移出反证墙"
                         >
                           {busyId === unit.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Eye className="w-3 h-3" />} 保留观察
+                        </button>
+                        <button
+                          onClick={() => handleReject(unit)}
+                          disabled={busyId === unit.id}
+                          className="flex items-center gap-1 px-2.5 py-1 rounded-[2px] text-xs text-warning border border-warning/30 bg-warning/10 hover:bg-warning/20 transition-colors disabled:opacity-50"
+                          title="反证不成立，驳回并恢复知识原有验证状态"
+                        >
+                          {busyId === unit.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <XCircle className="w-3 h-3" />} 驳回反证
                         </button>
                         <button
                           onClick={() => handleRemove(unit)}

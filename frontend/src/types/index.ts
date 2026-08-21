@@ -38,8 +38,33 @@ export interface KnowledgeUnit {
   source_content_type?: string;
   folder_id?: string | null;
   tags?: Array<{ id: string; name: string; color?: string | null }>;
+  // 反证争议决议：null=未决议，corrected=已修正，kept=保留观察，rejected=已驳回
+  dispute_resolution?: 'corrected' | 'kept' | 'rejected' | null;
   created_at: string;
   updated_at: string;
+}
+
+// 反证墙条目：在知识单元基础上附带最新反证与决议状态
+export interface CounterEvidenceItem extends KnowledgeUnit {
+  latest_evidence?: {
+    evidence_text: string;
+    evidence_url?: string | null;
+    created_at: string;
+  } | null;
+}
+
+// 验证历史条目：验证记录与反证记录（type === 'counter_evidence'）混排
+export interface VerificationHistoryEntry {
+  timestamp?: string;
+  verdict?: string;
+  confidence?: number;
+  bias_indicators?: string[];
+  source_reliability?: number;
+  note?: string;
+  type?: string;
+  evidence_text?: string;
+  evidence_url?: string | null;
+  created_at?: string;
 }
 
 export interface KnowledgeSourcesResponse {
@@ -54,14 +79,7 @@ export interface KnowledgeSourcesResponse {
     source_funding_source: string | null;
     source_domain: string;
   }>;
-  verification_history: Array<{
-    timestamp: string;
-    verdict: string;
-    confidence: number;
-    bias_indicators: string[];
-    source_reliability: number;
-    note?: string;
-  }>;
+  verification_history: VerificationHistoryEntry[];
 }
 
 export interface SourceCredibilityResponse {
