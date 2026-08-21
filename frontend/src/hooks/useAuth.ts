@@ -20,6 +20,7 @@ export const useAuth = () => {
   const {
     data: user,
     isLoading: isLoadingUser,
+    error: userError,
   } = useQuery({
     queryKey: ['user'],
     queryFn: async () => {
@@ -111,6 +112,8 @@ export const useAuth = () => {
     isLoggedIn,
     isLoading: isLoadingUser,
     isLoadingUser,
+    /** user 查询的失败对象（429/5xx/网络抖动时 AuthGuard 据此不踢人） */
+    userError,
     login: loginMutation.mutateAsync,
     register: registerMutation.mutateAsync,
     logout,

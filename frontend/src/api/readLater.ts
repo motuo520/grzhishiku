@@ -48,6 +48,7 @@ export const readLaterApi = {
   get: (id: string) => api.get<ReadLaterItem>(`/api/v1/read-later/items/${id}`),
   update: (id: string, data: ReadLaterUpdateData) => api.put<ReadLaterItem>(`/api/v1/read-later/items/${id}`, data),
   delete: (id: string) => api.delete(`/api/v1/read-later/items/${id}`),
+  batchDelete: (ids: string[]) => api.request({ method: 'DELETE', url: '/api/v1/read-later/items/batch', data: { ids } }),
   fetchContent: (id: string) => api.post<ReadLaterItem>(`/api/v1/read-later/items/${id}/fetch-content`),
   saveToKnowledge: (id: string, tagIds?: string[]) =>
     api.post<{ success: boolean; knowledge_id: string }>(`/api/v1/read-later/items/${id}/save-to-knowledge`, { tag_ids: tagIds }),

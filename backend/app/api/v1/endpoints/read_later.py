@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Query
+from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 from typing import List, Optional
 
@@ -14,6 +15,11 @@ from app.schemas.read_later import (
 from app.services import read_later_service, tag_service
 
 router = APIRouter()
+
+
+class BatchItemDelete(BaseModel):
+    # 批量删除上限 500 条：超出直接 422，避免单次请求打爆库
+    ids: List[str] = Field(..., max_length=500)
 
 
 def _build_response(item: ReadLaterItem, db: Session) -> dict:
@@ -99,6 +105,22 @@ async def update_item(
     if not item:
         raise HTTPException(status_code=404, detail="Item not found")
     return _build_response(item, db)
+
+
+# 路由顺序铁律（血泪 #10）：/items/batch 必须注册在 /items/{item_id} 的 DELETE 之前，否则被路径参数抢路由
+@router.delete("/items/batch", response_model=dict, summary="Batch delete read later items")
+async def batch_delete_items(
+    request: BatchItemDelete,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    # 复用 service 单删语义（空间口径过滤 + item_status 软删）；
+    # 不属于当前空间的 id 静默跳过（幂等：不报错，只少删）
+    deleted = 0
+    for item_id in request.ids:
+        if read_later_service.delete_item(db, current_user, item_id):
+            deleted += 1
+    return {"deleted": deleted}
 
 
 @router.delete("/items/{item_id}", status_code=status.HTTP_204_NO_CONTENT, summary="Delete read later item")

@@ -38,6 +38,11 @@ class VerifyRequest(BaseModel):
     preferred_model: Optional[str] = Field(None, description="Preferred LLM model identifier")
 
 
+class BatchKnowledgeDelete(BaseModel):
+    # 批量删除上限 500 条：超出直接 422，避免单次请求打爆库
+    ids: List[str] = Field(..., max_length=500)
+
+
 def _estimate_density(text: str) -> float:
     """Simple heuristic: more first-person practice markers = higher density."""
     if not text:
@@ -763,6 +768,33 @@ async def patch_knowledge(
     current_user: User = Depends(get_current_user)
 ):
     return await update_knowledge(unit_id, unit_data, db, current_user)
+
+
+# 路由顺序铁律（血泪 #10）：/batch 必须注册在 /{unit_id} 的 DELETE 之前，否则被路径参数抢路由
+@router.delete("/batch", response_model=dict, summary="Batch delete knowledge units", description="Soft-delete multiple knowledge units by IDs.")
+async def batch_delete_knowledge(
+    request: BatchKnowledgeDelete,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    # 语义与单条删除完全一致：软删 + 标签关联清理 + 图边清理；
+    # 不属于当前用户的 id 静默跳过（幂等：不报错，只少删）
+    deleted = 0
+    for unit_id in request.ids:
+        unit = db.query(KnowledgeUnit).filter(
+            KnowledgeUnit.id == unit_id,
+            KnowledgeUnit.user_id == current_user.id,
+            KnowledgeUnit.status != 'deleted',
+        ).first()
+        if not unit:
+            continue
+        unit.status = "deleted"
+        tag_service.delete_tags_for(db, tag_service.CONTENT_TYPE_KNOWLEDGE, unit_id)
+        from app.api.v1.endpoints.graph import cleanup_content_edges
+        cleanup_content_edges(db, unit_id)
+        deleted += 1
+    db.commit()
+    return {"deleted": deleted}
 
 
 @router.delete("/{unit_id}", status_code=status.HTTP_204_NO_CONTENT, summary="Delete knowledge unit", description="Soft-delete a knowledge unit by setting status to deleted.")

@@ -1,5 +1,7 @@
 import { FC, Suspense, lazy, useEffect } from 'react';
 import { Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
+import { AlertTriangle } from 'lucide-react';
 import AppLayout from './layouts/AppLayout';
 import AdminRoute from './components/auth/AdminRoute';
 import ErrorBoundary from './components/ErrorBoundary';
@@ -8,6 +10,7 @@ import ModuleLayout from './components/navigation/ModuleLayout';
 // ── Auth & Layout (not lazy: instant load for welcome) ──
 import WelcomePage from './pages/WelcomePage';
 import { useAuth } from '@/hooks/useAuth';
+import { getToken } from '@/api/auth';
 import { useSettings } from '@/store/settings';
 import { getActiveProvider } from '@/api/llm';
 
@@ -132,13 +135,39 @@ const PageSkeleton: FC = () => (
 );
 
 const AuthGuard: FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { isLoading, isLoggedIn } = useAuth();
+  const { isLoading, isLoggedIn, userError } = useAuth();
+  const queryClient = useQueryClient();
   const location = useLocation();
+  // 掉线兜底（08-20）：token 还在但 user 查询因 429/5xx/网络抖动失败时，
+  // 不得踢回欢迎页（观感=被强制退出）——显示繁忙页并自动重试。
+  // 只有 401/403（token 真失效）才走原有未登录逻辑。
+  const userErrorStatus = (userError as any)?.status ?? (userError as any)?.response?.status ?? null;
+  const transientUserFailure = Boolean(
+    !isLoggedIn && !isLoading && getToken() && userError &&
+    userErrorStatus !== 401 && userErrorStatus !== 403
+  );
 
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-bg-primary">
         <div className="w-8 h-8 border-2 border-info border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  // 瞬时故障（限流/抖动）：会话保留，给重试出口，不进未登录流程
+  if (transientUserFailure) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-bg-primary gap-4">
+        <AlertTriangle className="w-10 h-10 text-warning" />
+        <div className="text-text-primary font-medium">服务繁忙，正在重试…</div>
+        <div className="text-sm text-text-secondary">你的登录状态没有丢失，稍等片刻或手动重试</div>
+        <button
+          onClick={() => queryClient.invalidateQueries({ queryKey: ['user'] })}
+          className="btn-secondary text-sm"
+        >
+          立即重试
+        </button>
       </div>
     );
   }

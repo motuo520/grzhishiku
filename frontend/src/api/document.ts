@@ -38,6 +38,7 @@ export const documentApi = {
   get: (id: string) => api.get<DocumentItem>(`/api/v1/documents/${id}`),
   reextract: (id: string) => api.post<DocumentItem>(`/api/v1/documents/${id}/extract`),
   delete: (id: string) => api.delete(`/api/v1/documents/${id}`),
+  batchDelete: (ids: string[]) => api.request({ method: 'DELETE', url: '/api/v1/documents/batch', data: { ids } }),
   saveToKnowledge: (id: string, tagIds?: string[]) =>
     api.post<{ success: boolean; knowledge_id: string }>(`/api/v1/documents/${id}/save-to-knowledge`, { tag_ids: tagIds }),
 };

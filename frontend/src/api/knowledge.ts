@@ -100,6 +100,7 @@ export const knowledgeApi = {
   create: (data: KnowledgeCreateData) => api.post<KnowledgeUnit>('/api/v1/knowledge/', data),
   get: (id: string) => api.get<KnowledgeUnit>(`/api/v1/knowledge/${id}`),
   delete: (id: string) => api.delete(`/api/v1/knowledge/${id}`),
+  batchDelete: (ids: string[]) => api.request({ method: 'DELETE', url: '/api/v1/knowledge/batch', data: { ids } }),
   update: (id: string, data: KnowledgeUpdateData) =>
     api.patch<KnowledgeUnit>(`/api/v1/knowledge/${id}`, data),
   verify: (id: string, preferred_model?: string) =>

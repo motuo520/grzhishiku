@@ -63,5 +63,6 @@ export const rssApi = {
   saveEntry: (entryId: string, asClip?: boolean) =>
     api.post(`/api/v1/rss/entries/${entryId}/save`, { as_clip: asClip ?? true }),
   deleteEntry: (entryId: string) => api.delete(`/api/v1/rss/entries/${entryId}`),
+  batchDeleteEntries: (ids: string[]) => api.request({ method: 'DELETE', url: '/api/v1/rss/entries/batch', data: { ids } }),
 };
 

@@ -15,7 +15,7 @@ from app.models.base import User, BrowserClip, KnowledgeUnit, content_tags
 from app.schemas.clip import ClipCreate, ClipResponse, ClipUpdate
 from app.schemas.knowledge import KnowledgeUnitResponse
 from app.services import tag_service
-from pydantic import BaseModel as PydanticBaseModel
+from pydantic import BaseModel as PydanticBaseModel, Field
 import urllib.request
 import urllib.error
 import re
@@ -23,6 +23,10 @@ from datetime import datetime, timedelta
 
 class BatchClipCreate(PydanticBaseModel):
     items: List[ClipCreate]
+
+class BatchClipDelete(PydanticBaseModel):
+    # 批量删除上限 500 条：超出直接 422，避免单次请求打爆库
+    ids: List[str] = Field(..., max_length=500)
 
 class BatchCreateResult(PydanticBaseModel):
     success_count: int
@@ -264,6 +268,33 @@ async def save_clip_to_knowledge(
         logger.warning(f"Auto-link failed for knowledge {unit.id}: {e}")
     
     return unit
+
+
+# 路由顺序铁律（血泪 #10）：/batch 必须注册在 /{clip_id} 的 DELETE 之前，否则被路径参数抢路由
+@router.delete("/batch", response_model=dict, summary="Batch delete clips", description="Soft-delete multiple clips by IDs.")
+async def batch_delete_clips(
+    request: BatchClipDelete,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    # 语义与单条删除完全一致：软删 + 标签关联清理 + 图边清理；
+    # 不属于当前用户的 id 静默跳过（幂等：不报错，只少删）
+    deleted = 0
+    for clip_id in request.ids:
+        clip = db.query(BrowserClip).filter(
+            BrowserClip.id == clip_id,
+            BrowserClip.user_id == current_user.id,
+            BrowserClip.status == "active",
+        ).first()
+        if not clip:
+            continue
+        clip.status = "deleted"
+        tag_service.delete_tags_for(db, tag_service.CONTENT_TYPE_CLIP, clip_id)
+        from app.api.v1.endpoints.graph import cleanup_content_edges
+        cleanup_content_edges(db, clip_id)
+        deleted += 1
+    db.commit()
+    return {"deleted": deleted}
 
 
 @router.delete("/{clip_id}", status_code=status.HTTP_204_NO_CONTENT, summary="Delete clip", description="Soft-delete a clip by setting status to deleted.")

@@ -35,6 +35,17 @@ const DELETE_BY_TYPE: Record<string, (id: string) => Promise<any>> = {
   document: (id) => documentApi.delete(id),
 };
 
+// 批量删除端点（每类型一次请求，不打爆限流；返回口径 notes 是 deleted_count，其余 deleted）
+const BATCH_DELETE_BY_TYPE: Record<string, (ids: string[]) => Promise<any>> = {
+  note: (ids) => notesApi.batchDelete(ids),
+  clip: (ids) => clipsApi.batchDelete(ids),
+  knowledge: (ids) => knowledgeApi.batchDelete(ids),
+  capsule: (ids) => capsulesApi.batchDelete(ids),
+  read_later: (ids) => readLaterApi.batchDelete(ids),
+  rss_entry: (ids) => rssApi.batchDeleteEntries(ids),
+  document: (ids) => documentApi.batchDelete(ids),
+};
+
 interface SelectedSource {
   id: string;
   type: string;
@@ -88,17 +99,38 @@ const SourcePoolPage: FC = () => {
     if (!confirm(`确定删除选中的 ${deletable.length} 条素材？此操作不可恢复。`)) return;
     setDeleting(true);
     setError(null);
-    let failed = 0;
+    // 按类型分组走批量端点（每类型一次请求）；某类型批量失败则该类型退化为逐条删
+    const byType = new Map<string, SelectedSource[]>();
     for (const s of deletable) {
-      try {
-        await deleteOne(s);
-      } catch {
-        failed++;
+      byType.set(s.type, [...(byType.get(s.type) || []), s]);
+    }
+    let done = 0;
+    let failed = 0;
+    for (const [type, items] of byType) {
+      const batchFn = BATCH_DELETE_BY_TYPE[type];
+      if (batchFn) {
+        try {
+          const resp = await batchFn(items.map((s) => s.id));
+          const body = resp?.data ?? resp;
+          done += body?.deleted ?? body?.deleted_count ?? items.length;
+          continue;
+        } catch {
+          // 批量失败 → 逐条兜底
+        }
+      }
+      for (const s of items) {
+        try {
+          await deleteOne(s);
+          done++;
+        } catch {
+          failed++;
+        }
       }
     }
     setDeleting(false);
+    setSelectedSources([]);
     refreshPool();
-    if (failed > 0) setError(`${deletable.length - failed} 条已删除，${failed} 条失败`);
+    if (failed > 0) setError(`${done} 条已删除，${failed} 条失败`);
   };
 
   const handleMoveToCards = async () => {

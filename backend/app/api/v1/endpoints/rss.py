@@ -319,6 +319,31 @@ async def save_entry(
     return {"success": True, "message": "已保存为剪藏"}
 
 
+# 路由顺序铁律（血泪 #10）：/entries/batch 必须注册在 /entries/{entry_id} 的 DELETE 之前，否则被路径参数抢路由
+class BatchEntryDelete(BaseModel):
+    # 批量删除上限 500 条：超出直接 422，避免单次请求打爆库
+    ids: List[str] = Field(..., max_length=500)
+
+
+@router.delete("/entries/batch", response_model=dict, summary="Batch delete RSS entries")
+async def batch_delete_entries(
+    request: BatchEntryDelete,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    # 语义与单条删除完全一致：软删 status='deleted'（无级联清理）；
+    # 不属于当前用户的 id 静默跳过（幂等：不报错，只少删）
+    deleted = 0
+    for entry_id in request.ids:
+        entry = db.query(RssEntry).filter(RssEntry.id == entry_id, RssEntry.user_id == current_user.id).first()
+        if not entry:
+            continue
+        entry.status = "deleted"
+        deleted += 1
+    db.commit()
+    return {"deleted": deleted}
+
+
 @router.delete("/entries/{entry_id}", status_code=status.HTTP_204_NO_CONTENT, summary="Delete RSS entry")
 async def delete_entry(
     entry_id: str,

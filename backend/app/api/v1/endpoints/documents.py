@@ -3,6 +3,7 @@ import os
 import uuid
 import shutil
 from fastapi import APIRouter, Depends, HTTPException, status, Query, UploadFile, File
+from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 from typing import List, Optional
 
@@ -117,6 +118,27 @@ async def reextract_document(
     if not doc:
         raise HTTPException(status_code=404, detail="Document not found")
     return _build_response(doc)
+
+
+# 路由顺序铁律（血泪 #10）：/batch 必须注册在 /{document_id} 的 DELETE 之前，否则被路径参数抢路由
+class BatchDocumentDelete(BaseModel):
+    # 批量删除上限 500 条：超出直接 422，避免单次请求打爆库
+    ids: List[str] = Field(..., max_length=500)
+
+
+@router.delete("/batch", response_model=dict, summary="Batch delete documents")
+async def batch_delete_documents(
+    request: BatchDocumentDelete,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    # 复用 service 单删语义（user_id 口径 + doc_status 软删，物理文件保留）；
+    # 不属于当前用户的 id 静默跳过（幂等：不报错，只少删）
+    deleted = 0
+    for document_id in request.ids:
+        if document_service.delete_document(db, current_user, document_id):
+            deleted += 1
+    return {"deleted": deleted}
 
 
 @router.delete("/{document_id}", status_code=status.HTTP_204_NO_CONTENT, summary="Delete document")

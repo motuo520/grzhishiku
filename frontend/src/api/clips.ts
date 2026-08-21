@@ -66,4 +66,5 @@ export const clipsApi = {
   fetchMetadata: (urls: string[]) => api.post<UrlMetadata[]>('/api/v1/clips/fetch-metadata', { urls }),
   get: (id: string) => api.get<Clip>(`/api/v1/clips/${id}`),
   delete: (id: string) => api.delete(`/api/v1/clips/${id}`),
+  batchDelete: (ids: string[]) => api.request({ method: 'DELETE', url: '/api/v1/clips/batch', data: { ids } }),
 };

@@ -42,6 +42,7 @@ export const capsulesApi = {
   create: (data: CapsuleCreateData) => api.post<Capsule>('/api/v1/capsules/', data),
   get: (id: string) => api.get<Capsule>(`/api/v1/capsules/${id}`),
   delete: (id: string) => api.delete(`/api/v1/capsules/${id}`),
+  batchDelete: (ids: string[]) => api.request({ method: 'DELETE', url: '/api/v1/capsules/batch', data: { ids } }),
   unlock: (id: string) => api.post(`/api/v1/capsules/${id}/unlock`),
   collect: (id: string) => api.post<Capsule>(`/api/v1/capsules/${id}/collect`),
   dialogue: (id: string, data: { message: string; present_context?: any; present_mood?: any; preferred_model?: string }) =>

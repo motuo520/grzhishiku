@@ -31,9 +31,14 @@ from app.core.config import settings
 
 # In development/testing, use very lenient limits so the pytest suite is not
 # throttled by the shared test client IP. Production keeps strict defaults.
+# 桌面端（PSB_DESKTOP=1）是本机单用户形态：所有请求共享 127.0.0.1 一个桶，
+# 通用限流放宽到 600/min——批量操作（素材池批量删除等）不会把本机用户限死
+# （08-20 实锤：删 100 条素材把桌面端自己 429 到「掉线」）。云端网页保持 100。
+import os as _os
+_desktop = _os.environ.get("PSB_DESKTOP") == "1"
 _login_max = 1000 if settings.ENV != "production" else 5
 _chat_max = 1000 if settings.ENV != "production" else 30
-_api_max = 10000 if settings.ENV != "production" else 100
+_api_max = 10000 if settings.ENV != "production" else (600 if _desktop else 100)
 _admin_max = 10000 if settings.ENV != "production" else 200
 
 # Global rate limiter instances per endpoint category

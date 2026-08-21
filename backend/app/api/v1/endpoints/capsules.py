@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, status
+from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 from sqlalchemy import or_, and_
 from typing import List, Optional
@@ -280,6 +281,33 @@ async def get_capsule(
     if not capsule:
         raise HTTPException(status_code=404, detail="Capsule not found")
     return _capsule_to_response(capsule, db)
+
+# 路由顺序铁律（血泪 #10）：/batch 必须注册在 /{capsule_id} 的 DELETE 之前，否则被路径参数抢路由
+class BatchCapsuleDelete(BaseModel):
+    # 批量删除上限 500 条：超出直接 422，避免单次请求打爆库
+    ids: List[str] = Field(..., max_length=500)
+
+
+@router.delete("/batch", response_model=dict, summary="Batch delete capsules", description="Delete multiple capsules by IDs.")
+async def batch_delete_capsules(
+    request: BatchCapsuleDelete,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    # 语义与单条删除完全一致：图边清理 + 硬删（无软删状态位）；
+    # 不属于当前用户的 id 静默跳过（幂等：不报错，只少删）
+    deleted = 0
+    for capsule_id in request.ids:
+        capsule = db.query(Capsule).filter(Capsule.id == capsule_id, Capsule.user_id == current_user.id).first()
+        if not capsule:
+            continue
+        from app.api.v1.endpoints.graph import cleanup_content_edges
+        cleanup_content_edges(db, capsule_id)
+        db.delete(capsule)
+        deleted += 1
+    db.commit()
+    return {"deleted": deleted}
+
 
 @router.delete("/{capsule_id}", status_code=status.HTTP_204_NO_CONTENT, summary="Delete capsule", description="Delete a capsule.")
 async def delete_capsule(

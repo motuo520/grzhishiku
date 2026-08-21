@@ -15,6 +15,7 @@ interface TypeConfig {
 }
 
 // 数据源是涌现素材池的跨类型聚合（非图谱节点），图标风格对齐 SourcePool
+// detail：有详情页的类型点进原内容；只有 path（列表页）的类型退化为跳列表
 const TYPE_CONFIG: Record<string, TypeConfig> = {
   note: { label: '笔记', icon: FileText, path: '/ingest/notes' },
   clip: { label: '剪藏', icon: Scissors, path: '/ingest/clipper' },
@@ -25,6 +26,13 @@ const TYPE_CONFIG: Record<string, TypeConfig> = {
   rss_entry: { label: 'RSS', icon: Rss, path: '/ingest/rss' },
   email: { label: '邮件', icon: Mail, path: '/ingest/email' },
   social: { label: '社交', icon: MessageCircle, path: '/ingest/social' },
+};
+
+// 有详情页的类型：点击直达原内容（此前一律跳列表页「目录」，找不到条目）
+const detailPathFor = (item: EmergenceSource): string | null => {
+  if (item.type === 'note') return `/ingest/notes/${item.id}`;
+  if (item.type === 'knowledge') return `/knowledge/${item.id}`;
+  return null;
 };
 
 const BRAIN_SIDE_COLORS: Record<string, string> = {
@@ -153,11 +161,12 @@ const GraphTimelinePage: FC = () => {
   const renderItem = (item: EmergenceSource) => {
     const config = TYPE_CONFIG[item.type];
     const Icon = config?.icon || HelpCircle;
-    const clickable = Boolean(config?.path);
+    const target = detailPathFor(item) || config?.path;
+    const clickable = Boolean(target);
     return (
       <button
         key={`${item.type}-${item.id}`}
-        onClick={() => { if (config?.path) navigate(config.path); }}
+        onClick={() => { if (target) navigate(target); }}
         disabled={!clickable}
         className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-left transition-colors ${
           clickable
