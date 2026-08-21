@@ -16,6 +16,7 @@ import { knowledgeApi } from '@/api/knowledge';
 import type { NoteCreateData } from '@/api/notes';
 import type { ClipCreateData } from '@/api/clips';
 import { getDomainFromUrl, parseBookmarksHtml, parseLocalJson, parseLocalCsv, detectFullExport, FULL_EXPORT_TABLE_LABELS, type FullExportDetection } from '@/utils/importParsers';
+import AutoTagHint from '@/components/AutoTagHint';
 
 type ImportTab = 'markdown' | 'jsoncsv' | 'urls' | 'local';
 type PreviewType = 'note' | 'clip';
@@ -465,6 +466,9 @@ const BatchImportPage: FC = () => {
           </div>
         </div>
       )}
+
+      {/* 导入即触发自动打标：提前说清是本地模型打的、偏粗可精修（可关闭，关后不再提示） */}
+      <AutoTagHint />
 
       {/* 前置选择：本批导入目标类型，非目标消费的条目类型导入时跳过 */}
       <div className="flex items-center gap-3 flex-wrap">

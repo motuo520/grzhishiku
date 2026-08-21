@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { apiClient } from '@/api/client';
 import { useSettings } from '@/store/settings';
+import AutoTagHint from '@/components/AutoTagHint';
 
 const PROVIDER_ICONS: Record<string, React.ElementType> = {
   ollama: Server,
@@ -252,6 +253,9 @@ const AISettings: FC = () => {
           )}
         </div>
       </section>
+
+      {/* 自动打标说明（本地模型打标、偏粗可精修） */}
+      <AutoTagHint />
 
       {/* Routing Preview */}
       <section className="glass-card p-6">

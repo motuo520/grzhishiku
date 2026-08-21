@@ -35,6 +35,8 @@ interface SettingsState {
   encryptNotes: boolean;
   autoLockMinutes: number;
   mascotVisible: boolean;
+  /** 自动打标模型提示条已关闭（AI 设置页与批量导入页共用，关一次不再出现） */
+  autotagHintDismissed: boolean;
   /** 注卡保存后自动触发 LLM 验证（默认关——每条都烧钱，08-21 用户拍板做开关） */
   autoVerifyOnAnnotate: boolean;
 
@@ -50,6 +52,7 @@ interface SettingsState {
   setAutoSync: (enabled: boolean) => void;
   setEncryptNotes: (enabled: boolean) => void;
   setMascotVisible: (visible: boolean) => void;
+  setAutotagHintDismissed: (dismissed: boolean) => void;
   setAutoVerifyOnAnnotate: (enabled: boolean) => void;
   setActiveProvider: (provider: string, model: string) => Promise<void>;
   syncActiveProvider: (provider: string, model: string) => void;
@@ -77,6 +80,7 @@ export const useSettings = create<SettingsState>()(
       encryptNotes: false,
       autoLockMinutes: 30,
       mascotVisible: true,
+      autotagHintDismissed: false,
       autoVerifyOnAnnotate: false,
 
       setTheme: (theme) => set({ theme }),
@@ -99,6 +103,7 @@ export const useSettings = create<SettingsState>()(
       setAutoSync: (autoSync) => set({ autoSync }),
       setEncryptNotes: (encryptNotes) => set({ encryptNotes }),
       setMascotVisible: (mascotVisible) => set({ mascotVisible }),
+      setAutotagHintDismissed: (autotagHintDismissed) => set({ autotagHintDismissed }),
       setAutoVerifyOnAnnotate: (autoVerifyOnAnnotate) => set({ autoVerifyOnAnnotate }),
       setActiveProvider: async (provider, model) => {
         await setActiveProviderApi(provider, model);
