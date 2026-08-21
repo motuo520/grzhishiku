@@ -63,6 +63,12 @@ const KnowledgeDetail: FC = () => {
   const location = useLocation();
   const { unit, sources, credibility, isLoading, error, refetch, verifyUnit, isVerifying, submitCounterEvidence, isSubmittingEvidence } = useKnowledgeUnit(id || '');
   const fromPath = (location.state as { from?: string } | null)?.from;
+  // 回退兜底：无来源信息时按条目脑侧落对应列表（此前硬编码网络脑，个人脑条目回退必错页）
+  const fallbackListPath =
+    unit?.brain_side === 'personal' ? '/knowledge/personal'
+    : unit?.brain_side === 'network' ? '/knowledge/network'
+    : '/knowledge/all';
+  const backTo = fromPath || fallbackListPath;
 
   const [showFullContent, setShowFullContent] = useState(false);
   const [showSources, setShowSources] = useState(false);
@@ -124,7 +130,7 @@ const KnowledgeDetail: FC = () => {
         <div className="glass-card flex flex-col items-center justify-center py-20">
           <HelpCircle className="w-12 h-12 text-text-muted/40 mb-3" />
           <p className="text-text-secondary">未找到知识单元</p>
-          <button onClick={() => navigate(fromPath || '/knowledge/network')} className="btn-secondary text-xs mt-4">返回列表</button>
+          <button onClick={() => navigate(backTo)} className="btn-secondary text-xs mt-4">返回列表</button>
         </div>
       </div>
     );
@@ -170,7 +176,7 @@ const KnowledgeDetail: FC = () => {
       </AnimatePresence>
 
       <div className="flex items-center gap-3">
-        <button onClick={() => navigate(fromPath || '/knowledge/network')}
+        <button onClick={() => navigate(backTo)}
           className="p-2 bg-white/[0.03] border border-white/[0.08] rounded-[2px] text-text-secondary hover:text-text-primary hover:bg-white/[0.06] transition-all">
           <ArrowLeft className="w-4 h-4" />
         </button>

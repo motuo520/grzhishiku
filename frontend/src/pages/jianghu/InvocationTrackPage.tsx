@@ -1,6 +1,6 @@
 import { FC, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useNavigation } from '@/store/navigation';
 import { motion } from 'framer-motion';
 import {
@@ -22,6 +22,7 @@ const evolutionLabel: Record<string, string> = {
 
 const InvocationTrackPage: FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { brainSide } = useNavigation();
   const [timeRange, setTimeRange] = useState<'7d' | '30d' | 'all'>('all');
 
@@ -162,7 +163,7 @@ const InvocationTrackPage: FC = () => {
                 {(topUnits || []).map((unit, index) => (
                   <div
                     key={unit.id}
-                    onClick={() => navigate(`/knowledge/${unit.id}`)}
+                    onClick={() => navigate(`/knowledge/${unit.id}`, { state: { from: location.pathname } })}
                     className="flex items-center gap-3 p-3 rounded-[2px] bg-white/[0.02] hover:bg-white/[0.05] border border-white/[0.04] hover:border-info/20 cursor-pointer transition-all"
                   >
                     <div className={`w-6 h-6 flex items-center justify-center rounded-[2px] text-xs font-bold ${
@@ -212,12 +213,13 @@ const InvocationTrackPage: FC = () => {
                 {Object.entries(distribution).map(([stage, count]) => {
                   const total = health?.total_items || 1;
                   const pct = Math.round((count / total) * 100);
+                  const drillSide = brainSide === 'personal' ? 'personal' : brainSide === 'network' ? 'network' : 'all';
                   return (
                     <div
                       key={stage}
-                      className="cursor-pointer group"
-                      onClick={() => navigate(`/knowledge/${brainSide === 'personal' ? 'personal' : 'network'}?evolution_stage=${stage}`)}
-                      title={`查看「${evolutionLabel[stage] || stage}」知识列表`}
+                      className={count > 0 ? 'cursor-pointer group' : 'opacity-50 cursor-default'}
+                      onClick={() => { if (count > 0) navigate(`/knowledge/${drillSide}?evolution_stage=${stage}`); }}
+                      title={count > 0 ? `查看「${evolutionLabel[stage] || stage}」知识列表` : '该阶段暂无条目'}
                     >
                       <div className="flex items-center justify-between text-xs mb-1">
                         <span className="text-text-secondary group-hover:text-info transition-colors">{evolutionLabel[stage] || stage}</span>
@@ -249,7 +251,7 @@ const InvocationTrackPage: FC = () => {
                 {(recentPracticed || []).slice(0, 5).map((unit) => (
                   <div
                     key={unit.id}
-                    onClick={() => navigate(`/knowledge/${unit.id}`)}
+                    onClick={() => navigate(`/knowledge/${unit.id}`, { state: { from: location.pathname } })}
                     className="flex items-center justify-between p-2.5 rounded-[2px] bg-white/[0.02] hover:bg-white/[0.05] cursor-pointer transition-all"
                   >
                     <div className="text-xs text-text-primary truncate pr-2">{unit.content_raw}</div>

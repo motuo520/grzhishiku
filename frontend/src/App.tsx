@@ -30,6 +30,7 @@ const AttentionGuardianPage = lazy(() => import('./pages/attention/AttentionGuar
 const AttentionRationPage = lazy(() => import('./pages/attention/AttentionRationPage'));
 const AttentionStatsPage = lazy(() => import('./pages/attention/AttentionStatsPage'));
 const KnowledgeDetail = lazy(() => import('./pages/knowledge/KnowledgeDetail'));
+const AllKnowledgePage = lazy(() => import('./pages/knowledge/AllKnowledgePage'));
 const NetworkKnowledgePage = lazy(() => import('./pages/knowledge/NetworkKnowledgePage'));
 const PersonalKnowledgePage = lazy(() => import('./pages/knowledge/PersonalKnowledgePage'));
 const KnowledgeCreatePage = lazy(() => import('./pages/knowledge/KnowledgeCreatePage'));
@@ -366,6 +367,7 @@ const App: FC = () => {
                 <Route index element={<Navigate to="network" replace />} />
                 <Route path="network" element={<NetworkKnowledgePage />} />
                 <Route path="personal" element={<PersonalKnowledgePage />} />
+                <Route path="all" element={<AllKnowledgePage />} />
                 <Route path="verify" element={<VerificationCenterPage />} />
                 <Route path="sources" element={<SourceTraceabilityPage />} />
                 <Route path="counter" element={<CounterEvidenceWallPage />} />
@@ -380,6 +382,7 @@ const App: FC = () => {
                 <Route index element={<Navigate to="network" replace />} />
                 <Route path="network" element={<NetworkKnowledgePage />} />
                 <Route path="personal" element={<PersonalKnowledgePage />} />
+                <Route path="all" element={<AllKnowledgePage />} />
                 <Route path="verify" element={<VerificationCenterPage />} />
                 <Route path="sources" element={<SourceTraceabilityPage />} />
                 <Route path="counter" element={<CounterEvidenceWallPage />} />

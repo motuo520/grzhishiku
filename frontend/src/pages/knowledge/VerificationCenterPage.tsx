@@ -99,7 +99,7 @@ const VerificationCenterPage: FC = () => {
         <div className="flex items-center gap-3">
           <div
             className="glass-card px-3 py-2 text-center min-w-[80px] cursor-pointer hover:border-info/30 transition-colors"
-            onClick={() => navigate('/knowledge/network?status=unverified')}
+            onClick={() => navigate('/knowledge/all?status=unverified')}
             title="查看待验证知识列表"
           >
             <div className="text-lg font-bold text-warning">{pending.length}</div>
@@ -107,7 +107,7 @@ const VerificationCenterPage: FC = () => {
           </div>
           <div
             className="glass-card px-3 py-2 text-center min-w-[80px] cursor-pointer hover:border-info/30 transition-colors"
-            onClick={() => navigate('/knowledge/network?status=confirmed')}
+            onClick={() => navigate('/knowledge/all?status=confirmed')}
             title="查看已确认知识列表"
           >
             <div className="text-lg font-bold text-success">{verified.length}</div>
@@ -115,7 +115,7 @@ const VerificationCenterPage: FC = () => {
           </div>
           <div
             className="glass-card px-3 py-2 text-center min-w-[80px] cursor-pointer hover:border-info/30 transition-colors"
-            onClick={() => navigate('/knowledge/network?status=disputed')}
+            onClick={() => navigate('/knowledge/all?status=disputed')}
             title="查看争议知识列表"
           >
             <div className="text-lg font-bold text-danger">{disputed.length}</div>

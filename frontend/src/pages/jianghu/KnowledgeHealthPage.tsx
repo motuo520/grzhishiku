@@ -10,9 +10,10 @@ const KnowledgeHealthPage: FC = () => {
   const navigate = useNavigate();
   const { data: health, isLoading, isError, error } = useKnowledgeHealth(brainSide);
 
-  // 钻取到知识列表（脑侧随当前页，both 时落到默认的网络脑列表）
+  // 钻取到知识列表：脑侧随当前页；both 时落「全部知识」视图——统计是跨脑口径，
+  // 落单脑列表会对不上数（08-20 实锤「点进去空空如也」）
   const knowledgeListPath = (query: string) =>
-    `/knowledge/${brainSide === 'personal' ? 'personal' : 'network'}?${query}`;
+    `/knowledge/${brainSide === 'personal' ? 'personal' : brainSide === 'network' ? 'network' : 'all'}?${query}`;
 
   const stages = health ? [
     { id: 'collected', label: '已收集', count: health.evolution_distribution.collected, color: 'bg-text-muted' },
@@ -68,9 +69,9 @@ const KnowledgeHealthPage: FC = () => {
               {stages.map((stage) => (
                 <div
                   key={stage.id}
-                  className="flex items-center gap-3 cursor-pointer group"
-                  onClick={() => navigate(knowledgeListPath(`evolution_stage=${stage.id}`))}
-                  title={`查看「${stage.label}」知识列表`}
+                  className={`flex items-center gap-3 ${stage.count > 0 ? 'cursor-pointer group' : 'opacity-50 cursor-default'}`}
+                  onClick={() => { if (stage.count > 0) navigate(knowledgeListPath(`evolution_stage=${stage.id}`)); }}
+                  title={stage.count > 0 ? `查看「${stage.label}」知识列表` : '该阶段暂无条目'}
                 >
                   <div className="w-16 text-xs text-text-secondary text-right shrink-0 group-hover:text-info transition-colors">{stage.label}</div>
                   <div className="flex-1 h-2 rounded-full bg-bg-primary overflow-hidden">
