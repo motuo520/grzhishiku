@@ -5,6 +5,7 @@ import { useDailyReviews, useGenerateDailyReview, useUpdateDailyReview } from '@
 import { useNavigation } from '@/store/navigation';
 import { knowledgeApi } from '@/api/knowledge';
 import ModelSelector from '@/components/llm/ModelSelector';
+import EvolutionChainBar from '@/components/EvolutionChainBar';
 import { Calendar, Loader2, Sparkles, CheckCircle2, AlertCircle, Lightbulb, Star, ChevronDown, ChevronUp, ShieldCheck } from 'lucide-react';
 
 const DailyReviewPage: FC = () => {
@@ -87,6 +88,10 @@ const DailyReviewPage: FC = () => {
             生成今日复盘
           </button>
         </div>
+      </div>
+
+      <div className="mb-6">
+        <EvolutionChainBar />
       </div>
 
       {(generate.isError || updateReview.isError) && (

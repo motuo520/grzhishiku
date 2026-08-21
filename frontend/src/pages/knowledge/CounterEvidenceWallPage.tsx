@@ -10,6 +10,7 @@ import { useCounterEvidence, useUpdateKnowledgeUnit } from '@/hooks/useKnowledge
 import { knowledgeApi } from '@/api/knowledge';
 import { invalidateContentQueries } from '@/utils/invalidateContent';
 import ErrorState from '@/components/ErrorState';
+import EvolutionChainBar from '@/components/EvolutionChainBar';
 import type { KnowledgeUnit, CounterEvidenceItem } from '@/types';
 
 const statusConfig: Record<string, { icon: React.ElementType; label: string; badgeClass: string }> = {
@@ -38,13 +39,13 @@ const CounterEvidenceWallPage: FC = () => {
   };
 
   // 处置台：修正重验 / 保留观察 / 驳回反证 / 移除
-  // 保留观察与驳回反证走 dispute-resolution 端点，已决议条目会从反证墙消失
+  // 保留观察与驳回反证走 dispute-resolution 端点，已决议条目会从争议裁决列表消失
   const handleKeep = async (unit: KnowledgeUnit) => {
     setBusyId(unit.id);
     try {
       await knowledgeApi.disputeResolution(unit.id, { resolution: 'kept' });
       invalidateContentQueries(queryClient);
-      showToast('已保留观察，移出反证墙');
+      showToast('已保留观察，移出争议裁决');
       refetch();
     } catch (e: any) {
       showToast(e?.response?.data?.detail || e?.message || '操作失败');
@@ -59,7 +60,7 @@ const CounterEvidenceWallPage: FC = () => {
     try {
       await knowledgeApi.disputeResolution(unit.id, { resolution: 'rejected' });
       invalidateContentQueries(queryClient);
-      showToast('已驳回反证，移出反证墙');
+      showToast('已驳回反证，移出争议裁决');
       refetch();
     } catch (e: any) {
       showToast(e?.response?.data?.detail || e?.message || '操作失败');
@@ -124,7 +125,7 @@ const CounterEvidenceWallPage: FC = () => {
   if (error) {
     return (
       <div className="max-w-7xl mx-auto p-6">
-        <ErrorState title="反证墙加载失败" message={error?.message || '无法获取争议知识'} onRetry={refetch} />
+        <ErrorState title="争议裁决加载失败" message={error?.message || '无法获取争议知识'} onRetry={refetch} />
       </div>
     );
   }
@@ -176,9 +177,9 @@ const CounterEvidenceWallPage: FC = () => {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-text-primary flex items-center gap-2">
-            <XCircle className="w-6 h-6 text-danger" /> 反证墙
+            <XCircle className="w-6 h-6 text-danger" /> 争议裁决
           </h1>
-          <p className="text-sm text-text-secondary mt-1">集中审查争议、证伪与过期的知识单元</p>
+          <p className="text-sm text-text-secondary mt-1">有争议的知识在这里裁决：修正、保留或驳回（集中审查反证、证伪与过期的知识单元）</p>
         </div>
         <div className="glass-card px-4 py-2 flex items-center gap-3">
           <AlertTriangle className="w-5 h-5 text-warning" />
@@ -188,6 +189,8 @@ const CounterEvidenceWallPage: FC = () => {
           </div>
         </div>
       </div>
+
+      <EvolutionChainBar />
 
       <div className="relative max-w-md">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" />
@@ -256,7 +259,7 @@ const CounterEvidenceWallPage: FC = () => {
                           onClick={() => handleKeep(unit)}
                           disabled={busyId === unit.id}
                           className="flex items-center gap-1 px-2.5 py-1 rounded-[2px] text-xs text-text-secondary border border-white/[0.08] bg-white/[0.04] hover:bg-white/[0.08] transition-colors disabled:opacity-50"
-                          title="反证不足以推翻，保留观察，移出反证墙"
+                          title="反证不足以推翻，保留观察，移出争议裁决"
                         >
                           {busyId === unit.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Eye className="w-3 h-3" />} 保留观察
                         </button>

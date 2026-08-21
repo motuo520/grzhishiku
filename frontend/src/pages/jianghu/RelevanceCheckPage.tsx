@@ -7,7 +7,7 @@ import { Filter, Loader2, BookOpen, AlertCircle, CheckCircle2, XCircle, Sparkles
 
 const ACTION_MAP: Record<string, { label: string; icon: React.ElementType; color: string; desc: string; path?: string }> = {
   import: { label: '直接导入', icon: CheckCircle2, color: 'text-success', desc: '这条内容与你高度相关，建议立即收录', path: '/ingest/clipper' },
-  import_with_practice: { label: '导入并践行', icon: Sparkles, color: 'text-info', desc: '内容相关且有行动价值，建议导入后做实操记录', path: '/social-brain/practice-records' },
+  import_with_practice: { label: '导入并践行', icon: Sparkles, color: 'text-info', desc: '内容相关且有行动价值，建议导入后做践行记录', path: '/social-brain/practice-records' },
   read_later: { label: '稍后读', icon: BookOpen, color: 'text-warning', desc: '有一定相关性，先存起来再决定', path: '/ingest/read-later' },
   ignore: { label: '忽略', icon: XCircle, color: 'text-danger', desc: '当前与你关联不大，不必分散注意力' },
 };

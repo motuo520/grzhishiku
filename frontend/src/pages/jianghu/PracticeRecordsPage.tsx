@@ -5,6 +5,7 @@ import { useNotes } from '@/hooks/useNotes';
 import { useNavigation } from '@/store/navigation';
 import { Dumbbell, Loader2, Plus, Filter, ExternalLink, Trash2 } from 'lucide-react';
 import { Link, useSearchParams } from 'react-router-dom';
+import EvolutionChainBar from '@/components/EvolutionChainBar';
 
 const PRACTICE_TYPES = [
   { value: 'applied', label: '应用', color: 'text-network-primary bg-network-primary/10' },
@@ -85,7 +86,7 @@ const PracticeRecordsPage: FC = () => {
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-xl font-semibold text-text-primary flex items-center gap-2">
           <Dumbbell className="w-5 h-5 text-network-primary" />
-          实操记录
+          践行记录
         </h1>
         <button
           onClick={() => setShowForm((s) => !s)}
@@ -94,6 +95,10 @@ const PracticeRecordsPage: FC = () => {
           <Plus className="w-4 h-4" />
           {showForm ? '取消' : '记录实操'}
         </button>
+      </div>
+
+      <div className="mb-6">
+        <EvolutionChainBar />
       </div>
 
       {showForm && (
@@ -212,7 +217,7 @@ const PracticeRecordsPage: FC = () => {
                 </div>
                 <button
                   onClick={() => {
-                    if (window.confirm('确定删除这条实操记录吗？')) del.mutate(record.id);
+                    if (window.confirm('确定删除这条践行记录吗？')) del.mutate(record.id);
                   }}
                   disabled={del.isPending && del.variables === record.id}
                   className="p-1.5 rounded-[2px] text-text-muted hover:text-danger hover:bg-danger/10 transition-colors disabled:opacity-50 shrink-0"
@@ -243,7 +248,7 @@ const PracticeRecordsPage: FC = () => {
 
       {filteredRecords?.length === 0 && !isLoading && (
         <div className="p-8 rounded-[2px] border border-white/[0.06] bg-bg-secondary text-center text-text-secondary">
-          暂无实操记录，点击右上角开始记录。
+          暂无践行记录，点击右上角开始记录。
         </div>
       )}
 

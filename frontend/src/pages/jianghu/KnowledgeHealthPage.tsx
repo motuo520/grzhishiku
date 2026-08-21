@@ -57,7 +57,7 @@ const KnowledgeHealthPage: FC = () => {
             <StatCard icon={Skull} label="僵尸条目" value={health.zombie_items} color="text-danger" bg="bg-danger/10" onClick={() => navigate(knowledgeListPath('sort_by=last_invoked_at&sort_order=asc'))} />
             <StatCard icon={Activity} label="日活跃率" value={`${(health.daily_active_rate * 100).toFixed(0)}%`} color="text-network-primary" bg="bg-network-primary/10" />
             <StatCard icon={Zap} label="价值总分" value={health.value_score_total} color="text-warning" bg="bg-warning/10" />
-            <StatCard icon={HeartPulse} label="健康度" value={health.health_score} color="text-success" bg="bg-success/10" suffix="%" tooltip="健康度 = 活跃占比×50 + 践行占比×30 + 高价值占比×20（满分100）。活跃=非僵尸条目比例，践行=有实操记录条目比例" />
+            <StatCard icon={HeartPulse} label="健康度" value={health.health_score} color="text-success" bg="bg-success/10" suffix="%" tooltip="健康度 = 活跃占比×50 + 践行占比×30 + 高价值占比×20（满分100）。活跃=非僵尸条目比例，践行=有践行记录条目比例" />
           </div>
 
           <div className="rounded-[2px] border border-white/[0.06] bg-bg-secondary p-5 mb-6">

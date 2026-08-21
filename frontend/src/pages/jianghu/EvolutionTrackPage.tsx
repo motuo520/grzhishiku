@@ -8,6 +8,7 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { jianghuApi } from '@/api/jianghu';
 import type { Note } from '@/api/notes';
 import type { KnowledgeUnit } from '@/types';
+import EvolutionChainBar from '@/components/EvolutionChainBar';
 
 const STAGES = [
   { id: 'collected', label: '已收集', desc: '知识进入系统，尚未处理', color: 'text-text-muted', bg: 'bg-text-muted/10', bar: 'bg-text-muted' },
@@ -117,7 +118,10 @@ const EvolutionTrackPage: FC = () => {
         <TrendingUp className="w-5 h-5 text-fusion-primary" />
         进化轨迹
       </h1>
-      <p className="text-sm text-text-secondary mb-6">追踪知识单元与笔记从收集到内化的完整历程。</p>
+      <p className="text-sm text-text-secondary mb-2">追踪知识单元与笔记从收集到内化的完整历程。</p>
+      <div className="mb-6">
+        <EvolutionChainBar />
+      </div>
 
       {/* 最近进化时间线 */}
       <div className="mb-6 rounded-[2px] border border-white/[0.06] bg-bg-secondary p-5">

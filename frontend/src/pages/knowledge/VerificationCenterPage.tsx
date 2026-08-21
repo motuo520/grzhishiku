@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { useKnowledge } from '@/hooks/useKnowledge';
 import ErrorState from '@/components/ErrorState';
+import EvolutionChainBar from '@/components/EvolutionChainBar';
 import ModelSelector from '@/components/llm/ModelSelector';
 import type { KnowledgeUnit } from '@/types';
 
@@ -129,6 +130,8 @@ const VerificationCenterPage: FC = () => {
           </div>
         </div>
       </div>
+
+      <EvolutionChainBar />
 
       <div className="relative max-w-md">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" />

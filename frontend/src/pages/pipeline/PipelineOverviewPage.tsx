@@ -471,7 +471,7 @@ const PipelineOverviewPage: FC = () => {
               <ArrowRight className="w-3 h-3 text-text-muted group-hover:text-info transition-colors" />
             </div>
             <div className="text-[10px] text-text-muted mt-1.5 leading-relaxed">
-              手动审查可信度；争议/证伪的进反证墙处置（修正重验/保留/移除）
+              手动审查可信度；争议/证伪的进争议裁决处置（修正重验/保留/移除）
             </div>
           </button>
           <button

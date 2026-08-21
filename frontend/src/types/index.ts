@@ -44,7 +44,7 @@ export interface KnowledgeUnit {
   updated_at: string;
 }
 
-// 反证墙条目：在知识单元基础上附带最新反证与决议状态
+// 争议裁决条目：在知识单元基础上附带最新反证与决议状态
 export interface CounterEvidenceItem extends KnowledgeUnit {
   latest_evidence?: {
     evidence_text: string;

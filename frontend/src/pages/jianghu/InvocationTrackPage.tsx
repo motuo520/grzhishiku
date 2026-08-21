@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { useKnowledgeHealth } from '@/hooks/useJianghu';
 import { knowledgeApi } from '@/api/knowledge';
+import EvolutionChainBar from '@/components/EvolutionChainBar';
 import type { KnowledgeUnit } from '@/types';
 
 const evolutionLabel: Record<string, string> = {
@@ -113,6 +114,8 @@ const InvocationTrackPage: FC = () => {
           ))}
         </div>
       </div>
+
+      <EvolutionChainBar />
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {statCards.map((card) => (
