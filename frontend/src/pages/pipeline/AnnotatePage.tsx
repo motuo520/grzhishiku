@@ -11,6 +11,7 @@ import { useNavigation } from '@/store/navigation';
 import { useSettings } from '@/store/settings';
 import { usePipelineStats, usePipelineItems, useReviewCollision } from '@/hooks/usePipeline';
 import { useUpdateKnowledgeUnit } from '@/hooks/useKnowledge';
+import { knowledgeApi } from '@/api/knowledge';
 import StageContextBanner from './components/StageContextBanner';
 import { BrainSideBadge, SourceLink } from './components/PipelineHelpers';
 import ErrorState from '@/components/ErrorState';
@@ -19,6 +20,8 @@ const AnnotatePage: FC = () => {
   const navigate = useNavigate();
   const { brainSide } = useNavigation();
   const isClassic = useSettings((s) => s.uiMode === 'classic');
+  const autoVerifyOnAnnotate = useSettings((s) => s.autoVerifyOnAnnotate);
+  const setAutoVerifyOnAnnotate = useSettings((s) => s.setAutoVerifyOnAnnotate);
   const [searchQuery, setSearchQuery] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [editingItem, setEditingItem] = useState<import('@/api/pipeline').PipelineItem | null>(null);
@@ -101,6 +104,10 @@ const AnnotatePage: FC = () => {
 
   const handleSaveAnnotation = async (id: string, data: import('@/api/knowledge').KnowledgeUpdateData) => {
     await updateUnit.mutateAsync({ id, data });
+    // 自动验证开关：注卡落库即触发 LLM 验证（默认关，每条都烧模型；失败静默不挡注卡流程）
+    if (autoVerifyOnAnnotate) {
+      knowledgeApi.verify(id).catch((e) => console.warn('注卡后自动验证失败', e));
+    }
     setSavedToast({ id });
     setTimeout(() => setSavedToast(null), 6000);
   };
@@ -114,6 +121,13 @@ const AnnotatePage: FC = () => {
         <div className="fixed bottom-6 right-6 z-50 glass-card px-4 py-3 rounded-xl flex items-center gap-3 text-sm border border-success/30">
           <CheckCircle2 className="w-4 h-4 text-success shrink-0" />
           <span className="text-text-primary">已注卡，归入个人脑知识，问答检索已加权</span>
+          <button
+            onClick={() => navigate('/knowledge/verify')}
+            className="text-xs text-success hover:underline shrink-0"
+            title="去验证中心确认这条知识「对不对」"
+          >
+            去验证
+          </button>
           <button
             onClick={() => navigate(`/knowledge/${savedToast.id}`)}
             className="text-xs text-info hover:underline shrink-0"
@@ -183,6 +197,16 @@ const AnnotatePage: FC = () => {
               />
             </div>
           </div>
+          {/* 注卡后自动验证开关（默认关：每条都触发一次 LLM；开了注卡即验） */}
+          <label className="flex items-center gap-2 text-xs text-text-secondary cursor-pointer select-none shrink-0" title="开启后，每次注卡保存都会自动触发一次 LLM 验证">
+            <input
+              type="checkbox"
+              checked={autoVerifyOnAnnotate}
+              onChange={(e) => setAutoVerifyOnAnnotate(e.target.checked)}
+              className="accent-info cursor-pointer"
+            />
+            注卡后自动验证
+          </label>
           <label className="flex items-center gap-2 text-xs text-text-secondary cursor-pointer select-none shrink-0" title="已注卡完成的内容默认移出列表；打开可回看">
             <input
               type="checkbox"

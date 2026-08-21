@@ -544,3 +544,19 @@ class TestDailyReviewConfirmedFeed:
         assert resp.status_code == 200, resp.text
         assert "今日确认的可信结论XYZ" in captured["prompt"]
         assert "可信结论" in captured["prompt"]
+
+    def test_generate_prompt_includes_pending_verify_count(self, client: TestClient, auth_headers, db_session, test_user, monkeypatch):
+        """复盘 prompt 必须带待验证存量（验证是被动环节，靠复盘顶到用户眼前）。"""
+        _make_ku(db_session, test_user.id, "没验过的知识甲")
+        _make_ku(db_session, test_user.id, "也没验过乙")
+        captured = {}
+
+        async def fake_chat(prompt, task_type=None, system_prompt=None, preferred_model=None, **kw):
+            captured["prompt"] = prompt
+            return json.dumps({"content_summary": "s", "ai_reflection": "r",
+                               "gaps_found": [], "action_items": [], "praise_items": []})
+
+        monkeypatch.setattr("app.api.v1.endpoints.jianghu.chat_completion", fake_chat)
+        resp = client.post("/api/v1/jianghu/daily-reviews/generate", headers=auth_headers, json={})
+        assert resp.status_code == 200, resp.text
+        assert "待验证知识存量" in captured["prompt"]

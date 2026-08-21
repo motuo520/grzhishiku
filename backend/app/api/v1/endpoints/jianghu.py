@@ -336,6 +336,13 @@ async def generate_daily_review(
         confirmed_query = confirmed_query.filter(KnowledgeUnit.brain_side.in_([brain_side, "both"]))
     confirmed_summaries = [f"- {(k.content_raw or '')[:150]}" for k in confirmed_query.all()]
 
+    # 待验证存量（unverified/checking）：验证是被动环节，复盘必须把它顶到用户眼前
+    pending_verify_count = db.query(KnowledgeUnit).filter(
+        KnowledgeUnit.user_id == current_user.id,
+        KnowledgeUnit.status != "deleted",
+        KnowledgeUnit.verification_status.in_(["unverified", "checking"]),
+    ).count()
+
     prompt = f"""你是一位个人知识管理教练，基于用户今天记录的内容生成每日复盘。
 
 今日日期：{review_date}
@@ -347,6 +354,8 @@ async def generate_daily_review(
 
 今日新确认的可信结论（{len(confirmed_summaries)}条，已通过验证的知识沉淀）：
 {chr(10).join(confirmed_summaries) or "无"}
+
+当前待验证知识存量：{pending_verify_count} 条（unverified/checking——若大于 0，请在 gaps_found 或 action_items 中提醒用户去验证中心处理）
 
 请只返回一个 JSON 对象，不要包含 Markdown 格式：
 {{

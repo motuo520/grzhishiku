@@ -35,6 +35,8 @@ interface SettingsState {
   encryptNotes: boolean;
   autoLockMinutes: number;
   mascotVisible: boolean;
+  /** 注卡保存后自动触发 LLM 验证（默认关——每条都烧钱，08-21 用户拍板做开关） */
+  autoVerifyOnAnnotate: boolean;
 
   setTheme: (theme: 'dark' | 'light' | 'system') => void;
   setUiMode: (mode: 'classic' | 'simple') => void;
@@ -48,6 +50,7 @@ interface SettingsState {
   setAutoSync: (enabled: boolean) => void;
   setEncryptNotes: (enabled: boolean) => void;
   setMascotVisible: (visible: boolean) => void;
+  setAutoVerifyOnAnnotate: (enabled: boolean) => void;
   setActiveProvider: (provider: string, model: string) => Promise<void>;
   syncActiveProvider: (provider: string, model: string) => void;
 }
@@ -74,6 +77,7 @@ export const useSettings = create<SettingsState>()(
       encryptNotes: false,
       autoLockMinutes: 30,
       mascotVisible: true,
+      autoVerifyOnAnnotate: false,
 
       setTheme: (theme) => set({ theme }),
       setUiMode: (uiMode) => set({ uiMode }),
@@ -95,6 +99,7 @@ export const useSettings = create<SettingsState>()(
       setAutoSync: (autoSync) => set({ autoSync }),
       setEncryptNotes: (encryptNotes) => set({ encryptNotes }),
       setMascotVisible: (mascotVisible) => set({ mascotVisible }),
+      setAutoVerifyOnAnnotate: (autoVerifyOnAnnotate) => set({ autoVerifyOnAnnotate }),
       setActiveProvider: async (provider, model) => {
         await setActiveProviderApi(provider, model);
         const defaultLLM = getModelIdByProviderModel(provider, model);

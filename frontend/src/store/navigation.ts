@@ -87,20 +87,20 @@ export const TOP_NAV_BUCKETS_SIMPLE: TopNavBucket[] = [
     moduleIds: ['pipeline'],
   },
   {
+    id: 'daily',
+    label: '知识进化',
+    icon: 'TrendingUp',
+    description: '知识养成循环：争议→验证→践行→进化→回顾→被用',
+    primaryModuleId: 'daily',
+    moduleIds: ['daily'],
+  },
+  {
     id: 'graph',
     label: '知识地图',
     icon: 'Map',
     description: '知识图谱可视化：全局网络、路径、报告与时间轴',
     primaryModuleId: 'graph',
     moduleIds: ['graph'],
-  },
-  {
-    id: 'daily',
-    label: '知识进化',
-    icon: 'TrendingUp',
-    description: '知识自进化全链路：碰撞→争议→验证→践行→进化→回顾→被用',
-    primaryModuleId: 'daily',
-    moduleIds: ['daily'],
   },
   {
     id: 'ask',
@@ -143,6 +143,9 @@ export const MENU_DATA_SIMPLE: Record<SimpleMenuId, MenuData> = {
       { id: 'raw', label: '原始素材', description: '未经处理的输入、剪藏、书摘', icon: 'Database', path: '/pipeline/raw', brainSide: 'both', preferredBrainSide: 'both' },
       { id: 'cards', label: '卡片化', description: '将素材切割为可复用卡片', icon: 'SquareStack', path: '/pipeline/cards', brainSide: 'both', preferredBrainSide: 'both' },
       { id: 'extract', label: '抽取', description: '提取概念、模型与行动建议', icon: 'Filter', path: '/pipeline/extract', brainSide: 'both', preferredBrainSide: 'both' },
+      // 碰撞是生产线的工序（产出 collision_result 知识单元，下道是注卡）——属于本桶；
+      // 它同时是「知识进化」链的第一环，跨桶跳转由 EvolutionChainBar 承担
+      { id: 'collision', label: '碰撞', description: '跨领域连接与创意杂交', icon: 'Shuffle', path: '/pipeline/collision', brainSide: 'both', preferredBrainSide: 'both' },
       { id: 'annotate', label: '注卡', description: '为卡片注入个人语境与行动', icon: 'Pencil', path: '/pipeline/annotate', brainSide: 'personal', preferredBrainSide: 'personal' },
     ],
   },
@@ -168,9 +171,8 @@ export const MENU_DATA_SIMPLE: Record<SimpleMenuId, MenuData> = {
     description: '知识自进化全链路，顺序即流程',
     defaultBrainSide: 'both',
     items: [
-      // 链路序与 EvolutionChainBar 一致：碰撞→争议→验证→践行→进化→回顾→被用
-      // （碰撞自「自动理好」迁入，争议/验证自「问出来」迁入——一条链住一个家）
-      { id: 'collision', label: '碰撞', description: '跨领域连接与创意杂交', icon: 'Shuffle', path: '/pipeline/collision', brainSide: 'both' },
+      // 养成循环：争议→验证→践行→进化→回顾→被用（碰撞是生产工序，归「自动理好」；
+      // 全链七步导航由 EvolutionChainBar 承担，本桶不含生产环节）
       { id: 'counter', label: '争议裁决', description: '有争议的知识在这里裁决：修正、保留或驳回', icon: 'XCircle', path: '/knowledge/counter', brainSide: 'both' },
       { id: 'verify', label: '验证中心', description: '多模型验证与共识裁决', icon: 'CheckCircle', path: '/knowledge/verify', brainSide: 'both' },
       { id: 'practice', label: '践行记录', description: '记录知识落地与验证', icon: 'Dumbbell', path: '/daily/practice-records', brainSide: 'both' },

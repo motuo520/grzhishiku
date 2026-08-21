@@ -18,6 +18,20 @@ const DailyReviewPage: FC = () => {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [modelId, setModelId] = useState<string>();
 
+  // 待验证存量：验证是被动环节，把它顶到复盘页用户眼前（点击去验证中心）
+  const { data: pendingVerify } = useQuery({
+    queryKey: ['knowledge', 'pending-verify-count', brainSide],
+    queryFn: async () => {
+      const side = brainSide === 'both' ? undefined : brainSide;
+      const [unverified, checking] = await Promise.all([
+        knowledgeApi.list({ status: 'unverified', brain_side: side }).then((r) => r.data.length),
+        knowledgeApi.list({ status: 'checking', brain_side: side }).then((r) => r.data.length),
+      ]);
+      return unverified + checking;
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+
   // 可信回顾：最近确认的可信结论（验证通过的知识单元）
   const queryClient = useQueryClient();
   const refreshTrusted = () =>
@@ -257,6 +271,15 @@ const DailyReviewPage: FC = () => {
         <h2 className="text-sm font-semibold text-text-primary flex items-center gap-2">
           <ShieldCheck className="w-4 h-4 text-success" />
           可信回顾
+          {(pendingVerify ?? 0) > 0 && (
+            <button
+              onClick={() => navigate('/knowledge/verify')}
+              className="ml-auto flex items-center gap-1 px-2 py-0.5 rounded-[2px] bg-warning/10 text-warning text-xs border border-warning/30 hover:bg-warning/20 transition-colors"
+              title="这些知识还没验过「对不对」，去验证中心处理"
+            >
+              {pendingVerify} 条待验证 →
+            </button>
+          )}
         </h2>
         <p className="text-xs text-text-muted mt-1 mb-4">验证通过的结论会沉淀在这里，建议每周回顾一次</p>
         {!trustedUnits || trustedUnits.length === 0 ? (
