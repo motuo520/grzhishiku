@@ -109,8 +109,8 @@ export const useCollideConcept = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ concept_id, preferred_model }: { concept_id: string; preferred_model?: string }) => {
-      const response = await pipelineApi.collide(concept_id, preferred_model);
+    mutationFn: async ({ concept_id, preferred_model, partner_id }: { concept_id: string; preferred_model?: string; partner_id?: string }) => {
+      const response = await pipelineApi.collide(concept_id, preferred_model, partner_id);
       return response.data;
     },
     onSuccess: () => {

@@ -154,6 +154,13 @@ async def lifespan(app: FastAPI):
                 conn.execute(text("ALTER TABLE notes ADD COLUMN folder_id TEXT"))
                 conn.execute(text("CREATE INDEX IF NOT EXISTS ix_notes_folder_id ON notes (folder_id)"))
 
+    # Ensure collision_parents column exists in knowledge_units（碰撞产物双亲出处）
+    if 'knowledge_units' in inspector.get_table_names():
+        columns = [c['name'] for c in inspector.get_columns('knowledge_units')]
+        if 'collision_parents' not in columns:
+            with engine.begin() as conn:
+                conn.execute(text("ALTER TABLE knowledge_units ADD COLUMN collision_parents TEXT"))
+
     # Ensure folder_id column exists in knowledge_units（知识单元纳入同一套文件夹树）
     if 'knowledge_units' in inspector.get_table_names():
         columns = [c['name'] for c in inspector.get_columns('knowledge_units')]

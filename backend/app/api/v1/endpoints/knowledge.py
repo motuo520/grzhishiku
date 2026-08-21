@@ -144,6 +144,7 @@ def _build_knowledge_response(unit: KnowledgeUnit, db: Session) -> dict:
         "value_score": _calculate_value_score(unit),
         "pipeline_stage": unit.pipeline_stage or "raw",
         "content_subtype": unit.content_subtype or "note",
+        "collision_parents": json.loads(unit.collision_parents) if unit.collision_parents else None,
         "source_id": unit.source_id,
         "source_content_type": unit.source_content_type,
         "folder_id": unit.folder_id,

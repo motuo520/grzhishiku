@@ -405,3 +405,73 @@ class TestContentSubtypeFilter:
         assert len(items) == 1
         assert items[0]["id"] == collision.id
         assert items[0]["content_subtype"] == "collision_result"
+
+
+class TestCollisionParents:
+    def test_collide_records_parents(self, client: TestClient, auth_headers, db_session, test_user, monkeypatch):
+        """碰撞产物的 collision_parents 记录双亲概念（详情可回查 A×B 出处）。"""
+        a = _make_ku(db_session, test_user.id, "概念A：信号传递", content_subtype="concept")
+        b = _make_ku(db_session, test_user.id, "概念B：混同均衡", content_subtype="concept")
+
+        async def fake_chat(prompt, task_type=None, system_prompt=None, preferred_model=None, **kw):
+            return json.dumps({"insight": "信号在混同中分层", "derivation": "推导"})
+
+        monkeypatch.setattr("app.api.v1.endpoints.pipeline.chat_completion", fake_chat)
+        resp = client.post(
+            "/api/v1/pipeline/concepts/collide",
+            headers=auth_headers,
+            json={"concept_id": a.id, "preferred_model": "qwen2.5:0.5b"},
+        )
+        assert resp.status_code in (200, 201), resp.text
+
+        db_session.expire_all()
+        from app.models.knowledge import KnowledgeUnit as _KU
+        collision = db_session.query(_KU).filter(
+            _KU.user_id == test_user.id, _KU.content_subtype == "collision_result"
+        ).first()
+        assert collision is not None
+        parents = json.loads(collision.collision_parents)
+        parent_ids = {p["id"] for p in parents}
+        assert parent_ids == {a.id, b.id}
+
+        detail = client.get(f"/api/v1/knowledge/{collision.id}", headers=auth_headers)
+        assert detail.status_code == 200
+        body_parents = detail.json()["collision_parents"]
+        assert {p["id"] for p in body_parents} == {a.id, b.id}
+
+
+class TestCollisionPairing:
+    def test_candidates_endpoint_lists_top5(self, client: TestClient, auth_headers, db_session, test_user):
+        """候选端点：无嵌入时走「最近概念」兜底，返回候选+auto_pick。"""
+        a = _make_ku(db_session, test_user.id, "概念A", content_subtype="concept")
+        b = _make_ku(db_session, test_user.id, "概念B", content_subtype="concept")
+        resp = client.post("/api/v1/pipeline/concepts/collide/candidates",
+                           headers=auth_headers, json={"concept_id": a.id})
+        assert resp.status_code == 200, resp.text
+        body = resp.json()
+        ids = [c["content_id"] for c in body["candidates"]]
+        assert b.id in ids
+        assert body["auto_pick"] == body["candidates"][0]["content_id"]
+        assert body["candidates"][0]["pairing"] in ("graphify", "embedding", "recent")
+
+    def test_collide_with_manual_partner(self, client: TestClient, auth_headers, db_session, test_user, monkeypatch):
+        """partner_id 显式指定对手：跳过自动配对；对手非法 404。"""
+        a = _make_ku(db_session, test_user.id, "概念A：自由", content_subtype="concept")
+        b = _make_ku(db_session, test_user.id, "概念B：秩序", content_subtype="concept")
+
+        async def fake_chat(prompt, task_type=None, system_prompt=None, preferred_model=None, **kw):
+            return json.dumps({"insight": "自由与秩序的动态平衡", "derivation": "推导"})
+
+        monkeypatch.setattr("app.api.v1.endpoints.pipeline.chat_completion", fake_chat)
+        resp = client.post("/api/v1/pipeline/concepts/collide", headers=auth_headers,
+                           json={"concept_id": a.id, "partner_id": b.id,
+                                 "preferred_model": "qwen2.5:0.5b"})
+        assert resp.status_code in (200, 201), resp.text
+        body = resp.json()
+        assert body["pairing"] == "manual"
+        assert body["concept_b"] == "概念B：秩序"
+
+        bad = client.post("/api/v1/pipeline/concepts/collide", headers=auth_headers,
+                          json={"concept_id": a.id, "partner_id": str(uuid.uuid4()),
+                                "preferred_model": "qwen2.5:0.5b"})
+        assert bad.status_code == 404

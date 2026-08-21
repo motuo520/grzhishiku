@@ -36,6 +36,8 @@ export interface KnowledgeUnit {
   content_subtype?: string;
   source_id?: string;
   source_content_type?: string;
+  /** 碰撞产物双亲出处（仅 collision_result 有值） */
+  collision_parents?: { id: string; title: string }[] | null;
   folder_id?: string | null;
   tags?: Array<{ id: string; name: string; color?: string | null }>;
   // 反证争议决议：null=未决议，corrected=已修正，kept=保留观察，rejected=已驳回

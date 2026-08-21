@@ -5,7 +5,7 @@ import {
   ShieldCheck, AlertTriangle, XCircle, HelpCircle, ArrowLeft,
   RefreshCw, ExternalLink, BarChart3, Clock, Globe, User,
   Calendar, CheckCircle2, AlertCircle, FileText, ChevronDown,
-  ChevronUp, Loader2, Layers
+  ChevronUp, Loader2, Layers, Sparkles, BookOpen
 } from 'lucide-react';
 import { useKnowledgeUnit } from '@/hooks/useKnowledge';
 import ErrorState from '@/components/ErrorState';
@@ -193,6 +193,48 @@ const KnowledgeDetail: FC = () => {
           <span className="text-xs text-text-muted">{status.desc}</span>
         </div>
       </div>
+
+      {/* 碰撞出处：这条洞见由哪两个概念撞出来的（可点击回查双亲） */}
+      {Array.isArray(unit.collision_parents) && unit.collision_parents.length > 0 && (
+        <div className="glass-card px-4 py-3 rounded-[2px] flex flex-wrap items-center gap-2 text-xs">
+          <Sparkles className="w-3.5 h-3.5 text-purple-400 shrink-0" />
+          <span className="text-text-muted">碰撞出处：</span>
+          {unit.collision_parents.map((p, i) => (
+            <span key={p.id} className="flex items-center gap-2">
+              {i > 0 && <span className="text-purple-400 font-medium">×</span>}
+              <button
+                onClick={() => navigate(`/knowledge/${p.id}`)}
+                className="px-2 py-1 rounded-[2px] bg-purple-500/10 text-purple-300 border border-purple-500/30 hover:bg-purple-500/20 transition-colors truncate max-w-[280px]"
+                title={p.title}
+              >
+                {p.title}
+              </button>
+            </span>
+          ))}
+        </div>
+      )}
+
+      {/* 原出处直达：非碰撞产物且记录了来源时（碰撞产物的出处见上方「碰撞出处」块） */}
+      {(!unit.collision_parents || unit.collision_parents.length === 0) && unit.source_id && unit.source_content_type && (
+        <div className="glass-card px-4 py-3 rounded-[2px] flex flex-wrap items-center gap-2 text-xs">
+          <BookOpen className="w-3.5 h-3.5 text-info shrink-0" />
+          <span className="text-text-muted">这条{unit.content_subtype === 'concept' ? '概念' : '知识'}抽取自：</span>
+          <button
+            onClick={() => navigate(
+              unit.source_content_type === 'note' ? `/ingest/notes/${unit.source_id}`
+              : unit.source_content_type === 'knowledge' ? `/knowledge/${unit.source_id}`
+              : unit.source_content_type === 'clip' ? '/ingest/clipper'
+              : unit.source_content_type === 'rss' ? '/ingest/rss'
+              : unit.source_content_type === 'read_later' ? '/ingest/read-later'
+              : unit.source_content_type === 'document' ? '/ingest/documents'
+              : '/ingest/notes'
+            )}
+            className="px-2 py-1 rounded-[2px] bg-info/10 text-info border border-info/30 hover:bg-info/20 transition-colors"
+          >
+            直达原出处
+          </button>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 min-w-0">
         <div className="lg:col-span-2 space-y-6 min-w-0">

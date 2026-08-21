@@ -58,6 +58,9 @@ class KnowledgeUnit(Base):
     content_subtype = Column(String, default="note")
     source_id = Column(String)
     source_content_type = Column(String)
+    # 碰撞产物的双亲出处（JSON 列表 [{id,title},...]，仅 collision_result 有值）：
+    # 「这条洞见是由 A×B 撞出来的」可溯源、可点击回查（08-21 拍板）
+    collision_parents = Column(Text)
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
 

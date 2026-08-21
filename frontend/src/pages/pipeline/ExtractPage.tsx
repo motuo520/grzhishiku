@@ -3,19 +3,20 @@ import { useNavigate } from 'react-router-dom';
 import {
   Filter, Search, Globe, BookOpen, FileText, FolderOpen, Rss,
   Layers, Clock, Loader2, AlertCircle, X, CheckSquare, Square,
-  ArrowRight, Sparkles, Shuffle, Brain,
+  ArrowRight, Sparkles, Shuffle, Brain, CheckCircle2,
 } from 'lucide-react';
 import PipelineBrainToggle from './components/PipelineBrainToggle';
 import PipelineStageBar from './components/PipelineStageBar';
 import { useNavigation } from '@/store/navigation';
 import { useSettings } from '@/store/settings';
-import { usePipelineStats, usePipelineItems, useCollideConcept, useExtractConcepts } from '@/hooks/usePipeline';
+import { usePipelineStats, usePipelineItems, useCollideConcept, useExtractConcepts, useTransitionItem } from '@/hooks/usePipeline';
 import type { PipelineItem } from '@/api/pipeline';
 import StageContextBanner from './components/StageContextBanner';
 import ModelSelector from '@/components/llm/ModelSelector';
 import { BrainSideBadge, SourceLink } from './components/PipelineHelpers';
 import ErrorState from '@/components/ErrorState';
 import PipelineItemActions from './components/PipelineItemActions';
+import CollisionPartnerModal from './components/CollisionPartnerModal';
 
 const CONTENT_TYPE_CONFIG: Record<string, { label: string; icon: React.ElementType; color: string }> = {
   note: { label: '笔记', icon: FileText, color: 'text-personal-primary' },
@@ -40,6 +41,7 @@ const ExtractPage: FC = () => {
   const [batchProgress, setBatchProgress] = useState(0);
   const [batchTotal, setBatchTotal] = useState(0);
   const [collidingId, setCollidingId] = useState<string | null>(null);
+  const [partnerModalItem, setPartnerModalItem] = useState<PipelineItem | null>(null);
   const [extractModelId, setExtractModelId] = useState<string>('');
   const [collideModelId, setCollideModelId] = useState<string>('');
 
@@ -49,6 +51,7 @@ const ExtractPage: FC = () => {
   const { items, isLoading: isItemsLoading, error: queryError, refetch } = usePipelineItems('extracted', brainSide, limit);
   const { items: cardItems } = usePipelineItems('card', brainSide);
   const collideConcept = useCollideConcept();
+  const transitionItem = useTransitionItem();
   const extractConcepts = useExtractConcepts();
   const [isPulling, setIsPulling] = useState(false);
 
@@ -100,19 +103,56 @@ const ExtractPage: FC = () => {
     }
   };
 
-  const handleCollide = async (item: PipelineItem) => {
+  const handleCollide = (item: PipelineItem) => {
     if (item.content_subtype !== 'concept') return;
+    setPartnerModalItem(item);
+  };
+
+  const handleConfirmCollide = async (partnerId: string) => {
+    const item = partnerModalItem;
+    if (!item) return;
     setError(null);
     setCollidingId(item.id);
     try {
       await collideConcept.mutateAsync({
         concept_id: item.content_id,
         preferred_model: collideModelId || undefined,
+        partner_id: partnerId,
       });
+      setPartnerModalItem(null);
     } catch (err: any) {
       setError(err.message || '碰撞失败');
+      setPartnerModalItem(null);
     } finally {
       setCollidingId(null);
+    }
+  };
+
+  // 免编辑注卡：不开编辑器，直接把概念转入注卡完成态（approved）
+  const handleQuickAnnotate = async (item: PipelineItem) => {
+    setError(null);
+    try {
+      await transitionItem.mutateAsync({
+        content_type: 'knowledge',
+        content_id: item.content_id,
+        stage: 'approved',
+      });
+    } catch (err: any) {
+      setError(err.message || '注卡失败');
+    }
+  };
+
+  // 原出处直达：按来源类型跳到那条内容（笔记/知识有详情页，其余落对应列表页）
+  const sourcePathFor = (item: PipelineItem): string => {
+    const sid = item.source_id || '';
+    switch (item.source_content_type) {
+      case 'note': return `/ingest/notes/${sid}`;
+      case 'knowledge': return `/knowledge/${sid}`;
+      case 'clip': return '/ingest/clipper';
+      case 'rss': return '/ingest/rss';
+      case 'read_later': return '/ingest/read-later';
+      case 'document': return '/ingest/documents';
+      default: return '/ingest/notes';
     }
   };
 
@@ -437,6 +477,27 @@ const ExtractPage: FC = () => {
                         {isColliding ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Shuffle className="w-3.5 h-3.5" />}
                         碰撞
                       </button>
+                      {/* 免编辑注卡：不开编辑器，直接转入注卡完成态（想细琢的走 编辑注卡） */}
+                      <button
+                        onClick={() => handleQuickAnnotate(item)}
+                        disabled={transitionItem.isPending}
+                        className="flex items-center justify-center gap-1.5 px-3 py-1.5 bg-personal-primary/10 border border-personal-primary/30 rounded-[2px] text-xs text-personal-primary hover:bg-personal-primary/20 transition-all disabled:opacity-50"
+                        title="不做编辑，直接把这条概念归入个人脑知识（注卡完成态）"
+                      >
+                        {transitionItem.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
+                        直接注卡
+                      </button>
+                      {/* 原出处直达：这概念是从哪条内容抽出来的 */}
+                      {item.source_id && (
+                        <button
+                          onClick={() => navigate(sourcePathFor(item))}
+                          className="flex items-center justify-center gap-1.5 px-3 py-1.5 bg-white/[0.03] border border-white/[0.08] rounded-[2px] text-xs text-text-secondary hover:text-text-primary hover:bg-white/[0.06] transition-all"
+                          title="查看这概念抽取自哪条内容"
+                        >
+                          <BookOpen className="w-3.5 h-3.5" />
+                          原出处
+                        </button>
+                      )}
                       {isClassic && (
                         <button
                           onClick={() => navigate(`/social-brain/relevance-check?content=${encodeURIComponent(item.content_raw)}`)}
@@ -468,6 +529,17 @@ const ExtractPage: FC = () => {
           )}
         </div>
       )}
+
+      {/* 单条概念碰撞：选择对手弹窗 */}
+      <CollisionPartnerModal
+        isOpen={partnerModalItem !== null}
+        onClose={() => setPartnerModalItem(null)}
+        conceptId={partnerModalItem?.content_id || ''}
+        conceptTitle={getExcerpt(partnerModalItem?.content_raw, 60) || partnerModalItem?.title || ''}
+        brainSide={brainSide}
+        onConfirm={handleConfirmCollide}
+        isConfirming={collidingId !== null}
+      />
     </div>
   );
 };

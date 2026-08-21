@@ -60,6 +60,44 @@ class ExtractRequest(BaseModel):
 class CollisionRequest(BaseModel):
     concept_id: str
     preferred_model: Optional[str] = Field(None, description="Preferred LLM model identifier")
+    # 显式指定碰撞对手（候选清单/自定义选择）：有值时跳过自动配对
+    partner_id: Optional[str] = Field(None, description="Manually chosen collision partner concept id")
+
+
+class CollisionCandidatesResponse(BaseModel):
+    candidates: List[dict]  # [{content_id, title, similarity, pairing}]
+    auto_pick: Optional[str]  # 不配对手时的默认对手（候选第一名）
+
+
+@router.post("/concepts/collide/candidates", response_model=CollisionCandidatesResponse, summary="List collision partner candidates")
+async def collision_candidates(
+    request: CollisionRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """返回概念 A 的碰撞候选对手 top 5（图谱推荐/向量相似/最近兜底，同一套三级配对逻辑）。
+
+    前端点「碰撞」先调它出候选给用户选，用户选定后带 partner_id 调 /concepts/collide——
+    碰撞从「盲撞」变「选后撞」。
+    """
+    concept = db.query(KnowledgeUnit).filter(
+        KnowledgeUnit.id == request.concept_id,
+        KnowledgeUnit.user_id == current_user.id,
+        KnowledgeUnit.content_subtype == "concept",
+    ).first()
+    if not concept:
+        raise HTTPException(status_code=404, detail="Concept not found")
+
+    candidates, pairing = _find_collision_candidates(db, current_user.id, concept)
+    top = [
+        {"content_id": c["content_id"], "title": c.get("title", ""),
+         "similarity": round(c["similarity"], 3), "pairing": pairing}
+        for c in candidates[:5]
+    ]
+    return CollisionCandidatesResponse(
+        candidates=top,
+        auto_pick=top[0]["content_id"] if top else None,
+    )
 
 
 class CollisionResponse(BaseModel):
@@ -105,6 +143,9 @@ class PipelineItem(BaseModel):
     pipeline_stage: str
     source_url: Optional[str]
     source_title: Optional[str]
+    # 概念/知识单元的原出处（抽取来源的 content_id/content_type，供前端「原出处」直达）
+    source_id: Optional[str] = None
+    source_content_type: Optional[str] = None
     created_at: datetime
     updated_at: Optional[datetime]
 
@@ -602,6 +643,8 @@ async def list_pipeline_items(
                 pipeline_stage="raw",
                 source_url=k.source_url,
                 source_title=k.source_title,
+                source_id=k.source_id,
+                source_content_type=k.source_content_type,
                 created_at=k.created_at,
                 updated_at=k.updated_at,
             ))
@@ -658,6 +701,8 @@ async def list_pipeline_items(
                 pipeline_stage=stage,
                 source_url=k.source_url,
                 source_title=k.source_title,
+                source_id=k.source_id,
+                source_content_type=k.source_content_type,
                 created_at=k.created_at,
                 updated_at=k.updated_at,
             ))
@@ -981,46 +1026,36 @@ async def extract_concepts(
         )
 
 
-@router.post("/concepts/collide", response_model=CollisionResponse, summary="Collide two concepts")
-async def collide_concepts(
-    request: CollisionRequest,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
-):
-    """Find a similar concept and generate a cross-domain insight."""
-    concept = db.query(KnowledgeUnit).filter(
-        KnowledgeUnit.id == request.concept_id,
-        KnowledgeUnit.user_id == current_user.id,
-        KnowledgeUnit.content_subtype == "concept",
-    ).first()
-    if not concept:
-        raise HTTPException(status_code=404, detail="Concept not found")
+# -- 碰撞配对（候选抽取与优选共用同一套三级逻辑，改一处全站一致） ----------
 
-    # Try vector similarity first
+def _find_collision_candidates(db, user_id: str, concept: KnowledgeUnit):
+    """给概念 A 找碰撞对手：graphify 语义边优先 → 向量相似度区间[0.55,0.85] → 最近概念兜底。
+
+    返回 (candidates, pairing)：candidates=[{"content_id","similarity","title"}] 按分数降序，
+    pairing ∈ graphify/embedding/recent。撞不撞、撞谁是调用方的事——
+    手动碰撞可取第一名（历史行为），候选清单端点整包返回给用户选。
+    """
+    candidates = []
     concept_embedding = db.query(Embedding).filter(
-        Embedding.user_id == current_user.id,
+        Embedding.user_id == user_id,
         Embedding.content_type == "knowledge",
         Embedding.content_id == concept.id,
     ).first()
 
-    candidates = []
     if concept_embedding:
         try:
             vec_a = json.loads(concept_embedding.embedding_json)
-            # Only live, active concepts may be collision candidates. Embeddings can
-            # outlive their KnowledgeUnit (e.g. after a concept is deleted); picking one
-            # of those orphans made collide 404 with "Collision candidate not found".
             valid_candidate_ids = {
                 row.id
                 for row in db.query(KnowledgeUnit.id).filter(
-                    KnowledgeUnit.user_id == current_user.id,
+                    KnowledgeUnit.user_id == user_id,
                     KnowledgeUnit.content_subtype == "concept",
                     KnowledgeUnit.status == "active",
                     KnowledgeUnit.id != concept.id,
                 ).all()
             }
             others = db.query(Embedding).filter(
-                Embedding.user_id == current_user.id,
+                Embedding.user_id == user_id,
                 Embedding.content_type == "knowledge",
                 Embedding.content_id != concept.id,
             ).limit(100).all()
@@ -1038,14 +1073,10 @@ async def collide_concepts(
         except Exception:
             pass
 
-    # Prefer graphify semantic partners: LLM-judged "related but distinct"
-    # pairs are better collision material than raw embedding similarity. Falls
-    # back to embedding candidates when the user has no synced graphify edges
-    # (e.g. knowledge graph never built).
     pairing = "embedding"
     try:
         graphify_edges = db.query(GraphEdge).filter(
-            GraphEdge.user_id == current_user.id,
+            GraphEdge.user_id == user_id,
             GraphEdge.edge_type == "graphify",
             or_(GraphEdge.source_id == concept.id, GraphEdge.target_id == concept.id),
         ).order_by(GraphEdge.weight.desc()).all()
@@ -1057,7 +1088,7 @@ async def collide_concepts(
             valid_partner_ids = {
                 row.id
                 for row in db.query(KnowledgeUnit.id).filter(
-                    KnowledgeUnit.user_id == current_user.id,
+                    KnowledgeUnit.user_id == user_id,
                     KnowledgeUnit.content_subtype == "concept",
                     KnowledgeUnit.status == "active",
                     KnowledgeUnit.id.in_(list(partner_weight.keys())),
@@ -1074,25 +1105,65 @@ async def collide_concepts(
     except Exception:
         pass
 
-    # Fallback: tag overlap / random recent concept
     if not candidates:
         pairing = "recent"
         other_concepts = db.query(KnowledgeUnit).filter(
-            KnowledgeUnit.user_id == current_user.id,
+            KnowledgeUnit.user_id == user_id,
             KnowledgeUnit.content_subtype == "concept",
+            KnowledgeUnit.status == "active",
             KnowledgeUnit.id != concept.id,
         ).order_by(KnowledgeUnit.created_at.desc()).limit(20).all()
         for oc in other_concepts:
             candidates.append({"content_id": oc.id, "similarity": 0.6})
 
-    if not candidates:
-        raise HTTPException(status_code=400, detail="No suitable collision candidates found")
+    # 补标题（透出给用户选）
+    ids = [c["content_id"] for c in candidates]
+    if ids:
+        title_map = {
+            row.id: (row.content_raw or "")[:80]
+            for row in db.query(KnowledgeUnit.id, KnowledgeUnit.content_raw)
+            .filter(KnowledgeUnit.id.in_(ids)).all()
+        }
+        for c in candidates:
+            c["title"] = title_map.get(c["content_id"], "")
+    return candidates, pairing
 
-    # Pick best candidate
-    best = candidates[0]
-    concept_b = db.query(KnowledgeUnit).filter(KnowledgeUnit.id == best["content_id"]).first()
-    if not concept_b:
-        raise HTTPException(status_code=404, detail="Collision candidate not found")
+
+@router.post("/concepts/collide", response_model=CollisionResponse, summary="Collide two concepts")
+async def collide_concepts(
+    request: CollisionRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Find a similar concept and generate a cross-domain insight."""
+    concept = db.query(KnowledgeUnit).filter(
+        KnowledgeUnit.id == request.concept_id,
+        KnowledgeUnit.user_id == current_user.id,
+        KnowledgeUnit.content_subtype == "concept",
+    ).first()
+    if not concept:
+        raise HTTPException(status_code=404, detail="Concept not found")
+
+    # 显式指定对手（候选清单或自定义选择的 partner_id）跳过配对；否则三级配对取第一
+    if request.partner_id:
+        concept_b = db.query(KnowledgeUnit).filter(
+            KnowledgeUnit.id == request.partner_id,
+            KnowledgeUnit.user_id == current_user.id,
+            KnowledgeUnit.content_subtype == "concept",
+            KnowledgeUnit.status == "active",
+            KnowledgeUnit.id != concept.id,
+        ).first()
+        if not concept_b:
+            raise HTTPException(status_code=404, detail="指定的碰撞对手不存在或不可用")
+        best_sim, pairing = 0.0, "manual"
+    else:
+        candidates, pairing = _find_collision_candidates(db, current_user.id, concept)
+        if not candidates:
+            raise HTTPException(status_code=400, detail="No suitable collision candidates found")
+        concept_b = db.query(KnowledgeUnit).filter(KnowledgeUnit.id == candidates[0]["content_id"]).first()
+        if not concept_b:
+            raise HTTPException(status_code=404, detail="Collision candidate not found")
+        best_sim = candidates[0]["similarity"]
 
     prompt = f"""两个概念即将发生碰撞：
 
@@ -1158,6 +1229,11 @@ async def collide_concepts(
             verification_history='[]',
             pipeline_stage="collided",
             origin_type="llm_generated",
+            # 双亲出处：源概念 A + 候选概念 B（后续在详情页可回查「由 A×B 碰撞而来」）
+            collision_parents=json.dumps([
+                {"id": concept.id, "title": (concept.content_raw or "")[:80]},
+                {"id": concept_b.id, "title": (concept_b.content_raw or "")[:80]},
+            ], ensure_ascii=False),
             attached_practice_ids='[]',
         )
         db.add(collision)
@@ -1181,7 +1257,7 @@ async def collide_concepts(
             source_brain_side=concept.brain_side,
             target_brain_side=concept_b.brain_side,
             edge_type="collision",
-            strength=best["similarity"],
+            strength=best_sim,
             cross_brain=(concept.brain_side != concept_b.brain_side),
             context=result.get("insight", ""),
         )
@@ -1206,7 +1282,7 @@ async def collide_concepts(
             collision_id=collision.id,
             concept_a=concept.content_raw,
             concept_b=concept_b.content_raw,
-            similarity=round(best["similarity"], 2),
+            similarity=round(best_sim, 2),
             insight=result.get("insight", ""),
             derivation=result.get("derivation", ""),
             pairing=pairing,

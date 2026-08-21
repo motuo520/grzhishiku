@@ -123,6 +123,7 @@ class KnowledgeUnitResponse(BaseModel):
     content_subtype: str = Field("note", description="Content subtype: note / concept / collision_result")
     source_id: Optional[str] = Field(None, description="Source content ID")
     source_content_type: Optional[str] = Field(None, description="Source content type")
+    collision_parents: Optional[List[dict]] = Field(None, description="碰撞产物的双亲出处 [{id,title}]（仅 collision_result）")
     folder_id: Optional[str] = Field(None, description="所属文件夹 id，空=未归档")
     tags: List[TagItem] = Field(default_factory=list, description="Associated tags")
     created_at: datetime = Field(..., description="Creation timestamp")

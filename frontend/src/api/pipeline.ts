@@ -26,6 +26,9 @@ export interface PipelineItem {
   pipeline_stage: string;
   source_url?: string | null;
   source_title?: string | null;
+  /** 概念/知识单元的原出处（抽取来源），供「原出处」直达 */
+  source_id?: string | null;
+  source_content_type?: string | null;
   created_at: string;
   updated_at?: string | null;
 }
@@ -41,6 +44,18 @@ export interface ExtractResponse {
   source_id: string;
   source_content_type: string;
   concepts: ExtractConcept[];
+}
+
+export interface CollisionCandidate {
+  content_id: string;
+  title: string;
+  similarity: number;
+  pairing: 'graphify' | 'embedding' | 'recent';
+}
+
+export interface CollisionCandidatesResponse {
+  candidates: CollisionCandidate[];
+  auto_pick: string | null;
 }
 
 export interface CollisionResponse {
@@ -94,8 +109,15 @@ export const pipelineApi = {
     // (plus a provider fallback), so allow a longer per-request timeout.
     api.post<ExtractResponse>(`/api/v1/pipeline/${content_type}/${content_id}/extract`, { preferred_model }, { timeout: 120000 }),
 
-  collide: (concept_id: string, preferred_model?: string) =>
-    api.post<CollisionResponse>('/api/v1/pipeline/concepts/collide', { concept_id, preferred_model }, { timeout: 120000 }),
+  collisionCandidates: (concept_id: string) =>
+    api.post<CollisionCandidatesResponse>('/api/v1/pipeline/concepts/collide/candidates', { concept_id }),
+
+  collide: (concept_id: string, preferred_model?: string, partner_id?: string) =>
+    api.post<CollisionResponse>(
+      '/api/v1/pipeline/concepts/collide',
+      { concept_id, preferred_model, ...(partner_id ? { partner_id } : {}) },
+      { timeout: 120000 }
+    ),
 
   reviewCollision: (collision_id: string, action: 'approve' | 'reject', feedback?: string) =>
     api.post<ReviewResponse>(`/api/v1/pipeline/collisions/${collision_id}/review`, { action, feedback }),
