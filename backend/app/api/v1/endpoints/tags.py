@@ -105,6 +105,18 @@ async def update_tag(
     return _build_tag_response(tag, db)
 
 
+# 静态段必须先于路径参数路由注册（血泪 #10）：/orphaned 若放在 /{tag_id} 之后，
+# DELETE /tags/orphaned 会被当成 tag_id="orphaned" 404——清理按钮曾因此假死
+@router.delete("/orphaned", response_model=dict, summary="Cleanup orphaned tags", description="Delete all tags with zero associations for the current user.")
+async def cleanup_orphaned_tags(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    deleted = tag_service.cleanup_orphaned_tags(db, current_user.id)
+    db.commit()
+    return {"success": True, "deleted_count": deleted}
+
+
 @router.delete("/{tag_id}", status_code=status.HTTP_204_NO_CONTENT, summary="Delete tag", description="Delete a tag. Fails if the tag is still associated with content.")
 async def delete_tag(
     tag_id: str,
@@ -119,6 +131,8 @@ async def delete_tag(
     if usage > 0:
         raise HTTPException(status_code=400, detail=f"Tag is still used by {usage} content items. Please remove associations first.")
     
+    # 删除标签时连带清掉其关联行（含幽灵行）——否则 content_tags 残留成无头引用
+    db.execute(content_tags.delete().where(content_tags.c.tag_id == tag_id))
     db.delete(tag)
     db.commit()
     return None
@@ -146,16 +160,6 @@ async def merge_tag(
     db.commit()
     db.refresh(target)
     return _build_tag_response(target, db)
-
-
-@router.delete("/orphaned", response_model=dict, summary="Cleanup orphaned tags", description="Delete all tags with zero associations for the current user.")
-async def cleanup_orphaned_tags(
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
-):
-    deleted = tag_service.cleanup_orphaned_tags(db, current_user.id)
-    db.commit()
-    return {"success": True, "deleted_count": deleted}
 
 
 @router.get("/{tag_id}/associations", response_model=TagAssociationsResponse, summary="Get tag associations", description="Get all content items associated with a tag.")

@@ -1,4 +1,6 @@
 """Generic tag association service for note / clip / knowledge entities."""
+import logging
+from datetime import datetime
 from typing import List, Optional, Dict
 import uuid
 
@@ -7,6 +9,8 @@ from sqlalchemy import and_
 
 from app.models.base import Tag, content_tags
 from app.schemas.tag import TagItem
+
+logger = logging.getLogger(__name__)
 
 
 CONTENT_TYPE_NOTE = "note"
@@ -119,39 +123,78 @@ def delete_tags_for(db: Session, content_type: str, content_id: str) -> None:
     )
 
 
+def _live_usage_breakdown(db: Session, tag_id: str) -> Dict[str, int]:
+    """只统计「内容真实存在且未删除」的关联。
+
+    content_tags 是弱引用（无外键级联），历史路径（批量删除 404 时期等）会留下
+    内容已删但关联行还在的幽灵行——按原始行数统计会让「空标签」永远删不掉
+    （08-20 用户实锤：4 个幽灵标签死锁）。此函数是全站标签用量的唯一口径。
+    """
+    from app.models.base import Note, BrowserClip, KnowledgeUnit
+
+    rows = db.query(
+        content_tags.c.content_type, content_tags.c.content_id
+    ).filter(content_tags.c.tag_id == tag_id).all()
+
+    ids_by_type: Dict[str, set] = {}
+    for r in rows:
+        ids_by_type.setdefault(r[0], set()).add(r[1])
+
+    breakdown: Dict[str, int] = {"note": 0, "clip": 0, "knowledge": 0}
+    for ctype, model in (("note", Note), ("clip", BrowserClip), ("knowledge", KnowledgeUnit)):
+        ids = ids_by_type.get(ctype)
+        if not ids:
+            continue
+        breakdown[ctype] = db.query(model).filter(
+            model.id.in_(ids), model.status != "deleted"
+        ).count()
+    # 未识别类型（历史残留）不计入——它们对用户不可见
+    return breakdown
+
+
 def get_tag_usage_count(db: Session, tag_id: str) -> int:
-    """Total number of content items associated with a tag."""
-    return db.query(content_tags).filter(content_tags.c.tag_id == tag_id).count()
+    """Total number of LIVE content items associated with a tag（幽灵行不计）。"""
+    return sum(_live_usage_breakdown(db, tag_id).values())
 
 
 def get_tag_usage_breakdown(db: Session, tag_id: str, user_id: str) -> Dict[str, int]:
     """
-    Return usage count per content type for a tag.
+    Return LIVE usage count per content type for a tag.
 
     口径说明：user_id 是签名留位，实际不过滤计数——content_tags 表无 user_id
     列，标签归属由调用端点前置校验（tag_id 属于该用户），标签下的关联均为该
     用户所挂，直接按 tag_id 统计即为该用户的用量。
     """
-    breakdown = {"note": 0, "clip": 0, "knowledge": 0}
+    return _live_usage_breakdown(db, tag_id)
 
-    # Note: content_tags has no user_id column; we join with Tag to enforce ownership
-    # and then count by content_type. This is an approximation: a tag may theoretically
-    # be associated with content belonging to another user if IDs collide, but all
-    # endpoints enforce user ownership before associating tags.
-    rows = db.query(
-        content_tags.c.content_type
-    ).filter(
-        content_tags.c.tag_id == tag_id
-    ).all()
 
-    for row in rows:
-        ctype = row[0]
-        if ctype in breakdown:
-            breakdown[ctype] += 1
-        else:
-            breakdown[ctype] = 1
+def purge_ghost_associations(db: Session, tag_id: Optional[str] = None) -> int:
+    """清除幽灵关联行（内容行不存在或已删除）。返回清理条数。"""
+    from app.models.base import Note, BrowserClip, KnowledgeUnit
 
-    return breakdown
+    q = db.query(content_tags.c.content_type, content_tags.c.content_id, content_tags.c.tag_id)
+    if tag_id:
+        q = q.filter(content_tags.c.tag_id == tag_id)
+    ghosts = []
+    for ctype, cid, tid in q.all():
+        model = {"note": Note, "clip": BrowserClip, "knowledge": KnowledgeUnit}.get(ctype)
+        if model is None:
+            ghosts.append((ctype, cid, tid))  # 未识别类型一律视为幽灵
+            continue
+        row = db.query(model.status).filter(model.id == cid).first()
+        if row is None or row[0] == "deleted":
+            ghosts.append((ctype, cid, tid))
+    for ctype, cid, tid in ghosts:
+        db.execute(
+            content_tags.delete().where(
+                and_(
+                    content_tags.c.content_type == ctype,
+                    content_tags.c.content_id == cid,
+                    content_tags.c.tag_id == tid,
+                )
+            )
+        )
+    return len(ghosts)
 
 
 def merge_tags(db: Session, source_tag_id: str, target_tag_id: str) -> None:
@@ -176,8 +219,11 @@ def merge_tags(db: Session, source_tag_id: str, target_tag_id: str) -> None:
 
 
 def cleanup_orphaned_tags(db: Session, user_id: str) -> int:
-    """Delete tags with zero associations for a user. Returns deleted count."""
-    from sqlalchemy import func
+    """Delete tags with zero LIVE associations for a user.
+
+    先清幽灵关联行再判空：只挂着幽灵行的标签本质是空标签，应一并回收。
+    Returns deleted count."""
+    purge_ghost_associations(db)
 
     subquery = db.query(content_tags.c.tag_id).distinct().subquery()
     orphaned = db.query(Tag).filter(
@@ -191,6 +237,25 @@ def cleanup_orphaned_tags(db: Session, user_id: str) -> int:
         deleted += 1
 
     return deleted
+
+
+def sweep_stale_empty_tags(db: Session, max_age_days: int = 30) -> int:
+    """每日回收：清幽灵行 + 删除「零活关联且创建超过 max_age_days」的标签（全用户）。
+
+    自动打标会产生大量一次性空标签（08-20 实测某库 736 标签 592 空），
+    30 天宽限期保证新建未用的手动标签不被误伤。返回删除条数。
+    """
+    from datetime import timedelta
+
+    purge_ghost_associations(db)
+    cutoff = datetime.now() - timedelta(days=max_age_days)
+    used = db.query(content_tags.c.tag_id).distinct().subquery()
+    stale = db.query(Tag).filter(~Tag.id.in_(used), Tag.created_at < cutoff).all()
+    for tag in stale:
+        db.delete(tag)
+    if stale:
+        logger.info("swept %d stale empty tags", len(stale))
+    return len(stale)
 
 
 def get_tag_associations(

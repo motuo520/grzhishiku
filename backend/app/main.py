@@ -214,6 +214,10 @@ async def lifespan(app: FastAPI):
     from app.services.rss_scheduler import initialize_rss_scheduler
     initialize_rss_scheduler()
 
+    # 标签日扫：清幽灵关联行 + 回收闲置 30 天以上的空标签
+    from app.services.tag_maintenance import initialize_tag_scheduler
+    initialize_tag_scheduler()
+
     # 图谱自进化：事件驱动（内容写入提交即重建），不走定时器
     from app.services import graphify_service as _gfs
     _gfs.register_evolve_listener()
@@ -230,6 +234,8 @@ async def lifespan(app: FastAPI):
     await shutdown_scheduler()
     from app.services.rss_scheduler import shutdown_rss_scheduler
     shutdown_rss_scheduler()
+    from app.services.tag_maintenance import shutdown_tag_scheduler
+    shutdown_tag_scheduler()
 
 # 生产关闭交互式 API 文档：/docs /redoc /openapi.json 公开会泄露全部端点清单
 # （QA BUG-003，最小暴露原则）；本地/测试环境 ENV!=production 照常开启
