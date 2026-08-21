@@ -58,7 +58,7 @@ interface SettingsState {
 export const useSettings = create<SettingsState>()(
   persist(
     (set, get) => ({
-      theme: 'dark',
+      theme: 'light',
       fontSize: 'medium',
       density: 'comfortable',
       uiMode: 'simple',
