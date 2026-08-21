@@ -162,10 +162,23 @@ def _pick_backend() -> str:
     return "ollama"
 
 
+def _cli_cmd(args: List[str]) -> List[str]:
+    """graphify CLI 调用形态（语言补丁接线点，实证见 graphify_prompt_patch.py）。
+
+    frozen：sys.executable 是本 exe，入口转发分支已打补丁；
+    源码：python 直跑官方入口没有补丁时机，改走 app 内 wrapper 脚本（绝对路径，
+    因为子进程 cwd 是临时构建目录，app 包不在其 sys.path）。
+    """
+    if getattr(sys, "frozen", False):
+        return [sys.executable, "-m", "graphify", *args]
+    wrapper = Path(__file__).resolve().parent / "graphify_cli.py"
+    return [sys.executable, str(wrapper), *args]
+
+
 def _run_cli(args: List[str], cwd: Optional[Path] = None, timeout: int = 1800,
              env: Optional[Dict[str, str]] = None) -> subprocess.CompletedProcess:
     return subprocess.run(
-        [sys.executable, "-m", "graphify", *args],
+        _cli_cmd(args),
         cwd=str(cwd) if cwd else None,
         env=env or _graphify_env(),
         capture_output=True,
