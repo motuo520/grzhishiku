@@ -51,7 +51,9 @@ def _calculate_value_score(unit: KnowledgeUnit) -> float:
     import math
     density = _estimate_density(unit.content_raw or "")
     frequency = math.log1p(unit.invoke_count or 0)
-    depth = unit.practice_depth or 0
+    # 深度是加成而非门槛：没写过践行记录（depth=0）的条目也该有基础分，
+    # 否则全库 depth=0 时价值分恒 0，排序/徽章全死（08-20 用户实锤）
+    depth = 1 + (unit.practice_depth or 0)
     return round(density * frequency * depth, 2)
 
 
@@ -113,7 +115,7 @@ def _build_knowledge_response(unit: KnowledgeUnit, db: Session) -> dict:
         "source_credibility_score": unit.source_credibility_score,
         "source_bias_indicator": unit.source_bias_indicator,
         "source_funding_source": unit.source_funding_source,
-        "verification_status": unit.verification_status,
+        "verification_status": unit.verification_status or "unverified",
         "verification_consensus": unit.verification_consensus,
         "verification_history": _serialize_history(unit),
         "dispute_resolution": unit.dispute_resolution,

@@ -593,7 +593,7 @@ async def get_knowledge_health(
         if content:
             density = min(sum(1 for m in markers if m in content) / len(markers) * 2, 1.0)
         frequency = math.log1p(item.invoke_count or 0)
-        depth = item.practice_depth or 0
+        depth = 1 + (item.practice_depth or 0)  # 与 knowledge._calculate_value_score 同口径：深度是加成不是门槛
         value_total += round(density * frequency * depth, 2)
 
     practiced_count = sum(1 for item in items if (item.practice_depth or 0) >= 1)

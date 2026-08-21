@@ -194,7 +194,8 @@ const KnowledgeUnitList: FC<KnowledgeUnitListProps> = ({ brainSide, title, subti
   const filteredUnits = useMemo(() => {
     let data = (units || []) as KnowledgeUnit[];
     if (statusFilter !== 'all') {
-      data = data.filter((u) => u.verification_status === statusFilter);
+      // NULL 老数据按待验证口径兜底（响应侧已 coalesce，这里再兜一层）
+      data = data.filter((u) => (u.verification_status || 'unverified') === statusFilter);
     }
     if (evolutionFilter !== 'all') {
       data = data.filter((u) => (u.evolution_stage || 'collected') === evolutionFilter);
@@ -263,7 +264,8 @@ const KnowledgeUnitList: FC<KnowledgeUnitListProps> = ({ brainSide, title, subti
 
   const toggleSort = (field: SortBy) => {
     if (sortBy === field) { setSortOrder((o) => (o === 'asc' ? 'desc' : 'asc')); }
-    else { setSortBy(field); setSortOrder('desc'); }
+    // 状态是档位排序（confirmed 在最前才有意义），首击给升序；数值类首击降序
+    else { setSortBy(field); setSortOrder(field === 'verification_status' ? 'asc' : 'desc'); }
   };
 
   if (isLoading) {

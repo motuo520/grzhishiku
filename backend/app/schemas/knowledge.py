@@ -118,7 +118,7 @@ class KnowledgeUnitResponse(BaseModel):
     personal_relevance_score: float = Field(0.3, ge=0, le=1, description="Personal relevance 0-1")
     evolution_stage: str = Field("collected", description="Evolution stage")
     attached_practice_ids: List[str] = Field(default_factory=list, description="Associated practice record IDs")
-    value_score: Optional[float] = Field(None, description="Calculated value score = density * log1p(invoke_count) * practice_depth")
+    value_score: Optional[float] = Field(None, description="Calculated value score = density * log1p(invoke_count) * (1 + practice_depth)")
     pipeline_stage: str = Field("raw", description="Pipeline stage: raw / card / extracted / collided / approved")
     content_subtype: str = Field("note", description="Content subtype: note / concept / collision_result")
     source_id: Optional[str] = Field(None, description="Source content ID")
