@@ -375,8 +375,10 @@ async def list_knowledge(
     if status:
         query = query.filter(KnowledgeUnit.verification_status == status)
     # 带 folder_id 过滤时脑侧由文件夹归属规则约束，不再做严格等值过滤（同 notes 列表口径）
+    # 脑侧过滤口径统一：both 侧内容在 personal/network 视图都可见（此前严格等值
+    # 过滤让 both 侧内容两边列表都隐身，只能从 /knowledge/all 看到——08-20 拍板统一）
     if brain_side and brain_side != "both" and not folder_id:
-        query = query.filter(KnowledgeUnit.brain_side == brain_side)
+        query = query.filter(KnowledgeUnit.brain_side.in_([brain_side, "both"]))
     if folder_id == "none":
         # 未归档（按查看脑 P）：brain_side ∈ {P,'both'} 且（folder_id 为空 或 文件夹不属 P 脑）
         p = brain_side if brain_side in ("personal", "network") else "personal"
@@ -966,6 +968,11 @@ async def resolve_dispute(
         # 保留观察：verification_status 保持 disputed 不动（不再抹回 unverified），
         # 只记决议——反证墙默认只列未决议条目，kept 自然下墙但争议标记留痕
         unit.dispute_resolution = "kept"
+    elif data.resolution == "revoked":
+        # 人工撤销可信（可信回顾的「移出」）：confirmed → unverified，条目保留。
+        # 不走 PUT 直写（已 400 拒），状态改动只走这个受控入口
+        unit.dispute_resolution = "revoked"
+        unit.verification_status = "unverified"
     else:
         # 驳回反证：恢复反证前的核验状态
         unit.dispute_resolution = "rejected"

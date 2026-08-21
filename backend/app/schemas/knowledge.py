@@ -146,8 +146,8 @@ class CounterEvidenceCreate(BaseModel):
 class DisputeResolutionCreate(BaseModel):
     resolution: str = Field(
         ...,
-        pattern=r"^(kept|rejected)$",
-        description="kept=保留观察（维持 disputed 不变）；rejected=驳回反证（恢复反证前状态）。corrected 由修正重验路径自动打",
+        pattern=r"^(kept|rejected|revoked)$",
+        description="kept=保留观察（维持 disputed 不变）；rejected=驳回反证（恢复反证前状态）；revoked=人工撤销可信（confirmed → unverified，可信回顾的「移出」动作）。corrected 由修正重验路径自动打",
     )
 
 class SourceInfoResponse(BaseModel):

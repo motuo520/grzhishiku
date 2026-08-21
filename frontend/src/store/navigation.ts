@@ -96,9 +96,9 @@ export const TOP_NAV_BUCKETS_SIMPLE: TopNavBucket[] = [
   },
   {
     id: 'daily',
-    label: '每日',
-    icon: 'Calendar',
-    description: 'AI 复盘你的输入与知识健康度，每天花几分钟看看自己',
+    label: '知识进化',
+    icon: 'TrendingUp',
+    description: '知识自进化全链路：碰撞→争议→验证→践行→进化→回顾→被用',
     primaryModuleId: 'daily',
     moduleIds: ['daily'],
   },
@@ -143,7 +143,6 @@ export const MENU_DATA_SIMPLE: Record<SimpleMenuId, MenuData> = {
       { id: 'raw', label: '原始素材', description: '未经处理的输入、剪藏、书摘', icon: 'Database', path: '/pipeline/raw', brainSide: 'both', preferredBrainSide: 'both' },
       { id: 'cards', label: '卡片化', description: '将素材切割为可复用卡片', icon: 'SquareStack', path: '/pipeline/cards', brainSide: 'both', preferredBrainSide: 'both' },
       { id: 'extract', label: '抽取', description: '提取概念、模型与行动建议', icon: 'Filter', path: '/pipeline/extract', brainSide: 'both', preferredBrainSide: 'both' },
-      { id: 'collision', label: '碰撞', description: '跨领域连接与创意杂交', icon: 'Shuffle', path: '/pipeline/collision', brainSide: 'both', preferredBrainSide: 'both' },
       { id: 'annotate', label: '注卡', description: '为卡片注入个人语境与行动', icon: 'Pencil', path: '/pipeline/annotate', brainSide: 'personal', preferredBrainSide: 'personal' },
     ],
   },
@@ -164,15 +163,19 @@ export const MENU_DATA_SIMPLE: Record<SimpleMenuId, MenuData> = {
   },
   daily: {
     id: 'daily',
-    label: '每日',
-    icon: 'Calendar',
-    description: '每天几分钟，看看自己积累了什么',
+    label: '知识进化',
+    icon: 'TrendingUp',
+    description: '知识自进化全链路，顺序即流程',
     defaultBrainSide: 'both',
     items: [
-      { id: 'review', label: '每日复盘', description: '回顾今日输入，发现行为差距', icon: 'Calendar', path: '/daily', brainSide: 'both' },
-      // 践行 → 进化 → 被用 按知识自进化链路顺序相邻排列
+      // 链路序与 EvolutionChainBar 一致：碰撞→争议→验证→践行→进化→回顾→被用
+      // （碰撞自「自动理好」迁入，争议/验证自「问出来」迁入——一条链住一个家）
+      { id: 'collision', label: '碰撞', description: '跨领域连接与创意杂交', icon: 'Shuffle', path: '/pipeline/collision', brainSide: 'both' },
+      { id: 'counter', label: '争议裁决', description: '有争议的知识在这里裁决：修正、保留或驳回', icon: 'XCircle', path: '/knowledge/counter', brainSide: 'both' },
+      { id: 'verify', label: '验证中心', description: '多模型验证与共识裁决', icon: 'CheckCircle', path: '/knowledge/verify', brainSide: 'both' },
       { id: 'practice', label: '践行记录', description: '记录知识落地与验证', icon: 'Dumbbell', path: '/daily/practice-records', brainSide: 'both' },
       { id: 'evolution', label: '进化轨迹', description: '追踪知识从收集到内化', icon: 'TrendingUp', path: '/daily/evolution-track', brainSide: 'both' },
+      { id: 'review', label: '每日复盘', description: '回顾今日输入与可信结论', icon: 'Calendar', path: '/daily', brainSide: 'both' },
       { id: 'invocation', label: '调用追踪', description: '统计知识被调用与践行次数', icon: 'Activity', path: '/daily/invocation-track', brainSide: 'both' },
       { id: 'health', label: '知识健康', description: '查看知识体系进化分布', icon: 'HeartPulse', path: '/daily/knowledge-health', brainSide: 'both' },
       { id: 'weekly', label: '认知周报', description: '每周认知健康报告', icon: 'FileText', path: '/daily/weekly-report', brainSide: 'both' },
@@ -191,9 +194,7 @@ export const MENU_DATA_SIMPLE: Record<SimpleMenuId, MenuData> = {
       { id: 'chat-history', label: '对话历史', description: '问答会话沉淀，可继续聊、可存成知识', icon: 'MessageSquare', path: '/chat', brainSide: 'both' },
       { id: 'knowledge-network', label: '网络脑知识', description: '从外部采集的可验证知识', icon: 'Globe', path: '/knowledge/network', brainSide: 'network' },
       { id: 'knowledge-personal', label: '个人脑知识', description: '个人思考与沉淀的知识单元', icon: 'User', path: '/knowledge/personal', brainSide: 'personal' },
-      // 验证 → 争议 是链路上相邻的两环，菜单里也相邻排列
-      { id: 'verify', label: '验证中心', description: '多模型验证与共识裁决', icon: 'CheckCircle', path: '/knowledge/verify', brainSide: 'both' },
-      { id: 'counter', label: '争议裁决', description: '有争议的知识在这里裁决：修正、保留或驳回', icon: 'XCircle', path: '/knowledge/counter', brainSide: 'both' },
+      // 验证中心/争议裁决已迁入「知识进化」链（一条链住一个家）
       { id: 'sources', label: '来源追溯', description: '按域名聚合的来源可信度', icon: 'GitCommit', path: '/knowledge/sources', brainSide: 'both' },
       { id: 'credibility', label: '可信度地图', description: '来源域名的可信度分布', icon: 'Map', path: '/knowledge/credibility', brainSide: 'both' },
       { id: 'capsules', label: '未来的信', description: '封存记忆，未来开启', icon: 'Package', path: '/capsules/my', brainSide: 'personal' },
@@ -422,7 +423,8 @@ export const MENU_DATA_CLASSIC: Record<ClassicMenuId, MenuData> = {
       { id: 'cognitive-potential', label: '认知势能', description: '能下沉、能产出、能变现的认知资产', icon: 'Zap', path: '/social-brain/cognitive-potential', brainSide: 'both', preferredBrainSide: 'both' },
       { id: 'experimenter', label: '实验者心态', description: '每次只控制一个变量，用反馈迭代', icon: 'FlaskConical', path: '/social-brain/experimenter', brainSide: 'both', preferredBrainSide: 'both' },
       { id: 'daily-review', label: '每日复盘', description: '回顾今日输入，发现行为差距', icon: 'Calendar', path: '/social-brain/daily-review', brainSide: 'both', preferredBrainSide: 'both' },
-      // 践行 → 进化 → 被用 → 健康 按知识自进化链路顺序相邻排列
+      // 自进化链（经典版）：复盘→践行→进化→被用→健康 按链路序相邻；
+      // 碰撞在素材加工桶、验证/争议在知识库桶相邻——链内跳转靠 EvolutionChainBar
       { id: 'practice-records', label: '践行记录', description: '记录知识落地与验证', icon: 'Dumbbell', path: '/social-brain/practice-records', brainSide: 'both', preferredBrainSide: 'both' },
       { id: 'evolution-track', label: '进化轨迹', description: '追踪知识从收集到内化', icon: 'TrendingUp', path: '/social-brain/evolution-track', brainSide: 'both', preferredBrainSide: 'both' },
       { id: 'invocation-track', label: '调用追踪', description: '统计知识被调用与践行次数', icon: 'Activity', path: '/social-brain/invocation-track', brainSide: 'both', preferredBrainSide: 'both' },

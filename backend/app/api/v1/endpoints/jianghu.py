@@ -324,6 +324,18 @@ async def generate_daily_review(
     note_summaries = [f"- {n.title or '(无标题)'}: {(n.content or '')[:120]}" for n in notes]
     knowledge_summaries = [f"- {(k.content_raw or '')[:150]}" for k in knowledge]
 
+    # 当日新确认的可信结论（last_verified 落在当日）：让复盘叙事覆盖验证沉淀，
+    # 不只是原始输入（08-20 拍板）
+    confirmed_query = db.query(KnowledgeUnit).filter(
+        KnowledgeUnit.user_id == current_user.id,
+        KnowledgeUnit.verification_status == "confirmed",
+        KnowledgeUnit.last_verified >= start_dt,
+        KnowledgeUnit.last_verified < end_dt,
+    )
+    if brain_side != "both":
+        confirmed_query = confirmed_query.filter(KnowledgeUnit.brain_side.in_([brain_side, "both"]))
+    confirmed_summaries = [f"- {(k.content_raw or '')[:150]}" for k in confirmed_query.all()]
+
     prompt = f"""你是一位个人知识管理教练，基于用户今天记录的内容生成每日复盘。
 
 今日日期：{review_date}
@@ -332,6 +344,9 @@ async def generate_daily_review(
 
 今日知识单元（{len(knowledge)}条）：
 {chr(10).join(knowledge_summaries) or "无"}
+
+今日新确认的可信结论（{len(confirmed_summaries)}条，已通过验证的知识沉淀）：
+{chr(10).join(confirmed_summaries) or "无"}
 
 请只返回一个 JSON 对象，不要包含 Markdown 格式：
 {{

@@ -495,3 +495,52 @@ class TestPipelineRawNetworkNotes:
         # 个人脑侧不应看到它
         resp2 = client.get("/api/v1/pipeline/items?stage=raw&brain_side=personal", headers=auth_headers)
         assert n.id not in [i["content_id"] for i in resp2.json()]
+
+
+class TestRevokedResolution:
+    def test_revoked_unconfirms_and_leaves_trace(self, client: TestClient, auth_headers, db_session, test_user):
+        """revoked（人工撤销可信）：confirmed → unverified，条目保留，history 留痕。"""
+        ku = _make_ku(db_session, test_user.id, "曾可信的结论", verification_status="confirmed")
+        resp = client.post(
+            f"/api/v1/knowledge/{ku.id}/dispute-resolution",
+            headers=auth_headers,
+            json={"resolution": "revoked"},
+        )
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["verification_status"] == "unverified"
+        assert body["dispute_resolution"] == "revoked"
+        history = json.loads(body["verification_history"])
+        assert any(h.get("type") == "dispute_resolution" and h.get("resolution") == "revoked" for h in history)
+        # 条目仍在（不是删除）
+        assert body["id"] == ku.id
+
+    def test_revoked_rejects_bad_value(self, client: TestClient, auth_headers, db_session, test_user):
+        ku = _make_ku(db_session, test_user.id, "随便")
+        resp = client.post(
+            f"/api/v1/knowledge/{ku.id}/dispute-resolution",
+            headers=auth_headers,
+            json={"resolution": "bogus"},
+        )
+        assert resp.status_code == 422
+
+
+class TestDailyReviewConfirmedFeed:
+    def test_generate_prompt_includes_today_confirmed(self, client: TestClient, auth_headers, db_session, test_user, monkeypatch):
+        """复盘生成 prompt 含当日新确认的可信结论（last_verified 当日）。"""
+        ku = _make_ku(db_session, test_user.id, "今日确认的可信结论XYZ", verification_status="confirmed")
+        ku.last_verified = datetime.now()  # 端点用 naive 本地日界比较，带 tz 会在 SQLite 文本比较下漏配
+        db_session.commit()
+
+        captured = {}
+
+        async def fake_chat(prompt, task_type=None, system_prompt=None, preferred_model=None, **kw):
+            captured["prompt"] = prompt
+            return json.dumps({"content_summary": "s", "ai_reflection": "r",
+                               "gaps_found": [], "action_items": [], "praise_items": []})
+
+        monkeypatch.setattr("app.api.v1.endpoints.jianghu.chat_completion", fake_chat)
+        resp = client.post("/api/v1/jianghu/daily-reviews/generate", headers=auth_headers, json={})
+        assert resp.status_code == 200, resp.text
+        assert "今日确认的可信结论XYZ" in captured["prompt"]
+        assert "可信结论" in captured["prompt"]

@@ -117,7 +117,7 @@ export const knowledgeApi = {
         ...(include_resolved ? { include_resolved: true } : {}),
       },
     }),
-  disputeResolution: (id: string, data: { resolution: 'kept' | 'rejected' }) =>
+  disputeResolution: (id: string, data: { resolution: 'kept' | 'rejected' | 'revoked' }) =>
     api.post<KnowledgeUnit>(`/api/v1/knowledge/${id}/dispute-resolution`, data),
   timelinessList: (brain_side?: string) =>
     api.get<KnowledgeUnit[]>('/api/v1/knowledge/timeliness', { params: brain_side ? { brain_side } : undefined }),

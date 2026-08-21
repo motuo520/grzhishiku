@@ -1,12 +1,12 @@
 import { FC, useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { useDailyReviews, useGenerateDailyReview, useUpdateDailyReview } from '@/hooks/useJianghu';
 import { useNavigation } from '@/store/navigation';
 import { knowledgeApi } from '@/api/knowledge';
 import ModelSelector from '@/components/llm/ModelSelector';
 import EvolutionChainBar from '@/components/EvolutionChainBar';
-import { Calendar, Loader2, Sparkles, CheckCircle2, AlertCircle, Lightbulb, Star, ChevronDown, ChevronUp, ShieldCheck } from 'lucide-react';
+import { Calendar, Loader2, Sparkles, CheckCircle2, AlertCircle, Lightbulb, Star, ChevronDown, ChevronUp, ShieldCheck, ShieldOff, SearchCheck, Trash2 } from 'lucide-react';
 
 const DailyReviewPage: FC = () => {
   const { brainSide } = useNavigation();
@@ -19,6 +19,9 @@ const DailyReviewPage: FC = () => {
   const [modelId, setModelId] = useState<string>();
 
   // 可信回顾：最近确认的可信结论（验证通过的知识单元）
+  const queryClient = useQueryClient();
+  const refreshTrusted = () =>
+    queryClient.invalidateQueries({ queryKey: ['knowledge', 'trusted-review'] });
   const { data: trustedUnits } = useQuery({
     queryKey: ['knowledge', 'trusted-review', brainSide],
     queryFn: () =>
@@ -278,6 +281,38 @@ const DailyReviewPage: FC = () => {
                 {isThisWeek(unit.updated_at) && (
                   <span className="px-2 py-0.5 rounded-[2px] bg-success/10 text-success text-xs border border-success/30 shrink-0">本周新增</span>
                 )}
+                {/* 操作：复审（进详情）/ 移出可信（revoked 决议，条目保留）/ 删除（软删） */}
+                <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
+                  <button
+                    onClick={() => navigate(`/knowledge/${unit.id}`)}
+                    title="人工复审：进入详情查看验证历史、重验或反证"
+                    className="p-1.5 rounded-[2px] text-text-muted hover:text-info hover:bg-info/10 transition-colors"
+                  >
+                    <SearchCheck className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    onClick={async () => {
+                      if (!confirm('移出可信？该条目的可信标记将被撤销（回到待验证），内容本身保留。')) return;
+                      await knowledgeApi.disputeResolution(unit.id, { resolution: 'revoked' });
+                      refreshTrusted();
+                    }}
+                    title="移出可信：撤销可信标记，条目保留"
+                    className="p-1.5 rounded-[2px] text-text-muted hover:text-warning hover:bg-warning/10 transition-colors"
+                  >
+                    <ShieldOff className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    onClick={async () => {
+                      if (!confirm('直接删除这条知识？删除后从所有列表消失，不可恢复。')) return;
+                      await knowledgeApi.delete(unit.id);
+                      refreshTrusted();
+                    }}
+                    title="直接删除该知识单元"
+                    className="p-1.5 rounded-[2px] text-text-muted hover:text-danger hover:bg-danger/10 transition-colors"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
               </div>
             ))}
           </div>

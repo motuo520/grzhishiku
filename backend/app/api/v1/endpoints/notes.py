@@ -119,8 +119,9 @@ async def list_notes(
 ):
     query = db.query(Note).filter(Note.user_id == current_user.id, Note.status == "active")
     # 带 folder_id 过滤时脑侧由文件夹归属规则约束（夹内笔记天然脑侧兼容），不再做严格等值过滤
+    # 脑侧口径同 knowledge 列表：both 侧笔记在 personal/network 视图都可见
     if brain_side and brain_side != "both" and not folder_id:
-        query = query.filter(Note.brain_side == brain_side)
+        query = query.filter(Note.brain_side.in_([brain_side, "both"]))
 
     if folder_id == "none":
         # 未归档（按查看脑 P）：note.brain_side ∈ {P,'both'} 且（folder_id 为空 或 文件夹不属 P 脑）
