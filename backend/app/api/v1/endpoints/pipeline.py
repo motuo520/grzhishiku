@@ -464,7 +464,8 @@ async def get_pipeline_stats(
 async def list_pipeline_items(
     stage: str = Query(..., pattern="^(raw|card|extracted|collided|approved)$"),
     brain_side: Optional[str] = Query("both", pattern="^(personal|network|both)$"),
-    limit: int = Query(50, ge=1, le=200),
+    # 上限放宽到 1000：个人库规模全量读取无压力，配合前端「加载更多」递增加载
+    limit: int = Query(50, ge=1, le=1000),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):

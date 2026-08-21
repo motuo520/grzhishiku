@@ -18,7 +18,6 @@ const VIEW_MODES = [
   { key: 'list', icon: List, label: '列表' },
 ];
 
-const MAX_DISPLAY_NOTES = 200;
 const MOTION_THRESHOLD = 20;
 
 // 文件夹下拉选项（flat，按树深度缩进；both 模式下带脑侧前缀）
@@ -40,6 +39,8 @@ const NotesPage: FC = () => {
   const [formTags, setFormTags] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  // 服务端分页上限（无 total 返回，靠「返回数达到 limit」判断可能还有更多）；上限与后端 le=1000 对齐
+  const [limit, setLimit] = useState(200);
   // 文件夹过滤来自 URL query（?folder_id=xxx / none），树上移全局侧边栏后页内不再放面板
   const [searchParams, setSearchParams] = useSearchParams();
   const folderParam = searchParams.get('folder_id');
@@ -79,6 +80,7 @@ const NotesPage: FC = () => {
     tag_ids: tagIdsParam,
     brain_side: brainSide === 'both' ? undefined : brainSide,
     folder_id: folderParam || undefined,
+    limit,
   });
   const { tags: allTags, isLoading: isTagsLoading } = useTags();
   const { personalFolders, networkFolders } = useFolders(brainSide);
@@ -130,10 +132,10 @@ const NotesPage: FC = () => {
 
   const filteredNotes = useMemo(() => notes || [], [notes]);
 
-  // Performance guard: only render the first N notes. Users should search/filter
-  // for the rest rather than mounting thousands of DOM nodes.
-  const displayNotes = useMemo(() => filteredNotes.slice(0, MAX_DISPLAY_NOTES), [filteredNotes]);
-  const hiddenCount = Math.max(0, filteredNotes.length - MAX_DISPLAY_NOTES);
+  // 不再做客户端截断：拉取上限由 limit 状态控制（「加载更多」每次 +200），
+  // 避免一次性挂载几千个 DOM 节点的诉求由服务端 limit 天然保证
+  const displayNotes = filteredNotes;
+  const hasMore = filteredNotes.length >= limit;
   const useMotion = displayNotes.length <= MOTION_THRESHOLD;
 
   // Pre-format expensive fields once instead of inside every row render.
@@ -542,12 +544,21 @@ const NotesPage: FC = () => {
         </div>
       )}
 
-      {/* Display cap notice */}
-      {hiddenCount > 0 && (
-        <div className="px-4 py-2.5 rounded-[2px] bg-warning/10 border border-warning/30 text-warning text-xs flex items-center gap-2">
-          <AlertCircle className="w-4 h-4" />
-          还有 {hiddenCount} 条笔记未显示，请使用搜索或标签筛选缩小范围。
-        </div>
+      {/* Load more：服务端按 limit 截断，返回数达到 limit 说明可能还有 */}
+      {hasMore && (
+        limit < 1000 ? (
+          <button
+            onClick={() => setLimit((l) => Math.min(l + 200, 1000))}
+            className="w-full px-4 py-2.5 rounded-[2px] border border-border-color text-xs text-text-secondary hover:text-text-primary hover:bg-bg-tertiary transition-colors"
+          >
+            加载更多（已显示 {preparedNotes.length} 条）
+          </button>
+        ) : (
+          <div className="px-4 py-2.5 rounded-[2px] bg-warning/10 border border-warning/30 text-warning text-xs flex items-center gap-2">
+            <AlertCircle className="w-4 h-4" />
+            已达上限，请使用搜索或标签筛选缩小范围。
+          </div>
+        )
       )}
 
       {/* Loading */}

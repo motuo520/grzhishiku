@@ -4,13 +4,13 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   BookOpen, ShieldCheck, AlertTriangle, XCircle, HelpCircle, Clock,
   Search, Filter, ArrowUpDown, Plus, ExternalLink, Layers,
-  BarChart3, Globe, Loader2, Activity, Dumbbell, Zap, Sprout, AlertCircle
+  BarChart3, Globe, Loader2, Activity, Dumbbell, Zap, Sprout
 } from 'lucide-react';
 import { useKnowledge } from '@/hooks/useKnowledge';
 import ErrorState from '@/components/ErrorState';
 import type { KnowledgeUnit } from '@/types';
 
-const MAX_DISPLAY_UNITS = 200;
+const INITIAL_DISPLAY_UNITS = 200;
 const MOTION_THRESHOLD = 20;
 
 const evolutionConfig: Record<string, { label: string; badgeClass: string }> = {
@@ -203,9 +203,12 @@ const KnowledgeUnitList: FC<KnowledgeUnitListProps> = ({ brainSide, title, subti
     return data;
   }, [units, statusFilter, evolutionFilter, typeFilter, domainFilter, searchQuery, sortBy, sortOrder]);
 
+  // 展示上限可递增：点击「加载更多」每次多挂 200 条，避免一次性渲染几千个 DOM 节点
+  const [displayLimit, setDisplayLimit] = useState(INITIAL_DISPLAY_UNITS);
+
   const displayUnits = useMemo(
-    () => filteredUnits.slice(0, MAX_DISPLAY_UNITS),
-    [filteredUnits]
+    () => filteredUnits.slice(0, displayLimit),
+    [filteredUnits, displayLimit]
   );
 
   const hiddenCount = filteredUnits.length - displayUnits.length;
@@ -398,10 +401,12 @@ const KnowledgeUnitList: FC<KnowledgeUnitListProps> = ({ brainSide, title, subti
             ))
           )}
           {hiddenCount > 0 && (
-            <div className="flex items-center justify-center gap-2 py-4 text-sm text-text-muted">
-              <AlertCircle className="w-4 h-4" />
-              还有 {hiddenCount} 条记录未显示，请使用筛选缩小范围
-            </div>
+            <button
+              onClick={() => setDisplayLimit((l) => l + 200)}
+              className="w-full flex items-center justify-center gap-2 py-3 rounded-[2px] border border-[var(--glass-border)] bg-[var(--glass-bg)] text-sm text-text-secondary hover:text-text-primary hover:bg-bg-tertiary transition-all"
+            >
+              加载更多（已显示 {displayUnits.length} / 共 {filteredUnits.length} 条）
+            </button>
           )}
         </div>
       )}

@@ -48,7 +48,7 @@ export const useEmailAccounts = () => {
   };
 };
 
-export const useEmailMessages = (filters?: { account_id?: string; q?: string; status?: string }) => {
+export const useEmailMessages = (filters?: { account_id?: string; q?: string; status?: string; limit?: number }) => {
   const queryClient = useQueryClient();
 
   const { data: messages, isLoading } = useQuery({

@@ -81,9 +81,9 @@ export const pipelineApi = {
   stats: (brain_side?: 'personal' | 'network' | 'both') =>
     api.get<PipelineStats>('/api/v1/pipeline/stats', { params: brain_side ? { brain_side } : undefined }),
 
-  items: (stage: string, brain_side?: 'personal' | 'network' | 'both') =>
+  items: (stage: string, brain_side?: 'personal' | 'network' | 'both', limit?: number) =>
     api.get<PipelineItem[]>('/api/v1/pipeline/items', {
-      params: { stage, ...(brain_side ? { brain_side } : {}) },
+      params: { stage, ...(brain_side ? { brain_side } : {}), ...(limit ? { limit } : {}) },
     }),
 
   transitionStage: (content_type: string, content_id: string, stage: string) =>

@@ -48,6 +48,8 @@ const IdeaLibraryPage: FC = () => {
   const [brainFilter, setBrainFilter] = useState<BrainSide | 'all'>('all');
   const [promotingId, setPromotingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // 递增加载：靠放大 limit 重取；上限与后端 le=1000 对齐
+  const [limit, setLimit] = useState(100);
   const queryClient = useQueryClient();
 
   const quickTools = [
@@ -59,13 +61,13 @@ const IdeaLibraryPage: FC = () => {
   ];
 
   const { data, isLoading } = useQuery({
-    queryKey: ['emergence', 'ideas', statusFilter, brainFilter],
+    queryKey: ['emergence', 'ideas', statusFilter, brainFilter, limit],
     queryFn: async () => {
       const response = await emergenceApi.getIdeas(
         statusFilter === 'all' ? undefined : statusFilter,
         brainFilter === 'all' ? undefined : brainFilter,
         0,
-        100
+        limit
       );
       return response.data;
     },
@@ -323,6 +325,20 @@ const IdeaLibraryPage: FC = () => {
               </motion.div>
             ))}
           </AnimatePresence>
+          {data && data.total > ideas.length && (
+            limit < 1000 ? (
+              <button
+                onClick={() => setLimit((l) => Math.min(l + 200, 1000))}
+                className="col-span-full w-full py-2.5 rounded-[2px] border border-white/[0.08] text-xs text-text-secondary hover:text-text-primary hover:border-white/[0.15] transition-colors"
+              >
+                加载更多（已显示 {ideas.length} / 共 {data.total}）
+              </button>
+            ) : (
+              <p className="col-span-full text-center text-xs text-text-muted py-2">
+                已达上限，请用状态或脑侧筛选缩小范围
+              </p>
+            )
+          )}
         </div>
       )}
     </div>

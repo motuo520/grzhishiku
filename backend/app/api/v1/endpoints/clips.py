@@ -75,7 +75,8 @@ def _build_clip_response(clip: BrowserClip, db: Session) -> dict:
 @router.get("/", response_model=List[ClipResponse], summary="List clips", description="Get all browser clips for the current user with pagination, search, domain filter, and tag filter.")
 async def list_clips(
     skip: int = Query(0, ge=0),
-    limit: int = Query(20, ge=1, le=100),
+    # 上限放宽到 1000：个人库规模全量读取无压力，配合前端「加载更多」递增加载
+    limit: int = Query(20, ge=1, le=1000),
     domain: Optional[str] = Query(None, description="Filter by domain"),
     q: Optional[str] = Query(None, description="Search in title or excerpt"),
     tag_ids: Optional[str] = Query(None, description="Filter by comma-separated tag IDs"),

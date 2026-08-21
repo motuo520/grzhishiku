@@ -210,7 +210,8 @@ async def list_email_messages(
     q: Optional[str] = Query(None, description="Search subject or body text"),
     status: Optional[str] = Query(None, description="Filter by status"),
     skip: int = Query(0, ge=0),
-    limit: int = Query(20, ge=1, le=100),
+    # 上限放宽到 1000：个人库规模全量读取无压力，配合前端「加载更多」递增加载
+    limit: int = Query(20, ge=1, le=1000),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):

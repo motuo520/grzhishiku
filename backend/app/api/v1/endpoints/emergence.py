@@ -595,7 +595,8 @@ async def emergence_history(
     type_filter: Optional[str] = Query(None, description="按类型筛选：associate, collision, hybrid, counterfactual"),
     brain_side: Optional[str] = Query(None, description="personal / network / both"),
     skip: int = Query(0, ge=0),
-    limit: int = Query(20, ge=1, le=100),
+    # 上限放宽到 1000：个人库规模全量读取无压力，配合前端「加载更多」递增加载
+    limit: int = Query(20, ge=1, le=1000),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -695,7 +696,8 @@ async def list_emergence_ideas(
     status: Optional[str] = Query(None),
     brain_side: Optional[str] = Query(None),
     skip: int = Query(0, ge=0),
-    limit: int = Query(50, ge=1, le=200),
+    # 上限放宽到 1000：个人库规模全量读取无压力，配合前端「加载更多」递增加载
+    limit: int = Query(50, ge=1, le=1000),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):

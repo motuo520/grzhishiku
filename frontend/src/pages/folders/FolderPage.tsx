@@ -42,7 +42,8 @@ const FolderPage: FC = () => {
     // 具体夹由归属规则约束脑侧，无需再传；未归档必须带脑侧
     brain_side: isNone ? brain : undefined,
   };
-  const { notes, isLoading: isNotesLoading, updateNote } = useNotes({ ...listParams, limit: 100 });
+  // 单夹笔记一次拉全（后端上限已放宽至 1000，个人库规模无压力）
+  const { notes, isLoading: isNotesLoading, updateNote } = useNotes({ ...listParams, limit: 1000 });
   const { data: units, isLoading: isUnitsLoading } = useQuery<KnowledgeUnit[]>({
     queryKey: ['knowledge', 'folder', id, brain],
     queryFn: async () => (await knowledgeApi.list(listParams)).data,

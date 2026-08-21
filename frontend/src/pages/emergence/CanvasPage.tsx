@@ -166,6 +166,9 @@ const CanvasEditor: FC<CanvasEditorProps> = ({ canvasId, onBack }) => {
   const [connectingSourceId, setConnectingSourceId] = useState<string | null>(null);
   const [mousePos, setMousePos] = useState<{ x: number; y: number } | null>(null);
   const [activeTab, setActiveTab] = useState<'ideas' | 'sources' | 'text' | 'recommend'>('ideas');
+  // 侧边栏成果库/素材池递增加载上限；与后端 le=1000 对齐
+  const [ideaLimit, setIdeaLimit] = useState(100);
+  const [sourceLimit, setSourceLimit] = useState(100);
   const [textInput, setTextInput] = useState('');
   const [editingNodeId, setEditingNodeId] = useState<string | null>(null);
   const [editLabel, setEditLabel] = useState('');
@@ -206,17 +209,17 @@ const CanvasEditor: FC<CanvasEditorProps> = ({ canvasId, onBack }) => {
   });
 
   const { data: ideasData } = useQuery({
-    queryKey: ['emergence', 'ideas', 'canvas'],
+    queryKey: ['emergence', 'ideas', 'canvas', ideaLimit],
     queryFn: async () => {
-      const response = await emergenceApi.getIdeas(undefined, 'all', 0, 100);
+      const response = await emergenceApi.getIdeas(undefined, 'all', 0, ideaLimit);
       return response.data;
     },
   });
 
   const { data: sourcesData } = useQuery({
-    queryKey: ['emergence', 'sources', 'canvas'],
+    queryKey: ['emergence', 'sources', 'canvas', sourceLimit],
     queryFn: async () => {
-      const response = await emergenceApi.getSources(undefined, undefined, undefined, 100);
+      const response = await emergenceApi.getSources(undefined, undefined, undefined, sourceLimit);
       return response.data;
     },
   });
@@ -1044,6 +1047,18 @@ const CanvasEditor: FC<CanvasEditorProps> = ({ canvasId, onBack }) => {
                 {(!ideasData?.items || ideasData.items.length === 0) && (
                   <p className="text-xs text-text-muted text-center py-6">成果库为空</p>
                 )}
+                {ideasData && ideasData.total > ideasData.items.length && (
+                  ideaLimit < 1000 ? (
+                    <button
+                      onClick={() => setIdeaLimit((l) => Math.min(l + 200, 1000))}
+                      className="w-full py-2 rounded-xl border border-white/[0.08] text-xs text-text-muted hover:text-text-primary hover:border-white/[0.15] transition-colors"
+                    >
+                      加载更多（已显示 {ideasData.items.length} / 共 {ideasData.total}）
+                    </button>
+                  ) : (
+                    <p className="text-xs text-text-muted text-center py-2">已达上限，请到成果库页筛选查看</p>
+                  )
+                )}
               </div>
             )}
 
@@ -1064,6 +1079,18 @@ const CanvasEditor: FC<CanvasEditorProps> = ({ canvasId, onBack }) => {
                 ))}
                 {(!sourcesData?.items || sourcesData.items.length === 0) && (
                   <p className="text-xs text-text-muted text-center py-6">素材池为空</p>
+                )}
+                {sourcesData && sourcesData.total > sourcesData.items.length && (
+                  sourceLimit < 1000 ? (
+                    <button
+                      onClick={() => setSourceLimit((l) => Math.min(l + 200, 1000))}
+                      className="w-full py-2 rounded-xl border border-white/[0.08] text-xs text-text-muted hover:text-text-primary hover:border-white/[0.15] transition-colors"
+                    >
+                      加载更多（已显示 {sourcesData.items.length} / 共 {sourcesData.total}）
+                    </button>
+                  ) : (
+                    <p className="text-xs text-text-muted text-center py-2">已达上限，请到素材池页搜索或筛选</p>
+                  )
                 )}
               </div>
             )}

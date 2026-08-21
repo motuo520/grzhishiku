@@ -41,6 +41,7 @@ export const useSocialMessages = (filters?: {
   account_id?: string;
   conversation_id?: string;
   q?: string;
+  limit?: number;
 }) => {
   const queryClient = useQueryClient();
 

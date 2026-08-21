@@ -25,9 +25,11 @@ const ReadLaterPage: FC = () => {
   const [success, setSuccess] = useState<string | null>(null);
   const [detailItem, setDetailItem] = useState<ReadLaterItem | null>(null);
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
+  // 服务端分页上限（无 total 返回，靠「返回数达到 limit」判断可能还有更多）；上限与后端 le=1000 对齐
+  const [limit, setLimit] = useState(200);
 
   const { items, isLoading, createItem, updateItem, deleteItem, fetchContent, saveToKnowledge, isCreating, isDeleting, isFetchingContent, isSavingToKnowledge } =
-    useReadLater({ status: statusFilter || undefined, q: query || undefined });
+    useReadLater({ status: statusFilter || undefined, q: query || undefined, limit });
   const { tags } = useTags();
 
   const showError = (message: string) => {
@@ -231,8 +233,9 @@ const ReadLaterPage: FC = () => {
           <p className="text-xs text-text-muted mt-1">添加一个链接开始收藏</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 gap-3">
-          {items?.map(item => (
+        <>
+          <div className="grid grid-cols-1 gap-3">
+            {items?.map(item => (
             <div key={item.id} className="card group">
               <div className="flex items-start gap-3">
                 <div className="flex-1 min-w-0">
@@ -300,7 +303,22 @@ const ReadLaterPage: FC = () => {
               </div>
             </div>
           ))}
-        </div>
+          </div>
+          {(items?.length ?? 0) >= limit && (
+            limit < 1000 ? (
+              <button
+                onClick={() => setLimit((l) => Math.min(l + 200, 1000))}
+                className="w-full mt-3 py-2.5 rounded-xl border border-border-color text-xs text-text-secondary hover:text-text-primary hover:bg-bg-tertiary transition-colors"
+              >
+                加载更多（已显示 {items?.length ?? 0} 条）
+              </button>
+            ) : (
+              <p className="text-center text-xs text-text-muted py-2 mt-3">
+                已达上限，请用搜索或状态筛选缩小范围
+              </p>
+            )
+          )}
+        </>
       )}
 
       <AnimatePresence>

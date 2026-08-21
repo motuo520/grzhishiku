@@ -27,12 +27,12 @@ export const usePipelineStats = (brainSide: BrainSide = 'both') => {
   return { stats, isLoading, error, refetch };
 };
 
-export const usePipelineItems = (stage: string, brainSide: BrainSide = 'both') => {
+export const usePipelineItems = (stage: string, brainSide: BrainSide = 'both', limit?: number) => {
   const side = normalizeSide(brainSide);
   const { data: items, isLoading, error, refetch } = useQuery<PipelineItem[]>({
-    queryKey: ['pipeline', 'items', { stage, brain_side: side }],
+    queryKey: ['pipeline', 'items', { stage, brain_side: side, limit }],
     queryFn: async () => {
-      const response = await pipelineApi.items(stage, side);
+      const response = await pipelineApi.items(stage, side, limit);
       return response.data;
     },
     enabled: !!stage,

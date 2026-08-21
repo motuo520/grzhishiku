@@ -104,11 +104,14 @@ const RssPage: FC = () => {
   const [modelId, setModelId] = useState('');
   const [summarizingId, setSummarizingId] = useState<string | null>(null);
   const [summaries, setSummaries] = useState<Record<string, string>>({});
+  // 条目分页上限（后端无 offset/total，靠「返回数达到 limit」判断可能还有更多）；上限与后端 le=1000 对齐
+  const [entryLimit, setEntryLimit] = useState(200);
 
   // 切换 Feed 时清空批量选择，避免误删其他 Feed 的条目
   useEffect(() => {
     setSelectedEntryIds(new Set());
     setEntryBatchMode(false);
+    setEntryLimit(200);
   }, [selectedFeedId]);
 
   const {
@@ -130,7 +133,7 @@ const RssPage: FC = () => {
     saveEntry,
     deleteEntry,
     isDeletingEntry,
-  } = useRssEntries(selectedFeedId);
+  } = useRssEntries(selectedFeedId, { limit: entryLimit });
 
   const showError = (message: string) => {
     setError(message);
@@ -653,6 +656,20 @@ const RssPage: FC = () => {
                       )}
                     </div>
                   ))}
+                  {(entries?.length ?? 0) >= entryLimit && (
+                    entryLimit < 1000 ? (
+                      <button
+                        onClick={() => setEntryLimit((l) => Math.min(l + 200, 1000))}
+                        className="w-full py-2.5 rounded-[2px] border border-border-color text-xs text-text-secondary hover:text-text-primary hover:bg-bg-tertiary transition-colors"
+                      >
+                        加载更多（已显示 {entries?.length ?? 0} 条）
+                      </button>
+                    ) : (
+                      <p className="text-center text-xs text-text-muted py-2">
+                        已达上限，更早的条目请按源分批查看
+                      </p>
+                    )
+                  )}
                 </div>
               )}
             </div>

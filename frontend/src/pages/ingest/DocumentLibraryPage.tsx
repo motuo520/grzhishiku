@@ -51,9 +51,11 @@ const DocumentLibraryPage: FC = () => {
   const [success, setSuccess] = useState<string | null>(null);
   const [detailDoc, setDetailDoc] = useState<DocumentItem | null>(null);
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
+  // 服务端分页上限（无 total 返回，靠「返回数达到 limit」判断可能还有更多）；上限与后端 le=1000 对齐
+  const [limit, setLimit] = useState(200);
 
   const { documents, isLoading, uploadDocument, reextractDocument, deleteDocument, saveToKnowledge, isUploading, isReextracting, isDeleting, isSavingToKnowledge } =
-    useDocuments({ extraction_status: statusFilter || undefined, file_type: typeFilter || undefined, q: query || undefined });
+    useDocuments({ extraction_status: statusFilter || undefined, file_type: typeFilter || undefined, q: query || undefined, limit });
   const { tags } = useTags();
 
   const showError = (message: string) => {
@@ -291,6 +293,20 @@ const DocumentLibraryPage: FC = () => {
               </div>
             </div>
           ))}
+          {(documents?.length ?? 0) >= limit && (
+            limit < 1000 ? (
+              <button
+                onClick={() => setLimit((l) => Math.min(l + 200, 1000))}
+                className="w-full py-2.5 rounded-xl border border-white/[0.08] text-xs text-text-secondary hover:text-text-primary hover:bg-white/[0.04] transition-colors"
+              >
+                加载更多（已显示 {documents?.length ?? 0} 条）
+              </button>
+            ) : (
+              <p className="text-center text-xs text-text-muted py-2">
+                已达上限，请用搜索或状态筛选缩小范围
+              </p>
+            )
+          )}
         </div>
       )}
 

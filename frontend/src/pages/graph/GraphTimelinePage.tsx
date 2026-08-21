@@ -198,6 +198,9 @@ const GraphTimelinePage: FC = () => {
               共 <span className="text-text-primary font-semibold">{summary.total}</span> 条
             </span>
             {summary.span && <span className="text-text-muted">{summary.span}</span>}
+            {data && data.total > items.length && (
+              <span className="text-warning">仅显示最近 {items.length} 条，更早的内容请按类型到各列表页查看</span>
+            )}
             <div className="flex flex-wrap items-center gap-1.5 ml-auto">
               {Object.entries(summary.typeCounts).map(([type, count]) => {
                 const config = TYPE_CONFIG[type];

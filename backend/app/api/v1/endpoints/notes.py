@@ -105,7 +105,8 @@ def _build_note_response(note: Note, db: Session) -> dict:
 @router.get("/", response_model=List[NoteResponse], summary="List notes", description="Get all notes for the current user with pagination, search, sorting, and tag filtering.")
 async def list_notes(
     skip: int = Query(0, ge=0),
-    limit: int = Query(20, ge=1, le=100),
+    # 上限放宽到 1000：个人库规模全量读取无压力，配合前端「加载更多」递增加载
+    limit: int = Query(20, ge=1, le=1000),
     sort_by: str = Query("created_at", pattern="^(created_at|updated_at|title)$"),
     sort_order: str = Query("desc", pattern="^(asc|desc)$"),
     q: Optional[str] = Query(None, description="Search in title or content"),

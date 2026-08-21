@@ -16,6 +16,8 @@ import { getDomainFromUrl, parseBookmarksHtml, parseLocalJson, parseLocalCsv, ty
 const ClipperPage: FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
+  // 服务端分页上限（无 total 返回，靠「返回数达到 limit」判断可能还有更多）；上限与后端 le=1000 对齐
+  const [limit, setLimit] = useState(200);
   const [expandedClip, setExpandedClip] = useState<string | null>(null);
   const [isEditorOpen, setIsEditorOpen] = useState(false);
   const [editingClip, setEditingClip] = useState<Clip | null>(null);
@@ -55,7 +57,7 @@ const ClipperPage: FC = () => {
     isUpdating,
     isSavingToKnowledge,
     isBatchUpdatingTags,
-  } = useClips({ q: searchQuery || undefined, tag_ids: selectedTagIds });
+  } = useClips({ q: searchQuery || undefined, tag_ids: selectedTagIds, limit });
 
   const filteredClips = useMemo(() => clips || [], [clips]);
   const allSelected = filteredClips.length > 0 && filteredClips.every(c => selectedIds.has(c.id));
@@ -758,6 +760,20 @@ const ClipperPage: FC = () => {
               </motion.div>
             ))}
           </AnimatePresence>
+          {filteredClips.length >= limit && (
+            limit < 1000 ? (
+              <button
+                onClick={() => setLimit((l) => Math.min(l + 200, 1000))}
+                className="w-full py-2.5 rounded-[2px] border border-border-color text-xs text-text-secondary hover:text-text-primary hover:bg-bg-tertiary transition-colors"
+              >
+                加载更多（已显示 {filteredClips.length} 条）
+              </button>
+            ) : (
+              <p className="text-center text-xs text-text-muted py-2">
+                已达上限，请用搜索或标签筛选缩小范围
+              </p>
+            )
+          )}
         </div>
       )}
 

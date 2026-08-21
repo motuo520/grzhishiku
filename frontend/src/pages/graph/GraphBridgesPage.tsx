@@ -1,4 +1,4 @@
-import { FC, useMemo } from 'react';
+import { FC, useMemo, useState } from 'react';
 import { GitMerge, Brain, Globe, Loader2, AlertCircle } from 'lucide-react';
 import { useGraphBridges } from '@/hooks/useGraph';
 
@@ -17,7 +17,9 @@ const BRIDGE_TYPE_LABELS: Record<string, string> = {
 const bridgeTypeLabel = (type: string) => BRIDGE_TYPE_LABELS[type] || type;
 
 const GraphBridgesPage: FC = () => {
-  const { data, isLoading, error } = useGraphBridges(50);
+  // 递增加载：后端无 offset，靠放大 limit 重取；上限与后端 le=1000 对齐
+  const [limit, setLimit] = useState(50);
+  const { data, isLoading, error } = useGraphBridges(limit);
   const bridges = useMemo(() => data?.bridges || [], [data]);
 
   // 顶部统计：总数、平均强度、graphify 语义边占比
@@ -127,6 +129,18 @@ const GraphBridgesPage: FC = () => {
               )}
             </div>
           ))}
+          {data && data.total > bridges.length && (
+            limit < 1000 ? (
+              <button
+                onClick={() => setLimit((l) => Math.min(l + 200, 1000))}
+                className="w-full py-2.5 rounded-xl border border-white/[0.08] text-xs text-text-secondary hover:text-text-primary hover:border-white/[0.15] transition-colors"
+              >
+                加载更多（已显示 {bridges.length} / 共 {data.total}）
+              </button>
+            ) : (
+              <p className="text-center text-xs text-text-muted py-2">已达上限，仅显示强度最高的 1000 条</p>
+            )
+          )}
         </div>
       </div>
     </div>

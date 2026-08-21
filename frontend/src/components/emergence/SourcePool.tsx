@@ -102,15 +102,17 @@ const SourcePool: FC<SourcePoolProps> = ({
   const setBrainSide = (side: BrainSide | 'all') => setGlobalBrain(side === 'all' ? 'both' : side);
   const [typeFilter, setTypeFilter] = useState<string>('all');
   const [query, setQuery] = useState('');
+  // 递增加载：后端无 offset，靠放大 limit 重取；上限与后端 le=1000 对齐
+  const [limit, setLimit] = useState(100);
 
   const { data, isLoading } = useQuery({
-    queryKey: ['emergence', 'sources', brainSide, typeFilter, query],
+    queryKey: ['emergence', 'sources', brainSide, typeFilter, query, limit],
     queryFn: async () => {
       const response = await emergenceApi.getSources(
         brainSide === 'all' ? undefined : brainSide,
         typeFilter === 'all' ? undefined : typeFilter,
         query.trim() || undefined,
-        100
+        limit
       );
       return response.data;
     },
@@ -249,17 +251,33 @@ const SourcePool: FC<SourcePoolProps> = ({
           <p className="text-xs text-text-muted mt-1">尝试调整筛选条件或搜索关键词</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-[480px] overflow-y-auto pr-1">
-          {items.map((item) => (
-            <SourceCard
-              key={item.id}
-              item={item}
-              selected={selectedIds.includes(item.id)}
-              onToggle={() => toggleSelection(item.id)}
-              onDelete={onDeleteItem ? () => onDeleteItem(item) : undefined}
-            />
-          ))}
-        </div>
+        <>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-[480px] overflow-y-auto pr-1">
+            {items.map((item) => (
+              <SourceCard
+                key={item.id}
+                item={item}
+                selected={selectedIds.includes(item.id)}
+                onToggle={() => toggleSelection(item.id)}
+                onDelete={onDeleteItem ? () => onDeleteItem(item) : undefined}
+              />
+            ))}
+          </div>
+          {data && data.total > items.length && (
+            limit < 1000 ? (
+              <button
+                onClick={() => setLimit((l) => Math.min(l + 200, 1000))}
+                className="w-full py-2.5 rounded-xl border border-white/[0.08] text-xs text-text-secondary hover:text-text-primary hover:border-white/[0.15] transition-colors"
+              >
+                加载更多（已显示 {items.length} / 共 {data.total}）
+              </button>
+            ) : (
+              <p className="text-center text-xs text-text-muted py-2">
+                已达上限，请用搜索或类型筛选缩小范围
+              </p>
+            )
+          )}
+        </>
       )}
     </div>
   );

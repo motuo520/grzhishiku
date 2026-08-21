@@ -381,12 +381,14 @@ interface HistoryPanelProps {
 
 export const HistoryPanel: FC<HistoryPanelProps> = ({ currentType, onLoadHistory }) => {
   const [isOpen, setIsOpen] = useState(false);
+  // 递增加载：靠放大 limit 重取；上限与后端 le=1000 对齐
+  const [limit, setLimit] = useState(50);
   const queryClient = useQueryClient();
 
   const { data, isLoading } = useQuery({
-    queryKey: ['emergence', 'history', currentType],
+    queryKey: ['emergence', 'history', currentType, limit],
     queryFn: async () => {
-      const response = await emergenceApi.history(currentType, 0, 50);
+      const response = await emergenceApi.history(currentType, 0, limit);
       return response.data;
     },
     enabled: isOpen,
@@ -443,7 +445,8 @@ export const HistoryPanel: FC<HistoryPanelProps> = ({ currentType, onLoadHistory
             ) : data?.items.length === 0 ? (
               <div className="text-center py-8 text-text-muted text-sm">暂无历史记录</div>
             ) : (
-              data?.items.map((item) => (
+              <>
+                {data?.items.map((item) => (
                 <div
                   key={item.id}
                   className="group p-3 rounded-[2px] bg-white/[0.03] border border-white/[0.06] hover:border-white/[0.12] transition-all cursor-pointer"
@@ -476,7 +479,20 @@ export const HistoryPanel: FC<HistoryPanelProps> = ({ currentType, onLoadHistory
                     {new Date(item.created_at).toLocaleString('zh-CN')}
                   </p>
                 </div>
-              ))
+                ))}
+                {data && data.total > data.items.length && (
+                  limit < 1000 ? (
+                    <button
+                      onClick={() => setLimit((l) => Math.min(l + 200, 1000))}
+                      className="w-full py-2 rounded-[2px] border border-white/[0.08] text-xs text-text-muted hover:text-text-primary hover:border-white/[0.15] transition-colors"
+                    >
+                      加载更多（已显示 {data.items.length} / 共 {data.total}）
+                    </button>
+                  ) : (
+                    <p className="text-center text-xs text-text-muted py-2">已达上限</p>
+                  )
+                )}
+              </>
             )}
           </div>
         </motion.div>

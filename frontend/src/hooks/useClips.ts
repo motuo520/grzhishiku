@@ -6,6 +6,7 @@ export interface ClipFilters {
   q?: string;
   domain?: string;
   tag_ids?: string[];
+  limit?: number;
 }
 
 export const useClips = (filters: ClipFilters = {}) => {
@@ -16,12 +17,13 @@ export const useClips = (filters: ClipFilters = {}) => {
     : undefined;
 
   const { data: clips, isLoading } = useQuery({
-    queryKey: ['clips', { q: filters.q, domain: filters.domain, tag_ids: tagIdsParam }],
+    queryKey: ['clips', { q: filters.q, domain: filters.domain, tag_ids: tagIdsParam, limit: filters.limit }],
     queryFn: async () => {
       const response = await clipsApi.list({
         q: filters.q,
         domain: filters.domain,
         tag_ids: tagIdsParam,
+        limit: filters.limit,
       });
       return response.data;
     },

@@ -28,7 +28,9 @@ const AnnotatePage: FC = () => {
   const effectiveSide = brainSide === 'network' ? 'personal' : brainSide;
 
   const { stats } = usePipelineStats(effectiveSide);
-  const { items, isLoading: isItemsLoading, error: queryError, refetch } = usePipelineItems('approved', effectiveSide);
+  // 递增加载：后端按 limit 截断且无 offset，靠放大 limit 重取；上限与后端 le=1000 对齐
+  const [limit, setLimit] = useState(50);
+  const { items, isLoading: isItemsLoading, error: queryError, refetch } = usePipelineItems('approved', effectiveSide, limit);
   const { items: collisionItems } = usePipelineItems('collided', effectiveSide);
   const reviewCollision = useReviewCollision();
   const updateUnit = useUpdateKnowledgeUnit();
@@ -260,6 +262,18 @@ const AnnotatePage: FC = () => {
               </div>
             );
           })}
+          {(stageCounts.annotate ?? 0) > (items?.length ?? 0) && (
+            limit < 1000 ? (
+              <button
+                onClick={() => setLimit((l) => Math.min(l + 200, 1000))}
+                className="w-full py-2.5 rounded-[2px] border border-white/[0.08] text-xs text-text-secondary hover:text-text-primary hover:bg-white/[0.04] transition-colors"
+              >
+                加载更多（已显示 {items?.length ?? 0} / 共 {stageCounts.annotate}）
+              </button>
+            ) : (
+              <p className="text-center text-xs text-text-muted py-2">已达上限</p>
+            )
+          )}
         </div>
       )}
     </div>

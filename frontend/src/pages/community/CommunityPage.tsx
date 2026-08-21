@@ -9,7 +9,9 @@ const MAX_LENGTH = 1000;
 const CommunityPage: FC = () => {
   const { isLoggedIn, user } = useAuth();
   const [content, setContent] = useState('');
-  const { data, isLoading, error } = useCommunityPosts();
+  // 递增加载：后端无页码 UI，靠放大 limit 重取；上限与后端 le=1000 对齐
+  const [limit, setLimit] = useState(20);
+  const { data, isLoading, error } = useCommunityPosts(0, limit);
   const createPost = useCreateCommunityPost();
   const deletePost = useDeleteCommunityPost();
 
@@ -135,6 +137,18 @@ const CommunityPage: FC = () => {
                 </div>
               );
             })}
+            {data && posts.length < data.total && (
+              limit < 1000 ? (
+                <button
+                  onClick={() => setLimit((l) => Math.min(l + 200, 1000))}
+                  className="w-full py-2.5 rounded-xl border border-border-color text-xs text-text-secondary hover:text-text-primary hover:bg-bg-secondary transition-colors"
+                >
+                  加载更多（已显示 {posts.length} / 共 {data.total}）
+                </button>
+              ) : (
+                <p className="text-center text-xs text-text-muted py-2">已显示全部可加载内容</p>
+              )
+            )}
           </div>
         )}
       </div>

@@ -38,7 +38,9 @@ const CardsPage: FC = () => {
   const [modelId, setModelId] = useState<string>('');
 
   const { stats } = usePipelineStats(brainSide);
-  const { items, isLoading: isItemsLoading, error: queryError, refetch } = usePipelineItems('card', brainSide);
+  // 递增加载：后端按 limit 截断且无 offset，靠放大 limit 重取；上限与后端 le=1000 对齐
+  const [limit, setLimit] = useState(50);
+  const { items, isLoading: isItemsLoading, error: queryError, refetch } = usePipelineItems('card', brainSide, limit);
   const { items: rawItems } = usePipelineItems('raw', brainSide);
   const extractConcepts = useExtractConcepts();
   const transitionItem = useTransitionItem();
@@ -368,6 +370,18 @@ const CardsPage: FC = () => {
               </div>
             );
           })}
+          {(stageCounts.card ?? 0) > (items?.length ?? 0) && (
+            limit < 1000 ? (
+              <button
+                onClick={() => setLimit((l) => Math.min(l + 200, 1000))}
+                className="w-full py-2.5 rounded-[2px] border border-white/[0.08] text-xs text-text-secondary hover:text-text-primary hover:bg-white/[0.04] transition-colors"
+              >
+                加载更多（已显示 {items?.length ?? 0} / 共 {stageCounts.card}）
+              </button>
+            ) : (
+              <p className="text-center text-xs text-text-muted py-2">已达上限，请先处理当前卡片</p>
+            )
+          )}
         </div>
       )}
     </div>

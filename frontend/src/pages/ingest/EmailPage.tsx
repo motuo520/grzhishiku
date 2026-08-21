@@ -34,6 +34,8 @@ const EmailPage: FC = () => {
   const [authCode, setAuthCode] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  // 服务端分页上限（无 total 返回，靠「返回数达到 limit」判断可能还有更多）；上限与后端 le=1000 对齐
+  const [limit, setLimit] = useState(200);
 
   const { accounts, isLoading: isAccountsLoading, createAccount, deleteAccount, syncAccount, isCreating, isDeleting, isSyncing } = useEmailAccounts();
   const { tags: allTags, isLoading: isTagsLoading } = useTags();
@@ -47,6 +49,7 @@ const EmailPage: FC = () => {
   } = useEmailMessages({
     account_id: selectedAccountId || undefined,
     q: searchQuery || undefined,
+    limit,
   });
 
   const showError = (message: string) => {
@@ -374,6 +377,20 @@ const EmailPage: FC = () => {
                 </motion.div>
               ))}
             </AnimatePresence>
+            {messages.length >= limit && (
+              limit < 1000 ? (
+                <button
+                  onClick={() => setLimit((l) => Math.min(l + 200, 1000))}
+                  className="w-full py-2.5 rounded-[2px] border border-border-color text-xs text-text-secondary hover:text-text-primary hover:bg-bg-tertiary transition-colors"
+                >
+                  加载更多（已显示 {messages.length} 条）
+                </button>
+              ) : (
+                <p className="text-center text-xs text-text-muted py-2">
+                  已达上限，请用搜索缩小范围
+                </p>
+              )
+            )}
           </div>
         )}
       </div>
