@@ -105,6 +105,8 @@ export interface EmergenceSource {
   title: string;
   excerpt: string;
   brain_side: BrainSide | 'unknown';
+  /** 标签（note/clip/knowledge 有，其余类型空数组） */
+  tags?: string[];
   created_at: string;
 }
 

@@ -515,28 +515,34 @@ async def list_pipeline_items(
 
     if stage == "raw":
         # Raw = unprocessed notes + external raw items
-        if brain_side in ("personal", "both"):
-            notes = db.query(Note).filter(
-                Note.user_id == current_user.id,
-                Note.status == "active",
-                or_(Note.pipeline_stage == "raw", Note.pipeline_stage == None),
-            ).limit(limit).all()
-            for n in notes:
-                results.append(PipelineItem(
-                    id=f"note-{n.id}",
-                    content_type="note",
-                    content_id=n.id,
-                    content_subtype=None,
-                    title=n.title,
-                    content_raw=n.content[:500],
-                    content_processed=None,
-                    brain_side=n.brain_side or "personal",
-                    pipeline_stage="raw",
-                    source_url=None,
-                    source_title=None,
-                    created_at=n.created_at,
-                    updated_at=n.updated_at,
-                ))
+        # 笔记两脑都算（修复：network 脑侧时笔记整块被外层守卫跳过，network 脑笔记
+        # 在管线 raw 隐身——08-21 实锤 140 条网络脑笔记管线不可见）
+        notes_query = db.query(Note).filter(
+            Note.user_id == current_user.id,
+            Note.status == "active",
+            or_(Note.pipeline_stage == "raw", Note.pipeline_stage == None),
+        )
+        if brain_side == "personal":
+            notes_query = notes_query.filter(or_(Note.brain_side == "personal", Note.brain_side == None, Note.brain_side == "both"))
+        elif brain_side == "network":
+            notes_query = notes_query.filter(Note.brain_side.in_(["network", "both"]))
+        notes = notes_query.order_by(Note.created_at.desc()).limit(limit).all()
+        for n in notes:
+            results.append(PipelineItem(
+                id=f"note-{n.id}",
+                content_type="note",
+                content_id=n.id,
+                content_subtype=None,
+                title=n.title,
+                content_raw=(n.content or "")[:500],
+                content_processed=None,
+                brain_side=n.brain_side or "personal",
+                pipeline_stage="raw",
+                source_url=None,
+                source_title=None,
+                created_at=n.created_at,
+                updated_at=n.updated_at,
+            ))
         if brain_side in ("network", "both"):
             clips = db.query(BrowserClip).filter(
                 BrowserClip.user_id == current_user.id,

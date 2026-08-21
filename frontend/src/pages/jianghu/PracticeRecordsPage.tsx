@@ -24,6 +24,7 @@ const PracticeRecordsPage: FC = () => {
   const { units: knowledgeUnits } = useKnowledge(brainSide);
   const { notes } = useNotes({ brain_side: brainSide });
   const [searchParams] = useSearchParams();
+  const [targetQuery, setTargetQuery] = useState('');
 
   const [form, setForm] = useState({
     target_type: 'knowledge_unit' as 'note' | 'knowledge_unit',
@@ -51,14 +52,17 @@ const PracticeRecordsPage: FC = () => {
       form.target_type === 'knowledge_unit'
         ? (knowledgeUnits || []).map((k: { id: string; content_raw?: string | null }) => ({ id: k.id, label: (k.content_raw || '').slice(0, 60) || '(无内容)' }))
         : (notes || []).map((n: { id: string; title?: string | null; content?: string | null }) => ({ id: n.id, label: (n.title || n.content?.slice(0, 60) || '(无标题)') }));
-    const options = all.slice(0, 50);
+    // 关键字查找（标题/正文包含，大小写不敏感）：目标多了下拉根本找不到（08-21 用户）
+    const q = targetQuery.trim().toLowerCase();
+    const filtered = q ? all.filter((o) => o.label.toLowerCase().includes(q)) : all;
+    const options = filtered.slice(0, 50);
     // 深链预填的目标可能不在前 50 条内，补一个可选项保证下拉能选中
     if (form.target_id && !options.some((o) => o.id === form.target_id)) {
       const found = all.find((o) => o.id === form.target_id);
       options.unshift({ id: form.target_id, label: found ? found.label : `指定目标 ${form.target_id.slice(0, 8)}…` });
     }
     return options;
-  }, [form.target_type, form.target_id, knowledgeUnits, notes]);
+  }, [form.target_type, form.target_id, knowledgeUnits, notes, targetQuery]);
 
   const filteredRecords = useMemo(() => {
     if (!records) return [];
@@ -112,6 +116,13 @@ const PracticeRecordsPage: FC = () => {
               <option value="knowledge_unit">知识单元</option>
               <option value="note">笔记</option>
             </select>
+            <input
+              type="text"
+              value={targetQuery}
+              onChange={(e) => setTargetQuery(e.target.value)}
+              placeholder="按关键字查找目标（标题/正文）..."
+              className="px-3 py-2 rounded-[2px] bg-bg-primary border border-white/[0.06] text-sm text-text-primary placeholder-text-muted"
+            />
             <select
               value={form.target_id}
               onChange={(e) => setForm({ ...form, target_id: e.target.value })}

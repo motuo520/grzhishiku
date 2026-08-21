@@ -113,3 +113,16 @@ class TestSweep:
         assert "新空标签" in names
         assert "在用的老标签" in names
         assert deleted >= 1
+
+
+class TestSourcePoolTags:
+    def test_sources_include_tags(self, client, db_session, test_user, auth_headers):
+        """素材池条目带标签名（卡片直接露出，建档归类不用点进去）。"""
+        nid = _mk_note(db_session, test_user.id, "带标签的笔记")
+        tid = _mk_tag(db_session, test_user.id, "认知科学")
+        _link(db_session, tid, nid)
+        r = client.get("/api/v1/emergence/sources", headers=auth_headers)
+        assert r.status_code == 200
+        hit = [i for i in r.json()["items"] if i["id"] == nid]
+        assert len(hit) == 1
+        assert "认知科学" in hit[0]["tags"]

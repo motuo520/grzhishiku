@@ -1,4 +1,4 @@
-import { FC, useMemo, useState } from 'react';
+import { FC, useMemo, useRef, useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
   Search,
@@ -102,6 +102,19 @@ const SourcePool: FC<SourcePoolProps> = ({
   const setBrainSide = (side: BrainSide | 'all') => setGlobalBrain(side === 'all' ? 'both' : side);
   const [typeFilter, setTypeFilter] = useState<string>('all');
   const [query, setQuery] = useState('');
+  // 类型菜单：点击展开 + 点击外部关闭
+  const [typeMenuOpen, setTypeMenuOpen] = useState(false);
+  const typeMenuRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    if (!typeMenuOpen) return;
+    const onDown = (e: MouseEvent) => {
+      if (typeMenuRef.current && !typeMenuRef.current.contains(e.target as Node)) {
+        setTypeMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', onDown);
+    return () => document.removeEventListener('mousedown', onDown);
+  }, [typeMenuOpen]);
   // 递增加载：后端无 offset，靠放大 limit 重取；上限与后端 le=1000 对齐
   const [limit, setLimit] = useState(100);
 
@@ -180,42 +193,48 @@ const SourcePool: FC<SourcePoolProps> = ({
             ))}
           </div>
 
-          <div className="relative group">
-            <button className="flex items-center gap-1.5 px-3 py-1.5 bg-bg-tertiary rounded-lg text-xs text-text-secondary hover:text-text-primary transition-colors">
+          <div className="relative" ref={typeMenuRef}>
+            <button
+              onClick={() => setTypeMenuOpen((v) => !v)}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-bg-tertiary rounded-lg text-xs text-text-secondary hover:text-text-primary transition-colors"
+            >
               <Filter className="w-3.5 h-3.5" />
-              类型
+              类型{typeFilter !== 'all' ? `：${SOURCE_TYPES.find((t) => t.key === typeFilter)?.label || ''}` : ''}
               {typeFilter !== 'all' && (
                 <span className="w-2 h-2 rounded-full bg-info" />
               )}
             </button>
-            <div className="absolute right-0 top-full mt-2 w-40 z-20 hidden group-hover:block">
-              <div className="glass-card p-2 space-y-1">
-                <button
-                  onClick={() => setTypeFilter('all')}
-                  className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs transition-colors ${
-                    typeFilter === 'all' ? 'bg-info/15 text-info' : 'text-text-secondary hover:bg-white/[0.04]'
-                  }`}
-                >
-                  <Database className="w-3.5 h-3.5" />
-                  全部类型
-                </button>
-                {SOURCE_TYPES.map((type) => {
-                  const Icon = type.icon;
-                  return (
-                    <button
-                      key={type.key}
-                      onClick={() => setTypeFilter(type.key)}
-                      className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs transition-colors ${
-                        typeFilter === type.key ? 'bg-info/15 text-info' : 'text-text-secondary hover:bg-white/[0.04]'
-                      }`}
-                    >
-                      <Icon className="w-3.5 h-3.5" />
-                      {type.label}
-                    </button>
-                  );
-                })}
+            {/* 点击展开（原来 group-hover + mt-2 间隙，鼠标一移开就消失选不中） */}
+            {typeMenuOpen && (
+              <div className="absolute right-0 top-full mt-2 w-40 z-20">
+                <div className="glass-card p-2 space-y-1">
+                  <button
+                    onClick={() => { setTypeFilter('all'); setTypeMenuOpen(false); }}
+                    className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs transition-colors ${
+                      typeFilter === 'all' ? 'bg-info/15 text-info' : 'text-text-secondary hover:bg-white/[0.04]'
+                    }`}
+                  >
+                    <Database className="w-3.5 h-3.5" />
+                    全部类型
+                  </button>
+                  {SOURCE_TYPES.map((type) => {
+                    const Icon = type.icon;
+                    return (
+                      <button
+                        key={type.key}
+                        onClick={() => { setTypeFilter(type.key); setTypeMenuOpen(false); }}
+                        className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs transition-colors ${
+                          typeFilter === type.key ? 'bg-info/15 text-info' : 'text-text-secondary hover:bg-white/[0.04]'
+                        }`}
+                      >
+                        <Icon className="w-3.5 h-3.5" />
+                        {type.label}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
-            </div>
+            )}
           </div>
         </div>
       </div>
@@ -341,6 +360,17 @@ const SourceCard: FC<SourceCardProps> = ({ item, selected, onToggle, onDelete })
           <p className="text-xs text-text-secondary line-clamp-2 mt-1 leading-relaxed">
             {item.excerpt || '暂无摘要'}
           </p>
+          {/* 标签直接露出：建档归类不用点进去看（08-22） */}
+          {item.tags && item.tags.length > 0 && (
+            <div className="flex items-center gap-1 mt-1.5 flex-wrap">
+              {item.tags.slice(0, 4).map((t) => (
+                <span key={t} className="px-1.5 py-0.5 rounded text-[10px] bg-info/10 text-info border border-info/20">{t}</span>
+              ))}
+              {item.tags.length > 4 && (
+                <span className="text-[10px] text-text-muted">+{item.tags.length - 4}</span>
+              )}
+            </div>
+          )}
           <p className="text-[10px] text-text-muted mt-2">{formatDate(item.created_at)}</p>
         </div>
       </div>

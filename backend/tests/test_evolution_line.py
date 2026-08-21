@@ -475,3 +475,23 @@ class TestCollisionPairing:
                           json={"concept_id": a.id, "partner_id": str(uuid.uuid4()),
                                 "preferred_model": "qwen2.5:0.5b"})
         assert bad.status_code == 404
+
+
+class TestPipelineRawNetworkNotes:
+    def test_raw_items_include_network_notes(self, client: TestClient, auth_headers, db_session, test_user):
+        """回归：raw 阶段 network 脑侧曾整块跳过笔记（network 笔记管线隐身）。"""
+        from app.models.base import Note
+        n = Note(id=str(uuid.uuid4()), user_id=test_user.id, title="网络脑笔记",
+                 content="c", status="active", brain_side="network", pipeline_stage="raw",
+                 created_at=datetime.now(timezone.utc), updated_at=datetime.now(timezone.utc))
+        db_session.add(n)
+        db_session.commit()
+
+        resp = client.get("/api/v1/pipeline/items?stage=raw&brain_side=network", headers=auth_headers)
+        assert resp.status_code == 200
+        ids = [i["content_id"] for i in resp.json()]
+        assert n.id in ids
+
+        # 个人脑侧不应看到它
+        resp2 = client.get("/api/v1/pipeline/items?stage=raw&brain_side=personal", headers=auth_headers)
+        assert n.id not in [i["content_id"] for i in resp2.json()]

@@ -345,6 +345,29 @@ async def emergence_sources(
             )
 
     items.sort(key=lambda x: x.created_at or datetime.min, reverse=True)
+
+    # 批量挂标签（只查两轮：关联行 + 标签名），N+1 免疫；note/clip/knowledge 三类有标签体系
+    from app.models.base import content_tags as _ct, Tag as _Tag
+    _CT_OF = {"note": "note", "clip": "clip", "knowledge": "knowledge"}
+    tag_rows: Dict[str, List[str]] = {}
+    typed_ids = [(it.type, it.id) for it in items if it.type in _CT_OF]
+    if typed_ids:
+        assoc = db.query(_ct.c.content_type, _ct.c.content_id, _ct.c.tag_id).all()
+        want = {(t, i) for t, i in typed_ids}
+        tag_ids = set()
+        pairs = []
+        for r in assoc:
+            if (r[0], r[1]) in want:
+                pairs.append((r[0], r[1], r[2]))
+                tag_ids.add(r[2])
+        names = {t.id: t.name for t in db.query(_Tag).filter(_Tag.id.in_(tag_ids)).all()} if tag_ids else {}
+        for ctype, cid, tid in pairs:
+            if tid in names:
+                key = f"{ctype}:{cid}"
+                tag_rows.setdefault(key, []).append(names[tid])
+    for it in items:
+        it.tags = tag_rows.get(f"{it.type}:{it.id}", [])
+
     return EmergenceSourceList(items=items[:limit], total=len(items))
 
 

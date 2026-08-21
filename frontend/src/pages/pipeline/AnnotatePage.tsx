@@ -35,6 +35,7 @@ const AnnotatePage: FC = () => {
   const reviewCollision = useReviewCollision();
   const updateUnit = useUpdateKnowledgeUnit();
   const [isPulling, setIsPulling] = useState(false);
+  const [showAnnotated, setShowAnnotated] = useState(false);
 
   const stageCounts = useMemo(() => {
     if (!stats) return {} as Record<string, number>;
@@ -49,12 +50,17 @@ const AnnotatePage: FC = () => {
 
   const filteredItems = useMemo(() => {
     let data = items || [];
+    // 注卡完成（content_processed 有值）的内容默认移出列表——注过卡的留在列表里
+    // 只会越看越乱（08-21 用户：重复的太多了）；顶栏开关可回看
+    if (!showAnnotated) {
+      data = data.filter((item) => !(item.content_processed || '').trim());
+    }
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
       data = data.filter((item) => (item.content_raw || '').toLowerCase().includes(q));
     }
     return data;
-  }, [items, searchQuery]);
+  }, [items, searchQuery, showAnnotated]);
 
   const formatDate = (dateStr: string) => {
     return new Date(dateStr).toLocaleDateString('zh-CN', {
@@ -177,6 +183,15 @@ const AnnotatePage: FC = () => {
               />
             </div>
           </div>
+          <label className="flex items-center gap-2 text-xs text-text-secondary cursor-pointer select-none shrink-0" title="已注卡完成的内容默认移出列表；打开可回看">
+            <input
+              type="checkbox"
+              checked={showAnnotated}
+              onChange={(e) => setShowAnnotated(e.target.checked)}
+              className="accent-info cursor-pointer"
+            />
+            显示已注卡
+          </label>
         </div>
       </div>
 

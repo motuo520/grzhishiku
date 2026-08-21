@@ -155,6 +155,15 @@ const FolderPage: FC = () => {
                       <div className="text-xs text-text-secondary line-clamp-1 mt-0.5">
                         {getExcerpt(note.content)}
                       </div>
+                      {/* 标签直接露出：建档归类时一眼看到（08-22） */}
+                      {note.tags && note.tags.length > 0 && (
+                        <div className="flex items-center gap-1 mt-1 flex-wrap">
+                          {note.tags.slice(0, 4).map((t) => (
+                            <span key={t.id} className="px-1.5 py-0.5 rounded text-[10px] bg-info/10 text-info border border-info/20">{t.name}</span>
+                          ))}
+                          {note.tags.length > 4 && <span className="text-[10px] text-text-muted">+{note.tags.length - 4}</span>}
+                        </div>
+                      )}
                     </div>
                     <button
                       onClick={() => handleRemoveNote(note.id)}
@@ -192,6 +201,14 @@ const FolderPage: FC = () => {
                       <div className="text-xs text-text-secondary line-clamp-1 mt-0.5">
                         {getExcerpt(unit.content_raw)}
                       </div>
+                      {unit.tags && unit.tags.length > 0 && (
+                        <div className="flex items-center gap-1 mt-1 flex-wrap">
+                          {unit.tags.slice(0, 4).map((t) => (
+                            <span key={t.id} className="px-1.5 py-0.5 rounded text-[10px] bg-info/10 text-info border border-info/20">{t.name}</span>
+                          ))}
+                          {unit.tags.length > 4 && <span className="text-[10px] text-text-muted">+{unit.tags.length - 4}</span>}
+                        </div>
+                      )}
                     </div>
                     <button
                       onClick={() => handleRemoveUnit(unit.id)}

@@ -10,6 +10,9 @@ class EmergenceSourceItem(BaseModel):
     title: str
     excerpt: Optional[str] = None
     brain_side: str
+    # 标签（note/clip/knowledge 有，其余类型为空列表）——列表卡片直接露出，
+    # 建档归类不用点进去看（08-22 用户：标题后就要看到标签）
+    tags: List[str] = []
     created_at: Optional[datetime] = None
 
 
