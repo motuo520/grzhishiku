@@ -649,6 +649,25 @@ const GraphNetworkPage: FC = () => {
             ) : (
               <div className="mb-4 p-3 rounded-lg bg-white/[0.03] border border-white/[0.06] text-xs text-text-secondary">
                 该节点为自动提取的概念/主题，未关联到单条内容。
+                {/* hub 概念 grounding：直达最相关的原文，不再只有搜索 */}
+                {selectedNode.grounded && selectedNode.grounded.length > 0 && (
+                  <div className="mt-2 space-y-1.5">
+                    <div className="text-[10px] text-text-muted uppercase tracking-wider">相关内容</div>
+                    {selectedNode.grounded.map((g) => (
+                      <button
+                        key={g.id}
+                        onClick={() => {
+                          const route = getSourceRoute(g.type, g.id);
+                          if (route) navigate(route);
+                        }}
+                        className="w-full flex items-center gap-1.5 px-2 py-1.5 rounded-lg text-xs text-info bg-info/5 border border-info/20 hover:bg-info/15 transition-colors text-left"
+                      >
+                        <ExternalLink className="w-3 h-3 shrink-0" />
+                        <span className="truncate">{g.title || g.id}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
 

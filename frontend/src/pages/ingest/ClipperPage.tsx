@@ -1,4 +1,5 @@
-import { FC, useState, useRef, useMemo } from 'react';
+import { FC, useState, useRef, useMemo, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Scissors, Search, Trash2, ExternalLink, Globe, ChevronDown, ChevronUp, AlertCircle, X, Loader2,
@@ -40,6 +41,20 @@ const ClipperPage: FC = () => {
   const [aiLoadingAction, setAiLoadingAction] = useState<'summary' | 'tags' | null>(null);
   const [aiSummaries, setAiSummaries] = useState<Record<string, string>>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // 图谱「查看来源」直达：?highlight=<clip_id> 滚动定位+高亮+展开（08-22 修复：
+  // 参数此前没人接，跳过来落在列表页无任何指示）
+  const [searchParams] = useSearchParams();
+  const highlightId = searchParams.get('highlight');
+  const highlightHandledRef = useRef(false);
+  useEffect(() => {
+    if (!highlightId || highlightHandledRef.current) return;
+    const el = document.querySelector(`[data-clip-id="${CSS.escape(highlightId)}"]`);
+    if (!el) return;  // 列表还没渲染到这条，等下一次数据到达再试
+    highlightHandledRef.current = true;
+    setExpandedClip(highlightId);
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, [highlightId, searchQuery, selectedTagIds, limit]);
 
   const { tags: availableTags, isLoading: isTagsLoading } = useTags();
   const {
@@ -582,11 +597,12 @@ const ClipperPage: FC = () => {
             {filteredClips.map((clip) => (
               <motion.div
                 key={clip.id}
+                data-clip-id={clip.id}
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.95 }}
                 onClick={() => batchMode && toggleSelect(clip.id)}
-                className={`card ${batchMode ? 'cursor-pointer' : ''}`}
+                className={`card ${batchMode ? 'cursor-pointer' : ''} ${highlightId === clip.id ? 'ring-2 ring-info' : ''}`}
               >
                 <div className="flex items-start gap-3">
                   {batchMode && (

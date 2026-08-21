@@ -34,6 +34,8 @@ export interface GraphifyNode {
   source_url?: string | null;
   captured_at?: string | null;
   source?: GraphifyNodeSource | null;
+  /** hub 概念节点的 grounding 原文（最多 3 篇），供「相关内容」直达 */
+  grounded?: { type: GraphifySourceType; id: string; title?: string }[];
 }
 
 export type GraphifyConfidence = 'EXTRACTED' | 'INFERRED' | 'AMBIGUOUS';

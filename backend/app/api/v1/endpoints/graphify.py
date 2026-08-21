@@ -139,8 +139,12 @@ def graphify_graph(
         raise HTTPException(status_code=404, detail="图谱尚未构建，请先点击「重建图谱」")
 
     meta = _source_meta(db, current_user.id)
+    raw_nodes = graph.get("nodes", [])
+    # hub 概念节点（无单一出处）的 grounding：按标签文本找回最多 3 篇原文，
+    # 让「查看来源」对综合概念也能直达（08-22 用户：落列表页一脸蒙）
+    grounded_map = gfs._ground_hub_concepts(current_user.id, raw_nodes)
     nodes: List[Dict[str, Any]] = []
-    for node in graph.get("nodes", []):
+    for node in raw_nodes:
         src = gfs.parse_source_from_node(node)
         enriched = {
             "id": node.get("id"),
@@ -156,6 +160,13 @@ def graphify_graph(
             enriched["source"] = {"type": src["type"], "id": src["id"]}
         else:
             enriched["source"] = None
+            grounded = [
+                {"type": meta[cid]["type"], "id": cid, "title": meta[cid]["title"]}
+                for cid in grounded_map.get(node.get("id"), [])
+                if cid in meta
+            ]
+            if grounded:
+                enriched["grounded"] = grounded
         nodes.append(enriched)
 
     links = [
