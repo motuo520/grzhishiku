@@ -167,6 +167,8 @@ class CognitivePotentialResponse(BaseModel):
     sinkable: List[CognitivePotentialItem] = Field(default_factory=list, description="Items that can be internalized into habits")
     outputable: List[CognitivePotentialItem] = Field(default_factory=list, description="Items that can be turned into articles, courses, shares")
     monetizable: List[CognitivePotentialItem] = Field(default_factory=list, description="Items with market value")
+    analyzed_at: Optional[str] = Field(None, description="When this analysis was produced (ISO)")
+    model_used: Optional[str] = Field(None, description="Model that produced this analysis")
 
 
 class CognitivePotentialRequest(BaseModel):

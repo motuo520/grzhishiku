@@ -5,6 +5,7 @@ from app.core.database import Base
 __all__ = [
     "KnowledgeUnit", "PracticeRecord", "PipelineTransition", "DailyReview",
     "ContextGuide", "ExperimentLog", "DepthCheckLog", "EvolutionReflection",
+    "CognitivePotentialResult",
 ]
 
 
@@ -164,6 +165,26 @@ class ExperimentLog(Base):
     __table_args__ = (
         Index('ix_experiment_logs_user_status', 'user_id', 'status'),
         CheckConstraint("related_content_type IS NULL OR related_content_type IN ('note', 'knowledge_unit')", name='ck_experiment_related_content_type'),
+    )
+
+
+class CognitivePotentialResult(Base):
+    """认知势能分析结果落库（每 用户×脑侧 只留最新一份，重跑即替换）。
+
+    解决「分析结果不能保存、切换模型/离开页面就丢」：分析是 LLM 调用，
+    结果必须可回看。（开源版无租户，口径仅 用户×脑侧）
+    """
+    __tablename__ = "cognitive_potential_results"
+
+    id = Column(String, primary_key=True)
+    user_id = Column(String, nullable=False, index=True)
+    brain_side = Column(String, default="both")
+    result_json = Column(Text, nullable=False)  # CognitivePotentialResponse 序列化
+    model_used = Column(String)
+    created_at = Column(DateTime, server_default=func.now())
+
+    __table_args__ = (
+        Index('ix_cog_potential_scope', 'user_id', 'brain_side'),
     )
 
 

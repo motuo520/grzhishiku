@@ -8,7 +8,7 @@ from datetime import datetime, date, timedelta
 
 from app.core.database import get_db
 from app.core.security import get_current_user
-from app.models.base import User, Note, KnowledgeUnit, PracticeRecord, DailyReview, ContextGuide, ExperimentLog
+from app.models.base import User, Note, KnowledgeUnit, PracticeRecord, DailyReview, ContextGuide, ExperimentLog, CognitivePotentialResult
 from app.schemas.jianghu import (
     PracticeRecordCreate, PracticeRecordResponse,
     DailyReviewGenerateRequest, DailyReviewResponse, DailyReviewUpdate,
@@ -781,8 +781,13 @@ async def analyze_cognitive_potential(
     current_user: User = Depends(get_current_user)
 ):
     brain_side = request.brain_side or "both"
+    # knowledge 此前未滤 deleted——已删条目分析得出、点开 404，一并修掉。
+    # （开源版无租户/团队空间，口径保持 user_id；主仓对应 content_filter 空间口径）
     notes_query = db.query(Note).filter(Note.user_id == current_user.id, Note.status == "active")
-    knowledge_query = db.query(KnowledgeUnit).filter(KnowledgeUnit.user_id == current_user.id)
+    knowledge_query = db.query(KnowledgeUnit).filter(
+        KnowledgeUnit.user_id == current_user.id,
+        KnowledgeUnit.status != "deleted",
+    )
     if brain_side != "both":
         notes_query = notes_query.filter(Note.brain_side == brain_side)
         knowledge_query = knowledge_query.filter(KnowledgeUnit.brain_side == brain_side)
@@ -881,12 +886,59 @@ async def analyze_cognitive_potential(
                 continue
         return parsed
 
-    return CognitivePotentialResponse(
+    response = CognitivePotentialResponse(
         summary=result.get("summary", ""),
         sinkable=_parse_items("sinkable"),
         outputable=_parse_items("outputable"),
         monetizable=_parse_items("monetizable"),
+        analyzed_at=datetime.now().isoformat(),
+        model_used=request.preferred_model or "ollama-qwen2.5-0.5b",
     )
+
+    # 结果落库：分析是 LLM 调用，结果必须可回看（换模型/重进页面不丢）。
+    # 每 用户×脑侧 只留最新一份，重跑即替换。（开源版无租户维度）
+    existing_q = db.query(CognitivePotentialResult).filter(
+        CognitivePotentialResult.user_id == current_user.id,
+        CognitivePotentialResult.brain_side == brain_side,
+    )
+    payload_json = json.dumps(response.model_dump(), ensure_ascii=False)
+    row = existing_q.first()
+    if row:
+        row.result_json = payload_json
+        row.model_used = response.model_used
+        row.created_at = datetime.now()
+    else:
+        db.add(CognitivePotentialResult(
+            id=str(uuid.uuid4()),
+            user_id=current_user.id,
+            brain_side=brain_side,
+            result_json=payload_json,
+            model_used=response.model_used,
+        ))
+    db.commit()
+    return response
+
+
+@router.get("/cognitive-potential/latest", response_model=CognitivePotentialResponse, summary="Get latest saved cognitive potential analysis")
+async def get_latest_cognitive_potential(
+    brain_side: str = "both",
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """取当前用户最近一次已保存的认知势能分析（免费读，不触发 LLM）。"""
+    row = db.query(CognitivePotentialResult).filter(
+        CognitivePotentialResult.user_id == current_user.id,
+        CognitivePotentialResult.brain_side == brain_side,
+    ).order_by(CognitivePotentialResult.created_at.desc()).first()
+    if not row:
+        raise HTTPException(status_code=404, detail="暂无保存的分析结果")
+    try:
+        data = json.loads(row.result_json)
+    except (json.JSONDecodeError, TypeError):
+        raise HTTPException(status_code=500, detail="保存的分析结果损坏")
+    data["analyzed_at"] = row.created_at.isoformat() if row.created_at else data.get("analyzed_at")
+    data["model_used"] = row.model_used or data.get("model_used")
+    return CognitivePotentialResponse(**data)
 
 
 def _build_experiment_log_response(log: ExperimentLog) -> dict:

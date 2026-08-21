@@ -115,6 +115,8 @@ export interface CognitivePotentialResponse {
   sinkable: CognitivePotentialItem[];
   outputable: CognitivePotentialItem[];
   monetizable: CognitivePotentialItem[];
+  analyzed_at?: string | null;
+  model_used?: string | null;
 }
 
 export interface ExperimentLog {
@@ -201,6 +203,14 @@ export const jianghuApi = {
     api.post<ContextGuide>('/api/v1/jianghu/context-guides/generate', data || {}),
   analyzeCognitivePotential: (data?: { brain_side?: string; preferred_model?: string }) =>
     api.post<CognitivePotentialResponse>('/api/v1/jianghu/cognitive-potential', data || {}),
+  // 最近一次已保存的分析（免费读；404=还没有结果，由调用方归一为 null）
+  getCognitivePotentialLatest: (brainSide: string) =>
+    api.get<CognitivePotentialResponse>('/api/v1/jianghu/cognitive-potential/latest', { params: { brain_side: brainSide } })
+      .then((r) => r.data)
+      .catch((err: any) => {
+        if (err?.status === 404) return null;
+        throw err;
+      }),
 
   // Experiment logs
   listExperimentLogs: (params?: { status?: string; brain_side?: string }) =>

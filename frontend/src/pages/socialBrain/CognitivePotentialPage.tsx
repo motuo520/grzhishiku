@@ -1,6 +1,6 @@
 import { FC, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigation } from '@/store/navigation';
 import { jianghuApi } from '@/api/jianghu';
 import ModelSelector from '@/components/llm/ModelSelector';
@@ -47,19 +47,26 @@ const CognitivePotentialPage: FC = () => {
   const [activeTab, setActiveTab] = useState<'sinkable' | 'outputable' | 'monetizable'>('sinkable');
 
   const side = brainSide === 'unknown' ? 'both' : brainSide;
-  // 按脑侧+模型分键缓存：30 分钟内再次进入直接显示缓存，不重复花 LLM；enabled:false 下 refetch 才会真发请求
-  const { data, isFetching, isError, error, refetch } = useQuery({
-    queryKey: ['jianghu', 'cognitive-potential', brainSide, modelId],
-    queryFn: async () => {
-      const response = await jianghuApi.analyzeCognitivePotential({ brain_side: side, preferred_model: modelId });
-      return response.data;
-    },
-    enabled: false,
-    staleTime: 30 * 60 * 1000,
+  // 结果按脑侧缓存 + 服务端已落库：换模型、重进页面都不丢（修：queryKey 曾含 modelId，
+  // 换模型即换缓存键 → enabled:false 不自动拉取 → 界面空掉，看似「结果没保存」）。
+  const queryClient = useQueryClient();
+  const queryKey = ['jianghu', 'cognitive-potential', brainSide] as const;
+  const { data, isError, error } = useQuery({
+    queryKey,
+    queryFn: () => jianghuApi.getCognitivePotentialLatest(side),
+    staleTime: 5 * 60 * 1000,
   });
+  const analyzeMutation = useMutation({
+    mutationFn: () =>
+      jianghuApi.analyzeCognitivePotential({ brain_side: side, preferred_model: modelId }).then((r) => r.data),
+    onSuccess: (fresh) => queryClient.setQueryData(queryKey, fresh),
+  });
+  const isFetching = analyzeMutation.isPending;
+  const displayError =
+    (analyzeMutation.error as any)?.message || (isError ? (error as any)?.message : null);
 
   const handleAnalyze = () => {
-    refetch();
+    analyzeMutation.mutate();
   };
 
   const linkFor = (item: CognitivePotentialItem) =>
@@ -95,9 +102,15 @@ const CognitivePotentialPage: FC = () => {
         </div>
       </div>
 
-      {isError && (
+      {displayError && (
         <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/30 text-sm text-red-400 mb-6">
-          {(error as any)?.message || 'AI 分析失败'}
+          {displayError || 'AI 分析失败'}
+        </div>
+      )}
+
+      {data?.analyzed_at && (
+        <div className="text-xs text-text-muted mb-4">
+          最近分析：{new Date(data.analyzed_at).toLocaleString()}{data.model_used ? ` · 模型 ${data.model_used}` : ''}（结果已保存，换设备/模型不丢失）
         </div>
       )}
 
