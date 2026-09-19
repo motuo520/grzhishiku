@@ -5,7 +5,7 @@ import secrets
 import warnings
 
 class Settings(BaseSettings):
-    APP_NAME: str = "Qianji"
+    APP_NAME: str = "Molore"
     DEBUG: bool = False
     
     # Environment

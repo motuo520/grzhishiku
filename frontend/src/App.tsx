@@ -200,7 +200,7 @@ const RouteFallback: FC = () => {
 
   useEffect(() => {
     const prevTitle = document.title;
-    document.title = '页面不存在（404）· 钤记';
+    document.title = '页面不存在（404）· Molore';
     // index.html 自带 <meta name="robots" content="index,follow">：直接改写它的 content，
     // 避免页面上同时存在两个 robots meta 互相冲突；离开时恢复原值
     const robotsMeta = document.querySelector<HTMLMetaElement>('meta[name="robots"]');

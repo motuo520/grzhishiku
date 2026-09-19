@@ -1,6 +1,6 @@
 # Contributing
 
-感谢你对钤记（Qianji）的兴趣！
+感谢你对Molore的兴趣！
 
 ## 开发环境
 

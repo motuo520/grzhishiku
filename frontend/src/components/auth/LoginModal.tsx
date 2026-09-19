@@ -118,7 +118,7 @@ const LoginModal: FC<LoginModalProps> = ({ isOpen, onClose }) => {
             <div className="mb-3">
               <SealMark size={44} />
             </div>
-            <h1 className="text-xl font-bold text-text-primary tracking-tight">钤记</h1>
+            <h1 className="text-xl font-bold text-text-primary tracking-tight">Molore</h1>
             <p className="text-sm text-text-secondary mt-1">登录以开始使用</p>
           </div>
 

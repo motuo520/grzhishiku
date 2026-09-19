@@ -72,14 +72,14 @@ const BrandLogo: FC<BrandLogoProps> = ({ size = 32, withWordmark = true, dark = 
             className={`text-[15px] font-bold tracking-[0.12em] ${dark ? 'text-[#f0ebe2]' : 'text-text-primary'}`}
             style={{ fontFamily: "'Noto Serif SC', 'Songti SC', 'STZhongsong', 'SimSun', serif" }}
           >
-            钤记
+            Molore
           </span>
           <span
             className={`text-[9px] font-medium tracking-[0.2em] mt-1 uppercase ${
               dark ? 'text-[#9a9286]' : 'text-text-muted'
             }`}
           >
-            Qianji
+            Molore
           </span>
         </div>
       )}

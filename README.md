@@ -1,4 +1,4 @@
-# 个人第二大脑 / Personal Second Brain
+# Molore
 
 > **中文优先的本地 AI 知识库**：把网页、笔记、文件**存进来**，AI 帮你**自动理好**，需要时**一句话问出来**——每个答案都带着原文出处。数据不出本机，一条命令自托管。
 
@@ -100,7 +100,7 @@ Secrets are auto-generated on first launch and persisted under `./server-data/.s
 - **中文优先**：界面、文档、默认提示词全部为中文设计。
 - **开源可审计**：AGPL-3.0 协议，服务端代码完全开放。
 
-**Personal Second Brain** is built around three actions, and that is the whole product:
+**Molore** is built around three actions, and that is the whole product:
 
 1. **Capture** — notes, web clips, RSS, read-later, file imports.
 2. **Organize** — auto summary, tags, embeddings, and relationship graph.
@@ -149,7 +149,7 @@ Both modes share the same data; only navigation and feature entries differ. Swit
 
 ## 与同类工具对比 / Comparison
 
-| 能力 | 个人第二大脑 | Obsidian | ima.copilot |
+| 能力 | Molore | Obsidian | ima.copilot |
 |------|-------------|----------|-------------|
 | 本地模型免费跑 | ✅ Ollama | 需插件 | ❌ |
 | RAG 引用原文 | ✅ | 需插件 | 部分支持 |
@@ -225,9 +225,9 @@ Please report security issues to **security@grzhishiku.com** instead of opening 
 
 ## 许可证 / License
 
-[AGPL-3.0](LICENSE) © 2024-2026 Personal Second Brain Contributors
+[AGPL-3.0](LICENSE) © 2024-2026 Molore Contributors
 
-**商标声明**："个人第二大脑"、"第二大脑"、"Personal Second Brain"、"grzhishiku.com" 及相关 LOGO 不随代码授权，详见 [TRADEMARK.md](TRADEMARK.md)。
+**商标声明**："Molore"、"grzhishiku.com" 及相关 LOGO 不随代码授权，详见 [TRADEMARK.md](TRADEMARK.md)。
 
 ---
 

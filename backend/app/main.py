@@ -254,7 +254,7 @@ async def lifespan(app: FastAPI):
 _is_prod = str(settings.ENV or "").strip().lower() == "production"
 
 app = FastAPI(
-    title="Qianji API",
+    title="Molore API",
     description="AI-enhanced personal knowledge management system",
     version="0.1.0",
     lifespan=lifespan,
@@ -389,7 +389,7 @@ async def receive_client_error(report: ClientErrorReport):
 if not _serve_frontend_dir:
     @app.get("/", tags=["Health"])
     async def root():
-        return {"message": "Qianji API", "version": "0.1.0"}
+        return {"message": "Molore API", "version": "0.1.0"}
 
 @app.get("/health", tags=["Health"])
 async def health_check():

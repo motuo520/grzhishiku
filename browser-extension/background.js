@@ -33,12 +33,12 @@ chrome.runtime.onInstalled.addListener((details) => {
   chrome.contextMenus.removeAll(() => {
     chrome.contextMenus.create({
       id: 'psb-clip-page',
-      title: '剪藏此页到钤记',
+      title: '剪藏此页到Molore',
       contexts: ['page'],
     });
     chrome.contextMenus.create({
       id: 'psb-clip-selection',
-      title: '剪藏选中内容到钤记',
+      title: '剪藏选中内容到Molore',
       contexts: ['selection'],
     });
   });
@@ -91,7 +91,7 @@ function notify(message) {
   chrome.notifications.create({
     type: 'basic',
     iconUrl: 'icons/icon128.png',
-    title: '钤记剪藏',
+    title: 'Molore剪藏',
     message,
   });
 }

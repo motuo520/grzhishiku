@@ -20,7 +20,7 @@ def _current_user_id(ctx: Context) -> str:
 
 
 def register_core_tools(mcp: FastMCP) -> None:
-    """Register core Qianji tools on the given FastMCP instance."""
+    """Register core Molore tools on the given FastMCP instance."""
 
     @mcp.tool()
     def search_knowledge(

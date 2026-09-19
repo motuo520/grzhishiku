@@ -10,7 +10,7 @@ from app.core.security import decode_token
 mcp = FastMCP(
     "personal-second-brain",
     instructions=(
-        "You are an agent connected to Qianji, a local-first AI knowledge base. "
+        "You are an agent connected to Molore, a local-first AI knowledge base. "
         "You can search knowledge, create notes and knowledge units, "
         "and inspect the cognitive production pipeline. "
         "Tools act as the user identified by the Bearer token; never ask for user_id."
