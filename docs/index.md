@@ -2,7 +2,7 @@
 layout: home
 
 hero:
-  name: 个人第二大脑
+  name: Molore
   text: 本地优先的知识库
   tagline: 把零散知识存进来，让 AI 自动理好，一句话问出来。数据留在本机，默认使用 Ollama 本地模型，无需任何 API Key。
   actions:

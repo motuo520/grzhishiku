@@ -1,7 +1,7 @@
 import { defineConfig } from 'vitepress'
 
 export default defineConfig({
-  title: '个人第二大脑',
+  title: 'Molore',
   description: '本地优先的开源个人知识库 / Local-first open-source personal knowledge base',
   lang: 'zh-CN',
   lastUpdated: true,
