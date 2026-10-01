@@ -26,7 +26,7 @@ interface LocalModelOption {
 }
 
 const LOCAL_MODELS: LocalModelOption[] = [
-  { id: 'ollama-qwen2.5-0.5b', name: 'Qwen 2.5 0.5B（本地）', provider: 'ollama', description: '本地轻量小模型' },
+  { id: 'ollama-qwen3.5-0.8b', name: 'Qwen 3.5 0.8B（本地）', provider: 'ollama', description: '本地轻量小模型' },
 ];
 
 export function ModelSelector({

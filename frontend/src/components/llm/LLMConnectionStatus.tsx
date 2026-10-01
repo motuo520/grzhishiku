@@ -46,7 +46,7 @@ const LLMConnectionStatus: FC<LLMConnectionStatusProps> = ({ placement = 'bottom
 
   // Use backend status as primary source, local store as fallback
   const activeProviderName = status?.active_provider || activeProvider || 'Ollama';
-  const displayModel = status?.active_model || activeModel || 'qwen2.5:0.5b';
+  const displayModel = status?.active_model || activeModel || 'qwen3.5:0.8b';
   const isConnected = status?.connected ?? false;
   const activeLatency = status?.latency ?? -1;
 

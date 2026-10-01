@@ -425,8 +425,11 @@ class LLMService:
             messages.extend(history)
         messages.append({"role": "user", "content": message})
         # 保活策略：常驻小模型（快记/问答秒回）永久驻留；大模型用 30m 闲置自动卸载省内存
-        keep_alive = -1 if any(s in model for s in ("0.5b", "1.5b")) else "30m"
-        payload = {"model": model, "messages": messages, "stream": True, "keep_alive": keep_alive}
+        keep_alive = -1 if any(s in model for s in ("0.5b", "0.8b", "1.5b")) else "30m"
+        # think=False：qwen3.5 等小模型默认开思考流，0.8B 在 CPU 上会想到上下文
+        # 爆炸/超时（10-01 同步后问答全挂实捕——主仓同款口径，移植自 llm_service/service.py）
+        payload = {"model": model, "messages": messages, "stream": True,
+                   "keep_alive": keep_alive, "think": False}
         ollama_url = base_url or self.ollama_url
         try:
             async with httpx.AsyncClient(timeout=60.0) as client:
