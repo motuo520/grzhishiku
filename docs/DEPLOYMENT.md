@@ -28,10 +28,12 @@ npm run dev
 
 ## Docker 部署
 
-### 1. 配置环境变量
+### 1. 配置环境变量（可选）
+所有配置均有默认值，fresh clone 即可启动；密钥留空时首次启动自动生成并持久化到 `./server-data/.secrets/`。
+如需显式覆盖（公网部署建议）：
 ```bash
 cp .env.example .env
-# 编辑 .env 文件，设置 SECRET_KEY、ADMIN_SECRET_KEY 等敏感配置
+# 编辑 .env 文件，设置 SECRET_KEY、ADMIN_SECRET_KEY、DATABASE_ENCRYPT_KEY 等敏感配置
 ```
 
 ### 2. 构建并启动
@@ -42,7 +44,7 @@ docker compose up -d --build
 服务映射：
 - 前端: http://localhost（80 端口，内置 nginx 将 /api/ 代理到后端）
 - 后端 API: 容器内 8000，经前端 nginx 代理，默认不直接暴露
-- MinIO: http://localhost:9000（API）/ http://localhost:9001（控制台）
+- MinIO: http://127.0.0.1:9000（API）/ http://127.0.0.1:9001（控制台）——仅回环绑定，不暴露公网
 
 ### 3. 查看日志
 ```bash
@@ -65,9 +67,12 @@ docker compose down -v
 |------|------|--------|------|
 | ENV | 运行环境 | development | 否 |
 | DATABASE_URL | 数据库连接 | sqlite:///./psb.db | 否 |
-| SECRET_KEY | JWT 密钥 | 开发环境自动生成临时密钥 | 否 |
-| ADMIN_SECRET_KEY | 管理员 JWT 密钥 | 开发环境自动生成临时密钥 | 否 |
-| OLLAMA_BASE_URL | 本地 LLM 地址 | http://localhost:11434 | 否 |
+| SECRET_KEY | JWT 密钥 | 为空自动生成并持久化到数据目录 .secrets/ | 否 |
+| ADMIN_SECRET_KEY | 管理员 JWT 密钥 | 同上 | 否 |
+| DATABASE_ENCRYPT_KEY | 数据库加密密钥 | 同上 | 否 |
+| OLLAMA_BASE_URL | 本地 LLM 地址 | http://localhost:11434（compose 内为 http://ollama:11434） | 否 |
+| OLLAMA_MODEL | 对话模型 | qwen3.5:0.8b | 否 |
+| OLLAMA_EMBED_MODEL | 嵌入模型（1024 维） | bge-m3 | 否 |
 | API_BASE_URL | 后端 URL | http://localhost:8000 | 否 |
 | FRONTEND_URL | 前端 URL | http://localhost:3000 | 否 |
 | ALLOWED_ORIGINS | CORS 白名单 | http://localhost:3000,http://127.0.0.1:3000（compose 下默认为 http://localhost） | 否 |

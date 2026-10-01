@@ -28,8 +28,8 @@ docker compose up -d
 
 默认访问：
 
-- MinIO API：`http://localhost:9000`
-- MinIO 控制台：`http://localhost:9001`
+- MinIO API：`http://127.0.0.1:9000`（仅回环绑定，不暴露公网）
+- MinIO 控制台：`http://127.0.0.1:9001`（仅回环绑定）
 
 默认账号密码在 `docker-compose.yml` 中通过 `MINIO_ROOT_USER` / `MINIO_ROOT_PASSWORD` 设置。启动时会自动创建 `psb-sync` bucket。
 

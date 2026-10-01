@@ -24,7 +24,7 @@ python -c "import secrets; print(secrets.token_urlsafe(32))"
 docker compose up -d
 ```
 
-默认会启动：Ollama（内部网络）、前端（80）、后端（经前端 nginx 代理）、MinIO（9000/9001）。
+默认会启动：Ollama（内部网络）、前端（80）、后端（经前端 nginx 代理）、MinIO（仅绑定 127.0.0.1:9000/9001，云同步用）。
 首次启动自动拉取模型 `qwen3.5:0.8b` 与 `bge-m3`。云同步依赖 MinIO，无需额外配置。
 
 ## 反向代理与 SSL

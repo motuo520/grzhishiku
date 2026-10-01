@@ -1,5 +1,8 @@
 # Day 15-21 开发计划
 
+> 历史开发计划（已执行完毕的早期迭代记录），文件名与路径以当时为准，仅供回溯。
+
+
 ## 阶段 1：后端 - 图谱数据完善
 1. `backend/app/models/base.py` — GraphEdge 添加 `weight`，User 添加 `active_brain`
 2. `backend/app/api/v1/endpoints/graph.py` — 添加 auto-link、stats、delete auto edges

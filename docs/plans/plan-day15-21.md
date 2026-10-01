@@ -1,5 +1,8 @@
 # Day 15-21 开发计划：双脑融合搜索 + 图谱完善 + 双脑感知优化
 
+> 历史开发计划（已执行完毕的早期迭代记录），文件名与路径以当时为准，仅供回溯。
+
+
 ## 阶段 1：后端 - 图谱数据完善
 - 修改 `backend/app/models/base.py`：给 User 添加 `active_brain`；给 GraphEdge 添加 `weight` 字段（或复用 `strength`）
 - 修改 `backend/app/api/v1/endpoints/graph.py`：添加 auto-link 端点、stats 端点、delete auto edges 端点；修改 nodes/edges 返回 weight

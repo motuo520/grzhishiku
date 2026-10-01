@@ -4,13 +4,13 @@
 
 ### 每日
 - [ ] 检查 `/health` 端点响应状态
-- [ ] 审查错误日志（grep ERROR /var/log/psb/app.log）
+- [ ] 审查错误日志（`docker compose logs backend`，或容器内/本地开发 `backend/logs/app.log`，10MB×5 轮转）
 - [ ] 检查磁盘使用率（告警阈值：80%）
 - [ ] 检查内存和 CPU 使用率
 
 ### 每周
 - [ ] 数据库备份验证
-- [ ] 审查 Prometheus 告警（响应时间 > 2s，错误率 > 1%）
+- [ ] 查看 `/metrics` 指标端点（响应时间 > 2s，错误率 > 1%）
 - [ ] 检查安全日志（异常登录、限流触发）
 - [ ] 更新依赖（检查安全漏洞）
 

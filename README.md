@@ -61,7 +61,7 @@ docker compose up -d
 
 On first launch the Ollama models `qwen3.5:0.8b` (chat) and `bge-m3` (embeddings) are pulled automatically — this requires internet access, please be patient. The backend becomes ready once the models are downloaded.
 
-It starts in **Simple Mode** — three actions, zero learning curve. Switch to **Classic Mode** (12 modules) anytime from the top bar.
+It starts in **Simple Mode** — five actions, zero learning curve. Switch to **Classic Mode** (12 modules) anytime from the top bar.
 
 After the first launch, register a regular account, then promote it to admin:
 
@@ -86,9 +86,9 @@ Secrets are auto-generated on first launch and persisted under `./server-data/.s
 **只有五个动作，这就是全部**：
 
 1. **存进来** — 笔记、网页剪藏、RSS、稍后读、文件导入，一个入口沉淀。
-2. **自动理好** — 自动摘要、标签、向量化与关系图谱，不用你整理。
+2. **自动理好** — 管线加工（抽取/碰撞/卡片）、向量化与关系图谱，不用你整理。
 3. **知识地图** — 全局图谱与标签档夹，看清你的知识长什么样。
-4. **每日** — 每日回顾与批次时间轴，让沉淀常看常新。
+4. **知识进化** — 争议→验证→践行→进化→回顾→被用的养成循环，让沉淀常看常新。
 5. **问出来** — 用大白话提问，AI 只在你的资料里检索，每句话标注来源。
 
 > 想要更完整的工具箱（时间胶囊、注意力管家、知识图谱、认知镜像等 12 个模块）？顶栏一键切到「经典版」，数据完全共用。
@@ -100,11 +100,13 @@ Secrets are auto-generated on first launch and persisted under `./server-data/.s
 - **中文优先**：界面、文档、默认提示词全部为中文设计。
 - **开源可审计**：AGPL-3.0 协议，服务端代码完全开放。
 
-**Molore** is built around three actions, and that is the whole product:
+**Molore** is built around five actions, and that is the whole product:
 
 1. **Capture** — notes, web clips, RSS, read-later, file imports.
-2. **Organize** — auto summary, tags, embeddings, and relationship graph.
-3. **Retrieve** — ask in plain language; answers cite your own sources.
+2. **Organize** — pipeline processing, embeddings, and relationship graph.
+3. **Knowledge map** — global graph and tag folders; see what your knowledge looks like.
+4. **Evolve** — a daily loop of dispute → verify → practice → evolve → review → reuse.
+5. **Retrieve** — ask in plain language; answers cite your own sources.
 
 > Want the full toolbox (time capsules, attention manager, knowledge graph, cognitive mirror — 12 modules)? Switch to Classic Mode from the top bar; all data is shared.
 
@@ -165,8 +167,7 @@ Both modes share the same data; only navigation and feature entries differ. Swit
 
 - **Frontend**: React 19 + Vite + TypeScript + Tailwind CSS + Zustand
 - **Backend**: FastAPI + Pydantic v2 + SQLAlchemy + Alembic
-- **Database**: SQLite
-- **Vector DB**: ChromaDB
+- **Database**: SQLite（含向量：embeddings 表 + 余弦/关键词混合检索，无独立向量库）
 - **Local LLM**: Ollama
 - **Deploy**: Docker Compose + Nginx
 

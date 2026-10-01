@@ -17,6 +17,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **同步附带的剥离面接续**：被拷文件中指向剥离模块的 import 全部最小化修复——LLM 计费通道回调本地 `chat_completion`、配额改走 `user.storage_limit`、FTS/vec 影子索引调用移除（embeddings 表暴力余弦唯一路径）、OCR/自动打标/相似度物理图/回收站快照/实体消歧等入口按开源版口径闸停或报错。
 - **存量库通用增量列迁移**：模型新增列在启动时自动 ALTER TABLE 补齐（只加不改不删），修复旧库升级后 `no such column` 启动失败。
 
+### Documentation
+
+- **文档全面翻新（对码口径）**：README/USER_GUIDE/DEPLOYMENT/OPERATIONS/comparison/guide×4 逐篇按同步后实际代码改实——简化版五动作口径（采集/自动理好/知识进化/知识地图/问答）、移除 ChromaDB 残留（向量为 SQLite embeddings 表暴力余弦+关键词混合检索）、MinIO 回环绑定、密钥 .secrets 持久化兜底、管理端命令（create_admin/system config/status 枚举）、快捷键表按实际实现重写；删除已剥离能力的描述（回收站/自动打标/多模型交叉验证/胶囊事件解锁/注意力屏蔽/隐私加密级别/自动同步间隔/Cmd+K/应用内工单入口）；设计稿三篇加「主仓商业版设计稿，开源精简版不含此能力」声明；依赖许可证清单改为开源版 requirements.txt 直接依赖口径（移除混入的商业版支付 SDK）。
+- **screenshots/ 重拍**：欢迎页/仪表盘/引用问答/知识库四张 + demo.gif 按当前界面更新。
+
 ### Added
 
 - **RSS 定时自动刷新**：单源可配自动刷新（30 分钟/1/6/24 小时），后端 sweeper 每 15 分钟扫描到期源，重启自动恢复。
