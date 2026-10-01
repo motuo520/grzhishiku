@@ -1,4 +1,5 @@
 import api from './client';
+import { getConsolePreferredModel } from './consoleModel';
 
 export interface Capsule {
   id: string; user_id: string; brain_side: string; content_type: string;
@@ -40,13 +41,12 @@ export const capsulesApi = {
   list: (brainSide?: string) =>
     api.get<Capsule[]>('/api/v1/capsules/', { params: brainSide && brainSide !== 'both' ? { brain_side: brainSide } : undefined }),
   create: (data: CapsuleCreateData) => api.post<Capsule>('/api/v1/capsules/', data),
-  get: (id: string) => api.get<Capsule>(`/api/v1/capsules/${id}`),
   delete: (id: string) => api.delete(`/api/v1/capsules/${id}`),
   batchDelete: (ids: string[]) => api.request({ method: 'DELETE', url: '/api/v1/capsules/batch', data: { ids } }),
   unlock: (id: string) => api.post(`/api/v1/capsules/${id}/unlock`),
   collect: (id: string) => api.post<Capsule>(`/api/v1/capsules/${id}/collect`),
   dialogue: (id: string, data: { message: string; present_context?: any; present_mood?: any; preferred_model?: string }) =>
-    api.post<CapsuleDialogueResponse>(`/api/v1/capsules/${id}/dialogue`, data),
+    api.post<CapsuleDialogueResponse>(`/api/v1/capsules/${id}/dialogue`, { ...data, preferred_model: data.preferred_model || getConsolePreferredModel() }),
   getDialogue: (id: string) =>
     api.get<CapsuleDialogueResponse>(`/api/v1/capsules/${id}/dialogue`),
   stats: () => api.get<CapsuleStats>('/api/v1/capsules/stats'),

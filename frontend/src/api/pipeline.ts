@@ -1,4 +1,5 @@
 import api from './client';
+import { getConsolePreferredModel } from './consoleModel';
 
 export interface PipelineStats {
   raw: number;
@@ -73,25 +74,6 @@ export interface ReviewResponse {
   new_stage: string;
 }
 
-export interface PipelineTransition {
-  id: string;
-  content_type: string;
-  content_id: string;
-  from_stage: string;
-  to_stage: string;
-  brain_side_before?: string | null;
-  brain_side_after?: string | null;
-  action: string;
-  created_at: string;
-}
-
-export interface ConvertBrainSideResponse {
-  content_type: string;
-  content_id: string;
-  brain_side: string;
-  previous_brain_side: string;
-}
-
 export const pipelineApi = {
   stats: (brain_side?: 'personal' | 'network' | 'both') =>
     api.get<PipelineStats>('/api/v1/pipeline/stats', { params: brain_side ? { brain_side } : undefined }),
@@ -107,7 +89,7 @@ export const pipelineApi = {
   extract: (content_type: string, content_id: string, preferred_model?: string) =>
     // Extraction runs an LLM call that can take well over the default 30s
     // (plus a provider fallback), so allow a longer per-request timeout.
-    api.post<ExtractResponse>(`/api/v1/pipeline/${content_type}/${content_id}/extract`, { preferred_model }, { timeout: 120000 }),
+    api.post<ExtractResponse>(`/api/v1/pipeline/${content_type}/${content_id}/extract`, { preferred_model: preferred_model || getConsolePreferredModel() }, { timeout: 120000 }),
 
   collisionCandidates: (concept_id: string) =>
     api.post<CollisionCandidatesResponse>('/api/v1/pipeline/concepts/collide/candidates', { concept_id }),
@@ -115,21 +97,12 @@ export const pipelineApi = {
   collide: (concept_id: string, preferred_model?: string, partner_id?: string) =>
     api.post<CollisionResponse>(
       '/api/v1/pipeline/concepts/collide',
-      { concept_id, preferred_model, ...(partner_id ? { partner_id } : {}) },
+      { concept_id, preferred_model: preferred_model || getConsolePreferredModel(), ...(partner_id ? { partner_id } : {}) },
       { timeout: 120000 }
     ),
 
   reviewCollision: (collision_id: string, action: 'approve' | 'reject', feedback?: string) =>
     api.post<ReviewResponse>(`/api/v1/pipeline/collisions/${collision_id}/review`, { action, feedback }),
-
-  history: (content_type: string, content_id: string) =>
-    api.get<PipelineTransition[]>(`/api/v1/pipeline/${content_type}/${content_id}/history`),
-
-  convertBrainSide: (content_type: string, content_id: string, target_brain_side: 'personal' | 'network', reason?: string) =>
-    api.post<ConvertBrainSideResponse>(`/api/v1/pipeline/${content_type}/${content_id}/convert-brain-side`, {
-      target_brain_side,
-      reason,
-    }),
 
   revert: (content_type: string, content_id: string) =>
     api.post(`/api/v1/pipeline/${content_type}/${content_id}/revert`),

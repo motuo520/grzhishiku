@@ -38,6 +38,12 @@ export const useFolders = (brainSide: string) => {
     onSuccess: invalidate,
   });
 
+  // 建默认目录树（两脑各一套；某脑已有夹则该脑跳过，幂等）
+  const seedMutation = useMutation({
+    mutationFn: () => foldersApi.seedDefaults(),
+    onSuccess: invalidate,
+  });
+
   return {
     personalFolders,
     networkFolders,
@@ -45,5 +51,6 @@ export const useFolders = (brainSide: string) => {
     createFolder: createMutation.mutateAsync,
     updateFolder: updateMutation.mutateAsync,
     removeFolder: removeMutation.mutateAsync,
+    seedDefaults: seedMutation.mutateAsync,
   };
 };

@@ -7,6 +7,7 @@ import uuid
 
 from app.core.database import get_db
 from app.core.security import get_current_user
+from app.core.tenant_scope import get_active_tenant, content_filter
 from app.models.base import User
 from app.models.sticky_note import StickyNote, Reminder
 from app.schemas.sticky_note import (
@@ -43,7 +44,7 @@ async def list_sticky_notes(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    query = db.query(StickyNote).filter(StickyNote.user_id == current_user.id)
+    query = content_filter(db.query(StickyNote), StickyNote, current_user, get_active_tenant(db, current_user))
     if not include_archived:
         query = query.filter(StickyNote.is_archived == False)
     total = query.count()
@@ -57,9 +58,12 @@ async def create_sticky_note(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
+    tenant = get_active_tenant(db, current_user)
     note = StickyNote(
         id=str(uuid.uuid4()),
         user_id=current_user.id,
+        # 租户上下文创建：内容归团队（tenant_id=激活租户），user_id 仍记创建者
+        tenant_id=tenant.id if tenant else None,
         content=data.content.strip(),
         color=data.color or "#f59e0b",
         position_x=data.position_x or 0,
@@ -82,7 +86,7 @@ async def update_sticky_note(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    note = db.query(StickyNote).filter(StickyNote.id == note_id, StickyNote.user_id == current_user.id).first()
+    note = content_filter(db.query(StickyNote).filter(StickyNote.id == note_id), StickyNote, current_user, get_active_tenant(db, current_user)).first()
     if not note:
         raise HTTPException(status_code=404, detail="便签不存在")
 
@@ -103,12 +107,80 @@ async def delete_sticky_note(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    note = db.query(StickyNote).filter(StickyNote.id == note_id, StickyNote.user_id == current_user.id).first()
+    note = content_filter(db.query(StickyNote).filter(StickyNote.id == note_id), StickyNote, current_user, get_active_tenant(db, current_user)).first()
     if not note:
         raise HTTPException(status_code=404, detail="便签不存在")
     db.delete(note)
     db.commit()
     return None
+
+
+@router.post("/sticky-notes/{note_id}/convert-to-note", summary="Convert sticky note to note",
+             description="把便签转正为笔记（个人脑、raw 管线），原便签归档保留（可恢复）。配额/记账与 create_note 同口径。")
+async def convert_sticky_to_note(
+    note_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    from app.models.base import Note
+    from app.core.xss_sanitizer import sanitize_note_input
+    from app.core.feature_guard import FeatureGuard
+    from app.core.tenant_scope import audit as _audit
+    from app.services.quota_service import QuotaService
+    from app.api.v1.endpoints.graph import queue_auto_link
+    from sqlalchemy import func as _func
+
+    tenant = get_active_tenant(db, current_user)
+    sticky = content_filter(
+        db.query(StickyNote).filter(StickyNote.id == note_id),
+        StickyNote, current_user, tenant,
+    ).first()
+    if not sticky:
+        raise HTTPException(status_code=404, detail="便签不存在")
+
+    # 与 create_note 同口径：条数护栏 + 存储配额先查后写（用户行锁防竞态）
+    guard = FeatureGuard(db, current_user)
+    db.query(User).filter(User.id == current_user.id).with_for_update().one()
+    note_count = db.query(_func.count(Note.id)).filter(
+        Note.user_id == current_user.id, Note.status == "active"
+    ).scalar() or 0
+    guard.check_limit("notes", note_count)
+
+    raw_content = (sticky.content or "").strip()
+    if not raw_content:
+        raise HTTPException(status_code=400, detail="便签内容为空，无法转为笔记")
+    # 标题取首行前 30 字（便签无标题字段）
+    raw_title = raw_content.splitlines()[0][:30].strip() or "便签转笔记"
+    safe_title, safe_content = sanitize_note_input(raw_title, raw_content)
+    quota = QuotaService(db)
+    additional_bytes = quota.estimate_storage_bytes(safe_title) + quota.estimate_storage_bytes(safe_content)
+    quota.check_storage_before_create(current_user.id, additional_bytes)
+
+    note = Note(
+        id=str(uuid.uuid4()),
+        user_id=current_user.id,
+        tenant_id=sticky.tenant_id,
+        brain_side="personal",
+        title=safe_title,
+        content=safe_content,
+        content_format="markdown",
+        status="active",
+        origin_type="self_practice",
+        pipeline_stage="raw",
+        attached_practice_ids='[]',
+    )
+    db.add(note)
+    # 转正后原便签归档（不删，留恢复路径；默认列表不再显示）
+    sticky.is_archived = True
+    if tenant:
+        _audit(db, tenant.id, current_user, "content_create", "note", note.id, safe_title)
+    db.commit()
+    db.refresh(note)
+
+    quota.record_storage_add(current_user.id, additional_bytes)
+    # Auto-link graph edges（后台队列+防抖，与 create_note 同链路）
+    queue_auto_link("note", note.id, current_user.id, db)
+    return {"note_id": note.id}
 
 
 # ---------- Reminders ----------
@@ -134,7 +206,7 @@ async def list_reminders(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    query = db.query(Reminder).filter(Reminder.user_id == current_user.id)
+    query = content_filter(db.query(Reminder), Reminder, current_user, get_active_tenant(db, current_user))
     if not include_completed:
         query = query.filter(Reminder.is_completed == False)
     if upcoming_hours:
@@ -151,9 +223,12 @@ async def create_reminder(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
+    tenant = get_active_tenant(db, current_user)
     reminder = Reminder(
         id=str(uuid.uuid4()),
         user_id=current_user.id,
+        # 租户上下文创建：内容归团队（tenant_id=激活租户），user_id 仍记创建者
+        tenant_id=tenant.id if tenant else None,
         title=data.title.strip(),
         content=data.content.strip() if data.content else None,
         remind_at=data.remind_at,
@@ -172,7 +247,7 @@ async def update_reminder(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    reminder = db.query(Reminder).filter(Reminder.id == reminder_id, Reminder.user_id == current_user.id).first()
+    reminder = content_filter(db.query(Reminder).filter(Reminder.id == reminder_id), Reminder, current_user, get_active_tenant(db, current_user)).first()
     if not reminder:
         raise HTTPException(status_code=404, detail="提醒不存在")
 

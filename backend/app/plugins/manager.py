@@ -41,7 +41,7 @@ class PluginManager:
         # TestClient 都跑一遍完整 lifespan），重复 include_router 会让 FastAPI
         # 每次再套一层 _merge_lifespan_context 包装，启动调用栈随次数线性
         # 增长直至 RecursionError；路由/MCP 工具全局注册一次即可。
-        self._initialized_ids: set = set()
+        self._initialized_ids: set[str] = set()
         # user.settings 读-改-写（set_enabled/set_config）的进程内 per-user 锁，
         # 防同一用户的并发请求交错导致后写覆盖先写。仅覆盖单进程；
         # 多 worker 部署下不跨进程生效（当前桌面/单实例口径下够用）。
@@ -231,13 +231,24 @@ class PluginManager:
 
     def get_config(self, user: User, plugin_id: str) -> dict:
         state = self._user_plugins_state(user)
-        return (state.get("configs") or {}).get(plugin_id) or {}
+        cfg = (state.get("configs") or {}).get(plugin_id) or {}
+        # 敏感字段落库加密（enc:v1: 前缀）的读取侧解密；存量明文原样透传
+        from app.core.crypto import decrypt_secret
+        return {k: (decrypt_secret(v) if isinstance(v, str) else v) for k, v in cfg.items()}
 
     def set_config(self, user: User, plugin_id: str, config: dict, db) -> None:
         with self._settings_lock(user.id):
             state = self._user_plugins_state(user)
             configs = state.get("configs") or {}
-            configs[plugin_id] = config
+            # 敏感字段（token/secret/key/password）落库前加密（幂等，enc:v1: 前缀），
+            # 插件代码拿到的仍是 get_config 解密后的明文
+            from app.core.crypto import encrypt_secret
+            sensitive = ("token", "secret", "key", "password")
+            stored = {
+                k: (encrypt_secret(v) if isinstance(v, str) and any(s in k.lower() for s in sensitive) else v)
+                for k, v in config.items()
+            }
+            configs[plugin_id] = stored
             state["configs"] = configs
             # 配置只按用户持久化、经 get_config(user, ...) 读取；不写进程级共享
             # 实例 plugin.config，避免后写覆盖先写、跨用户泄露 token
@@ -284,3 +295,15 @@ class PluginManager:
 
 
 plugin_manager = PluginManager()
+
+
+def start(app: FastAPI) -> None:
+    """启动钩子：Load and initialize plugins, then mount the MCP SSE server。
+
+    从 app.main 的 lifespan 抽出（零行为变化搬运）；mcp 在函数内 import 防循环。
+    血泪#5：app.mount 时序敏感，本钩子必须仍在 lifespan 内、yield 之前执行。
+    """
+    from app.mcp.server import mcp, mount_mcp
+    plugin_manager.load_all()
+    plugin_manager.initialize(app, mcp)
+    mount_mcp(app)

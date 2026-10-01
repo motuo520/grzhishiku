@@ -1,10 +1,10 @@
 import { FC, useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useChat } from '@/store/chat';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Search, FileText, Globe, Package, BookOpen, Calendar, ArrowUpDown, X,
-  Brain, User, ChevronDown, Loader2
-} from 'lucide-react';
+  Brain, User, ChevronDown, Loader2, type LucideIcon } from 'lucide-react';
 import { useBrain } from '@/hooks/useBrain';
 import { brainApi } from '@/api/brain';
 import type { BrainSide } from '@/types';
@@ -18,9 +18,10 @@ interface SearchResultItem {
   relevance_score: number;
   source_url: string | null;
   created_at: string;
+  origin?: string;
 }
 
-const TYPE_LABELS: Record<string, { label: string; icon: React.ElementType; color: string; bg: string }> = {
+const TYPE_LABELS: Record<string, { label: string; icon: LucideIcon; color: string; bg: string }> = {
   note: { label: '笔记', icon: FileText, color: 'text-personal-primary', bg: 'bg-personal-primary/10' },
   capsule: { label: '胶囊', icon: Package, color: 'text-success', bg: 'bg-success/10' },
   clip: { label: '剪藏', icon: Globe, color: 'text-network-primary', bg: 'bg-network-primary/10' },
@@ -37,10 +38,12 @@ const TIME_RANGES = [
 const SearchPage: FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
+  const { setPanelOpen } = useChat();
   const { activeBrain } = useBrain();
 
   const [query, setQuery] = useState(searchParams.get('q') || '');
   const [results, setResults] = useState<SearchResultItem[]>([]);
+  const [onlyUserOrigin, setOnlyUserOrigin] = useState(false);
   const [loading, setLoading] = useState(false);
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
@@ -51,6 +54,7 @@ const SearchPage: FC = () => {
   });
   const [timeRange, setTimeRange] = useState('all');
   const [sortBy, setSortBy] = useState<'relevance' | 'time'>('relevance');
+  const [showTimeMenu, setShowTimeMenu] = useState(false);
 
   const inputRef = useRef<HTMLInputElement>(null);
   const suggestionRef = useRef<HTMLDivElement>(null);
@@ -89,14 +93,14 @@ const SearchPage: FC = () => {
     setLoading(true);
     try {
       const sides: BrainSide[] = activeTab === 'all' ? ['personal', 'network'] : [activeTab as BrainSide];
-      const res = await brainApi.fusionSearch(searchQuery, sides);
+      const res = await brainApi.fusionSearch(searchQuery, sides, onlyUserOrigin ? 'user' : undefined);
       setResults(res.data.results || []);
     } catch (e) {
       console.error('Search failed', e);
     } finally {
       setLoading(false);
     }
-  }, [activeTab]);
+  }, [activeTab, onlyUserOrigin]);
 
   useEffect(() => {
     const q = searchParams.get('q') || '';
@@ -195,6 +199,9 @@ const SearchPage: FC = () => {
               )}
               {item.brain_side === 'network' && (
                 <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-network-primary/10 text-network-primary">网络</span>
+              )}
+              {item.origin === 'ai' && (
+                <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-warning/10 text-warning" title="管线提取/碰撞等 AI 生成产物，非你的原文">AI 生成</span>
               )}
             </div>
             <p className="text-xs text-text-secondary leading-relaxed line-clamp-2">{item.content}</p>
@@ -326,28 +333,45 @@ const SearchPage: FC = () => {
               </button>
             );
           })}
+          <button
+            onClick={() => setOnlyUserOrigin((v) => !v)}
+            title="排除管线提取、碰撞卡等 AI 生成产物"
+            className={`ml-auto flex items-center gap-1 px-2.5 py-1.5 rounded-md text-[10px] font-medium border transition-all ${
+              onlyUserOrigin ? 'border-fusion-primary/40 text-fusion-primary bg-fusion-primary/10' : 'border-transparent text-text-muted'
+            }`}
+          >
+            只看我的原文
+          </button>
         </div>
 
-        {/* Time Range */}
-        <div className="relative group">
-          <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-[2px] text-xs text-text-muted hover:text-text-primary hover:bg-white/[0.05] transition-all border border-white/[0.06]">
+        {/* Time Range：点击展开 + 外部点击关闭（血泪#23：hover 下拉 mt-1 间隙断链） */}
+        <div className="relative">
+          <button
+            onClick={() => setShowTimeMenu((v) => !v)}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-[2px] text-xs text-text-muted hover:text-text-primary hover:bg-white/[0.05] transition-all border border-white/[0.06]"
+          >
             <Calendar className="w-3.5 h-3.5" />
             {TIME_RANGES.find((t) => t.value === timeRange)?.label}
             <ChevronDown className="w-3 h-3" />
           </button>
-          <div className="absolute top-full left-0 mt-1 hidden group-hover:block bg-bg-secondary border border-white/[0.06] rounded-[2px] p-1 z-40 min-w-[100px]">
-            {TIME_RANGES.map((t) => (
-              <button
-                key={t.value}
-                onClick={() => setTimeRange(t.value)}
-                className={`w-full text-left px-3 py-1.5 rounded-md text-xs transition-colors ${
-                  timeRange === t.value ? 'text-info bg-info/10' : 'text-text-secondary hover:bg-white/[0.05]'
-                }`}
-              >
-                {t.label}
-              </button>
-            ))}
-          </div>
+          {showTimeMenu && (
+            <>
+              <div className="fixed inset-0 z-30 cursor-default" onClick={() => setShowTimeMenu(false)} />
+              <div className="absolute top-full left-0 mt-1 bg-bg-secondary border border-white/[0.06] rounded-[2px] p-1 z-40 min-w-[100px]">
+                {TIME_RANGES.map((t) => (
+                  <button
+                    key={t.value}
+                    onClick={() => { setTimeRange(t.value); setShowTimeMenu(false); }}
+                    className={`w-full text-left px-3 py-1.5 rounded-md text-xs transition-colors ${
+                      timeRange === t.value ? 'text-info bg-info/10' : 'text-text-secondary hover:bg-white/[0.05]'
+                    }`}
+                  >
+                    {t.label}
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
         </div>
 
         {/* Sort */}
@@ -408,7 +432,26 @@ const SearchPage: FC = () => {
               <Search className="w-7 h-7 text-text-muted" />
             </div>
             <div className="text-sm text-text-secondary mb-1">未找到相关内容</div>
-            <div className="text-xs text-text-muted">尝试其他关键词或调整筛选条件</div>
+            <div className="text-xs text-text-muted mb-4">尝试其他关键词或调整筛选条件</div>
+            {/* 空态不浪费（09-05）：给动作而不是一句话——清筛选重试 / 去问 AI 助手 */}
+            <div className="flex items-center justify-center gap-2">
+              <button
+                onClick={() => {
+                  setTimeRange('all');
+                  setOnlyUserOrigin(false);
+                  performSearch(query);
+                }}
+                className="px-3 py-1.5 rounded-[2px] text-xs text-text-secondary bg-white/[0.03] border border-white/[0.08] hover:bg-white/[0.08] hover:text-text-primary transition-colors"
+              >
+                清空筛选重试
+              </button>
+              <button
+                onClick={() => setPanelOpen(true)}
+                className="px-3 py-1.5 rounded-[2px] text-xs text-info bg-info/10 border border-info/30 hover:bg-info/20 transition-colors"
+              >
+                用 AI 助手问这个问题
+              </button>
+            </div>
           </div>
         ) : (
           <div className="text-center py-20">
@@ -416,7 +459,25 @@ const SearchPage: FC = () => {
               <Brain className="w-7 h-7 text-text-muted" />
             </div>
             <div className="text-sm text-text-secondary mb-1">输入关键词开始跨脑搜索</div>
-            <div className="text-xs text-text-muted">支持笔记、胶囊、剪藏、知识单元</div>
+            <div className="text-xs text-text-muted mb-4">支持笔记、胶囊、剪藏、知识单元</div>
+            {/* 空态放示例查询与引导动作（09-05），点一下就会用了 */}
+            <div className="flex flex-wrap items-center justify-center gap-2 mb-3">
+              {['我最近记了什么', '间隔重复', '习惯养成'].map((q) => (
+                <button
+                  key={q}
+                  onClick={() => handleSuggestionClick(q)}
+                  className="px-3 py-1.5 rounded-full text-xs text-text-secondary bg-white/[0.03] border border-white/[0.08] hover:bg-white/[0.08] hover:text-text-primary transition-colors"
+                >
+                  {q}
+                </button>
+              ))}
+            </div>
+            <button
+              onClick={() => navigate('/ingest/notes')}
+              className="text-xs text-info hover:underline"
+            >
+              库是空的？先去「采集」记一条 →
+            </button>
           </div>
         )}
       </div>

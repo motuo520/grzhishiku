@@ -7,12 +7,13 @@ import { useNotes } from '@/hooks/useNotes';
 import { useKnowledge } from '@/hooks/useKnowledge';
 import { useExperimentLogs } from '@/hooks/useJianghu';
 import ModelSelector from '@/components/llm/ModelSelector';
+import LLMCostBadge from '@/components/llm/LLMCostBadge';
 import {
   TrendingUp, Plus, Loader2, Save, Trash2, Edit3, X, Sparkles,
   CheckCircle2, XCircle, ChevronRight, AlertTriangle, Lightbulb,
-  BookOpen, FileText, FlaskConical
-} from 'lucide-react';
+  BookOpen, FileText, FlaskConical, type LucideIcon } from 'lucide-react';
 import type { EvolutionReflection } from '@/api/embodied';
+import { useConfirm } from '@/components/common/dialogContext';
 
 const DISCOMFORT_OPTIONS = [
   { value: 1, label: '轻微不适', color: 'text-success' },
@@ -22,7 +23,7 @@ const DISCOMFORT_OPTIONS = [
   { value: 5, label: '极度挣扎', color: 'text-danger' },
 ];
 
-const RELATED_TYPE_OPTIONS: { value: EvolutionReflection['related_content_type']; label: string; icon: React.ElementType }[] = [
+const RELATED_TYPE_OPTIONS: { value: EvolutionReflection['related_content_type']; label: string; icon: LucideIcon }[] = [
   { value: 'note', label: '笔记', icon: FileText },
   { value: 'knowledge_unit', label: '知识单元', icon: BookOpen },
   { value: 'experiment_log', label: '实验记录', icon: FlaskConical },
@@ -40,6 +41,7 @@ const EMPTY_FORM = {
 };
 
 const TrueEvolutionPage: FC = () => {
+  const askConfirm = useConfirm();
   const navigate = useNavigate();
   const { brainSide } = useNavigation();
   const {
@@ -72,10 +74,7 @@ const TrueEvolutionPage: FC = () => {
   const { data: experimentLogsData } = useExperimentLogs({
     brain_side: brainSide === 'unknown' ? undefined : brainSide,
   });
-  const experimentLogs: { id: string; title: string }[] = useMemo(
-    () => experimentLogsData || [],
-    [experimentLogsData]
-  );
+  const experimentLogs: { id: string; title: string }[] = useMemo(() => experimentLogsData || [], [experimentLogsData]);
 
   const targetOptions: { id: string; label: string }[] = useMemo(() => {
     switch (form.related_content_type) {
@@ -139,7 +138,7 @@ const TrueEvolutionPage: FC = () => {
   };
 
   const handleDelete = async (id: string) => {
-    if (confirm('确定删除这条反思记录？')) {
+    if (await askConfirm('确定删除这条反思记录？')) {
       await deleteEvolutionReflection(id);
     }
   };
@@ -182,7 +181,7 @@ const TrueEvolutionPage: FC = () => {
         <div>
           <h1 className="text-xl font-semibold text-text-primary flex items-center gap-2">
             <TrendingUp className="w-5 h-5 text-info" />
-            真进化 vs 伪成熟
+            真成长 vs 伪熟练
           </h1>
           <p className="text-sm text-text-secondary mt-1">
             真正的进化伴随摩擦与痛苦后的喜悦；舒服往往只是在吃老本。记录并审视你的成长是否真实。
@@ -192,6 +191,7 @@ const TrueEvolutionPage: FC = () => {
         <div className="flex flex-col items-end gap-2">
           <div className="flex items-center gap-3">
             <ModelSelector value={modelId} onChange={setModelId} taskType="analysis" className="w-48" />
+            <LLMCostBadge modelId={modelId} inputText={evolutionReflections.map((r) => r.title + (r.pain_description || '')).join('\n')} outputTokenEstimate={400} />
           </div>
           <div className="flex items-center gap-3">
             <button
@@ -223,7 +223,7 @@ const TrueEvolutionPage: FC = () => {
               <div className="flex items-center gap-3 mb-2">
                 <h3 className="text-base font-medium text-text-primary">AI 成长分析</h3>
                 <span className={`text-sm font-bold ${analysis.true_evolution_ratio >= 0.6 ? 'text-success' : analysis.true_evolution_ratio >= 0.3 ? 'text-warning' : 'text-danger'}`}>
-                  真进化比例：{(analysis.true_evolution_ratio * 100).toFixed(0)}%
+                  真成长比例：{(analysis.true_evolution_ratio * 100).toFixed(0)}%
                 </span>
               </div>
               <p className="text-sm text-text-secondary mb-3">{analysis.summary}</p>
@@ -241,7 +241,7 @@ const TrueEvolutionPage: FC = () => {
                 )}
                 {analysis.warnings.length > 0 && (
                   <div>
-                    <p className="text-xs text-text-muted mb-1">伪成熟信号</p>
+                    <p className="text-xs text-text-muted mb-1">伪熟练信号</p>
                     {analysis.warnings.map((w, i) => (
                       <div key={i} className="flex items-start gap-1.5 text-text-secondary">
                         <AlertTriangle className="w-3.5 h-3.5 mt-0.5 text-warning shrink-0" />
@@ -273,7 +273,7 @@ const TrueEvolutionPage: FC = () => {
           <p className="text-2xl font-bold text-text-primary">{evolutionReflections.length}</p>
         </div>
         <div className="rounded-xl border border-white/[0.06] bg-bg-secondary p-4">
-          <p className="text-xs text-text-secondary mb-1">真进化比例</p>
+          <p className="text-xs text-text-secondary mb-1">真成长比例</p>
           <p className={`text-2xl font-bold ${ratio >= 0.6 ? 'text-success' : ratio >= 0.3 ? 'text-warning' : 'text-danger'}`}>
             {(ratio * 100).toFixed(0)}%
           </p>
@@ -348,7 +348,7 @@ const TrueEvolutionPage: FC = () => {
               }`}
             >
               <CheckCircle2 className="w-3.5 h-3.5" />
-              真进化
+              真成长
             </button>
             <button
               onClick={() => setForm({ ...form, is_true_evolution: false })}
@@ -359,7 +359,7 @@ const TrueEvolutionPage: FC = () => {
               }`}
             >
               <XCircle className="w-3.5 h-3.5" />
-              伪成熟/舒适区
+              伪熟练/舒适区
             </button>
           </div>
 
@@ -427,7 +427,7 @@ const TrueEvolutionPage: FC = () => {
                     <div className="flex items-center gap-2 mb-2 flex-wrap">
                       <span className={`flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded border ${r.is_true_evolution ? 'text-success border-success/30 bg-success/10' : 'text-warning border-warning/30 bg-warning/10'}`}>
                         {r.is_true_evolution ? <CheckCircle2 className="w-3 h-3" /> : <XCircle className="w-3 h-3" />}
-                        {r.is_true_evolution ? '真进化' : '伪成熟'}
+                        {r.is_true_evolution ? '真成长' : '伪熟练'}
                       </span>
                       <span className={`flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded border ${discomfort.color} border-current/20 bg-white/[0.03]`}>
                         不适 {r.discomfort_level} · {discomfort.label}
@@ -487,7 +487,7 @@ const TrueEvolutionPage: FC = () => {
             <div className="p-8 rounded-xl border border-white/[0.06] bg-bg-secondary text-center text-text-secondary">
               <TrendingUp className="w-10 h-10 mx-auto mb-3 text-text-muted/40" />
               <p className="text-sm">暂无反思记录。</p>
-              <p className="text-xs mt-1">当你感到不适却最终突破时，记录下来，判断这是真进化还是伪成熟。</p>
+              <p className="text-xs mt-1">当你感到不适却最终突破时，记录下来，判断这是真成长还是伪熟练。</p>
             </div>
           )}
         </div>

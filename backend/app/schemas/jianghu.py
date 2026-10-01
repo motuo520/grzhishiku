@@ -58,6 +58,7 @@ class DailyReviewResponse(BaseModel):
     gaps_found: List[str] = Field(default_factory=list, description="Gaps between intent and behavior")
     action_items: List[str] = Field(default_factory=list, description="Actionable improvements")
     praise_items: List[str] = Field(default_factory=list, description="Things done well")
+    connections: List[str] = Field(default_factory=list, description="当日输入与存量的关联（向量库/图谱/标签证据）")
     status: str = Field("pending", description="Status: pending / generated / reviewed / archived")
     created_at: datetime = Field(..., description="Creation timestamp")
     updated_at: datetime = Field(..., description="Last update timestamp")

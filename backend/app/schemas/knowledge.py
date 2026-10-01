@@ -1,8 +1,9 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from app.schemas.base import BaseModel  # BUG-A01：统一 naive datetime 按 UTC 序列化
 from datetime import datetime
 from typing import Optional, List, Dict, Any
 from enum import Enum
+import json
 
 from app.schemas.tag import TagItem
 
@@ -33,7 +34,8 @@ class ContentSubtype(str, Enum):
     COLLISION_RESULT = "collision_result"
 
 class KnowledgeUnitCreate(BaseModel):
-    content_raw: str = Field(..., min_length=1, max_length=50000, description="Raw content")
+    # 09-11 拆 5 万字墙：Text 列无墙，长文档原文/注记不再被 schema 上限截断
+    content_raw: str = Field(..., min_length=1, description="Raw content")
     brain_side: Optional[str] = Field("network", pattern=r"^(personal|network|both)$", description="Brain side")
     content_type: Optional[str] = Field(None, max_length=100, description="Content type")
     source_url: Optional[str] = Field(None, max_length=2048, description="Source URL")
@@ -55,8 +57,8 @@ class KnowledgeUnitCreate(BaseModel):
     source_content_type: Optional[str] = Field(None, description="Source content type")
 
 class KnowledgeUnitUpdate(BaseModel):
-    content_raw: Optional[str] = Field(None, min_length=1, max_length=50000)
-    content_processed: Optional[str] = Field(None, max_length=50000, description="Personal annotation / processed interpretation")
+    content_raw: Optional[str] = Field(None, min_length=1)
+    content_processed: Optional[str] = Field(None, description="Personal annotation / processed interpretation")
     brain_side: Optional[str] = Field(None, pattern=r"^(personal|network|both)$")
     content_type: Optional[str] = Field(None, max_length=100)
     source_url: Optional[str] = Field(None, max_length=2048)
@@ -92,6 +94,7 @@ class KnowledgeUnitResponse(BaseModel):
     content_type: Optional[str] = Field(None, description="Content type")
     content_confidence: Optional[float] = Field(None, description="LLM confidence score 0-1")
     source_url: Optional[str] = Field(None, description="Source URL")
+    title: Optional[str] = Field(None, description="单元自身标题（09-16；空时前端兜底首行）")
     source_title: Optional[str] = Field(None, description="Source title")
     source_type: Optional[str] = Field(None, description="Source type")
     source_author: Optional[str] = Field(None, description="Source author")
@@ -131,6 +134,18 @@ class KnowledgeUnitResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+    @field_validator("attached_practice_ids", mode="before")
+    @classmethod
+    def _parse_attached_practice_ids(cls, v):
+        """ORM 列是 Text（JSON 字符串），直返 ORM 对象的路径（如 clips save-to-knowledge）需解析。"""
+        if isinstance(v, str):
+            try:
+                parsed = json.loads(v)
+            except ValueError:
+                return []
+            return parsed if isinstance(parsed, list) else []
+        return v
 
 class VerificationResult(BaseModel):
     model_name: str = Field(..., max_length=200, description="Model name used for verification")

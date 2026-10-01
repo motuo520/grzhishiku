@@ -1,9 +1,9 @@
 import { FC, useState } from 'react';
-import { Shield, Plus, Trash2, Bell, Globe, AppWindow, Loader2 } from 'lucide-react';
+import { Shield, Plus, Trash2, Bell, Globe, AppWindow, Loader2, type LucideIcon } from 'lucide-react';
 import { useAttention } from '@/hooks/useAttention';
 import type { AttentionGuardianRule } from '@/api/attention';
 
-const TYPE_ICONS: Record<string, React.ElementType> = {
+const TYPE_ICONS: Record<string, LucideIcon> = {
   website: Globe,
   app: AppWindow,
   notification: Bell,
@@ -167,7 +167,7 @@ const AttentionGuardianPage: FC = () => {
   );
 };
 
-const GuardianMetric: FC<{ label: string; value: string; icon: React.ElementType; color: string }> = ({
+const GuardianMetric: FC<{ label: string; value: string; icon: LucideIcon; color: string }> = ({
   label, value, icon: Icon, color,
 }) => (
   <div className="card flex items-center gap-3">

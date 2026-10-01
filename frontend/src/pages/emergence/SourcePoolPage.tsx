@@ -13,6 +13,7 @@ import { readLaterApi } from '@/api/readLater';
 import { rssApi } from '@/api/rss';
 import { documentApi } from '@/api/document';
 import type { EmergenceSource } from '@/api/emergence';
+import { useConfirm } from '@/components/common/dialogContext';
 import { invalidateContentQueries } from '@/utils/invalidateContent';
 
 // 素材池类型 → 管线 content_type（管线只接受这几类，其余类型提示不可转）
@@ -52,6 +53,7 @@ interface SelectedSource {
 }
 
 const SourcePoolPage: FC = () => {
+  const askConfirm = useConfirm();
   const navigate = useNavigate();
   const isClassic = useSettings((s) => s.uiMode === 'classic');
   // 此前这里传死 selectedIds={[]} + 空回调，勾选框点了没反应；
@@ -84,7 +86,7 @@ const SourcePoolPage: FC = () => {
       setError('该类型素材暂不支持删除');
       return;
     }
-    if (!confirm(`确定删除「${item.title || item.id}」？此操作不可恢复。`)) return;
+    if (!(await askConfirm(`确定删除「${item.title || item.id}」？此操作不可恢复。`))) return;
     setError(null);
     try {
       await deleteOne({ id: item.id, type: item.type });
@@ -96,7 +98,7 @@ const SourcePoolPage: FC = () => {
 
   const handleBatchDelete = async () => {
     if (deletable.length === 0 || deleting) return;
-    if (!confirm(`确定删除选中的 ${deletable.length} 条素材？此操作不可恢复。`)) return;
+    if (!(await askConfirm(`确定删除选中的 ${deletable.length} 条素材？此操作不可恢复。`))) return;
     setDeleting(true);
     setError(null);
     // 按类型分组走批量端点（每类型一次请求）；某类型批量失败则该类型退化为逐条删

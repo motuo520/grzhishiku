@@ -2,10 +2,12 @@ import { FC, useState } from 'react';
 import { Wallet, Plus, Trash2, Clock, Brain, Loader2, AlertCircle, Timer } from 'lucide-react';
 import { useAttention } from '@/hooks/useAttention';
 import type { AttentionCategory } from '@/api/attention';
+import { useConfirm } from '@/components/common/dialogContext';
 
 const PRESET_COLORS = ['#58a6ff', '#3fb950', '#f778ba', '#d29922', '#a371f7', '#f85149'];
 
 const AttentionBudgetPage: FC = () => {
+  const askConfirm = useConfirm();
   const {
     categories, isLoading, createCategory, deleteCategory, createActivity,
   } = useAttention();
@@ -32,7 +34,7 @@ const AttentionBudgetPage: FC = () => {
   };
 
   const removeItem = async (id: string) => {
-    if (!confirm('确定删除该预算类别吗？')) return;
+    if (!(await askConfirm('确定删除该预算类别吗？'))) return;
     setError(null);
     try {
       await deleteCategory(id);

@@ -1,4 +1,3 @@
-import logging
 import uuid
 from datetime import datetime
 from typing import List, Optional
@@ -7,11 +6,9 @@ from sqlalchemy.orm import Session
 
 from app.models.base import ReadLaterItem, User, KnowledgeUnit
 from app.services import tag_service
-from app.services.url_guard import validate_fetch_url
 from app.services.url_metadata import fetch_url_metadata
 from app.core.xss_sanitizer import sanitize_knowledge_input
-
-logger = logging.getLogger(__name__)
+from app.core.tenant_scope import get_active_tenant, scope_condition
 
 
 def create_item(
@@ -38,9 +35,12 @@ def create_item(
         from app.services.url_metadata import extract_domain
         domain = extract_domain(url)
 
+    tenant = get_active_tenant(db, user)
     item = ReadLaterItem(
         id=str(uuid.uuid4()),
         user_id=user.id,
+        # 租户上下文创建：内容归团队（tenant_id=激活租户），user_id 仍记创建者
+        tenant_id=tenant.id if tenant else None,
         title=title or url,
         url=url,
         domain=domain,
@@ -68,7 +68,7 @@ def list_items(
     limit: int = 50,
 ) -> List[ReadLaterItem]:
     query = db.query(ReadLaterItem).filter(
-        ReadLaterItem.user_id == user.id,
+        scope_condition(ReadLaterItem, user.id, get_active_tenant(db, user)),
         ReadLaterItem.item_status == "active"
     )
     if status:
@@ -88,7 +88,7 @@ def list_items(
 def get_item(db: Session, user: User, item_id: str) -> Optional[ReadLaterItem]:
     return db.query(ReadLaterItem).filter(
         ReadLaterItem.id == item_id,
-        ReadLaterItem.user_id == user.id,
+        scope_condition(ReadLaterItem, user.id, get_active_tenant(db, user)),
         ReadLaterItem.item_status == "active"
     ).first()
 
@@ -144,18 +144,23 @@ def fetch_full_content(db: Session, user: User, item_id: str) -> Optional[ReadLa
             db.commit()
             db.refresh(item)
     except Exception as e:
-        logger.warning(f"Fetch full content failed for {item.id}: {e}")
+        print(f"Fetch full content failed for {item.id}: {e}")
     return item
 
 
 def _extract_article_text(url: str) -> Optional[str]:
     """Basic article text extraction using readability-lxml if available, otherwise fallback."""
+    # SSRF 防护：与 fetch_url_metadata 同一套校验（仅 http/https、拒绝内网地址）
+    from app.core.ssrf import validate_outbound_url
     try:
-        validate_fetch_url(url)
+        validate_outbound_url(url)
+    except ValueError:
+        return None
+    try:
         from readability import Document
-        # 用 url_guard.open_checked_url 取代 requests.get：重定向逐跳校验 + 响应体上限
+        # 用 ssrf.open_checked_url 取代 requests.get：重定向逐跳校验 + 响应体限 5MB
         # （requests 无逐跳钩子，自动跟随的 302 会绕过入口校验）
-        from app.services.url_guard import open_checked_url, read_capped
+        from app.core.ssrf import open_checked_url, read_capped
         with open_checked_url(
             url,
             timeout=10,
@@ -186,6 +191,7 @@ def save_to_knowledge(db: Session, user: User, item: ReadLaterItem, tag_ids: Opt
         brain_side='network',
         content_raw=safe_content,
         content_type='read_later',
+        title=safe_title,  # 09-16 单元自身标题
         source_url=safe_url,
         source_title=safe_title,
         source_type='read_later',
@@ -194,18 +200,24 @@ def save_to_knowledge(db: Session, user: User, item: ReadLaterItem, tag_ids: Opt
         verification_status='unverified',
         trust_level='tentative',
         verification_history='[]',
+        # 与来源条目同空间：团队稍后读转出的知识单元也归团队
+        tenant_id=item.tenant_id,
     )
     db.add(unit)
     db.commit()
     db.refresh(unit)
 
     if tag_ids:
+        # 标签落到条目所属空间（团队条目 → 团队标签）
+        from app.models.base import Tenant
+        tenant = db.query(Tenant).filter(Tenant.id == item.tenant_id).first() if item.tenant_id else None
         tag_service.set_tags_for(
             db,
             content_type=tag_service.CONTENT_TYPE_KNOWLEDGE,
             content_id=unit.id,
             user_id=user.id,
             tag_inputs=tag_ids,
+            tenant=tenant,
         )
         db.commit()
         db.refresh(unit)
@@ -215,7 +227,7 @@ def save_to_knowledge(db: Session, user: User, item: ReadLaterItem, tag_ids: Opt
         auto_link_knowledge(db, unit, user.id)
         db.commit()
     except Exception as e:
-        logger.warning(f"Auto-link failed for read-later knowledge {unit.id}: {e}")
+        print(f"Auto-link failed for read-later knowledge {unit.id}: {e}")
 
     item.item_status = "imported_to_knowledge"
     item.knowledge_id = unit.id

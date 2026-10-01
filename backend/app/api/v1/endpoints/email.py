@@ -1,15 +1,13 @@
-import logging
-
 from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi.concurrency import run_in_threadpool
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from datetime import datetime
-import asyncio
 import uuid
 import json
+import asyncio
 
 from app.core.database import get_db
-from app.core.crypto import encrypt_secret
 from app.core.security import get_current_user
 from app.core.xss_sanitizer import sanitize_knowledge_input
 from app.models.base import User, EmailAccount, EmailMessage, KnowledgeUnit
@@ -18,11 +16,14 @@ from app.schemas.email import (
     EmailMessageResponse, EmailSyncResult, EmailSaveToKnowledgeRequest
 )
 from app.services import email_service, tag_service
-from app.api.v1.endpoints.graph import auto_link_knowledge
+from app.api.v1.endpoints.graph import queue_auto_link
 
 router = APIRouter()
 
-logger = logging.getLogger(__name__)
+
+def _escape_like(value: str) -> str:
+    """转义 LIKE 通配符，防 %/_ 滥用造成慢查询。"""
+    return value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
 
 
 def _build_account_response(account: EmailAccount) -> dict:
@@ -93,13 +94,20 @@ async def create_email_account(
         status="active",
     )
 
-    # Test connection
-    if not email_service.test_imap_connection(account):
+    # Test connection（线程池 + 超时，避免阻塞事件循环）
+    try:
+        connected = await asyncio.wait_for(
+            run_in_threadpool(email_service.test_imap_connection, account),
+            timeout=30,
+        )
+    except asyncio.TimeoutError:
+        raise HTTPException(status_code=400, detail="邮箱连接超时，请稍后重试")
+    except Exception:
+        connected = False
+
+    if not connected:
         raise HTTPException(status_code=400, detail="无法连接到邮箱，请检查 IMAP 地址、端口或授权码")
 
-    # 凭证加密落库（连接测试用的是内存中的明文）
-    account.access_token = encrypt_secret(account.access_token)
-    account.refresh_token = encrypt_secret(account.refresh_token)
     db.add(account)
     db.commit()
     db.refresh(account)
@@ -148,9 +156,9 @@ async def update_email_account(
     if data.imap_use_ssl is not None:
         account.imap_use_ssl = data.imap_use_ssl
     if data.access_token is not None:
-        account.access_token = encrypt_secret(data.access_token)
+        account.access_token = data.access_token
     if data.refresh_token is not None:
-        account.refresh_token = encrypt_secret(data.refresh_token)
+        account.refresh_token = data.refresh_token
     if data.status is not None:
         account.status = data.status
 
@@ -200,14 +208,32 @@ async def sync_email_account(
     if not account:
         raise HTTPException(status_code=404, detail="Email account not found")
 
-    result = email_service.sync_account(db, account, current_user, max_messages=max_messages)
+    # 同步 IMAP 放入线程池，避免长时间阻塞事件循环
+    try:
+        result = await asyncio.wait_for(
+            run_in_threadpool(
+                email_service.sync_account,
+                db,
+                account,
+                current_user,
+                max_messages=max_messages,
+            ),
+            timeout=300,
+        )
+    except asyncio.TimeoutError:
+        raise HTTPException(status_code=504, detail="邮件同步超时，请稍后重试")
+    except HTTPException:
+        raise
+    except Exception:
+        raise HTTPException(status_code=502, detail="邮件同步失败")
+
     return result
 
 
 @router.get("/messages", response_model=List[EmailMessageResponse], summary="List email messages")
 async def list_email_messages(
     account_id: Optional[str] = Query(None),
-    q: Optional[str] = Query(None, description="Search subject or body text"),
+    q: Optional[str] = Query(None, max_length=200, description="Search subject or body text"),
     status: Optional[str] = Query(None, description="Filter by status"),
     skip: int = Query(0, ge=0),
     # 上限放宽到 1000：个人库规模全量读取无压力，配合前端「加载更多」递增加载
@@ -224,9 +250,9 @@ async def list_email_messages(
     if status:
         query = query.filter(EmailMessage.status == status)
     if q:
-        search = f"%{q}%"
+        search = f"%{_escape_like(q)}%"
         query = query.filter(
-            EmailMessage.subject.ilike(search) | EmailMessage.body_text.ilike(search)
+            EmailMessage.subject.ilike(search, escape="\\") | EmailMessage.body_text.ilike(search, escape="\\")
         )
 
     messages = query.order_by(EmailMessage.received_at.desc().nullslast()).offset(skip).limit(limit).all()
@@ -264,6 +290,15 @@ async def save_email_to_knowledge(
     if not msg:
         raise HTTPException(status_code=404, detail="Email message not found")
 
+    # 幂等：已保存过则直接返回既有知识单元
+    if msg.knowledge_id:
+        existing_unit = db.query(KnowledgeUnit).filter(
+            KnowledgeUnit.id == msg.knowledge_id,
+            KnowledgeUnit.user_id == current_user.id,
+        ).first()
+        if existing_unit:
+            return {"success": True, "knowledge_id": existing_unit.id}
+
     content = email_service.extract_main_text(msg.body_text, msg.body_html)
     if not content:
         content = msg.subject or ""
@@ -280,6 +315,7 @@ async def save_email_to_knowledge(
         brain_side='network',
         content_raw=safe_content,
         content_type='email',
+        title=safe_title,  # 09-16 单元自身标题
         source_url=f"mailto:{msg.sender_email}" if msg.sender_email else None,
         source_title=safe_title,
         source_type='email',
@@ -288,33 +324,31 @@ async def save_email_to_knowledge(
         trust_level='tentative',
         verification_history='[]',
     )
-    db.add(unit)
-    db.commit()
-    db.refresh(unit)
+    try:
+        db.add(unit)
+        db.flush()
 
-    # Attach tags
-    if request.tag_ids:
-        tag_service.set_tags_for(
-            db,
-            content_type=tag_service.CONTENT_TYPE_KNOWLEDGE,
-            content_id=unit.id,
-            user_id=current_user.id,
-            tag_inputs=request.tag_ids,
-        )
+        # Attach tags
+        if request.tag_ids:
+            tag_service.set_tags_for(
+                db,
+                content_type=tag_service.CONTENT_TYPE_KNOWLEDGE,
+                content_id=unit.id,
+                user_id=current_user.id,
+                tag_inputs=request.tag_ids,
+            )
+
+        # Auto-link graph（后台队列+防抖，请求路径零扫描；失败不影响导入）
+        queue_auto_link("knowledge", unit.id, current_user.id, db)
+
+        msg.status = "imported_to_knowledge"
+        msg.knowledge_id = unit.id
+
         db.commit()
         db.refresh(unit)
-
-    # Auto-link graph（同步全表扫描，线程池卸载避免阻塞事件循环；失败不影响导入）
-    try:
-        loop = asyncio.get_running_loop()
-        await loop.run_in_executor(None, auto_link_knowledge, db, unit, current_user.id)
-        db.commit()
-    except Exception as e:
-        logger.warning(f"Auto-link failed for email knowledge {unit.id}: {e}")
-
-    msg.status = "imported_to_knowledge"
-    msg.knowledge_id = unit.id
-    db.commit()
+    except Exception:
+        db.rollback()
+        raise HTTPException(status_code=500, detail="保存邮件到知识库失败")
 
     return {"success": True, "knowledge_id": unit.id}
 

@@ -6,6 +6,7 @@ from typing import Optional, List
 
 class ChatConversationCreate(BaseModel):
     title: Optional[str] = Field("", max_length=200, description="Conversation title (auto-filled from first message if empty)")
+    mode: Optional[str] = Field("chat", pattern="^(chat|agent)$", description="会话形态：chat 普通对话 / agent 独立智能体")
 
 
 class ChatConversationUpdate(BaseModel):
@@ -15,6 +16,7 @@ class ChatConversationUpdate(BaseModel):
 class ChatConversationOut(BaseModel):
     id: str
     title: str
+    mode: str = "chat"
     created_at: Optional[datetime]
     updated_at: Optional[datetime]
 

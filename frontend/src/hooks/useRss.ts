@@ -79,7 +79,10 @@ export const useRssEntries = (feedId: string | null, options?: { unread_only?: b
   });
 
   const saveMutation = useMutation({
-    mutationFn: (entryId: string) => rssApi.saveEntry(entryId),
+    // AI 摘要（页面内存态）随保存落库：剪藏 excerpt 优先用它（09-13 实捕：
+    // 摘要生成成功但保存的剪藏只有 feed 自带描述，全文/摘要都丢）
+    mutationFn: ({ entryId, aiSummary }: { entryId: string; aiSummary?: string }) =>
+      rssApi.saveEntry(entryId, true, aiSummary),
     onSuccess: () => {
       invalidateContentQueries(queryClient);
     },

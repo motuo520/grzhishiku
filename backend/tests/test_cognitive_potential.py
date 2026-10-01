@@ -121,11 +121,11 @@ class TestResultPersistence:
         body1 = r1.json()
         assert body1["summary"] == "整体判断1"
         assert body1["analyzed_at"]
-        assert body1["model_used"] == "ollama-qwen2.5-0.5b"
+        assert body1["model_used"] == "ollama-qwen3.5-0.8b"
         assert len(body1["sinkable"]) == 1
 
         # 重跑替换（summary 变 2，且仍只有一条记录）
-        client.post("/api/v1/jianghu/cognitive-potential", headers=auth_headers, json={"brain_side": "both", "preferred_model": "ollama-qwen2.5-0.5b"})
+        client.post("/api/v1/jianghu/cognitive-potential", headers=auth_headers, json={"brain_side": "both", "preferred_model": "ollama-qwen3.5-0.8b"})
         r2 = client.get("/api/v1/jianghu/cognitive-potential/latest", headers=auth_headers, params={"brain_side": "both"})
         assert r2.json()["summary"] == "整体判断2"
 

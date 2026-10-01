@@ -5,6 +5,7 @@ import { useEmbodied } from '@/hooks/useEmbodied';
 import { useNotes } from '@/hooks/useNotes';
 import { useKnowledge } from '@/hooks/useKnowledge';
 import ModelSelector from '@/components/llm/ModelSelector';
+import LLMCostBadge from '@/components/llm/LLMCostBadge';
 import {
   ShieldAlert, Sparkles, Loader2, CheckCircle2, XCircle,
   History, ChevronRight, AlertTriangle
@@ -46,7 +47,7 @@ const DepthCheckPage: FC = () => {
   } | null>(null);
   const [modelId, setModelId] = useState<string>();
   const [sourceType, setSourceType] = useState<'text' | 'note' | 'knowledge_unit'>('text');
-  // 默认使用规则评估；用户可显式切到 AI 深度评估
+  // 默认免费规则评估，不消耗余额；用户显式切到 AI 深度评估才计费
   const [useAi, setUseAi] = useState(false);
 
   const { notes } = useNotes({ brain_side: brainSide === 'unknown' ? undefined : brainSide });
@@ -66,7 +67,7 @@ const DepthCheckPage: FC = () => {
 
   const handleTargetChange = (id: string) => {
     const target = targetOptions.find((t) => t.id === id);
-    // label 仅供下拉展示（截断），提交给后端做深度检查的必须是全文
+    // label 仅供下拉展示（截断），提交给后端做深度评估的必须是全文
     setForm({ ...form, content_id: id, content: target ? target.content : '' });
     setResult(null);
   };
@@ -106,7 +107,7 @@ const DepthCheckPage: FC = () => {
         <div>
           <h1 className="text-xl font-semibold text-text-primary flex items-center gap-2">
             <ShieldAlert className="w-5 h-5 text-info" />
-            内容深度检查
+            内容深度评估
           </h1>
           <p className="text-sm text-text-secondary mt-1">
             保存时 AI 自动评估：这条内容是否太肤浅？作为认知防御系统，拦截低质量输入。
@@ -116,6 +117,7 @@ const DepthCheckPage: FC = () => {
         {useAi && (
           <div className="flex flex-col items-end gap-2">
             <ModelSelector value={modelId} onChange={setModelId} taskType="analysis" className="w-48" />
+            <LLMCostBadge modelId={modelId} inputText={form.content} outputTokenEstimate={200} />
           </div>
         )}
       </div>
@@ -189,7 +191,7 @@ const DepthCheckPage: FC = () => {
             className="flex items-center gap-2 px-4 py-2 rounded-lg bg-info/10 text-info hover:bg-info/20 transition-colors disabled:opacity-50"
           >
             {isDepthChecking ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
-            {useAi ? 'AI 深度检查' : '规则检查'}
+            {useAi ? 'AI 深度评估' : '规则检查'}
           </button>
         </div>
       </div>
@@ -203,7 +205,7 @@ const DepthCheckPage: FC = () => {
             <div className="flex-1">
               <div className="flex items-center gap-3 mb-2">
                 <h3 className="text-base font-medium text-text-primary">
-                  {result.is_passed ? '深度检查通过' : '内容可能过于肤浅'}
+                  {result.is_passed ? '深度评估通过' : '内容可能过于肤浅'}
                 </h3>
                 <span className={`text-sm font-bold ${result.depth_score >= 0.7 ? 'text-success' : result.depth_score >= 0.4 ? 'text-warning' : 'text-danger'}`}>
                   深度分：{(result.depth_score * 100).toFixed(0)}%
@@ -273,7 +275,7 @@ const DepthCheckPage: FC = () => {
           {depthLogs.length === 0 && (
             <div className="p-8 rounded-xl border border-white/[0.06] bg-bg-secondary text-center text-text-secondary">
               <ShieldAlert className="w-10 h-10 mx-auto mb-3 text-text-muted/40" />
-              <p className="text-sm">暂无深度检查记录。</p>
+              <p className="text-sm">暂无深度评估记录。</p>
             </div>
           )}
         </div>

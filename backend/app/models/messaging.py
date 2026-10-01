@@ -13,6 +13,7 @@ class RssFeed(Base):
 
     id = Column(String, primary_key=True)
     user_id = Column(String, nullable=False, index=True)
+    tenant_id = Column(String)  # 团队空间归属（可空）：非空=团队共享，空=个人空间
     title = Column(String)
     url = Column(String, nullable=False)
     description = Column(Text)
@@ -35,6 +36,7 @@ class RssEntry(Base):
     id = Column(String, primary_key=True)
     feed_id = Column(String, nullable=False, index=True)
     user_id = Column(String, nullable=False, index=True)
+    tenant_id = Column(String)  # 团队空间归属（可空）：非空=团队共享，空=个人空间
     title = Column(String)
     link = Column(String, nullable=False)
     summary = Column(Text)

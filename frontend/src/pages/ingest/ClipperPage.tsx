@@ -9,12 +9,15 @@ import { useClips } from '@/hooks/useClips';
 import { useTags } from '@/hooks/useTags';
 import TagSelector from '@/components/TagSelector';
 import ModelSelector from '@/components/llm/ModelSelector';
+import LLMCostBadge from '@/components/llm/LLMCostBadge';
+import { useConfirm } from '@/components/common/dialogContext';
 import { summarizeText, extractTags } from '@/api/llm';
 import type { ClipCreateData, ClipUpdateData } from '@/api/clips';
 import type { Clip } from '@/api/clips';
 import { getDomainFromUrl, parseBookmarksHtml, parseLocalJson, parseLocalCsv, type ImportItem } from '@/utils/importParsers';
 
 const ClipperPage: FC = () => {
+  const askConfirm = useConfirm();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
   // 服务端分页上限（无 total 返回，靠「返回数达到 limit」判断可能还有更多）；上限与后端 le=1000 对齐
@@ -28,6 +31,8 @@ const ClipperPage: FC = () => {
   const [formExcerpt, setFormExcerpt] = useState('');
   const [formFullText, setFormFullText] = useState('');
   const [formTags, setFormTags] = useState<string[]>([]);
+  // 仓库模式开关：打开编辑器时初始化（新建=false，编辑=当前值），不用 effect 回写（血泪#32）
+  const [formIndexOnly, setFormIndexOnly] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [batchMode, setBatchMode] = useState(false);
@@ -37,10 +42,16 @@ const ClipperPage: FC = () => {
   const [isBatchTagOpen, setIsBatchTagOpen] = useState(false);
   const [batchTagValue, setBatchTagValue] = useState<string[]>([]);
   const [modelId, setModelId] = useState('');
-  const [aiLoadingId, setAiLoadingId] = useState<string | null>(null);
-  const [aiLoadingAction, setAiLoadingAction] = useState<'summary' | 'tags' | null>(null);
+  const [aiLoadingByClip, setAiLoadingByClip] = useState<Record<string, 'summary' | 'tags'>>({});
   const [aiSummaries, setAiSummaries] = useState<Record<string, string>>({});
+  // 服务端抓取填充（无扩展场景：粘贴 URL → 服务端 readability 抓正文回填表单）
+  const [fetchingContent, setFetchingContent] = useState(false);
+  // 主页面一键剪藏（09-01 用户拍板：抓取入口提到主页面，不再藏在新建对话框里）
+  const [quickUrl, setQuickUrl] = useState('');
+  const [quickClipping, setQuickClipping] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const errorTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const successTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // 图谱「查看来源」直达：?highlight=<clip_id> 滚动定位+高亮+展开（08-22 修复：
   // 参数此前没人接，跳过来落在列表页无任何指示）
@@ -77,16 +88,45 @@ const ClipperPage: FC = () => {
   const filteredClips = useMemo(() => clips || [], [clips]);
   const allSelected = filteredClips.length > 0 && filteredClips.every(c => selectedIds.has(c.id));
 
+  // 卸载时清理提示 timer
+  useEffect(() => {
+    return () => {
+      if (errorTimerRef.current) clearTimeout(errorTimerRef.current);
+      if (successTimerRef.current) clearTimeout(successTimerRef.current);
+    };
+  }, []);
+
+  // 筛选结果变化时，将选中项裁剪为当前可见集合，避免批量操作作用于不可见项
+  useEffect(() => {
+    if (isLoading) return;
+    setSelectedIds((prev) => {
+      if (prev.size === 0) return prev;
+      const visibleIds = new Set(filteredClips.map((c) => c.id));
+      const next = new Set(Array.from(prev).filter((id) => visibleIds.has(id)));
+      return next.size === prev.size ? prev : next;
+    });
+  }, [filteredClips, isLoading]);
+
   const showError = (message: string) => {
+    if (errorTimerRef.current) clearTimeout(errorTimerRef.current);
+    if (successTimerRef.current) clearTimeout(successTimerRef.current);
     setError(message);
     setSuccess(null);
-    setTimeout(() => setError(null), 4000);
+    errorTimerRef.current = setTimeout(() => {
+      setError(null);
+      errorTimerRef.current = null;
+    }, 4000);
   };
 
   const showSuccess = (message: string) => {
+    if (errorTimerRef.current) clearTimeout(errorTimerRef.current);
+    if (successTimerRef.current) clearTimeout(successTimerRef.current);
     setSuccess(message);
     setError(null);
-    setTimeout(() => setSuccess(null), 3000);
+    successTimerRef.current = setTimeout(() => {
+      setSuccess(null);
+      successTimerRef.current = null;
+    }, 3000);
   };
 
   const resetForm = () => {
@@ -96,6 +136,7 @@ const ClipperPage: FC = () => {
     setFormExcerpt('');
     setFormFullText('');
     setFormTags([]);
+    setFormIndexOnly(false);
     setEditingClip(null);
     setError(null);
   };
@@ -113,6 +154,7 @@ const ClipperPage: FC = () => {
     setFormExcerpt(clip.excerpt || '');
     setFormFullText(clip.full_text || '');
     setFormTags(clip.tags?.map((t) => t.id || t.name) || []);
+    setFormIndexOnly(clip.index_only);
     setError(null);
     setIsEditorOpen(true);
   };
@@ -137,6 +179,7 @@ const ClipperPage: FC = () => {
           excerpt: formExcerpt.trim() || undefined,
           full_text: formFullText.trim() || undefined,
           tags: formTags,
+          index_only: formIndexOnly,
         };
         await updateClip({ id: editingClip.id, data });
         showSuccess('剪藏更新成功');
@@ -149,6 +192,7 @@ const ClipperPage: FC = () => {
           full_text: formFullText.trim() || undefined,
           tags: formTags,
           brain_side: 'network',
+          index_only: formIndexOnly,
         };
         await createClip(data);
         showSuccess('剪藏创建成功');
@@ -160,7 +204,7 @@ const ClipperPage: FC = () => {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('确定要删除这条剪藏吗？')) return;
+    if (!(await askConfirm('确定要删除这条剪藏吗？'))) return;
     try {
       await deleteClip(id);
       showSuccess('剪藏已删除');
@@ -178,14 +222,69 @@ const ClipperPage: FC = () => {
     }
   };
 
+  // 主页面一键剪藏：粘贴 URL → 服务端抓正文 → 直接建剪藏（不经对话框）
+  const handleQuickClip = async () => {
+    const url = quickUrl.trim();
+    if (!url || quickClipping) return;
+    setQuickClipping(true);
+    try {
+      const { clipsApi } = await import('@/api/clips');
+      const { data } = await clipsApi.fetchContent(url);
+      if (data.error) {
+        showError(data.error);
+        return;
+      }
+      await createClip({
+        title: data.title || url,
+        url,
+        domain: data.domain || getDomainFromUrl(url),
+        excerpt: data.excerpt || undefined,
+        full_text: data.full_text || undefined,
+        brain_side: 'network',
+      });
+      setQuickUrl('');
+      showSuccess('已抓取并剪藏');
+    } catch (err: any) {
+      showError(err.message || '抓取剪藏失败，请重试');
+    } finally {
+      setQuickClipping(false);
+    }
+  };
+
+  // 服务端抓取填充：粘贴 URL 后一键抓正文回填（抓取结果可改，保存仍走正常创建链路）
+  const handleFetchContent = async () => {
+    const url = formUrl.trim();
+    if (!url) {
+      showError('先填 URL');
+      return;
+    }
+    setFetchingContent(true);
+    try {
+      const { clipsApi } = await import('@/api/clips');
+      const { data } = await clipsApi.fetchContent(url);
+      if (data.error) {
+        showError(data.error);
+        return;
+      }
+      setFormTitle(data.title || '');
+      setFormDomain(data.domain || getDomainFromUrl(url));
+      setFormExcerpt(data.excerpt || '');
+      setFormFullText(data.full_text || '');
+      showSuccess('已抓取正文，确认后保存');
+    } catch (err: any) {
+      showError(err.message || '抓取失败，请重试');
+    } finally {
+      setFetchingContent(false);
+    }
+  };
+
   const handleAISummary = async (clip: Clip) => {
     const text = clip.full_text || clip.excerpt || clip.title;
     if (!text || text.trim().length < 10) {
       showError('内容太短，无法生成摘要');
       return;
     }
-    setAiLoadingId(clip.id);
-    setAiLoadingAction('summary');
+    setAiLoadingByClip((prev) => ({ ...prev, [clip.id]: 'summary' }));
     try {
       const result = await summarizeText({
         text: `${clip.title}\n\n${text}`,
@@ -197,8 +296,11 @@ const ClipperPage: FC = () => {
     } catch (e: any) {
       showError(e?.response?.data?.detail || e.message || '摘要生成失败');
     } finally {
-      setAiLoadingId(null);
-      setAiLoadingAction(null);
+      setAiLoadingByClip((prev) => {
+        const next = { ...prev };
+        delete next[clip.id];
+        return next;
+      });
     }
   };
 
@@ -208,8 +310,7 @@ const ClipperPage: FC = () => {
       showError('内容太短，无法提取标签');
       return;
     }
-    setAiLoadingId(clip.id);
-    setAiLoadingAction('tags');
+    setAiLoadingByClip((prev) => ({ ...prev, [clip.id]: 'tags' }));
     try {
       const result = await extractTags({
         text: `${clip.title}\n\n${text}`,
@@ -221,7 +322,9 @@ const ClipperPage: FC = () => {
         showError('未提取到有效标签');
         return;
       }
-      const existingTagIds = (clip.tags || []).map((t) => t.id);
+      const existingTagIds = (clip.tags || [])
+        .map((t) => t.id || t.name)
+        .filter(Boolean);
       const tagNamesToAdd = newTags.filter(
         (name) => !(clip.tags || []).some((t) => t.name.toLowerCase() === name.toLowerCase())
       );
@@ -229,7 +332,6 @@ const ClipperPage: FC = () => {
         showSuccess('标签已存在');
         return;
       }
-      // Add tags by name if not in availableTags, otherwise use id
       const payloadTags = [...existingTagIds, ...tagNamesToAdd];
       await updateClip({
         id: clip.id,
@@ -244,13 +346,16 @@ const ClipperPage: FC = () => {
     } catch (e: any) {
       showError(e?.response?.data?.detail || e.message || '标签提取失败');
     } finally {
-      setAiLoadingId(null);
-      setAiLoadingAction(null);
+      setAiLoadingByClip((prev) => {
+        const next = { ...prev };
+        delete next[clip.id];
+        return next;
+      });
     }
   };
 
   const handleSaveToKnowledge = async (clip: Clip) => {
-    if (!confirm(`确定把「${clip.title}」保存到知识库吗？`)) return;
+    if (!(await askConfirm(`确定把「${clip.title}」保存到知识库吗？`))) return;
     try {
       await saveToKnowledge(clip.id);
       showSuccess('已保存到 知识库 · 网络脑知识');
@@ -282,16 +387,24 @@ const ClipperPage: FC = () => {
       return;
     }
     const count = selectedIds.size;
-    if (!confirm(`确定要删除选中的 ${count} 条剪藏吗？`)) return;
-    try {
-      for (const id of selectedIds) {
-        await deleteClip(id);
-      }
+    if (!(await askConfirm(`确定要删除选中的 ${count} 条剪藏吗？`))) return;
+    const ids = Array.from(selectedIds);
+    const results = await Promise.allSettled(ids.map(async (id) => deleteClip(id)));
+    const failedIds = ids.filter((_, index) => results[index]?.status === 'rejected');
+
+    if (failedIds.length === 0) {
       setSelectedIds(new Set());
       setBatchMode(false);
       showSuccess(`已删除 ${count} 条剪藏`);
-    } catch (err: any) {
-      showError(err.message || '批量删除失败');
+      return;
+    }
+
+    setSelectedIds(new Set(failedIds));
+    const successCount = count - failedIds.length;
+    if (successCount > 0) {
+      showError(`部分删除失败：成功 ${successCount} 条，失败 ${failedIds.length} 条`);
+    } else {
+      showError('批量删除失败');
     }
   };
 
@@ -328,10 +441,17 @@ const ClipperPage: FC = () => {
 
   const handleLocalFiles = async (files: FileList | null) => {
     if (!files || files.length === 0) return;
+    const MAX_FILE_SIZE = 5 * 1024 * 1024;
+    const MAX_IMPORT_ITEMS = 2000;
+    let truncated = false;
     setIsImporting(true);
     const items: ClipCreateData[] = [];
 
     for (const file of Array.from(files)) {
+      if (file.size > MAX_FILE_SIZE) {
+        showError(`文件 ${file.name} 超过 5MB，已跳过`);
+        continue;
+      }
       try {
         const text = await file.text();
         const ext = file.name.split('.').pop()?.toLowerCase() || '';
@@ -353,7 +473,23 @@ const ClipperPage: FC = () => {
           showError(`未从 ${file.name} 解析出有效数据`);
           continue;
         }
-        items.push(...imported.filter((i) => i.type === 'clip' && i.url).map(convertImportItemToClip));
+        const parsed = imported
+          .filter((i) => i.type === 'clip' && i.url)
+          .map(convertImportItemToClip);
+
+        const remaining = MAX_IMPORT_ITEMS - items.length;
+        if (remaining <= 0) {
+          truncated = true;
+          break;
+        }
+
+        if (parsed.length > remaining) {
+          items.push(...parsed.slice(0, remaining));
+          truncated = true;
+          break;
+        }
+
+        items.push(...parsed);
       } catch (e: any) {
         showError(`读取文件 ${file.name} 失败：${e.message || '未知错误'}`);
       }
@@ -366,12 +502,25 @@ const ClipperPage: FC = () => {
 
     try {
       const res = await batchCreateClips({ items });
-      showSuccess(`本地导入完成：成功 ${res.data.success_count} 条，失败 ${res.data.failed_count} 条`);
+      showSuccess(
+        `本地导入完成：成功 ${res.data.success_count} 条，失败 ${res.data.failed_count} 条${
+          truncated ? '（已按条数限制截断）' : ''
+        }`
+      );
     } catch (e: any) {
       showError(e.message || '批量导入失败');
     } finally {
       setIsImporting(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
+  const isSafeUrl = (url: string) => {
+    try {
+      const parsed = new URL(url);
+      return parsed.protocol === 'http:' || parsed.protocol === 'https:';
+    } catch {
+      return false;
     }
   };
 
@@ -396,7 +545,8 @@ const ClipperPage: FC = () => {
         </div>
         <div className="flex items-center gap-3">
           <ModelSelector value={modelId} onChange={setModelId} taskType="analysis" className="w-48" />
-          <span className="badge-network">Network Brain</span>
+          <LLMCostBadge modelId={modelId} inputText="" outputTokenEstimate={150} />
+          <span className="badge-network">网络脑</span>
           {batchMode ? (
             <>
               <button onClick={() => { setBatchMode(false); setSelectedIds(new Set()); }} className="btn-secondary text-xs">
@@ -456,6 +606,27 @@ const ClipperPage: FC = () => {
             </>
           )}
         </div>
+      </div>
+
+      {/* 一键剪藏：粘贴 URL 服务端抓正文直接建（09-01 用户拍板提到主页面） */}
+      <div className="glass-card p-4 flex items-center gap-3">
+        <Globe className="w-4 h-4 text-info shrink-0" />
+        <input
+          type="text"
+          value={quickUrl}
+          onChange={(e) => setQuickUrl(e.target.value)}
+          onKeyDown={(e) => e.key === 'Enter' && handleQuickClip()}
+          placeholder="粘贴网页链接，服务端抓取正文直接剪藏…"
+          className="flex-1 bg-bg-primary border border-border-color rounded-[2px] px-4 py-2.5 text-sm text-text-primary placeholder-text-secondary focus:outline-none focus:border-info/50 transition-colors"
+        />
+        <button
+          onClick={handleQuickClip}
+          disabled={quickClipping || !quickUrl.trim()}
+          className="btn-primary flex items-center gap-2 text-xs py-2.5 px-4 disabled:opacity-60 shrink-0"
+        >
+          {quickClipping ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Scissors className="w-3.5 h-3.5" />}
+          抓取剪藏
+        </button>
       </div>
 
       {/* Banners */}
@@ -620,16 +791,29 @@ const ClipperPage: FC = () => {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
                       <div className="text-sm font-medium text-text-primary truncate">{clip.title}</div>
-                      <a
-                        href={clip.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="shrink-0 text-text-muted hover:text-info transition-colors"
-                        title="打开原文"
-                        onClick={e => e.stopPropagation()}
-                      >
-                        <ExternalLink className="w-3.5 h-3.5" />
-                      </a>
+                      {clip.index_only && (
+                        <span className="badge-archive shrink-0" title="仓库模式：只进检索层，不进图谱/百科/打标/复盘">存档</span>
+                      )}
+                      {isSafeUrl(clip.url) ? (
+                        <a
+                          href={clip.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="shrink-0 text-text-muted hover:text-info transition-colors"
+                          title="打开原文"
+                          onClick={e => e.stopPropagation()}
+                        >
+                          <ExternalLink className="w-3.5 h-3.5" />
+                        </a>
+                      ) : (
+                        <span
+                          className="shrink-0 text-text-muted opacity-50 cursor-not-allowed"
+                          title="无效或不安全的链接"
+                          onClick={e => e.stopPropagation()}
+                        >
+                          <ExternalLink className="w-3.5 h-3.5" />
+                        </span>
+                      )}
                     </div>
                     <div className="flex items-center gap-3 text-xs text-text-muted mt-1.5">
                       <span className="flex items-center gap-1">
@@ -691,8 +875,7 @@ const ClipperPage: FC = () => {
                         title="复制链接"
                       >
                         <Copy className="w-4 h-4" />
-                      </button>
-                      <button
+                      </button>                      <button
                         onClick={() => openEdit(clip)}
                         className="p-1.5 rounded-[2px] hover:bg-white/[0.05] text-text-muted hover:text-warning transition-colors"
                         title="编辑"
@@ -709,11 +892,11 @@ const ClipperPage: FC = () => {
                       </button>
                       <button
                         onClick={() => handleAISummary(clip)}
-                        disabled={aiLoadingId === clip.id}
+                        disabled={Boolean(aiLoadingByClip[clip.id])}
                         className="p-1.5 rounded-[2px] hover:bg-white/[0.05] text-text-muted hover:text-warning transition-colors disabled:opacity-50"
                         title="AI 生成摘要"
                       >
-                        {aiLoadingId === clip.id && aiLoadingAction === 'summary' ? (
+                        {aiLoadingByClip[clip.id] === 'summary' ? (
                           <Loader2 className="w-4 h-4 animate-spin" />
                         ) : (
                           <Sparkles className="w-4 h-4" />
@@ -721,11 +904,11 @@ const ClipperPage: FC = () => {
                       </button>
                       <button
                         onClick={() => handleAIExtractTags(clip)}
-                        disabled={aiLoadingId === clip.id}
+                        disabled={Boolean(aiLoadingByClip[clip.id])}
                         className="p-1.5 rounded-[2px] hover:bg-white/[0.05] text-text-muted hover:text-info transition-colors disabled:opacity-50"
                         title="AI 提取标签"
                       >
-                        {aiLoadingId === clip.id && aiLoadingAction === 'tags' ? (
+                        {aiLoadingByClip[clip.id] === 'tags' ? (
                           <Loader2 className="w-4 h-4 animate-spin" />
                         ) : (
                           <Hash className="w-4 h-4" />
@@ -830,18 +1013,31 @@ const ClipperPage: FC = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-xs text-text-muted mb-1.5">URL</label>
-                    <input
-                      type="text"
-                      value={formUrl}
-                      onChange={(e) => setFormUrl(e.target.value)}
-                      onBlur={() => {
-                        if (!editingClip && !formDomain.trim() && formUrl.trim()) {
-                          setFormDomain(getDomainFromUrl(formUrl.trim()));
-                        }
-                      }}
-                      placeholder="https://..."
-                      className="w-full bg-bg-primary border border-border-color rounded-[2px] px-4 py-2.5 text-sm text-text-primary placeholder-text-secondary focus:outline-none focus:border-info/50 transition-colors"
-                    />
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={formUrl}
+                        onChange={(e) => setFormUrl(e.target.value)}
+                        onBlur={() => {
+                          if (!editingClip && !formDomain.trim() && formUrl.trim()) {
+                            setFormDomain(getDomainFromUrl(formUrl.trim()));
+                          }
+                        }}
+                        placeholder="https://..."
+                        className="flex-1 bg-bg-primary border border-border-color rounded-[2px] px-4 py-2.5 text-sm text-text-primary placeholder-text-secondary focus:outline-none focus:border-info/50 transition-colors"
+                      />
+                      {!editingClip && (
+                        <button
+                          onClick={handleFetchContent}
+                          disabled={fetchingContent || !formUrl.trim()}
+                          title="服务端抓取该 URL 的标题/摘要/正文并回填（readability）"
+                          className="shrink-0 flex items-center gap-1.5 px-3 rounded-[2px] bg-info/15 text-info text-xs hover:bg-info/25 transition-all disabled:opacity-50"
+                        >
+                          {fetchingContent ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Globe className="w-3.5 h-3.5" />}
+                          抓取填充
+                        </button>
+                      )}
+                    </div>
                   </div>
                   <div>
                     <label className="block text-xs text-text-muted mb-1.5">域名</label>
@@ -863,6 +1059,19 @@ const ClipperPage: FC = () => {
                     isLoading={isTagsLoading}
                     placeholder="输入标签，回车或逗号分隔..."
                   />
+                </div>
+                {/* 仓库模式（index_only）：只进检索层，不进语义加工层 */}
+                <div>
+                  <label className="flex items-center gap-2 cursor-pointer w-fit">
+                    <input
+                      type="checkbox"
+                      checked={formIndexOnly}
+                      onChange={(e) => setFormIndexOnly(e.target.checked)}
+                      className="accent-info cursor-pointer"
+                    />
+                    <span className="text-xs text-text-primary">仅入库检索</span>
+                  </label>
+                  <p className="text-[10px] text-text-muted mt-1">只进检索层：AI 问答仍可检索到，但不进图谱/百科/打标/复盘</p>
                 </div>
                 <div>
                   <label className="block text-xs text-text-muted mb-1.5">摘要</label>
@@ -905,9 +1114,7 @@ const ClipperPage: FC = () => {
             </motion.div>
           </motion.div>
         )}
-      </AnimatePresence>
-
-      {/* Batch Tag Modal */}
+      </AnimatePresence>      {/* Batch Tag Modal */}
       <AnimatePresence>
         {isBatchTagOpen && (
           <motion.div

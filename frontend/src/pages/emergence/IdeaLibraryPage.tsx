@@ -3,10 +3,10 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import {
   BookOpen, Trash2, Loader2, Tag, Clock, Filter, FileText, Package, BookMarked,
-  AlertCircle, CheckCircle, ArrowRight, Shuffle, Flame, GitMerge, GitBranch, Network,
-} from 'lucide-react';
+  AlertCircle, CheckCircle, ArrowRight, Shuffle, Flame, GitMerge, GitBranch, Network, type LucideIcon } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { emergenceApi, type BrainSide } from '@/api/emergence';
+import { useConfirm } from '@/components/common/dialogContext';
 
 const BRAIN_SIDE_CLASS: Record<string, string> = {
   personal: 'bg-personal-primary/10 text-personal-primary border-personal-primary/20',
@@ -36,13 +36,14 @@ const STATUS_CLASS: Record<string, string> = {
   archived: 'bg-text-muted/10 text-text-muted border-white/[0.08]',
 };
 
-const PROMOTE_OPTIONS: { key: 'note' | 'capsule' | 'knowledge'; label: string; icon: React.ElementType }[] = [
+const PROMOTE_OPTIONS: { key: 'note' | 'capsule' | 'knowledge'; label: string; icon: LucideIcon }[] = [
   { key: 'note', label: '转笔记', icon: FileText },
   { key: 'capsule', label: '转胶囊', icon: Package },
   { key: 'knowledge', label: '转知识', icon: BookMarked },
 ];
 
 const IdeaLibraryPage: FC = () => {
+  const askConfirm = useConfirm();
   const navigate = useNavigate();
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [brainFilter, setBrainFilter] = useState<BrainSide | 'all'>('all');
@@ -94,8 +95,8 @@ const IdeaLibraryPage: FC = () => {
     onError: () => setError('转化失败，请重试'),
   });
 
-  const handleDelete = (id: string) => {
-    if (!confirm('确定要删除这个创意成果吗？')) return;
+  const handleDelete = async (id: string) => {
+    if (!(await askConfirm('确定要删除这个创意成果吗？'))) return;
     setError(null);
     deleteMutation.mutate(id);
   };

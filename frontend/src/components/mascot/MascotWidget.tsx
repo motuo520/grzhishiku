@@ -253,6 +253,8 @@ const MascotWidget: FC = () => {
     });
   };
 
+  const upcomingCount = upcoming?.length ?? 0;
+
   const isDraggingRef = useRef(false);
   const [viewport, setViewport] = useState({ w: window.innerWidth, h: window.innerHeight });
   useEffect(() => {
@@ -260,8 +262,6 @@ const MascotWidget: FC = () => {
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
-
-  const upcomingCount = upcoming?.length ?? 0;
 
   if (!isLoggedIn || !mascotVisible) return null;
 

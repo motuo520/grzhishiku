@@ -18,6 +18,11 @@ class DataPackage(Base):
     provider = Column(String, nullable=True)  # baidu / aliyun / local
     remote_path = Column(String, nullable=True)
     error_message = Column(Text, nullable=True)
+    # E2EE：客户端加密后回传的密文路径（若为空 = 未加密，明文 ZIP 仍在本机）
+    encrypted_path = Column(String, nullable=True)
+    encrypted_size = Column(Integer, default=0)
+    salt = Column(String, nullable=True)   # PBKDF2 salt（hex）
+    iv = Column(String, nullable=True)     # AES-GCM IV（hex）
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
 

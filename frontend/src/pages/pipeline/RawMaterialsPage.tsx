@@ -4,8 +4,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import {
   Database, SquareStack, Search, Globe, BookOpen, FileText, FolderOpen, Rss,
   Layers, Clock, Loader2, AlertCircle, X, CheckSquare, Square,
-  ArrowRight, Trash2,
-} from 'lucide-react';
+  ArrowRight, Trash2, type LucideIcon } from 'lucide-react';
 import PipelineBrainToggle from './components/PipelineBrainToggle';
 import PipelineStageBar from './components/PipelineStageBar';
 import { useNavigation } from '@/store/navigation';
@@ -21,8 +20,9 @@ import { invalidateContentQueries } from '@/utils/invalidateContent';
 import StageContextBanner from './components/StageContextBanner';
 import ErrorState from '@/components/ErrorState';
 import { BrainSideBadge, SourceLink } from './components/PipelineHelpers';
+import { useConfirm } from '@/components/common/dialogContext';
 
-const CONTENT_TYPE_CONFIG: Record<string, { label: string; icon: React.ElementType; color: string }> = {
+const CONTENT_TYPE_CONFIG: Record<string, { label: string; icon: LucideIcon; color: string }> = {
   note: { label: '笔记', icon: FileText, color: 'text-personal-primary' },
   knowledge: { label: '知识单元', icon: Layers, color: 'text-info' },
   clip: { label: '剪藏', icon: Globe, color: 'text-network-primary' },
@@ -42,6 +42,7 @@ const DELETE_BY_TYPE: Record<string, (id: string) => Promise<any>> = {
 };
 
 const RawMaterialsPage: FC = () => {
+  const askConfirm = useConfirm();
   const navigate = useNavigate();
   const { brainSide } = useNavigation();
   const [searchQuery, setSearchQuery] = useState('');
@@ -117,7 +118,7 @@ const RawMaterialsPage: FC = () => {
       setError('该类型素材暂不支持删除');
       return;
     }
-    if (!confirm(`确定删除「${item.title || '无标题'}」？此操作不可恢复。`)) return;
+    if (!(await askConfirm(`确定删除「${item.title || '无标题'}」？此操作不可恢复。`))) return;
     setError(null);
     setActingId(item.id);
     try {
@@ -138,7 +139,7 @@ const RawMaterialsPage: FC = () => {
   const handleBatchDelete = async () => {
     const selected = filteredItems.filter((item) => selectedIds.has(item.id) && DELETE_BY_TYPE[item.content_type]);
     if (selected.length === 0 || deleting) return;
-    if (!confirm(`确定删除选中的 ${selected.length} 条素材？此操作不可恢复。`)) return;
+    if (!(await askConfirm(`确定删除选中的 ${selected.length} 条素材？此操作不可恢复。`))) return;
     setDeleting(true);
     setError(null);
     let failed = 0;
@@ -174,7 +175,7 @@ const RawMaterialsPage: FC = () => {
   const handleBatchCardize = async () => {
     if (selectedIds.size === 0) return;
     const selected = filteredItems.filter((item) => selectedIds.has(item.id));
-    if (!confirm(`确定将选中的 ${selected.length} 条素材卡片化？`)) return;
+    if (!(await askConfirm(`确定将选中的 ${selected.length} 条素材卡片化？`))) return;
     setIsBatchRunning(true);
     setBatchProgress(0);
     setError(null);

@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
-from sqlalchemy import func, and_
-from typing import Optional
+from sqlalchemy import and_
+from typing import List, Optional, Dict, Any
 from datetime import datetime, timedelta
 import json
 import csv
@@ -14,6 +14,9 @@ from app.api.admin.endpoints.auth import get_current_admin
 
 router = APIRouter()
 
+# 导出硬上限：审计日志可能无限增长，无界导出会把全表拉进内存打爆服务
+EXPORT_MAX_ROWS = 100000
+
 
 def _csv_cell(value) -> str:
     """CSV 公式注入防护：以 = + - @ 开头的单元格前置单引号（Excel/WPS 会当公式执行）。"""
@@ -21,6 +24,16 @@ def _csv_cell(value) -> str:
     if s[:1] in ("=", "+", "-", "@"):
         return "'" + s
     return s
+
+
+def _parse_json_state(raw: Optional[str]) -> Optional[Dict[str, Any]]:
+    """审计字段存的是 JSON 字符串；脏数据（非法 JSON）回退 None，不让列表 500。"""
+    if not raw:
+        return None
+    try:
+        return json.loads(raw)
+    except (json.JSONDecodeError, TypeError):
+        return None
 
 
 @router.get("/", summary="List audit logs", description="List all admin audit logs with filtering, pagination and search.")
@@ -89,10 +102,10 @@ async def list_logs(
             "resource_id": log.resource_id or "",
             "target_type": log.resource_type or "",
             "target_id": log.resource_id or "",
-            "before_state": json.loads(log.before_state) if log.before_state else None,
-            "after_state": json.loads(log.after_state) if log.after_state else None,
-            "changes": json.loads(log.changes) if log.changes else None,
-            "diff": json.loads(log.changes) if log.changes else None,
+            "before_state": _parse_json_state(log.before_state),
+            "after_state": _parse_json_state(log.after_state),
+            "changes": _parse_json_state(log.changes),
+            "diff": _parse_json_state(log.changes),
             "risk_level": log.risk_level or "low",
             "risk_reason": log.risk_reason or "",
             "severity": log.risk_level or "low",
@@ -136,7 +149,7 @@ async def export_logs(
         except ValueError:
             pass
 
-    logs = query.order_by(AdminAuditLog.created_at.desc()).all()
+    logs = query.order_by(AdminAuditLog.created_at.desc()).limit(EXPORT_MAX_ROWS).all()
     admins = {a.id: a for a in db.query(AdminUser).all()}
 
     if format == "csv":
@@ -186,29 +199,3 @@ async def export_logs(
             content=result,
             headers={"Content-Disposition": "attachment; filename=audit_logs.json"}
         )
-
-
-@router.get("/stats", summary="Audit log stats", description="Get audit log statistics.")
-async def get_log_stats(
-    db: Session = Depends(get_db),
-    current_admin: AdminUser = Depends(require_permission(Permission.LOGS_READ))
-):
-    total = db.query(func.count(AdminAuditLog.id)).scalar()
-    today = datetime.utcnow().date()
-    today_start = datetime.combine(today, datetime.min.time())
-    today_count = db.query(func.count(AdminAuditLog.id)).filter(AdminAuditLog.created_at >= today_start).scalar()
-
-    action_counts = {}
-    for action in db.query(AdminAuditLog.action, func.count(AdminAuditLog.id)).group_by(AdminAuditLog.action).all():
-        action_counts[action.action] = action[1]
-
-    risk_counts = {}
-    for risk in db.query(AdminAuditLog.risk_level, func.count(AdminAuditLog.id)).group_by(AdminAuditLog.risk_level).all():
-        risk_counts[risk.risk_level or "low"] = risk[1]
-
-    return {
-        "total": total,
-        "today": today_count,
-        "action_counts": action_counts,
-        "risk_counts": risk_counts,
-    }

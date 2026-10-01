@@ -3,22 +3,22 @@ import { useNavigate } from 'react-router-dom';
 import {
   Filter, Search, Globe, BookOpen, FileText, FolderOpen, Rss,
   Layers, Clock, Loader2, AlertCircle, X, CheckSquare, Square,
-  ArrowRight, Sparkles, Shuffle, Brain, CheckCircle2,
-} from 'lucide-react';
+  ArrowRight, Sparkles, Shuffle, Brain, CheckCircle2, type LucideIcon } from 'lucide-react';
 import PipelineBrainToggle from './components/PipelineBrainToggle';
 import PipelineStageBar from './components/PipelineStageBar';
 import { useNavigation } from '@/store/navigation';
-import { useSettings } from '@/store/settings';
 import { usePipelineStats, usePipelineItems, useCollideConcept, useExtractConcepts, useTransitionItem } from '@/hooks/usePipeline';
 import type { PipelineItem } from '@/api/pipeline';
 import StageContextBanner from './components/StageContextBanner';
 import ModelSelector from '@/components/llm/ModelSelector';
+import LLMCostBadge from '@/components/llm/LLMCostBadge';
 import { BrainSideBadge, SourceLink } from './components/PipelineHelpers';
 import ErrorState from '@/components/ErrorState';
 import PipelineItemActions from './components/PipelineItemActions';
 import CollisionPartnerModal from './components/CollisionPartnerModal';
+import { useConfirm } from '@/components/common/dialogContext';
 
-const CONTENT_TYPE_CONFIG: Record<string, { label: string; icon: React.ElementType; color: string }> = {
+const CONTENT_TYPE_CONFIG: Record<string, { label: string; icon: LucideIcon; color: string }> = {
   note: { label: '笔记', icon: FileText, color: 'text-personal-primary' },
   knowledge: { label: '知识', icon: Layers, color: 'text-info' },
   clip: { label: '剪藏', icon: Globe, color: 'text-network-primary' },
@@ -30,9 +30,9 @@ const CONTENT_TYPE_CONFIG: Record<string, { label: string; icon: React.ElementTy
 type SubtypeFilter = 'all' | 'concept' | 'source';
 
 const ExtractPage: FC = () => {
+  const askConfirm = useConfirm();
   const navigate = useNavigate();
   const { brainSide } = useNavigation();
-  const isClassic = useSettings((s) => s.uiMode === 'classic');
   const [searchQuery, setSearchQuery] = useState('');
   const [subtypeFilter, setSubtypeFilter] = useState<SubtypeFilter>('all');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -85,6 +85,25 @@ const ExtractPage: FC = () => {
     }
     return data;
   }, [items, subtypeFilter, searchQuery]);
+
+  const extractInputText = useMemo(() => {
+    return (
+      cardItems
+        ?.slice(0, 5)
+        .map((item) => `标题：${item.title || '无标题'}\n内容：${item.content_raw || ''}`)
+        .join('\n---\n')
+        .slice(0, 4000) || '从卡片化阶段拉取卡片并抽取核心概念、思维模型与可执行行动建议。'
+    );
+  }, [cardItems]);
+
+  const collideInputText = useMemo(() => {
+    const selected = filteredItems.filter((item) => selectedIds.has(item.id) && item.content_subtype === 'concept');
+    const source = selected.length > 0 ? selected : filteredItems.filter((item) => item.content_subtype === 'concept').slice(0, 5);
+    return source
+      .map((item) => `概念：${item.content_raw || item.title || ''}`)
+      .join('\n---\n')
+      .slice(0, 4000) || '对核心概念进行跨领域碰撞，生成跨界洞见。';
+  }, [filteredItems, selectedIds]);
 
   const toggleSelect = (id: string) => {
     setSelectedIds((prev) => {
@@ -167,7 +186,7 @@ const ExtractPage: FC = () => {
     const summary = sourceSel.length > 0
       ? `将先从 ${sourceSel.length} 张卡片抽取概念（调用 AI），每张取 1 个主概念。完成后会显示实际碰撞次数，再次确认后才碰撞。确定开始？`
       : `将对选中的 ${conceptSel.length} 个概念逐个碰撞 ${conceptSel.length} 次（每次调用 AI 生成跨界洞见）。确定继续？`;
-    if (!confirm(summary)) return;
+    if (!(await askConfirm(summary))) return;
 
     setIsBatchRunning(true);
     setBatchProgress(0);
@@ -209,7 +228,7 @@ const ExtractPage: FC = () => {
       // Second checkpoint (option b): extraction has produced the real concept count, so
       // confirm the exact number of collision calls before spending them.
       if (sourceSel.length > 0) {
-        const ok = confirm(
+        const ok = await askConfirm(
           `已汇集 ${conceptIds.length} 个概念用于碰撞（已选 ${conceptSel.length} 个 + 卡片主概念 ${conceptIds.length - conceptSel.length} 个）。将逐个碰撞 ${conceptIds.length} 次，每次调用 AI。确定继续？`
         );
         if (!ok) {
@@ -254,7 +273,7 @@ const ExtractPage: FC = () => {
       setError('卡片化阶段暂无卡片可抽取');
       return;
     }
-    if (!confirm(`将对上一阶段 ${candidates.length} 张卡片抽取概念，这会调用 AI，确定继续？`)) return;
+    if (!(await askConfirm(`将对上一阶段 ${candidates.length} 张卡片抽取概念，这会调用 AI，确定继续？`))) return;
     setIsPulling(true);
     setError(null);
     let failed = 0;
@@ -318,6 +337,7 @@ const ExtractPage: FC = () => {
       <div className="space-y-2">
         <div className="flex items-center justify-end gap-3">
           <ModelSelector value={extractModelId} onChange={setExtractModelId} taskType="analysis" className="w-48" />
+          <LLMCostBadge modelId={extractModelId} inputText={extractInputText} outputTokenEstimate={300} />
         </div>
         <StageContextBanner
           currentStage="extract"
@@ -395,6 +415,7 @@ const ExtractPage: FC = () => {
           <div className="flex flex-col items-end gap-2">
             <div className="flex items-center gap-3">
               <ModelSelector value={collideModelId} onChange={setCollideModelId} taskType="creative" className="w-48" />
+              <LLMCostBadge modelId={collideModelId} inputText={collideInputText} outputTokenEstimate={800} />
             </div>
             <button
               onClick={handleBatchCollide}
@@ -496,16 +517,6 @@ const ExtractPage: FC = () => {
                         >
                           <BookOpen className="w-3.5 h-3.5" />
                           原出处
-                        </button>
-                      )}
-                      {isClassic && (
-                        <button
-                          onClick={() => navigate(`/social-brain/relevance-check?content=${encodeURIComponent(item.content_raw)}`)}
-                          className="flex items-center justify-center gap-1.5 px-3 py-1.5 bg-danger/10 border border-danger/30 rounded-[2px] text-xs text-danger hover:bg-danger/20 transition-colors"
-                          title="判断这个概念与你是否相关"
-                        >
-                          <Filter className="w-3.5 h-3.5" />
-                          关我屁事
                         </button>
                       )}
                     </>

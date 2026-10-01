@@ -15,8 +15,10 @@ import { knowledgeApi } from '@/api/knowledge';
 import StageContextBanner from './components/StageContextBanner';
 import { BrainSideBadge, SourceLink } from './components/PipelineHelpers';
 import ErrorState from '@/components/ErrorState';
+import { useConfirm } from '@/components/common/dialogContext';
 
 const AnnotatePage: FC = () => {
+  const askConfirm = useConfirm();
   const navigate = useNavigate();
   const { brainSide } = useNavigation();
   const isClassic = useSettings((s) => s.uiMode === 'classic');
@@ -79,7 +81,7 @@ const AnnotatePage: FC = () => {
       .filter((item) => item.content_subtype === 'collision_result')
       .slice(0, 10);
     if (candidates.length === 0) return;
-    if (!confirm(`将批准上一阶段 ${candidates.length} 个碰撞结果进入注卡，确定继续？`)) return;
+    if (!(await askConfirm(`将批准上一阶段 ${candidates.length} 个碰撞结果进入注卡，确定继续？`))) return;
     setIsPulling(true);
     setError(null);
     let failed = 0;
@@ -104,7 +106,7 @@ const AnnotatePage: FC = () => {
 
   const handleSaveAnnotation = async (id: string, data: import('@/api/knowledge').KnowledgeUpdateData) => {
     await updateUnit.mutateAsync({ id, data });
-    // 自动验证开关：注卡落库即触发 LLM 验证（默认关，每条都烧模型；失败静默不挡注卡流程）
+    // 自动验证开关：注卡落库即触发 LLM 验证（默认关，每条烧钱；失败静默不挡注卡流程）
     if (autoVerifyOnAnnotate) {
       knowledgeApi.verify(id).catch((e) => console.warn('注卡后自动验证失败', e));
     }
@@ -197,8 +199,8 @@ const AnnotatePage: FC = () => {
               />
             </div>
           </div>
-          {/* 注卡后自动验证开关（默认关：每条都触发一次 LLM；开了注卡即验） */}
-          <label className="flex items-center gap-2 text-xs text-text-secondary cursor-pointer select-none shrink-0" title="开启后，每次注卡保存都会自动触发一次 LLM 验证">
+          {/* 注卡后自动验证开关（默认关：每条都烧 LLM；开了注卡即验） */}
+          <label className="flex items-center gap-2 text-xs text-text-secondary cursor-pointer select-none shrink-0" title="开启后，每次注卡保存都会自动触发一次 LLM 验证（按量计费）">
             <input
               type="checkbox"
               checked={autoVerifyOnAnnotate}

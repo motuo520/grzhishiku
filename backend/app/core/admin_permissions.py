@@ -26,6 +26,11 @@ class Permission(str, Enum):
     USERS_READ = "users:read"
     USERS_WRITE = "users:write"
     CONTENT_MODERATE = "content:moderate"
+    BILLING_READ = "billing:read"
+    BILLING_WRITE = "billing:write"
+    PLANS_MANAGE = "plans:manage"
+    COUPONS_MANAGE = "coupons:manage"
+    MODELS_MANAGE = "models:manage"
     SYSTEM_CONFIG = "system:config"
     SUPPORT_MANAGE = "support:manage"
     LOGS_READ = "logs:read"
@@ -40,10 +45,22 @@ ROLE_PERMISSIONS = {
         Permission.USERS_READ.value,
         Permission.USERS_WRITE.value,
         Permission.CONTENT_MODERATE.value,
+        Permission.BILLING_READ.value,
+        Permission.BILLING_WRITE.value,
+        Permission.PLANS_MANAGE.value,
+        Permission.COUPONS_MANAGE.value,
+        Permission.MODELS_MANAGE.value,
         Permission.SYSTEM_CONFIG.value,
         Permission.SUPPORT_MANAGE.value,
         Permission.LOGS_READ.value,
         Permission.TENANTS_MANAGE.value,
+    ],
+    "finance_admin": [
+        Permission.BILLING_READ.value,
+        Permission.BILLING_WRITE.value,
+        Permission.PLANS_MANAGE.value,
+        Permission.COUPONS_MANAGE.value,
+        Permission.LOGS_READ.value,
     ],
     "support": [
         Permission.USERS_READ.value,
@@ -58,9 +75,11 @@ ROLE_PERMISSIONS = {
     "auditor": [
         Permission.LOGS_READ.value,
         Permission.USERS_READ.value,
+        Permission.BILLING_READ.value,
     ],
     "readonly": [
         Permission.USERS_READ.value,
+        Permission.BILLING_READ.value,
         Permission.LOGS_READ.value,
     ],
 }
@@ -78,18 +97,20 @@ def _get_permissions(admin: AdminUser) -> List[str]:
         except (json.JSONDecodeError, TypeError):
             stored = {}
 
-    # Start with role defaults
-    perms = set(ROLE_PERMISSIONS.get(admin.role, []))
-    # Apply stored overrides
-    for resource, actions in stored.items():
-        if isinstance(actions, list):
-            for action in actions:
-                perms.add(f"{resource}:{action}")
-        elif actions is True:
-            perms.add(f"{resource}:read")
-            perms.add(f"{resource}:write")
+    # stored 非空=完全覆盖 role 默认（自定义集合既能加也能减——此前与 role 默认
+    # 取并集只能加不能减，收窄意图静默失效，10-01 审计实捕）；空=role 默认
+    if stored:
+        perms = set()
+        for resource, actions in stored.items():
+            if isinstance(actions, list):
+                for action in actions:
+                    perms.add(f"{resource}:{action}")
+            elif actions is True:
+                perms.add(f"{resource}:read")
+                perms.add(f"{resource}:write")
+        return list(perms)
 
-    return list(perms)
+    return list(ROLE_PERMISSIONS.get(admin.role, []))
 
 
 def has_permission(admin: AdminUser, permission: Permission) -> bool:

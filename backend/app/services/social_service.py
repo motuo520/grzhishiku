@@ -1,8 +1,8 @@
-import logging
 import os
 import shutil
 import uuid
 import json
+import logging
 from datetime import datetime
 from typing import List, Optional, Dict
 
@@ -221,6 +221,7 @@ def save_to_knowledge(db: Session, user: User, message: SocialMessage, tag_ids: 
         brain_side=brain_side if brain_side in ("personal", "network", "both") else "network",
         content_raw=safe_content,
         content_type='social_message',
+        title=safe_title,  # 09-16 单元自身标题
         source_url=None,
         source_title=safe_title,
         source_type='social',
@@ -251,7 +252,7 @@ def save_to_knowledge(db: Session, user: User, message: SocialMessage, tag_ids: 
         auto_link_knowledge(db, unit, user.id)
         db.commit()
     except Exception as e:
-        logger.warning(f"Auto-link failed for social knowledge {unit.id}: {e}")
+        print(f"Auto-link failed for social knowledge {unit.id}: {e}")
 
     message.status = "imported_to_knowledge"
     message.knowledge_id = unit.id

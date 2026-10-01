@@ -68,7 +68,6 @@ export const socialApi = {
     skip?: number;
     limit?: number;
   }) => api.get<SocialMessage[]>('/api/v1/social/messages', { params }),
-  getMessage: (id: string) => api.get<SocialMessage>(`/api/v1/social/messages/${id}`),
   saveToKnowledge: (id: string, tag_ids?: string[], brain_side?: string) =>
     api.post(`/api/v1/social/messages/${id}/save-to-knowledge`, { tag_ids, brain_side }),
   deleteMessage: (id: string) => api.delete(`/api/v1/social/messages/${id}`),

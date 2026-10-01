@@ -1,9 +1,9 @@
 import { FC, useState } from 'react';
-import { Newspaper, Rss, MessageCircle, Mail, Plus, Trash2, Loader2 } from 'lucide-react';
+import { Newspaper, Rss, MessageCircle, Mail, Plus, Trash2, Loader2, type LucideIcon } from 'lucide-react';
 import { useAttention } from '@/hooks/useAttention';
 import type { AttentionRation } from '@/api/attention';
 
-const SOURCE_ICONS: Record<string, React.ElementType> = {
+const SOURCE_ICONS: Record<string, LucideIcon> = {
   rss: Rss,
   social: MessageCircle,
   email: Mail,

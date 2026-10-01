@@ -45,7 +45,6 @@ export interface ReadLaterFilters {
 export const readLaterApi = {
   list: (params?: ReadLaterFilters) => api.get<ReadLaterItem[]>('/api/v1/read-later/items', { params }),
   create: (data: ReadLaterCreateData) => api.post<ReadLaterItem>('/api/v1/read-later/items', data),
-  get: (id: string) => api.get<ReadLaterItem>(`/api/v1/read-later/items/${id}`),
   update: (id: string, data: ReadLaterUpdateData) => api.put<ReadLaterItem>(`/api/v1/read-later/items/${id}`, data),
   delete: (id: string) => api.delete(`/api/v1/read-later/items/${id}`),
   batchDelete: (ids: string[]) => api.request({ method: 'DELETE', url: '/api/v1/read-later/items/batch', data: { ids } }),

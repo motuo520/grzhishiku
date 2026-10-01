@@ -3,10 +3,12 @@ import { MessageSquare, Send, Trash2, Loader2 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useCommunityPosts, useCreateCommunityPost, useDeleteCommunityPost } from '@/hooks/useCommunity';
 import { formatDistanceToNow } from '@/utils/date';
+import { useConfirm } from '@/components/common/dialogContext';
 
 const MAX_LENGTH = 1000;
 
 const CommunityPage: FC = () => {
+  const askConfirm = useConfirm();
   const { isLoggedIn, user } = useAuth();
   const [content, setContent] = useState('');
   // 递增加载：后端无页码 UI，靠放大 limit 重取；上限与后端 le=1000 对齐
@@ -27,8 +29,8 @@ const CommunityPage: FC = () => {
     }
   };
 
-  const handleDelete = (postId: string) => {
-    if (!confirm('确定要删除这条发言吗？')) return;
+  const handleDelete = async (postId: string) => {
+    if (!(await askConfirm('确定要删除这条发言吗？'))) return;
     deletePost.mutate(postId);
   };
 

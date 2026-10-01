@@ -1,7 +1,7 @@
 import { FC } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { BarChart2, Package, Lock, Unlock, Eye, Globe, User, Layers } from 'lucide-react';
+import { BarChart2, Package, Lock, Unlock, Eye, Globe, User, Layers, type LucideIcon } from 'lucide-react';
 import { useCapsules } from '@/hooks/useCapsules';
 
 const CapsuleStatsPage: FC = () => {
@@ -73,7 +73,7 @@ const CapsuleStatsPage: FC = () => {
   );
 };
 
-const StatItem: FC<{ icon: React.ElementType; label: string; value: string | number }> = ({
+const StatItem: FC<{ icon: LucideIcon; label: string; value: string | number }> = ({
   icon: Icon, label, value,
 }) => (
   <div className="flex items-center gap-2">

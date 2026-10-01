@@ -7,6 +7,8 @@ import uuid
 
 from app.core.database import get_db
 from app.core.security import get_current_user
+from app.core.tenant_scope import get_active_tenant, content_filter
+from app.core.ssrf import validate_outbound_url
 from app.models.base import User, RssFeed, RssEntry, BrowserClip
 from app.services import rss_service
 from app.services.rss_service import AUTO_FETCH_INTERVALS
@@ -62,6 +64,9 @@ class EntryResponse(BaseModel):
 
 class SaveEntryRequest(BaseModel):
     as_clip: bool = True
+    # 页面上已生成的 AI 摘要（原为页面内存态，保存剪藏时随包落库——09-13 实捕：
+    # 摘要生成成功但保存的剪藏只有 feed 自带的几十字 description）
+    ai_summary: Optional[str] = Field(default=None, max_length=2000)
 
 
 class AutoFetchRequest(BaseModel):
@@ -78,18 +83,21 @@ async def list_feeds(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    feeds = db.query(RssFeed).filter(
-        RssFeed.user_id == current_user.id,
-        RssFeed.status != "deleted"
+    tenant = get_active_tenant(db, current_user)
+    feeds = content_filter(
+        db.query(RssFeed).filter(RssFeed.status != "deleted"),
+        RssFeed, current_user, tenant,
     ).order_by(RssFeed.created_at.desc()).all()
     
     result = []
     for feed in feeds:
-        unread = db.query(RssEntry).filter(
-            RssEntry.feed_id == feed.id,
-            RssEntry.user_id == current_user.id,
-            RssEntry.is_read == False,
-            RssEntry.status == "active",
+        unread = content_filter(
+            db.query(RssEntry).filter(
+                RssEntry.feed_id == feed.id,
+                RssEntry.is_read == False,
+                RssEntry.status == "active",
+            ),
+            RssEntry, current_user, tenant,
         ).count()
         data = FeedResponse.model_validate(feed).model_dump()
         data["unread_count"] = unread
@@ -104,16 +112,18 @@ async def create_feed(
     current_user: User = Depends(get_current_user)
 ):
     # SSRF 防护：仅允许 http/https，且禁止内网/回环地址（域名解析后的 IP 同样校验）
-    from app.services.url_guard import validate_fetch_url, UrlNotAllowed
     try:
-        validate_fetch_url(feed_data.url)
-    except UrlNotAllowed as e:
+        validate_outbound_url(feed_data.url, label="RSS 地址")
+    except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
-    existing = db.query(RssFeed).filter(
-        RssFeed.user_id == current_user.id,
-        RssFeed.url == feed_data.url,
-        RssFeed.status != "deleted"
+    tenant = get_active_tenant(db, current_user)
+    existing = content_filter(
+        db.query(RssFeed).filter(
+            RssFeed.url == feed_data.url,
+            RssFeed.status != "deleted"
+        ),
+        RssFeed, current_user, tenant,
     ).first()
     if existing:
         raise HTTPException(status_code=400, detail="该 RSS 源已存在")
@@ -129,6 +139,8 @@ async def create_feed(
     feed = RssFeed(
         id=str(uuid.uuid4()),
         user_id=current_user.id,
+        # 租户上下文创建：内容归团队（tenant_id=激活租户），user_id 仍记创建者
+        tenant_id=tenant.id if tenant else None,
         url=feed_data.url,
         title=feed_data.title or feed_info.get("title"),
         description=feed_info.get("description"),
@@ -149,7 +161,7 @@ async def get_feed(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    feed = db.query(RssFeed).filter(RssFeed.id == feed_id, RssFeed.user_id == current_user.id, RssFeed.status != "deleted").first()
+    feed = content_filter(db.query(RssFeed).filter(RssFeed.id == feed_id, RssFeed.status != "deleted"), RssFeed, current_user, get_active_tenant(db, current_user)).first()
     if not feed:
         raise HTTPException(status_code=404, detail="Feed not found")
     return feed
@@ -162,7 +174,7 @@ async def update_feed(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    feed = db.query(RssFeed).filter(RssFeed.id == feed_id, RssFeed.user_id == current_user.id, RssFeed.status != "deleted").first()
+    feed = content_filter(db.query(RssFeed).filter(RssFeed.id == feed_id, RssFeed.status != "deleted"), RssFeed, current_user, get_active_tenant(db, current_user)).first()
     if not feed:
         raise HTTPException(status_code=404, detail="Feed not found")
     if data.title is not None:
@@ -181,7 +193,7 @@ async def delete_feed(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    feed = db.query(RssFeed).filter(RssFeed.id == feed_id, RssFeed.user_id == current_user.id, RssFeed.status != "deleted").first()
+    feed = content_filter(db.query(RssFeed).filter(RssFeed.id == feed_id, RssFeed.status != "deleted"), RssFeed, current_user, get_active_tenant(db, current_user)).first()
     if not feed:
         raise HTTPException(status_code=404, detail="Feed not found")
     feed.status = "deleted"
@@ -257,14 +269,16 @@ async def list_entries(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    feed = db.query(RssFeed).filter(RssFeed.id == feed_id, RssFeed.user_id == current_user.id, RssFeed.status != "deleted").first()
+    feed = content_filter(db.query(RssFeed).filter(RssFeed.id == feed_id, RssFeed.status != "deleted"), RssFeed, current_user, get_active_tenant(db, current_user)).first()
     if not feed:
         raise HTTPException(status_code=404, detail="Feed not found")
-    
-    query = db.query(RssEntry).filter(
-        RssEntry.feed_id == feed_id,
-        RssEntry.user_id == current_user.id,
-        RssEntry.status == "active",
+
+    query = content_filter(
+        db.query(RssEntry).filter(
+            RssEntry.feed_id == feed_id,
+            RssEntry.status == "active",
+        ),
+        RssEntry, current_user, get_active_tenant(db, current_user),
     )
     if unread_only:
         query = query.filter(RssEntry.is_read == False)
@@ -281,7 +295,7 @@ async def mark_entry_read(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    entry = db.query(RssEntry).filter(RssEntry.id == entry_id, RssEntry.user_id == current_user.id).first()
+    entry = content_filter(db.query(RssEntry).filter(RssEntry.id == entry_id), RssEntry, current_user, get_active_tenant(db, current_user)).first()
     if not entry:
         raise HTTPException(status_code=404, detail="Entry not found")
     entry.is_read = True
@@ -297,19 +311,28 @@ async def save_entry(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    entry = db.query(RssEntry).filter(RssEntry.id == entry_id, RssEntry.user_id == current_user.id).first()
+    entry = content_filter(db.query(RssEntry).filter(RssEntry.id == entry_id), RssEntry, current_user, get_active_tenant(db, current_user)).first()
     if not entry:
         raise HTTPException(status_code=404, detail="Entry not found")
     
     if request.as_clip:
+        # full_text 优先用条目全文（content:encoded，HTML 转纯文本）；excerpt 优先
+        # 用页面已生成的 AI 摘要，回落 feed 摘要
+        full_text = None
+        if entry.content:
+            from app.services.email_service import html_to_text
+            full_text = html_to_text(entry.content) or None
         clip = BrowserClip(
             id=str(uuid.uuid4()),
             user_id=current_user.id,
+            # 与来源条目同空间：团队 RSS 条目转出的剪藏也归团队
+            tenant_id=entry.tenant_id,
             brain_side="network",
             title=entry.title or "RSS 剪藏",
             url=entry.link,
             domain=_extract_domain(entry.link),
-            excerpt=entry.summary,
+            excerpt=(request.ai_summary or "").strip() or entry.summary,
+            full_text=full_text,
             status="active",
         )
         db.add(clip)
@@ -331,11 +354,12 @@ async def batch_delete_entries(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    # 语义与单条删除完全一致：软删 status='deleted'（无级联清理）；
-    # 不属于当前用户的 id 静默跳过（幂等：不报错，只少删）
+    # 语义与单条删除完全一致：软删 status='deleted'（无级联清理、无审计）；
+    # 空间口径之外的 id 静默跳过（幂等：不报错，只少删）
+    tenant = get_active_tenant(db, current_user)
     deleted = 0
     for entry_id in request.ids:
-        entry = db.query(RssEntry).filter(RssEntry.id == entry_id, RssEntry.user_id == current_user.id).first()
+        entry = content_filter(db.query(RssEntry).filter(RssEntry.id == entry_id), RssEntry, current_user, tenant).first()
         if not entry:
             continue
         entry.status = "deleted"
@@ -350,7 +374,7 @@ async def delete_entry(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    entry = db.query(RssEntry).filter(RssEntry.id == entry_id, RssEntry.user_id == current_user.id).first()
+    entry = content_filter(db.query(RssEntry).filter(RssEntry.id == entry_id), RssEntry, current_user, get_active_tenant(db, current_user)).first()
     if not entry:
         raise HTTPException(status_code=404, detail="Entry not found")
     entry.status = "deleted"

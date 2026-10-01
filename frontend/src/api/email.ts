@@ -61,7 +61,6 @@ export const emailApi = {
     api.post<EmailSyncResult>(`/api/v1/email/accounts/${id}/sync`, null, { params: { max_messages: maxMessages } }),
   listMessages: (params?: { account_id?: string; q?: string; status?: string; skip?: number; limit?: number }) =>
     api.get<EmailMessage[]>('/api/v1/email/messages', { params }),
-  getMessage: (id: string) => api.get<EmailMessage>(`/api/v1/email/messages/${id}`),
   saveToKnowledge: (id: string, tag_ids?: string[]) =>
     api.post(`/api/v1/email/messages/${id}/save-to-knowledge`, { tag_ids }),
   deleteMessage: (id: string) => api.delete(`/api/v1/email/messages/${id}`),

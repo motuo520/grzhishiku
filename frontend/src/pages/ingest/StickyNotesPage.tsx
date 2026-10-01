@@ -9,6 +9,7 @@ import { useReminders, useCreateReminder, useUpdateReminder, useDeleteReminder }
 import { useAuth } from '@/hooks/useAuth';
 import type { StickyNote } from '@/api/stickyNotes';
 import type { Reminder } from '@/api/reminders';
+import { useConfirm } from '@/components/common/dialogContext';
 
 const COLORS = [
   { value: '#f59e0b', label: '琥珀' },
@@ -34,6 +35,7 @@ interface NoteCardProps {
 }
 
 const NoteCard: FC<NoteCardProps> = ({ note, onUpdate, onDelete, onConvertToNote }) => {
+  const askConfirm = useConfirm();
   const [isEditing, setIsEditing] = useState(false);
   const [draft, setDraft] = useState(note.content);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -109,8 +111,8 @@ const NoteCard: FC<NoteCardProps> = ({ note, onUpdate, onDelete, onConvertToNote
                 <Check className="w-3.5 h-3.5" />
               </button>
               <button
-                onClick={() => {
-                  if (confirm('确定将这条便签转为笔记吗？')) onConvertToNote(note.id);
+                onClick={async () => {
+                  if (await askConfirm('确定将这条便签转为笔记吗？')) onConvertToNote(note.id);
                 }}
                 className="p-1.5 rounded-[2px] text-text-muted hover:text-info hover:bg-info/10"
                 title="转为笔记"
@@ -127,8 +129,8 @@ const NoteCard: FC<NoteCardProps> = ({ note, onUpdate, onDelete, onConvertToNote
             {note.is_archived ? <RotateCcw className="w-3.5 h-3.5" /> : <Archive className="w-3.5 h-3.5" />}
           </button>
           <button
-            onClick={() => {
-              if (confirm('确定删除这条便签吗？')) onDelete(note.id);
+            onClick={async () => {
+              if (await askConfirm('确定删除这条便签吗？')) onDelete(note.id);
             }}
             className="p-1.5 rounded-[2px] text-text-muted hover:text-danger hover:bg-danger/10"
             title="删除"

@@ -57,6 +57,41 @@ class SystemConfigSnapshot:
         return mode.get("message") or mode.get("estimated_recovery")
 
     @property
+    def default_plan(self) -> str:
+        return str(self._get("default_plan", "free"))
+
+    @property
+    def enable_signup_bonus(self) -> bool:
+        return bool(self._get("enable_signup_bonus", False))
+
+    @property
+    def payment_config(self) -> Dict[str, Any]:
+        val = self._get("payment_config", {})
+        if isinstance(val, str):
+            try:
+                val = json.loads(val)
+            except json.JSONDecodeError:
+                val = {}
+        if not isinstance(val, dict):
+            return {}
+        # 透明解密敏感字段（加密落库，读取侧统一解密；存量明文透传）
+        try:
+            from app.core.crypto import decrypt_secret
+            SENSITIVE = {"private_key", "secret_key", "api_key", "app_secret", "mch_key", "key_secret", "webhook_secret"}
+            out = {}
+            for provider, p_cfg in val.items():
+                if isinstance(p_cfg, dict):
+                    out[provider] = {
+                        k: (decrypt_secret(v) if k in SENSITIVE and isinstance(v, str) and v else v)
+                        for k, v in p_cfg.items()
+                    }
+                else:
+                    out[provider] = p_cfg
+            return out
+        except Exception:
+            return val
+
+    @property
     def announcement(self) -> Dict[str, Any]:
         val = self._get("announcement", {})
         if isinstance(val, str):

@@ -2,8 +2,7 @@ import { FC, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import {
   Activity, Brain, Globe, User, ShieldCheck, AlertTriangle,
-  XCircle, HelpCircle, BarChart3, RefreshCw
-} from 'lucide-react';
+  XCircle, HelpCircle, BarChart3, RefreshCw, type LucideIcon } from 'lucide-react';
 import { useKnowledge } from '@/hooks/useKnowledge';
 import ErrorState from '@/components/ErrorState';
 import type { SideStats, KnowledgeStatsResponse } from '@/types';
@@ -11,7 +10,7 @@ import type { SideStats, KnowledgeStatsResponse } from '@/types';
 interface StatCardProps {
   label: string;
   value: number;
-  icon: React.ElementType;
+  icon: LucideIcon;
   colorClass: string;
 }
 
@@ -29,7 +28,7 @@ const StatCard: FC<StatCardProps> = ({ label, value, icon: Icon, colorClass }) =
 
 interface SideSectionProps {
   title: string;
-  icon: React.ElementType;
+  icon: LucideIcon;
   stats: SideStats | undefined;
   color: string;
 }

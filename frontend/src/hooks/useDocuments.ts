@@ -15,7 +15,7 @@ export const useDocuments = (filters?: DocumentFilters) => {
   });
 
   const uploadMutation = useMutation({
-    mutationFn: ({ file, title }: { file: File; title?: string }) => documentApi.upload(file, title),
+    mutationFn: ({ file, title, indexOnly }: { file: File; title?: string; indexOnly?: boolean }) => documentApi.upload(file, title, indexOnly),
     onSuccess: () => {
       invalidateContentQueries(queryClient);
     },
@@ -35,6 +35,14 @@ export const useDocuments = (filters?: DocumentFilters) => {
     },
   });
 
+  // 手动归档/移出文件夹（口径B：文档只手动归档）；文本类文档在线编辑 title/content
+  const updateMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: { folder_id?: string | null; title?: string; content?: string; index_only?: boolean } }) => documentApi.update(id, data),
+    onSuccess: () => {
+      invalidateContentQueries(queryClient);
+    },
+  });
+
   const saveToKnowledgeMutation = useMutation({
     mutationFn: ({ id, tagIds }: { id: string; tagIds?: string[] }) => documentApi.saveToKnowledge(id, tagIds),
     onSuccess: () => {
@@ -48,6 +56,7 @@ export const useDocuments = (filters?: DocumentFilters) => {
     uploadDocument: uploadMutation.mutateAsync,
     reextractDocument: reextractMutation.mutateAsync,
     deleteDocument: deleteMutation.mutateAsync,
+    updateDocument: updateMutation.mutateAsync,
     saveToKnowledge: saveToKnowledgeMutation.mutateAsync,
     isUploading: uploadMutation.isPending,
     isReextracting: reextractMutation.isPending,

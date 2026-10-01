@@ -3,8 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   XCircle, AlertTriangle, Search, MessageSquarePlus, ArrowRight,
-  ShieldCheck, HelpCircle, Loader2, Clock, Pencil, Eye, Trash2, Check, X
-} from 'lucide-react';
+  ShieldCheck, HelpCircle, Loader2, Clock, Pencil, Eye, Trash2, Check, X, type LucideIcon } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useCounterEvidence, useUpdateKnowledgeUnit } from '@/hooks/useKnowledge';
 import { knowledgeApi } from '@/api/knowledge';
@@ -12,8 +11,9 @@ import { invalidateContentQueries } from '@/utils/invalidateContent';
 import ErrorState from '@/components/ErrorState';
 import EvolutionChainBar from '@/components/EvolutionChainBar';
 import type { KnowledgeUnit, CounterEvidenceItem } from '@/types';
+import { useConfirm } from '@/components/common/dialogContext';
 
-const statusConfig: Record<string, { icon: React.ElementType; label: string; badgeClass: string }> = {
+const statusConfig: Record<string, { icon: LucideIcon; label: string; badgeClass: string }> = {
   confirmed: { icon: ShieldCheck, label: '已验证', badgeClass: 'bg-success/10 text-success border-success/30' },
   disputed: { icon: AlertTriangle, label: '有争议', badgeClass: 'bg-warning/10 text-warning border-warning/30' },
   debunked: { icon: XCircle, label: '已证伪', badgeClass: 'bg-danger/10 text-danger border-danger/30' },
@@ -23,6 +23,7 @@ const statusConfig: Record<string, { icon: React.ElementType; label: string; bad
 };
 
 const CounterEvidenceWallPage: FC = () => {
+  const askConfirm = useConfirm();
   const navigate = useNavigate();
   const { units, isLoading, error, refetch } = useCounterEvidence();
   const updateUnit = useUpdateKnowledgeUnit();
@@ -55,7 +56,7 @@ const CounterEvidenceWallPage: FC = () => {
   };
 
   const handleReject = async (unit: KnowledgeUnit) => {
-    if (!confirm('确定驳回这条反证？知识将恢复原有验证状态。')) return;
+    if (!(await askConfirm('确定驳回这条反证？知识将恢复原有验证状态。'))) return;
     setBusyId(unit.id);
     try {
       await knowledgeApi.disputeResolution(unit.id, { resolution: 'rejected' });
@@ -70,7 +71,7 @@ const CounterEvidenceWallPage: FC = () => {
   };
 
   const handleRemove = async (unit: KnowledgeUnit) => {
-    if (!confirm('确定移除这条知识？（软删除，不再参与检索与图谱）')) return;
+    if (!(await askConfirm('确定移除这条知识？（软删除，不再参与检索与图谱）'))) return;
     setBusyId(unit.id);
     try {
       await knowledgeApi.delete(unit.id);

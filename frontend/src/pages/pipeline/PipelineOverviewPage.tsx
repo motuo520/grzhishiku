@@ -4,10 +4,10 @@ import {
   Workflow, Database, SquareStack, Filter, Shuffle, Pencil, ArrowRight,
   Layers, Clock, Globe, BookOpen, FileText, FolderOpen, Rss,
   Loader2, AlertCircle, X, Play, Sparkles, TrendingUp, CheckSquare, Square, Calendar,
-  Brain, ShieldCheck,
-} from 'lucide-react';
+  Brain, ShieldCheck, type LucideIcon } from 'lucide-react';
 import PipelineBrainToggle from './components/PipelineBrainToggle';
 import PipelineStageBar from './components/PipelineStageBar';
+import ModelSelector from '@/components/llm/ModelSelector';
 import { useNavigation } from '@/store/navigation';
 import { useSettings } from '@/store/settings';
 import ErrorState from '@/components/ErrorState';
@@ -20,6 +20,7 @@ import {
   useCollideConcept,
 } from '@/hooks/usePipeline';
 import type { PipelineItem } from '@/api/pipeline';
+import { useConfirm } from '@/components/common/dialogContext';
 
 const STAGE_CONFIG = [
   { id: 'raw', key: 'raw', label: '原始素材', desc: '剪藏、书摘、笔记、语音', icon: Database, path: '/pipeline/raw', color: 'bg-info/10' },
@@ -29,7 +30,7 @@ const STAGE_CONFIG = [
   { id: 'annotate', key: 'approved', label: '注卡', desc: '注入个人语境与下一步行动', icon: Pencil, path: '/pipeline/annotate', color: 'bg-personal-primary/10' },
 ];
 
-const CONTENT_TYPE_CONFIG: Record<string, { label: string; icon: React.ElementType; color: string }> = {
+const CONTENT_TYPE_CONFIG: Record<string, { label: string; icon: LucideIcon; color: string }> = {
   note: { label: '笔记', icon: FileText, color: 'text-personal-primary' },
   knowledge: { label: '知识单元', icon: Layers, color: 'text-info' },
   clip: { label: '剪藏', icon: Globe, color: 'text-network-primary' },
@@ -39,6 +40,7 @@ const CONTENT_TYPE_CONFIG: Record<string, { label: string; icon: React.ElementTy
 };
 
 const PipelineOverviewPage: FC = () => {
+  const askConfirm = useConfirm();
   const navigate = useNavigate();
   const { brainSide } = useNavigation();
   const isClassic = useSettings((s) => s.uiMode === 'classic');
@@ -47,6 +49,9 @@ const PipelineOverviewPage: FC = () => {
   const [runProgress, setRunProgress] = useState(0);
   const [selectedRawIds, setSelectedRawIds] = useState<Set<string>>(new Set());
   const [showSelector, setShowSelector] = useState(true);
+  // 一键管线的模型选择：跟随右下角 LLM 控制台（ModelSelector 内置联动），
+  // 此处改选仅对本次运行生效，不写回全局
+  const [pipelineModel, setPipelineModel] = useState('');
 
   const { stats, isLoading: isStatsLoading, error: statsError, refetch: refetchStats } = usePipelineStats(brainSide);
   const { items: rawItems, error: rawError, refetch: refetchRaw } = usePipelineItems('raw', brainSide);
@@ -59,7 +64,9 @@ const PipelineOverviewPage: FC = () => {
   const runTokenRef = useRef(0);
 
   useEffect(() => {
-    return () => { runTokenRef.current++; };
+    // 卸载时递增运行令牌作废旧请求（ref 对象拷进 effect，cleanup 不直读 .current）
+    const runToken = runTokenRef;
+    return () => { runToken.current++; };
   }, []);
 
   // 默认全选原始素材，用户可以取消勾选来控制一键管线的范围
@@ -93,10 +100,10 @@ const PipelineOverviewPage: FC = () => {
     const n = targets.length;
     // Real one-click pipeline: run each raw item through card -> extract -> collide.
     // Upfront estimate so the user knows the AI cost before anything is spent.
-    if (!confirm(
+    if (!(await askConfirm(
       `将对 ${n} 条原始素材串跑完整管线：卡片化 → 抽取 → 碰撞（每条取 1 个主概念碰撞）。\n` +
       `每条最多 2 次 AI 调用，共最多 ${n * 2} 次，会消耗 AI 额度。确定开始？`
-    )) return;
+    ))) return;
     setIsRunning(true);
     setRunProgress(0);
     setError(null);
@@ -120,12 +127,12 @@ const PipelineOverviewPage: FC = () => {
           const ext = await extractConcepts.mutateAsync({
             content_type: card.content_type,
             content_id: card.content_id,
-            preferred_model: undefined,
+            preferred_model: pipelineModel || undefined,
           });
           const ids = (ext?.concepts || []).map((c: any) => c.id).filter(Boolean);
           // 3) collide the primary concept only (AI) — 1 per card, matching the extract page
           if (ids.length > 0) {
-            await collideConcept.mutateAsync({ concept_id: ids[0], preferred_model: undefined });
+            await collideConcept.mutateAsync({ concept_id: ids[0], preferred_model: pipelineModel || undefined });
             collisions++;
           }
           done++;
@@ -166,7 +173,7 @@ const PipelineOverviewPage: FC = () => {
     return plain.length > maxLen ? plain.slice(0, maxLen) + '...' : plain;
   };
 
-  const renderRecentItem = (item: PipelineItem, index: number) => {
+  const renderRecentItem = (item: PipelineItem) => {
     const config = CONTENT_TYPE_CONFIG[item.content_type] || { label: item.content_type, icon: Layers, color: 'text-text-secondary' };
     const Icon = config.icon;
     const stageInfo = STAGE_CONFIG.find((s) => s.key === item.pipeline_stage) || STAGE_CONFIG[0];
@@ -205,10 +212,14 @@ const PipelineOverviewPage: FC = () => {
         <div>
           <h1 className="text-2xl font-bold text-text-primary flex items-center gap-2">
             <Workflow className="w-6 h-6 text-info" />
-            认知生产管线
+            知识流水线
+            <span className="text-[10px] font-normal px-1.5 py-0.5 rounded-[2px] bg-info/10 text-info border border-info/20 align-middle">
+              铸卡流 v1
+            </span>
           </h1>
           <p className="text-sm text-text-secondary mt-1">
             知识不是仓库，是一条阶段化生产线：原始 → 卡片 → 抽取 → 碰撞 → 注卡。
+            每个环节都是可迭代的工作流——像软件一样持续打磨，版本号随规则升级。
           </p>
         </div>
         <div className="flex flex-col items-start md:items-end gap-3">
@@ -377,16 +388,30 @@ const PipelineOverviewPage: FC = () => {
             <h2 className="text-sm font-semibold text-text-primary">五阶段生产漏斗</h2>
             <span className="text-xs text-text-muted">{totalItems} 件内容在管线中</span>
           </div>
-          <button
-            onClick={handleRunPipeline}
-            disabled={isRunning || (rawItems || []).length === 0 || selectedRawIds.size === 0}
-            className="flex items-center gap-2 px-4 py-2 bg-accent text-white rounded-[2px] text-sm font-medium hover:bg-[var(--accent-hover)] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {isRunning ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" />}
-            {isRunning ? `运行中 ${runProgress}/${(selectedRawIds.size > 0
-              ? (rawItems || []).filter((i) => selectedRawIds.has(i.id)).length
-              : rawItems?.length || 0)}` : `一键运行已选 (${selectedRawIds.size})`}
-          </button>
+          <div className="flex items-center gap-3 flex-wrap">
+            <div className="space-y-1">
+              <ModelSelector
+                value={pipelineModel}
+                onChange={setPipelineModel}
+                taskType="analysis"
+                className="w-56"
+                disabled={isRunning}
+              />
+              <p className="text-[10px] text-text-muted">
+                与右下角 LLM 控制台联动：控制台换模型这里跟随；此处改选仅本次运行生效
+              </p>
+            </div>
+            <button
+              onClick={handleRunPipeline}
+              disabled={isRunning || (rawItems || []).length === 0 || selectedRawIds.size === 0}
+              className="flex items-center gap-2 px-4 py-2 bg-accent text-white rounded-[2px] text-sm font-medium hover:bg-[var(--accent-hover)] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isRunning ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" />}
+              {isRunning ? `运行中 ${runProgress}/${(selectedRawIds.size > 0
+                ? (rawItems || []).filter((i) => selectedRawIds.has(i.id)).length
+                : rawItems?.length || 0)}` : `一键运行已选 (${selectedRawIds.size})`}
+            </button>
+          </div>
         </div>
 
         <div className="flex rounded-[2px] overflow-hidden bg-white/[0.03] border border-white/[0.08] h-14">
@@ -508,7 +533,7 @@ const PipelineOverviewPage: FC = () => {
           </div>
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-            {recentItems.map((item, index) => renderRecentItem(item, index))}
+            {recentItems.map((item) => renderRecentItem(item))}
           </div>
         )}
       </div>

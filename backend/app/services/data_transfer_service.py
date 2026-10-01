@@ -2,11 +2,9 @@
 
 导出为 JSON dict；导入按 id 合并：`updated_at`（无则 `created_at`）较新者胜，
 只增/改不删。导入时所有行的 user_id 强制改写为当前用户，防止越权写入。
-撞到他用户已有的 id 时生成新 id 插入，绝不覆盖他人数据。
 """
 from datetime import datetime
 from typing import Any, Dict, Tuple
-import uuid
 
 from sqlalchemy import DateTime, select
 from sqlalchemy.orm import Session
@@ -16,6 +14,7 @@ from app.models.base import (
     Tag, ReadLaterItem, RssFeed, Document, content_tags,
 )
 from app.models.sticky_note import StickyNote
+from app.core.tenant_scope import scope_condition
 
 # 导出范围：用户核心内容数据（不含 settings，避免泄露密钥）
 EXPORT_TABLES: Tuple[Tuple[str, Any], ...] = (
@@ -47,23 +46,53 @@ def _row_to_dict(row: Any) -> Dict[str, Any]:
     return data
 
 
-def export_user_data_dict(db: Session, user_id: str) -> Dict[str, Any]:
-    """导出用户全部内容数据（含 content_tags 关联）。"""
+def export_user_data_dict(db: Session, user_id: str, tenant: Any = None) -> Dict[str, Any]:
+    """导出当前空间的内容数据（含 content_tags 关联）。
+
+    空间口径与主列表一致：团队空间导出整租户内容（tenant_id==T），
+    个人空间只导本人 tenant_id 为空的行——双向硬隔离，互不夹带。
+    目录级权限（批 C）：团队空间剔除对导出者不可见夹内的内容
+    （Note/BrowserClip/KnowledgeUnit/Document 四张带 folder_id 的表）；
+    个人空间恒真条件，零变化。
+    """
+    from app.core.tenant_scope import content_visible_condition, invisible_folder_ids
+    from app.models.base import User as _User
+    _vis_user = db.get(_User, user_id)
+    _inv = (
+        invisible_folder_ids(db, _vis_user, tenant)
+        if (tenant is not None and _vis_user is not None) else frozenset()
+    )
+    # 带 folder_id 的内容表才叠加目录可见性；capsule/tag/read_later 等无此列不动
+    _FOLDER_TABLES = {"notes", "clips", "knowledge_units", "documents"}
+
     data: Dict[str, Any] = {}
     for name, model in EXPORT_TABLES:
-        rows = db.query(model).filter(model.user_id == user_id).all()
+        q = db.query(model).filter(scope_condition(model, user_id, tenant))
+        if name in _FOLDER_TABLES:
+            q = q.filter(content_visible_condition(db, model, _vis_user, tenant, inv=_inv))
+        rows = q.all()
         data[name] = [_row_to_dict(r) for r in rows]
 
-    # content_tags 无 user_id，按用户自己的 tag 关联行导出
-    tag_ids = [t.id for t in db.query(Tag.id).filter(Tag.user_id == user_id).all()]
+    # content_tags 无 user_id/tenant_id，按当前空间的 tag 关联行导出；
+    # 批 C：不可见夹内容的标签关联不随导出（按已导出内容 id 收口）
+    visible_ids: Dict[str, set] = {
+        "note": {r["id"] for r in data["notes"]},
+        "clip": {r["id"] for r in data["clips"]},
+        "knowledge": {r["id"] for r in data["knowledge_units"]},
+        "document": {r["id"] for r in data["documents"]},
+    }
+    tag_ids = [t.id for t in db.query(Tag.id).filter(scope_condition(Tag, user_id, tenant)).all()]
     links = []
     if tag_ids:
         for row in db.execute(
             select(content_tags).where(content_tags.c.tag_id.in_(tag_ids))
         ).mappings():
+            ctype = row["content_type"]
+            if ctype in visible_ids and row["content_id"] not in visible_ids[ctype]:
+                continue
             links.append({
                 "content_id": row["content_id"],
-                "content_type": row["content_type"],
+                "content_type": ctype,
                 "tag_id": row["tag_id"],
                 "created_at": row["created_at"].isoformat() if row["created_at"] else None,
             })
@@ -95,8 +124,12 @@ def _row_timestamp(row: Dict[str, Any]) -> str:
     return val or ""
 
 
-def import_user_data(db: Session, user_id: str, data: Dict[str, Any]) -> Dict[str, int]:
-    """按 id 合并导入：新者胜，只增/改不删。返回统计。"""
+def import_user_data(db: Session, user_id: str, data: Dict[str, Any], tenant: Any = None) -> Dict[str, int]:
+    """按 id 合并导入：新者胜，只增/改不删。返回统计。
+
+    导入行强制落当前空间（tenant 非空=团队空间，空=个人空间），
+    与导出侧的空间过滤配套，防止快照/导入文件把行带进错误空间。
+    """
     stats = {"inserted": 0, "updated": 0, "skipped": 0}
     models = dict(EXPORT_TABLES)
 
@@ -105,13 +138,10 @@ def import_user_data(db: Session, user_id: str, data: Dict[str, Any]) -> Dict[st
         rows = data.get(name) or []
         if not isinstance(rows, list):
             continue
-        # 已有行查询限定当前用户：撞到他用户的同 id 行时换新 id 插入，
-        # 不允许收养/覆盖他人数据；只按本次导入的 id 做 IN 查询，避免全表拉取
+        # 只按本次导入的 id 做 IN 查询，避免全表拉取所有用户的 id
         import_ids = [r.get("id") for r in rows if isinstance(r, dict) and r.get("id")]
         existing_ids = (
-            {r[0] for r in db.query(model.id).filter(
-                model.user_id == user_id, model.id.in_(import_ids)
-            ).all()}
+            {r[0] for r in db.query(model.id).filter(model.id.in_(import_ids)).all()}
             if import_ids else set()
         )
         for raw in rows:
@@ -120,23 +150,26 @@ def import_user_data(db: Session, user_id: str, data: Dict[str, Any]) -> Dict[st
                 continue
             row = _coerce_columns(model, raw)
             row["user_id"] = user_id  # 强制归属当前用户
+            row["tenant_id"] = tenant.id if tenant else None  # 强制落当前空间
             if row["id"] in existing_ids:
-                current = db.query(model).filter(
-                    model.id == row["id"],
-                    model.user_id == user_id,
-                ).first()
+                current = db.query(model).filter(model.id == row["id"]).first()
                 current_ts = _row_to_dict(current) if current else {}
+                # 同 id 已在目标空间之外：绝不改写他人/他空间数据，直接跳过
+                if tenant is not None:
+                    in_scope = current is not None and current.tenant_id == tenant.id
+                else:
+                    in_scope = (current is not None and current.user_id == user_id
+                                and current.tenant_id is None)
+                if not in_scope:
+                    stats["skipped"] += 1
                 # 字符串形式的时间戳（ISO）可直接字典序比较
-                if _row_timestamp(row) > _row_timestamp(current_ts):
+                elif _row_timestamp(row) > _row_timestamp(current_ts):
                     for k, v in row.items():
                         setattr(current, k, v)
                     stats["updated"] += 1
                 else:
                     stats["skipped"] += 1
             else:
-                # id 是主键：与他用户的行冲突时换新 id 插入
-                if db.query(model.id).filter(model.id == row["id"]).first():
-                    row["id"] = str(uuid.uuid4())
                 db.add(model(**row))
                 stats["inserted"] += 1
         db.flush()
@@ -144,7 +177,7 @@ def import_user_data(db: Session, user_id: str, data: Dict[str, Any]) -> Dict[st
     # 恢复 content_tags 关联（只补不存在的）
     links = data.get("content_tags") or []
     if isinstance(links, list):
-        user_tag_ids = {t[0] for t in db.query(Tag.id).filter(Tag.user_id == user_id).all()}
+        user_tag_ids = {t[0] for t in db.query(Tag.id).filter(scope_condition(Tag, user_id, tenant)).all()}
         for link in links:
             if not isinstance(link, dict):
                 continue

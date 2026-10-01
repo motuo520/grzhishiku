@@ -1,10 +1,10 @@
 import { FC, useEffect, useMemo, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useKnowledge } from '@/hooks/useKnowledge';
-import { useNotes } from '@/hooks/useNotes';
 import { useNavigation } from '@/store/navigation';
 import { TrendingUp, ChevronDown, ChevronUp, Loader2, History, ArrowRight } from 'lucide-react';
 import { Link, useSearchParams } from 'react-router-dom';
+import { notesApi } from '@/api/notes';
 import { jianghuApi } from '@/api/jianghu';
 import type { Note } from '@/api/notes';
 import type { KnowledgeUnit } from '@/types';
@@ -25,10 +25,22 @@ const stageLabel = (stage?: string): string => STAGES.find((s) => s.id === stage
 const EvolutionTrackPage: FC = () => {
   const { brainSide } = useNavigation();
   const { units: knowledgeUnits, isLoading: knowledgeLoading, error: knowledgeError } = useKnowledge(brainSide);
-  // useNotes 的入参类型未声明 limit，但其会原样透传给 notesApi.list（支持 limit），故以带 limit 的局部变量传入
-  // limit>100 时 useNotes 内部自动分页（后端单页上限 100）
-  const notesFilters: { q?: string; tag_ids?: string; brain_side?: string; limit?: number } = { brain_side: brainSide, limit: 1000 };
-  const { notes, isLoading: notesLoading } = useNotes(notesFilters);
+  // 笔记全量分页拉取：服务端 limit 上限 100，单页直传 1000 会被 422
+  const { data: notes, isLoading: notesLoading } = useQuery({
+    queryKey: ['notes', 'all-paged', brainSide],
+    queryFn: async () => {
+      const all: Note[] = [];
+      const pageSize = 100;
+      for (let skip = 0; skip < 2000; skip += pageSize) {
+        const res = await notesApi.list({ brain_side: brainSide, skip, limit: pageSize });
+        const batch = res.data || [];
+        all.push(...batch);
+        if (batch.length < pageSize) break;
+      }
+      return all;
+    },
+    staleTime: 60 * 1000,
+  });
   const [expandedStages, setExpandedStages] = useState<Set<string>>(new Set(['practiced', 'validated']));
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [searchParams] = useSearchParams();
@@ -99,6 +111,12 @@ const EvolutionTrackPage: FC = () => {
   const total = items.length;
   const maxCount = Math.max(...STAGES.map((s) => grouped[s.id]?.length || 0), 1);
 
+  // 注卡统计：人精修/登记过践行（非 collected 或有实践深度）的知识单元
+  const kuTotal = (knowledgeUnits || []).length;
+  const annotatedCount = (knowledgeUnits || []).filter(
+    (k: KnowledgeUnit) => (k.practice_depth || 0) > 0 || (k.evolution_stage && k.evolution_stage !== 'collected')
+  ).length;
+
   const toggleStage = (id: string) => {
     setExpandedStages((prev) => {
       const next = new Set(prev);
@@ -160,6 +178,16 @@ const EvolutionTrackPage: FC = () => {
           </div>
         )}
       </div>
+
+      {kuTotal > 0 && (
+        <div className="mb-6 p-3 rounded-[2px] border border-fusion-primary/20 bg-fusion-primary/[0.05] text-sm flex flex-wrap items-center gap-x-4 gap-y-1">
+          <span className="text-text-primary">
+            已注卡 <span className="font-semibold text-fusion-primary">{annotatedCount}</span>
+            <span className="text-text-muted"> / {kuTotal} 知识单元</span>
+          </span>
+          <span className="text-xs text-text-muted">注卡（精修/践行登记）后的知识在问答检索中加权 15%，更容易被命中</span>
+        </div>
+      )}
 
       {(knowledgeError || notesLoadFailed) && (
         <div className="p-3 rounded-[2px] bg-danger/10 border border-danger/30 text-sm text-danger mb-4">

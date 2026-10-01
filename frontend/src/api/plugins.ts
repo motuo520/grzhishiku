@@ -45,4 +45,10 @@ export const pluginsApi = {
     api.post<{ plugin_id: string; created: number; skipped: number; last_sync_at?: string }>(
       `/api/v1/plugins/${id}/sync/trigger`
     ),
+
+  installFromUrl: (url: string) =>
+    api.post<{ id: string; name: string; version: string }>('/api/v1/plugins/install-from-url', { url }),
+
+  uninstall: (id: string) =>
+    api.delete<{ id: string; uninstalled: boolean }>(`/api/v1/plugins/${id}`),
 };

@@ -147,11 +147,31 @@ async def upload_file(
     unique_name = f"{uuid.uuid4()}_{filename}"
     file_path = os.path.join(upload_dir, unique_name)
 
+    # 09-30 安全批：社交导入此前无大小帽（对照文档 20MB）——单请求百 MB zip 落盘+
+    # 解压 500MB+请求内千万行 insert，一键打穿。上限 50MB + 磁盘水位闸同文档口径
+    MAX_SOCIAL_UPLOAD_BYTES = 50 * 1024 * 1024
+    usage = shutil.disk_usage(".")
+    if usage.used / usage.total >= 0.8:
+        raise HTTPException(status_code=503, detail="存储水位过高，已暂停上传，请稍后再试")
     try:
+        written = 0
         with open(file_path, "wb") as buffer:
-            shutil.copyfileobj(file.file, buffer)
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=f"保存上传文件失败: {e}")
+            while True:
+                chunk = await file.read(1024 * 256)  # async 读，别堵事件循环
+                if not chunk:
+                    break
+                written += len(chunk)
+                if written > MAX_SOCIAL_UPLOAD_BYTES:
+                    raise HTTPException(status_code=400, detail="单文件超过 50MB，请拆分后分批导入")
+                buffer.write(chunk)
+    except HTTPException:
+        if os.path.exists(file_path):
+            os.remove(file_path)
+        raise
+    except Exception:
+        if os.path.exists(file_path):
+            os.remove(file_path)
+        raise HTTPException(status_code=400, detail="保存上传文件失败")
     finally:
         await file.close()
 

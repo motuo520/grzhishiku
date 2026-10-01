@@ -10,14 +10,34 @@ export interface UserSettings {
     max_tokens?: number;
     local_enabled?: boolean;
     model_routing_enabled?: boolean;
+    byok_enabled?: boolean;
+    byok_keys?: Record<string, string>;
+    byok_models?: Record<string, string[]>;
+    byok_custom_url?: string;
+    disabled_models?: string[];
+    auto_tag?: boolean;
+    // 自动打标模型：ollama 原始模型名（本机已安装的本地模型），空/缺省 = 默认 qwen3.5:0.8b
+    auto_tag_model?: string;
     ollama_url?: string;
     ollama_model?: string;
+    kimi_api_key?: string;
+    deepseek_api_key?: string;
+    opencode_api_key?: string;
+    glm_api_key?: string;
+    dashscope_api_key?: string;
+    openai_api_key?: string;
+    anthropic_api_key?: string;
+    google_api_key?: string;
   };
   privacy?: {
     localEncryption?: boolean;
     defaultPrivacyLevel?: 'public' | 'shared' | 'private';
   };
   sync?: {
+    auto_sync?: boolean;
+    // 云端下拉（明文单向通道：云端主库 → 本机），默认开
+    down_sync_enabled?: boolean;
+    // 历史遗留键（已不再有 UI 消费，保留仅作数据兼容，不删用户数据）
     frequency?: 'realtime' | 'hourly' | 'daily' | 'manual';
     conflictStrategy?: 'local' | 'cloud' | 'latest' | 'manual';
     offlineMode?: boolean;
@@ -26,6 +46,11 @@ export interface UserSettings {
     theme?: 'dark' | 'light' | 'system';
     fontSize?: 'small' | 'medium' | 'large';
   };
+  // 来源追溯页：用户手动信誉档覆盖 {域名: 'trusted'|'normal'|'review'}
+  source_tiers?: Record<string, string>;
+  // 百科页「不看重」标记（09-16）：{topics: ['tag:{id}'...], entries: ['{entry_id}'...]}
+  // 后端 dict 浅合并——每次发某个子键的全量列表（整单替换，非增量）
+  wiki_dismissed?: { topics?: string[]; entries?: string[] };
   plugins?: {
     enabled?: string[];
     disabled?: string[];

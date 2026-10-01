@@ -63,6 +63,39 @@ async def lifespan(app: FastAPI):
     # Startup
     Base.metadata.create_all(bind=engine)
 
+    # 通用增量列迁移（同步主仓模型新列到存量库）：只加缺失列，不改不删。
+    # SQLite ALTER TABLE ADD COLUMN 支持常量默认值；新增列一律可空或带默认，
+    # 逐列 try 住，单列失败不拖死启动。
+    from sqlalchemy import inspect as _sa_inspect, text as _sa_text
+    _mig_inspector = _sa_inspect(engine)
+    _mig_tables = set(_mig_inspector.get_table_names())
+    with engine.begin() as _conn:
+        for _table in Base.metadata.sorted_tables:
+            if _table.name not in _mig_tables:
+                continue
+            _existing = {c['name'] for c in _sa_inspect(engine).get_columns(_table.name)}
+            for _col in _table.columns:
+                if _col.name in _existing:
+                    continue
+                try:
+                    _coltype = _col.type.compile(engine.dialect)
+                    _ddl = f'ALTER TABLE {_table.name} ADD COLUMN {_col.name} {_coltype}'
+                    if _col.default is not None and _col.default.is_scalar:
+                        _dv = _col.default.arg
+                        if isinstance(_dv, bool):
+                            _ddl += f" DEFAULT {1 if _dv else 0}"
+                        elif isinstance(_dv, (int, float)):
+                            _ddl += f" DEFAULT {_dv}"
+                        elif isinstance(_dv, str):
+                            _ddl += f" DEFAULT '{_dv.replace(chr(39), chr(39) * 2)}'"
+                    _conn.execute(_sa_text(_ddl))
+                    logging.getLogger(__name__).info(
+                        "schema migration: added column %s.%s", _table.name, _col.name)
+                except Exception as _e:
+                    logging.getLogger(__name__).warning(
+                        "schema migration: add column %s.%s failed: %s",
+                        _table.name, _col.name, _e)
+
     # Ensure FTS5 virtual table and sync triggers exist for knowledge search.
     # Base.metadata.create_all does not create VIRTUAL TABLEs or triggers.
     from sqlalchemy import text

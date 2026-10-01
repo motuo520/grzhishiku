@@ -28,6 +28,7 @@ class TicketStatusUpdate(BaseModel):
     status: Literal["open", "pending", "in_progress", "resolved", "closed"] = Field(..., description="New status")
 
 
+
 @router.get("/tickets", summary="List support tickets", description="List all support tickets with filtering and pagination.")
 async def list_tickets(
     status: Optional[str] = Query(None, description="Filter by status: open/closed/pending/in_progress/resolved"),

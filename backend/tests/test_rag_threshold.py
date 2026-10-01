@@ -100,7 +100,7 @@ def test_zero_hit_chat_gets_refusal_prompt(client, auth_headers, db_session, tes
     resp = client.post(
         "/api/v1/llm/chat",
         headers=auth_headers,
-        json={"message": "量子引力如何统一", "preferred_model": "qwen2.5:0.5b"},
+        json={"message": "量子引力如何统一", "preferred_model": "qwen3.5:0.8b"},
     )
     assert resp.status_code == 200
     assert "库中暂无相关内容" in captured["system_prompt"]
@@ -171,7 +171,7 @@ def test_rag_prompt_has_injection_guard(client, auth_headers, db_session, test_u
     resp = client.post(
         "/api/v1/llm/chat",
         headers=auth_headers,
-        json={"message": "我笔记里写了什么", "preferred_model": "qwen2.5:0.5b"},
+        json={"message": "我笔记里写了什么", "preferred_model": "qwen3.5:0.8b"},
     )
     assert resp.status_code == 200
     sp = captured["system_prompt"]

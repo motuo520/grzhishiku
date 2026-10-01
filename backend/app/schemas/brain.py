@@ -15,6 +15,8 @@ class BrainStatus(BaseModel):
     network_count: int
     both_count: int
     total_items: int
+    # 未归档条数（文件夹外内容），Dashboard 行动页用；默认 0 保向后兼容
+    unfiled_count: int = 0
 
 class BrainSwitchRequest(BaseModel):
     target_brain: BrainSide
@@ -25,6 +27,7 @@ class FusionSearchRequest(BaseModel):
     brain_sides: Optional[List[BrainSide]] = Field(None, max_length=10, description="Brain sides to search (max 10)")
     limit: int = Field(20, ge=1, le=100, description="Results limit")
     offset: int = Field(0, ge=0, description="Results offset")
+    origin: Optional[str] = Field(None, description="来源过滤：user=只看我的原文（排除 AI 生成产物），默认全部")
 
 class FusionSearchResult(BaseModel):
     id: str
@@ -35,6 +38,7 @@ class FusionSearchResult(BaseModel):
     relevance_score: float
     source_url: Optional[str] = Field(None, max_length=2048)
     created_at: str
+    origin: str = Field("user", max_length=20, description="user=用户原文 / ai=AI 生成产物（管线提取、碰撞卡）")
 
 class FusionSearchResponse(BaseModel):
     results: List[FusionSearchResult]
@@ -83,4 +87,3 @@ class BrainStats(BaseModel):
     cross_brain_links: Optional[int] = None
     fusion_ratio: Optional[float] = None
     collaboration_count: Optional[int] = None
-

@@ -57,9 +57,21 @@ export default function AdminContent() {
 
   const loadContent = useCallback(() => {
     setLoading(true);
-    adminApi.getContent()
-      .then((res: any) => {
-        setContent(Array.isArray(res.data) ? res.data : []);
+    // 后端已改为服务端分页（page/page_size，单页上限 100）；本页仍做
+    // 客户端筛选，需拉全量：逐页累积直到取完（封顶 50 页防失控）
+    const fetchAll = async () => {
+      const all: ContentItem[] = [];
+      for (let p = 1; p <= 50; p++) {
+        const res: any = await adminApi.getContent({ page: p, page_size: 100 });
+        const batch = Array.isArray(res.data) ? res.data : [];
+        all.push(...batch);
+        if (batch.length < 100) break;
+      }
+      return all;
+    };
+    fetchAll()
+      .then((items: ContentItem[]) => {
+        setContent(items);
         setLoading(false);
       })
       .catch(() => {

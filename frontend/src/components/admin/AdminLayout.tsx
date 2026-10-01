@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import {
   Shield, LayoutDashboard, Users, FileText, LogOut, Menu, X,
-  Settings, MessageSquare, ScrollText
+  CreditCard, Settings, MessageSquare, Building2, ScrollText, Cpu, CalendarDays
 } from 'lucide-react';
 import { useAdminStore } from '../../store/adminStore';
 import { useNavigate } from 'react-router-dom';
@@ -11,10 +11,14 @@ import { motion, AnimatePresence } from 'framer-motion';
 const sidebarItems = [
   { icon: LayoutDashboard, label: '仪表盘', path: '/admin', permission: null },
   { icon: Users, label: '用户管理', path: '/admin/users', permission: 'users:read' },
+  { icon: Building2, label: '租户管理', path: '/admin/tenants', permission: 'tenants:manage' },
   { icon: FileText, label: '内容审核', path: '/admin/content', permission: 'content:moderate' },
+  { icon: CreditCard, label: '订阅计费', path: '/admin/billing', permission: 'billing:read' },
+  { icon: Cpu, label: '模型配置', path: '/admin/models', permission: 'models:manage' },
   { icon: Settings, label: '系统配置', path: '/admin/system', permission: 'system:config' },
   { icon: MessageSquare, label: '客服工单', path: '/admin/support', permission: 'support:manage' },
   { icon: ScrollText, label: '审计日志', path: '/admin/logs', permission: 'logs:read' },
+  { icon: CalendarDays, label: '运营日报', path: '/admin/reports', permission: 'billing:read' },
 ];
 
 export default function AdminLayout() {

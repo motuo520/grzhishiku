@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigation } from '@/store/navigation';
 import { jianghuApi } from '@/api/jianghu';
 import ModelSelector from '@/components/llm/ModelSelector';
+import LLMCostBadge from '@/components/llm/LLMCostBadge';
 import {
   Zap, Loader2, Sparkles, ArrowDownToLine, FileOutput, Coins,
   TrendingUp, Lightbulb, ChevronRight
@@ -81,15 +82,16 @@ const CognitivePotentialPage: FC = () => {
         <div>
           <h1 className="text-xl font-semibold text-text-primary flex items-center gap-2">
             <Zap className="w-5 h-5 text-yellow-400" />
-            认知势能
+            认知资产
           </h1>
           <p className="text-sm text-text-secondary mt-1">
-            认知势能下去就能产生能量、赚到钱。分析你当前脑侧的知识资产，找出能下沉、能产出、能变现的内容。
+            认知资产下去就能产生能量、赚到钱。分析你当前脑侧的知识资产，找出能下沉、能产出、能变现的内容。
           </p>
         </div>
         <div className="flex items-center gap-3">
           <div className="flex flex-col items-end gap-1.5">
             <ModelSelector value={modelId} onChange={setModelId} taskType="analysis" className="w-48" />
+            <LLMCostBadge modelId={modelId} inputText="最近高价值笔记与知识单元" outputTokenEstimate={1500} />
           </div>
           <button
             onClick={handleAnalyze}
@@ -157,7 +159,7 @@ const CognitivePotentialPage: FC = () => {
       {isFetching && !data && (
         <div className="rounded-xl border border-white/[0.06] bg-bg-secondary p-8 text-center text-text-secondary">
           <Loader2 className="w-6 h-6 animate-spin mx-auto mb-2" />
-          <p className="text-sm">正在分析认知势能...</p>
+          <p className="text-sm">正在分析认知资产...</p>
         </div>
       )}
 
@@ -214,7 +216,7 @@ const CognitivePotentialPage: FC = () => {
         <div className="rounded-xl border border-white/[0.06] bg-bg-secondary p-8 text-center text-text-secondary">
           <TrendingUp className="w-10 h-10 mx-auto mb-3 text-text-muted/40" />
           <p className="text-sm">还没有分析结果。</p>
-          <p className="text-xs mt-1">点击右上角「AI 分析」，评估这个脑侧的认知势能。</p>
+          <p className="text-xs mt-1">点击右上角「AI 分析」，评估这个脑侧的认知资产。</p>
         </div>
       )}
     </div>

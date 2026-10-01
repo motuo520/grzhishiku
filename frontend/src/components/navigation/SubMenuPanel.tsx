@@ -12,8 +12,7 @@ import {
   CheckCircle, GitCommit, Activity, XCircle, Map,
   User, Lock, Cpu, RefreshCw, Puzzle, Database, Palette, Bookmark,
   Scale, Gamepad2, Wallet, Newspaper, Dumbbell, HeartPulse, Filter, Users,
-  Workflow, SquareStack, BrainCircuit, FlaskConical, Heart, ShieldAlert, MapPin, Pencil, Monitor
-} from 'lucide-react';
+  Workflow, SquareStack, BrainCircuit, FlaskConical, Heart, ShieldAlert, MapPin, Pencil, type LucideIcon } from 'lucide-react';
 import {
   useNavigation,
   useMenuData,
@@ -22,8 +21,7 @@ import {
 } from '@/store/navigation';
 import { useSystemFeatures } from '@/hooks/useSystemFeatures';
 
-const ICON_MAP: Record<string, React.ElementType> = {
-  Monitor,
+const ICON_MAP: Record<string, LucideIcon> = {
   Download, Network, Sparkles, Target, Package, Shield, Settings, Brain,
   Globe, FileText, Upload, Rss, Tag, Tags, Mail, MessageCircle, BookOpen, FolderOpen,
   Share2, Search, Route, Clock, Calendar, Link2, BarChart3, GitMerge,
@@ -91,7 +89,7 @@ const SubMenuPanel: FC = () => {
           transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}
           className="overflow-hidden bg-bg-secondary border-b border-border-color z-30 relative"
         >
-          <div className="w-full px-6 py-3 max-h-[calc(100vh-10rem)] overflow-y-auto">
+          <div className="w-full px-6 py-3">
             <div className="flex items-center justify-between mb-3">
               <div>
                 <h2 className="text-lg font-bold text-text-primary">{bucket.label}</h2>

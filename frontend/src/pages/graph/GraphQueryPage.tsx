@@ -10,6 +10,9 @@ interface QAItem {
   answer: string;
   ok: boolean;
   sources?: GraphifySource[];
+  /** rag = 图谱未构建时的全文检索回落；缺省=图谱关系推理 */
+  mode?: string;
+  notice?: string;
 }
 
 // 来源内链直达：笔记→笔记详情，知识单元→知识详情，剪藏→剪藏列表
@@ -47,7 +50,7 @@ const AnswerWithLinks: FC<{ text: string; sources: GraphifySource[] }> = ({ text
 
 const EXAMPLE_QUESTIONS = [
   '我的知识图谱里有哪些核心主题？',
-  '和「费曼学习法」相关的内容有哪些？',
+  '和「第二大脑」相关的内容有哪些？',
   '最近剪藏的文章之间有什么关联？',
 ];
 
@@ -72,7 +75,8 @@ const GraphQueryPage: FC = () => {
     query.mutate({ question: trimmed, preferred_model: modelId || undefined }, {
       onSuccess: (data) => {
         setHistory((prev) => [
-          { question: trimmed, answer: data.ok ? (data.result || '') : (data.error || '查询失败'), ok: data.ok, sources: data.sources },
+          { question: trimmed, answer: data.ok ? (data.result || '') : (data.error || '查询失败'), ok: data.ok, sources: data.sources,
+            mode: data.mode, notice: data.notice },
           ...prev,
         ]);
       },
@@ -96,18 +100,10 @@ const GraphQueryPage: FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams.get('q'), status?.has_graph]);
 
-  // 未构建图谱时的引导
-  if (!statusLoading && !status?.has_graph) {
-    return (
-      <div className="h-full flex flex-col items-center justify-center text-center px-6">
-        <Sparkles className="w-12 h-12 text-text-muted mb-4" />
-        <div className="text-text-primary font-semibold mb-2">知识图谱尚未构建</div>
-        <div className="text-sm text-text-secondary max-w-md">
-          请先在「知识网络」页点击「重建图谱」，构建完成后即可用自然语言查询你的知识网络。
-        </div>
-      </div>
-    );
-  }
+  // 图谱未构建不再挡死页面（10-01 首次体验）：后端 /graphify/query 会回落到
+  // 全文检索问答（带引用），页面顶部给提示 + 「去重建图谱」入口；构建完成后
+  // 同一入口自动升级为图谱关系推理。
+  const ragOnly = !statusLoading && !status?.has_graph;
 
   return (
     <div className="h-full overflow-y-auto p-6">
@@ -116,6 +112,19 @@ const GraphQueryPage: FC = () => {
           <h1 className="text-2xl font-bold text-text-primary">智能查询</h1>
           <p className="text-sm text-text-secondary mt-1">用自然语言向你的知识图谱提问</p>
         </div>
+
+        {ragOnly && (
+          <div className="card flex items-start gap-2 text-xs text-text-secondary">
+            <AlertCircle className="w-3.5 h-3.5 mt-0.5 shrink-0 text-warning" />
+            <span className="flex-1">
+              知识图谱尚未构建，当前用<strong className="text-text-primary">全文检索问答</strong>（同样带来源引用）。
+              到「知识网络」点「重建图谱」可启用关系推理。
+            </span>
+            <Link to="/graph/galaxy" className="text-info hover:underline shrink-0">
+              去重建图谱 →
+            </Link>
+          </div>
+        )}
 
         {/* 提问输入区 */}
         <div className="card flex items-center gap-3">
@@ -184,7 +193,9 @@ const GraphQueryPage: FC = () => {
                       <AnswerWithLinks text={item.answer} sources={item.sources || []} />
                       {(item.sources?.length ?? 0) > 0 && (
                         <div className="flex flex-wrap items-center gap-1.5 pt-1 border-t border-white/[0.06]">
-                          <span className="text-[10px] text-text-muted">来源：</span>
+                          <span className="text-[10px] text-text-muted">
+                            来源{item.mode === 'rag' ? '（全文检索）' : ''}：
+                          </span>
                           {item.sources!.map((s) => (
                             <Link
                               key={s.id}

@@ -116,6 +116,8 @@ class CognitiveWeeklyReport(Base):
     risks = Column(Text, default='[]')  # JSON array of strings
     suggestions = Column(Text, default='[]')  # JSON array of strings
     stats = Column(Text, default='{}')  # JSON: notes_count, knowledge_count, challenges_completed, decisions_audited, biases_found
+    # 本周输入与存量的关联（向量/图谱证据，09-01 周报大改三路证据区）
+    connections = Column(Text, default='[]')
     status = Column(String, default="generated")  # generated / archived
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())

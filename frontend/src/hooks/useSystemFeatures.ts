@@ -6,6 +6,7 @@ export interface SystemFeatures {
   maintenance_enabled: boolean;
   feature_flags: Record<string, boolean>;
   modules: Record<string, boolean>;
+  tier: string;
 }
 
 export function useSystemFeatures() {

@@ -1,4 +1,5 @@
 import api from './client';
+import { getConsolePreferredModel } from './consoleModel';
 
 export interface PracticeRecord {
   id: string;
@@ -33,11 +34,13 @@ export interface DailyReview {
   gaps_found: string[];
   action_items: string[];
   praise_items: string[];
+  connections: string[];
   status: 'pending' | 'generated' | 'reviewed' | 'archived';
   created_at: string;
   updated_at: string;
 }
 
+// 开源版独有（主仓前端已移除调用方）：相关度检查
 export interface RelevanceCheckRequest {
   content: string;
   content_type?: string;
@@ -180,9 +183,6 @@ export const jianghuApi = {
     api.get<PracticeRecord[]>('/api/v1/jianghu/practice-records', { params }),
   createPracticeRecord: (data: PracticeRecordCreateData) =>
     api.post<PracticeRecord>('/api/v1/jianghu/practice-records', data),
-  getPracticeRecord: (id: string) => api.get<PracticeRecord>(`/api/v1/jianghu/practice-records/${id}`),
-  updatePracticeRecord: (id: string, data: PracticeRecordCreateData) =>
-    api.put<PracticeRecord>(`/api/v1/jianghu/practice-records/${id}`, data),
   deletePracticeRecord: (id: string) => api.delete(`/api/v1/jianghu/practice-records/${id}`),
 
   // Daily reviews
@@ -190,10 +190,9 @@ export const jianghuApi = {
     data?: { review_date?: string; include_attention?: boolean; include_notes?: boolean; include_knowledge?: boolean; brain_side?: string },
     preferred_model?: string
   ) =>
-    api.post<DailyReview>('/api/v1/jianghu/daily-reviews/generate', { ...(data || {}), preferred_model }),
+    api.post<DailyReview>('/api/v1/jianghu/daily-reviews/generate', { ...(data || {}), preferred_model: preferred_model || getConsolePreferredModel() }),
   listDailyReviews: (params?: { status?: string; limit?: number; offset?: number }) =>
     api.get<DailyReview[]>('/api/v1/jianghu/daily-reviews', { params }),
-  getDailyReview: (id: string) => api.get<DailyReview>(`/api/v1/jianghu/daily-reviews/${id}`),
   updateDailyReview: (id: string, data: Partial<DailyReview>) =>
     api.put<DailyReview>(`/api/v1/jianghu/daily-reviews/${id}`, data),
 
@@ -210,14 +209,13 @@ export const jianghuApi = {
     api.get<ContextGuide[]>('/api/v1/jianghu/context-guides', { params: is_active !== undefined ? { is_active } : undefined }),
   createContextGuide: (data: ContextGuideCreateData) =>
     api.post<ContextGuide>('/api/v1/jianghu/context-guides', data),
-  getContextGuide: (id: string) => api.get<ContextGuide>(`/api/v1/jianghu/context-guides/${id}`),
   updateContextGuide: (id: string, data: ContextGuideUpdateData) =>
     api.put<ContextGuide>(`/api/v1/jianghu/context-guides/${id}`, data),
   deleteContextGuide: (id: string) => api.delete(`/api/v1/jianghu/context-guides/${id}`),
   generateContextGuide: (data?: { brain_side?: string; preferred_model?: string; title?: string }) =>
-    api.post<ContextGuide>('/api/v1/jianghu/context-guides/generate', data || {}),
+    api.post<ContextGuide>('/api/v1/jianghu/context-guides/generate', { ...(data || {}), preferred_model: data?.preferred_model || getConsolePreferredModel() }),
   analyzeCognitivePotential: (data?: { brain_side?: string; preferred_model?: string }) =>
-    api.post<CognitivePotentialResponse>('/api/v1/jianghu/cognitive-potential', data || {}),
+    api.post<CognitivePotentialResponse>('/api/v1/jianghu/cognitive-potential', { ...(data || {}), preferred_model: data?.preferred_model || getConsolePreferredModel() }),
   // 最近一次已保存的分析（免费读；404=还没有结果，由调用方归一为 null）
   getCognitivePotentialLatest: (brainSide: string) =>
     api.get<CognitivePotentialResponse>('/api/v1/jianghu/cognitive-potential/latest', { params: { brain_side: brainSide } })
@@ -232,7 +230,6 @@ export const jianghuApi = {
     api.get<ExperimentLog[]>('/api/v1/jianghu/experiment-logs', { params }),
   createExperimentLog: (data: ExperimentLogCreateData) =>
     api.post<ExperimentLog>('/api/v1/jianghu/experiment-logs', data),
-  getExperimentLog: (id: string) => api.get<ExperimentLog>(`/api/v1/jianghu/experiment-logs/${id}`),
   updateExperimentLog: (id: string, data: ExperimentLogUpdateData) =>
     api.put<ExperimentLog>(`/api/v1/jianghu/experiment-logs/${id}`, data),
   deleteExperimentLog: (id: string) => api.delete(`/api/v1/jianghu/experiment-logs/${id}`),

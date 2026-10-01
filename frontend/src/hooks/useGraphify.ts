@@ -16,15 +16,30 @@ export const useGraphifyStatus = (refetchInterval?: number | false) => {
   });
 };
 
-export const useGraphifyGraph = (enabled = true) => {
+export const useGraphifyGraph = (enabled = true, includeQuarantined = false) => {
   return useQuery({
-    queryKey: ['graphify-graph'],
+    // 血泪#20：可变参数必须进缓存键，否则换参即拿旧缓存
+    queryKey: ['graphify-graph', includeQuarantined ? 'with-quarantined' : 'main'],
     queryFn: async () => {
-      const response = await graphifyApi.getGraph();
+      const response = await graphifyApi.getGraph(includeQuarantined);
       return response.data;
     },
     staleTime: 60 * 1000,
     retry: false, // 未构建时后端返回 404，无需重试
+    enabled,
+  });
+};
+
+// 物理图（相似度图）：零 LLM、随时可取，未构建语义图也能看
+export const usePhysicalGraph = (enabled = true) => {
+  return useQuery({
+    queryKey: ['graphify-physical-graph'],
+    queryFn: async () => {
+      const response = await graphifyApi.getPhysicalGraph();
+      return response.data;
+    },
+    staleTime: 60 * 1000,
+    retry: false,
     enabled,
   });
 };

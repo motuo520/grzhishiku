@@ -58,6 +58,9 @@ class CapsuleResponse(BaseModel):
     unlock_config: str
     unlock_status: str
     is_unlocked: bool = False
+    # BUG-M02：未到期锁定时详情接口脱敏——content_locked=True 且 content_body 为占位文案
+    content_locked: bool = False
+    unlock_at: Optional[str] = None
     privacy_level: str = "private"
     privacy_require_auth: bool
     privacy_allow_export: bool

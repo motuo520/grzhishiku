@@ -62,6 +62,7 @@ class AttentionGuardianRule(Base):
 
     id = Column(String, primary_key=True)
     user_id = Column(String, nullable=False, index=True)
+    tenant_id = Column(String)  # NULL=个人空间；团队空间规则归团队
     type = Column(String, nullable=False)  # website | app | notification
     target = Column(String, nullable=False)
     mode = Column(String, nullable=False, default="block")  # block | limit
@@ -78,6 +79,7 @@ class AttentionRation(Base):
 
     id = Column(String, primary_key=True)
     user_id = Column(String, nullable=False, index=True)
+    tenant_id = Column(String)  # NULL=个人空间；团队空间配额归团队
     source_type = Column(String, nullable=False)  # rss | social | email | clip
     source_id = Column(String)
     name = Column(String, nullable=False)

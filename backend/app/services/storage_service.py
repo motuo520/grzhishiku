@@ -2,7 +2,6 @@
 Storage service: package user data and upload to third-party netdisks.
 """
 import json
-import logging
 import os
 import uuid
 import zipfile
@@ -16,18 +15,14 @@ import httpx
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
-from app.core.config import settings, _data_dir_from_database_url
-from app.core.crypto import encrypt_secret, decrypt_secret
+from app.core.config import settings
 from app.core.database import get_db
+from app.core.crypto import decrypt_capsule_content
 from app.models.base import User, Note, Capsule, BrowserClip, KnowledgeUnit
 from app.models.storage import DataPackage, UserCloudDrive
 
-logger = logging.getLogger(__name__)
 
-
-# 备份包包含用户全量数据，必须放在静态托管的 uploads/ 之外：
-# 与数据库同目录（docker 下为挂载的 /data，即仓库根 server-data/，已被 gitignore）
-PACKAGE_DIR = os.path.join(_data_dir_from_database_url(settings.DATABASE_URL), "packages")
+PACKAGE_DIR = "uploads/packages"
 os.makedirs(PACKAGE_DIR, exist_ok=True)
 
 
@@ -93,25 +88,38 @@ class BaiduNetdiskProvider(NetdiskProvider):
     @classmethod
     async def exchange_token(cls, code: str) -> Dict[str, Any]:
         redirect_uri = settings.BAIDU_NETDISK_REDIRECT_URI or f"{settings.API_BASE_URL}/api/v1/storage/drives/baidu/callback"
-        params = {
+        data_payload = {
             "grant_type": "authorization_code",
             "code": code,
             "client_id": settings.BAIDU_NETDISK_CLIENT_ID,
             "client_secret": settings.BAIDU_NETDISK_CLIENT_SECRET,
             "redirect_uri": redirect_uri,
         }
-        async with httpx.AsyncClient(timeout=30) as client:
-            resp = await client.get(cls.TOKEN_URL, params=params)
-            data = resp.json()
+        try:
+            # 用 POST + form body，避免 client_secret 进 URL 查询参数落日志
+            async with httpx.AsyncClient(timeout=30) as client:
+                resp = await client.post(cls.TOKEN_URL, data=data_payload)
+                resp.raise_for_status()
+                data = resp.json()
+        except httpx.HTTPError as e:
+            raise NetdiskError(f"百度授权请求失败: {e}")
+        except json.JSONDecodeError:
+            raise NetdiskError("百度授权响应格式错误")
         if "access_token" not in data:
             raise NetdiskError(data.get("error_description") or data.get("error") or "百度授权失败")
         return data
 
     @classmethod
     async def get_user_info(cls, access_token: str) -> Dict[str, Any]:
-        async with httpx.AsyncClient(timeout=30) as client:
-            resp = await client.get(cls.USER_INFO_URL, params={"access_token": access_token})
-            return resp.json()
+        try:
+            async with httpx.AsyncClient(timeout=30) as client:
+                resp = await client.get(cls.USER_INFO_URL, params={"access_token": access_token})
+                resp.raise_for_status()
+                return resp.json()
+        except httpx.HTTPError as e:
+            raise NetdiskError(f"获取百度用户信息失败: {e}")
+        except json.JSONDecodeError:
+            raise NetdiskError("百度用户信息响应格式错误")
 
     @classmethod
     async def upload_file(cls, access_token: str, remote_path: str, local_path: str, filename: str) -> Dict[str, Any]:
@@ -311,7 +319,7 @@ class StorageService:
         return {
             "id": capsule.id,
             "content_type": capsule.content_type,
-            "content_body": capsule.content_body,
+            "content_body": decrypt_capsule_content(capsule.content_body),
             "content_attachments": capsule.content_attachments,
             "brain_side": capsule.brain_side,
             "mood_emotion": capsule.mood_emotion,
@@ -409,8 +417,8 @@ class StorageService:
             )
             self.db.add(drive)
 
-        drive.access_token = encrypt_secret(access_token)
-        drive.refresh_token = encrypt_secret(refresh_token)
+        drive.access_token = access_token
+        drive.refresh_token = refresh_token
         if expires_in:
             drive.expires_at = datetime.utcnow() + timedelta(seconds=expires_in)
         drive.scope = scope
@@ -447,7 +455,7 @@ class StorageService:
         remote_path = f"psb_backup/{pkg.filename}"
         try:
             result = await provider_cls.upload_file(
-                decrypt_secret(drive.access_token),
+                drive.access_token,
                 remote_path,
                 pkg.file_path,
                 pkg.filename,
@@ -460,11 +468,10 @@ class StorageService:
             pkg.status = "failed"
             pkg.error_message = str(e)
             raise HTTPException(status_code=502, detail=str(e))
-        except Exception:
+        except Exception as e:
             pkg.status = "failed"
-            pkg.error_message = "上传失败，请查看服务端日志"
-            logger.exception("上传网盘失败 user_id=%s provider=%s", user_id, provider)
-            raise HTTPException(status_code=500, detail="上传失败，请查看服务端日志")
+            pkg.error_message = str(e)
+            raise HTTPException(status_code=500, detail=f"上传失败: {e}")
         finally:
             pkg.updated_at = datetime.utcnow()
             self.db.commit()

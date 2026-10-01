@@ -5,7 +5,7 @@ import { useSettings } from './settings';
 export type BrainSide = 'personal' | 'network' | 'both' | 'unknown';
 
 // ── 两套菜单的模块 ID ──
-// 简化版：四个动作（存进来 / 知识地图 / 每日 / 问出来）+ 社区/设置
+// 简化版：四个动作（采集 / 知识地图 / 每日 / 问答）+ 社区/设置
 export type SimpleMenuId =
   | 'ingest'
   | 'pipeline'
@@ -68,11 +68,11 @@ export interface TopNavBucket {
 // 简化版菜单（五动作）
 // ================================================================
 
-// ── 顶部导航：存进来 / 自动理好 / 知识地图 / 每日 / 问出来 五个动作 ──
+// ── 顶部导航：采集 / 自动理好 / 知识地图 / 每日 / 问答 五个动作 ──
 export const TOP_NAV_BUCKETS_SIMPLE: TopNavBucket[] = [
   {
     id: 'collect',
-    label: '存进来',
+    label: '采集',
     icon: 'Download',
     description: '笔记、剪藏、RSS、稍后读、文档等所有输入入口',
     primaryModuleId: 'ingest',
@@ -104,7 +104,7 @@ export const TOP_NAV_BUCKETS_SIMPLE: TopNavBucket[] = [
   },
   {
     id: 'ask',
-    label: '问出来',
+    label: '问答',
     icon: 'Sparkles',
     description: '向你的知识库提问，答案必须带引用出处',
     primaryModuleId: 'ask',
@@ -115,9 +115,9 @@ export const TOP_NAV_BUCKETS_SIMPLE: TopNavBucket[] = [
 export const MENU_DATA_SIMPLE: Record<SimpleMenuId, MenuData> = {
   ingest: {
     id: 'ingest',
-    label: '存进来',
+    label: '采集',
     icon: 'Download',
-    description: '把你的资料集中存进来',
+    description: '把你的资料集中采集进来',
     defaultBrainSide: 'both',
     items: [
       { id: 'notes', label: '笔记管理', description: '个人想法与记录', icon: 'FileText', path: '/ingest/notes', brainSide: 'personal' },
@@ -147,6 +147,9 @@ export const MENU_DATA_SIMPLE: Record<SimpleMenuId, MenuData> = {
       // 它同时是「知识进化」链的第一环，跨桶跳转由 EvolutionChainBar 承担
       { id: 'collision', label: '碰撞', description: '跨领域连接与创意杂交', icon: 'Shuffle', path: '/pipeline/collision', brainSide: 'both', preferredBrainSide: 'both' },
       { id: 'annotate', label: '注卡', description: '为卡片注入个人语境与行动', icon: 'Pencil', path: '/pipeline/annotate', brainSide: 'personal', preferredBrainSide: 'personal' },
+      // 涌现工作室不进简版（第六种动作会打散五动作主线）；只露画布——拖拽组合是
+      // 管线加工的动手延伸，归本桶（08-22 拍板）。其余创意工具留经典版
+      { id: 'canvas', label: '涌现画布', description: '拖拽组合创意想法', icon: 'Network', path: '/emergence/canvas', brainSide: 'both', preferredBrainSide: 'both' },
     ],
   },
   graph: {
@@ -156,12 +159,13 @@ export const MENU_DATA_SIMPLE: Record<SimpleMenuId, MenuData> = {
     description: '知识图谱可视化与结构洞察',
     defaultBrainSide: 'both',
     items: [
-      { id: 'network', label: '知识网络', description: '全局关系图谱', icon: 'Network', path: '/graph/network', brainSide: 'both' },
+      { id: 'network', label: '知识网络', description: '全局关系图谱', icon: 'Network', path: '/graph/galaxy', brainSide: 'both' },
       { id: 'path', label: '路径探索', description: '发现知识路径', icon: 'Route', path: '/graph/path', brainSide: 'both' },
       { id: 'report', label: '图谱报告', description: '知识网络的统计与结构概览', icon: 'FileText', path: '/graph/report', brainSide: 'both' },
       { id: 'bridges', label: '跨脑桥梁', description: '连接个人脑与网络脑的关键关联', icon: 'GitMerge', path: '/graph/bridges', brainSide: 'both' },
       { id: 'tags', label: '标签图谱', description: '标签共现关系网络', icon: 'Tag', path: '/graph/tags', brainSide: 'both' },
-      // 时间轴已搬到「存进来/采集」菜单（/ingest/timeline）：它现在是全量内容的批次回顾，不再是图谱节点视图
+      { id: 'wiki', label: '百科', description: '摄入时编译的主题条目', icon: 'BookOpen', path: '/graph/wiki', brainSide: 'both' },
+      // 时间轴已搬到「采集」菜单（/ingest/timeline）：它现在是全量内容的批次回顾，不再是图谱节点视图
     ],
   },
   daily: {
@@ -180,26 +184,26 @@ export const MENU_DATA_SIMPLE: Record<SimpleMenuId, MenuData> = {
       { id: 'review', label: '每日复盘', description: '回顾今日输入与可信结论', icon: 'Calendar', path: '/daily', brainSide: 'both' },
       { id: 'invocation', label: '调用追踪', description: '统计知识被调用与践行次数', icon: 'Activity', path: '/daily/invocation-track', brainSide: 'both' },
       { id: 'health', label: '知识健康', description: '查看知识体系进化分布', icon: 'HeartPulse', path: '/daily/knowledge-health', brainSide: 'both' },
-      { id: 'weekly', label: '认知周报', description: '每周认知健康报告', icon: 'FileText', path: '/daily/weekly-report', brainSide: 'both' },
+      { id: 'weekly', label: '每周回顾', description: '每周自动生成，事实与关联一网打尽', icon: 'FileText', path: '/daily/weekly-report', brainSide: 'both' },
       { id: 'challenge', label: '认知挑战', description: '每日思维训练打卡', icon: 'Gamepad2', path: '/daily/challenge', brainSide: 'both' },
     ],
   },
   ask: {
     id: 'ask',
-    label: '问出来',
+    label: '问答',
     icon: 'Sparkles',
     description: '用 AI 向你的知识库提问',
     defaultBrainSide: 'both',
     items: [
       { id: 'query', label: 'AI 问答', description: '用自然语言提问，答案带引用', icon: 'Sparkles', path: '/graph/query', brainSide: 'both' },
-      // 对话历史语义上属于「问出来」（问答的沉淀），故挂在这个一级菜单下
+      // 对话历史语义上属于「问答」（问答的沉淀），故挂在这个一级菜单下
       { id: 'chat-history', label: '对话历史', description: '问答会话沉淀，可继续聊、可存成知识', icon: 'MessageSquare', path: '/chat', brainSide: 'both' },
       { id: 'knowledge-network', label: '网络脑知识', description: '从外部采集的可验证知识', icon: 'Globe', path: '/knowledge/network', brainSide: 'network' },
       { id: 'knowledge-personal', label: '个人脑知识', description: '个人思考与沉淀的知识单元', icon: 'User', path: '/knowledge/personal', brainSide: 'personal' },
       // 验证中心/争议裁决已迁入「知识进化」链（一条链住一个家）
       { id: 'sources', label: '来源追溯', description: '按域名聚合的来源可信度', icon: 'GitCommit', path: '/knowledge/sources', brainSide: 'both' },
-      { id: 'credibility', label: '可信度地图', description: '来源域名的可信度分布', icon: 'Map', path: '/knowledge/credibility', brainSide: 'both' },
-      { id: 'capsules', label: '未来的信', description: '封存记忆，未来开启', icon: 'Package', path: '/capsules/my', brainSide: 'personal' },
+      // 瘦身（08-22 保守砍）：可信度地图与来源追溯同源（域名可信度的图视图）、未来的信
+      // 语义不属于「问答」——砍掉入口，URL 仍可直达（只隐入口不隐路由）
     ],
   },
   community: {
@@ -223,11 +227,14 @@ export const MENU_DATA_SIMPLE: Record<SimpleMenuId, MenuData> = {
       { id: 'account', label: '账户', description: '个人信息与密码', icon: 'User', path: '/settings/account', brainSide: 'both' },
       { id: 'privacy', label: '隐私', description: '数据安全设置', icon: 'Lock', path: '/settings/privacy', brainSide: 'both' },
       { id: 'ai', label: 'AI 设置', description: '模型与偏好配置', icon: 'Cpu', path: '/settings/ai', brainSide: 'both' },
+      { id: 'byok', label: 'BYOK 自付', description: '供应商预设与 API Key 控制台', icon: 'KeyRound', path: '/settings/byok', brainSide: 'both' },
       { id: 'sync', label: '同步', description: '数据同步配置', icon: 'RefreshCw', path: '/settings/sync', brainSide: 'both' },
+      { id: 'desktop', label: '桌面端', description: '桌面端下载与说明', icon: 'Monitor', path: '/settings/desktop', brainSide: 'both' },
       { id: 'storage', label: '存储', description: '数据打包与网盘备份', icon: 'HardDrive', path: '/settings/storage', brainSide: 'both' },
       { id: 'plugins', label: '插件', description: '扩展管理', icon: 'Puzzle', path: '/settings/plugins', brainSide: 'both' },
       { id: 'data', label: '数据', description: '导入导出与清理', icon: 'Database', path: '/settings/data', brainSide: 'both' },
       { id: 'appearance', label: '外观', description: '主题与显示', icon: 'Palette', path: '/settings/appearance', brainSide: 'both' },
+      { id: 'recycle', label: '回收站', description: '30 天内可恢复已删内容', icon: 'Trash2', path: '/settings/recycle', brainSide: 'both' },
     ],
   },
 };
@@ -236,7 +243,7 @@ export const QUICK_ACTIONS_SIMPLE: Pick<SubMenuItem, 'id' | 'label' | 'icon' | '
   { id: 'new-note', label: '新建笔记', icon: 'FileText', path: '/ingest/notes', brainSide: 'personal' },
   { id: 'new-clip', label: '剪藏网页', icon: 'Globe', path: '/ingest/clipper', brainSide: 'network' },
   { id: 'ai-query', label: 'AI 问答', icon: 'Sparkles', path: '/graph/query', brainSide: 'both' },
-  { id: 'knowledge', label: '知识网络', icon: 'Network', path: '/graph/network', brainSide: 'both' },
+  { id: 'knowledge', label: '知识网络', icon: 'Network', path: '/graph/galaxy', brainSide: 'both' },
 ];
 
 // ================================================================
@@ -244,7 +251,7 @@ export const QUICK_ACTIONS_SIMPLE: Pick<SubMenuItem, 'id' | 'label' | 'icon' | '
 // ================================================================
 
 // ── 一级导航桶：把 12+ 个模块收敛成 4 个可理解的入口 ──
-// “我/设置”统一放在左侧边栏底部菜单，不再占用顶部导航
+// “我/设置/会员/账单”统一放在左侧边栏底部菜单，不再占用顶部导航
 export const TOP_NAV_BUCKETS_CLASSIC: TopNavBucket[] = [
   {
     id: 'inbox',
@@ -295,7 +302,7 @@ export const MENU_DATA_CLASSIC: Record<ClassicMenuId, MenuData> = {
       { id: 'batch-import', label: '批量导入', description: '批量导入笔记、剪藏和链接', icon: 'Upload', path: '/ingest/batch-import', brainSide: 'both' },
       { id: 'timeline', label: '时间轴', description: '按时间回顾全部内容与导入批次', icon: 'Clock', path: '/ingest/timeline', brainSide: 'both' },
       { id: 'rss', label: 'RSS 聚合', description: '订阅源自动采集', icon: 'Rss', path: '/ingest/rss', brainSide: 'network' },
-      { id: 'tags', label: '标签系统', description: '多维度内容组织', icon: 'Tags', path: '/ingest/tags', brainSide: 'both' },
+      { id: 'tags', label: '标签档夹', description: '按标签自动归集的内容（无需手动整理）', icon: 'Tags', path: '/ingest/tags', brainSide: 'both' },
       { id: 'email', label: '邮件集成', description: '邮件内容自动归档', icon: 'Mail', path: '/ingest/email', brainSide: 'network' },
       { id: 'social', label: '社交聚合', description: '社交媒体内容追踪', icon: 'MessageCircle', path: '/ingest/social', brainSide: 'network' },
       { id: 'read-later', label: '稍后读', description: '收藏链接，稍后阅读', icon: 'BookOpen', path: '/ingest/read-later', brainSide: 'network' },
@@ -309,15 +316,16 @@ export const MENU_DATA_CLASSIC: Record<ClassicMenuId, MenuData> = {
     description: '知识网络与关系可视化',
     defaultBrainSide: 'both',
     items: [
-      { id: 'network', label: '知识网络', description: '全局关系图谱', icon: 'Network', path: '/graph/network', brainSide: 'both' },
+      { id: 'network', label: '知识网络', description: '全局关系图谱', icon: 'Network', path: '/graph/galaxy', brainSide: 'both' },
       { id: 'query', label: '智能查询', description: '用自然语言查询知识图谱', icon: 'Sparkles', path: '/graph/query', brainSide: 'both' },
-      // 经典版没有「问出来」桶：对话历史是问答的沉淀，挂在语义最近的「图谱」（智能查询旁）
+      // 经典版没有「问答」桶：对话历史是问答的沉淀，挂在语义最近的「图谱」（智能查询旁）
       { id: 'chat-history', label: '对话历史', description: '问答会话沉淀，可继续聊、可存成知识', icon: 'MessageSquare', path: '/chat', brainSide: 'both' },
       { id: 'path', label: '路径探索', description: '发现知识路径', icon: 'Route', path: '/graph/path', brainSide: 'both' },
       { id: 'report', label: '图谱报告', description: '知识网络的统计与结构概览', icon: 'FileText', path: '/graph/report', brainSide: 'both' },
       { id: 'bridges', label: '跨脑桥梁', description: '连接个人脑与网络脑的关键关联', icon: 'GitMerge', path: '/graph/bridges', brainSide: 'both' },
       { id: 'tags', label: '标签图谱', description: '标签共现关系网络', icon: 'Tag', path: '/graph/tags', brainSide: 'both' },
-      // 时间轴已搬到「存进来/采集」菜单（/ingest/timeline）：它现在是全量内容的批次回顾，不再是图谱节点视图
+      { id: 'wiki', label: '百科', description: '摄入时编译的主题条目', icon: 'BookOpen', path: '/graph/wiki', brainSide: 'both' },
+      // 时间轴已搬到「采集」菜单（/ingest/timeline）：它现在是全量内容的批次回顾，不再是图谱节点视图
     ],
   },
   cognitive: {
@@ -333,7 +341,7 @@ export const MENU_DATA_CLASSIC: Record<ClassicMenuId, MenuData> = {
       { id: 'audit', label: '决策审计', description: '追踪决策过程', icon: 'ClipboardCheck', path: '/cognitive/audit', brainSide: 'personal' },
       { id: 'simulate', label: '未来模拟', description: '决策结果预测', icon: 'GitBranch', path: '/cognitive/simulate', brainSide: 'personal' },
       { id: 'challenge', label: '认知挑战', description: '每日思维训练打卡', icon: 'Gamepad2', path: '/cognitive/challenge', brainSide: 'both' },
-      { id: 'weekly-report', label: '认知周报', description: '每周认知健康报告', icon: 'FileText', path: '/cognitive/weekly-report', brainSide: 'both' },
+      { id: 'weekly-report', label: '每周回顾', description: '每周自动生成，事实与关联一网打尽', icon: 'FileText', path: '/cognitive/weekly-report', brainSide: 'both' },
     ],
   },
   emergence: {
@@ -401,7 +409,7 @@ export const MENU_DATA_CLASSIC: Record<ClassicMenuId, MenuData> = {
   },
   pipeline: {
     id: 'pipeline',
-    label: '认知生产管线',
+    label: '知识流水线',
     icon: 'Workflow',
     description: '知识不是仓库，是一条阶段化生产线',
     defaultBrainSide: 'both',
@@ -422,8 +430,8 @@ export const MENU_DATA_CLASSIC: Record<ClassicMenuId, MenuData> = {
     defaultBrainSide: 'both',
     items: [
       { id: 'ai-context', label: 'AI全知上下文', description: '让AI基于引导文件理解你的知识库', icon: 'BrainCircuit', path: '/social-brain/ai-context', brainSide: 'both', preferredBrainSide: 'both' },
-      { id: 'cognitive-potential', label: '认知势能', description: '能下沉、能产出、能变现的认知资产', icon: 'Zap', path: '/social-brain/cognitive-potential', brainSide: 'both', preferredBrainSide: 'both' },
-      { id: 'experimenter', label: '实验者心态', description: '每次只控制一个变量，用反馈迭代', icon: 'FlaskConical', path: '/social-brain/experimenter', brainSide: 'both', preferredBrainSide: 'both' },
+      { id: 'cognitive-potential', label: '认知资产', description: '能下沉、能产出、能变现的认知资产', icon: 'Zap', path: '/social-brain/cognitive-potential', brainSide: 'both', preferredBrainSide: 'both' },
+      { id: 'experimenter', label: '单变量实验', description: '每次只控制一个变量，用反馈迭代', icon: 'FlaskConical', path: '/social-brain/experimenter', brainSide: 'both', preferredBrainSide: 'both' },
       { id: 'daily-review', label: '每日复盘', description: '回顾今日输入，发现行为差距', icon: 'Calendar', path: '/social-brain/daily-review', brainSide: 'both', preferredBrainSide: 'both' },
       // 自进化链（经典版）：复盘→践行→进化→被用→健康 按链路序相邻；
       // 碰撞在素材加工桶、验证/争议在知识库桶相邻——链内跳转靠 EvolutionChainBar
@@ -431,7 +439,6 @@ export const MENU_DATA_CLASSIC: Record<ClassicMenuId, MenuData> = {
       { id: 'evolution-track', label: '进化轨迹', description: '追踪知识从收集到内化', icon: 'TrendingUp', path: '/social-brain/evolution-track', brainSide: 'both', preferredBrainSide: 'both' },
       { id: 'invocation-track', label: '调用追踪', description: '统计知识被调用与践行次数', icon: 'Activity', path: '/social-brain/invocation-track', brainSide: 'both', preferredBrainSide: 'both' },
       { id: 'knowledge-health', label: '知识健康', description: '查看知识体系进化分布', icon: 'HeartPulse', path: '/social-brain/knowledge-health', brainSide: 'both', preferredBrainSide: 'both' },
-      { id: 'relevance-check', label: '关我屁事', description: '判断外部内容与你是否相关', icon: 'Filter', path: '/social-brain/relevance-check', brainSide: 'network', preferredBrainSide: 'network' },
     ],
   },
   'embodied-cognition': {
@@ -441,8 +448,8 @@ export const MENU_DATA_CLASSIC: Record<ClassicMenuId, MenuData> = {
     description: '身体、情绪与环境作为记忆载体',
     defaultBrainSide: 'personal',
     items: [
-      { id: 'depth-check', label: '内容深度检查', description: '保存时自动评估内容深度；可切换 AI 深度评估', icon: 'ShieldAlert', path: '/embodied-cognition/depth-check', brainSide: 'both' },
-      { id: 'true-evolution', label: '真进化 vs 伪成熟', description: '进化=摩擦+痛苦后的喜悦', icon: 'TrendingUp', path: '/embodied-cognition/true-evolution', brainSide: 'both' },
+      { id: 'depth-check', label: '内容深度评估', description: '保存时自动评估内容深度；可切换 AI 深度评估', icon: 'ShieldAlert', path: '/embodied-cognition/depth-check', brainSide: 'both' },
+      { id: 'true-evolution', label: '真成长 vs 伪熟练', description: '进化=摩擦+痛苦后的喜悦', icon: 'TrendingUp', path: '/embodied-cognition/true-evolution', brainSide: 'both' },
       { id: 'mood-location', label: '情绪与环境', description: '胶囊中的mood、location、身体状态', icon: 'MapPin', path: '/embodied-cognition/mood-location', brainSide: 'both' },
     ],
   },
@@ -467,11 +474,14 @@ export const MENU_DATA_CLASSIC: Record<ClassicMenuId, MenuData> = {
       { id: 'account', label: '账户', description: '个人信息与密码', icon: 'User', path: '/settings/account', brainSide: 'both' },
       { id: 'privacy', label: '隐私', description: '数据安全设置', icon: 'Lock', path: '/settings/privacy', brainSide: 'both' },
       { id: 'ai', label: 'AI 设置', description: '模型与偏好配置', icon: 'Cpu', path: '/settings/ai', brainSide: 'both' },
+      { id: 'byok', label: 'BYOK 自付', description: '供应商预设与 API Key 控制台', icon: 'KeyRound', path: '/settings/byok', brainSide: 'both' },
       { id: 'sync', label: '同步', description: '数据同步配置', icon: 'RefreshCw', path: '/settings/sync', brainSide: 'both' },
+      { id: 'desktop', label: '桌面端', description: '桌面端下载与说明', icon: 'Monitor', path: '/settings/desktop', brainSide: 'both' },
       { id: 'storage', label: '存储', description: '数据打包与网盘备份', icon: 'HardDrive', path: '/settings/storage', brainSide: 'both' },
       { id: 'plugins', label: '插件', description: '扩展管理', icon: 'Puzzle', path: '/settings/plugins', brainSide: 'both' },
       { id: 'data', label: '数据', description: '导入导出与清理', icon: 'Database', path: '/settings/data', brainSide: 'both' },
       { id: 'appearance', label: '外观', description: '主题与显示', icon: 'Palette', path: '/settings/appearance', brainSide: 'both' },
+      { id: 'recycle', label: '回收站', description: '30 天内可恢复已删内容', icon: 'Trash2', path: '/settings/recycle', brainSide: 'both' },
     ],
   },
 };
@@ -517,11 +527,14 @@ export const SETTINGS_ITEMS: Pick<SubMenuItem, 'id' | 'label' | 'icon' | 'path'>
   { id: 'account', label: '账户', icon: 'User', path: '/settings/account' },
   { id: 'privacy', label: '隐私', icon: 'Lock', path: '/settings/privacy' },
   { id: 'ai', label: 'AI 设置', icon: 'Cpu', path: '/settings/ai' },
+  { id: 'byok', label: 'BYOK 自付', icon: 'KeyRound', path: '/settings/byok' },
   { id: 'sync', label: '同步', icon: 'RefreshCw', path: '/settings/sync' },
+  { id: 'desktop', label: '桌面端', icon: 'Monitor', path: '/settings/desktop' },
   { id: 'storage', label: '存储', icon: 'HardDrive', path: '/settings/storage' },
   { id: 'plugins', label: '插件', icon: 'Puzzle', path: '/settings/plugins' },
   { id: 'data', label: '数据', icon: 'Database', path: '/settings/data' },
   { id: 'appearance', label: '外观', icon: 'Palette', path: '/settings/appearance' },
+  { id: 'recycle', label: '回收站', icon: 'Trash2', path: '/settings/recycle' },
 ];
 
 // ── 路径 → 模块 ID（menuData 传当前模式的菜单表；默认合并表） ──
@@ -530,7 +543,7 @@ export function getMenuIdByPath(
   menuData: Record<string, MenuData> = MENU_DATA
 ): MenuId | null {
   // 先按菜单项路径匹配（最长优先）：二级菜单允许跨路径前缀调动
-  // （如简化版「问出来」桶里的 /graph/query），归属以菜单配置为准
+  // （如简化版「问答」桶里的 /graph/query），归属以菜单配置为准
   let best: { id: MenuId; len: number } | null = null;
   for (const [id, mod] of Object.entries(menuData)) {
     for (const item of mod.items) {
@@ -545,6 +558,7 @@ export function getMenuIdByPath(
   const first = segments[0] as MenuId | string;
   if (menuData[first as MenuId]) return first as MenuId;
   // 个人中心相关独立页面统一归入 settings 桶
+  if (['payment', 'topup', 'billing', 'business-plan'].includes(first)) return 'settings';
   return null;
 }
 
@@ -601,11 +615,3 @@ export const useNavigation = create<NavigationState>()(
     }
   )
 );
-
-// 切换界面版本（简化版 ⇄ 经典版）时重置脑侧为“双脑融合”，
-// 避免上一版本残留的 brainSide（持久化在 localStorage）在新版本里过滤菜单与数据
-useSettings.subscribe((state, prev) => {
-  if (state.uiMode !== prev.uiMode) {
-    useNavigation.getState().setBrainSide('both');
-  }
-});

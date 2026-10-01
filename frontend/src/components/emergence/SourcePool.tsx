@@ -17,8 +17,7 @@ import {
   Database,
   CheckSquare,
   Square,
-  Trash2,
-} from 'lucide-react';
+  Trash2, type LucideIcon } from 'lucide-react';
 import { emergenceApi, EmergenceSource, type BrainSide, type SelectedSource } from '@/api/emergence';
 import { useNavigation } from '@/store/navigation';
 
@@ -42,7 +41,7 @@ const BRAIN_SIDES: { key: BrainSide | 'all'; label: string; color: string }[] = 
   { key: 'network', label: '网络脑', color: 'text-network-primary' },
 ];
 
-const TYPE_ICON_MAP: Record<string, React.ElementType> = {
+const TYPE_ICON_MAP: Record<string, LucideIcon> = {
   note: FileText,
   capsule: Package,
   clip: Globe,

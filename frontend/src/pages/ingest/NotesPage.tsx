@@ -10,6 +10,7 @@ import { useTags } from '@/hooks/useTags';
 import { useFolders } from '@/hooks/useFolders';
 import { useNavigation } from '@/store/navigation';
 import TagSelector from '@/components/TagSelector';
+import { useConfirm } from '@/components/common/dialogContext';
 import type { Note } from '@/api/notes';
 import type { Folder } from '@/api/folders';
 
@@ -27,6 +28,7 @@ interface FolderOption {
 }
 
 const NotesPage: FC = () => {
+  const askConfirm = useConfirm();
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
@@ -37,6 +39,8 @@ const NotesPage: FC = () => {
   const [formTitle, setFormTitle] = useState('');
   const [formContent, setFormContent] = useState('');
   const [formTags, setFormTags] = useState<string[]>([]);
+  // 仓库模式开关：打开编辑器时初始化（新建=false，编辑=当前值），不用 effect 回写（血泪#32）
+  const [formIndexOnly, setFormIndexOnly] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   // 服务端分页上限（无 total 返回，靠「返回数达到 limit」判断可能还有更多）；上限与后端 le=1000 对齐
@@ -160,6 +164,7 @@ const NotesPage: FC = () => {
     setFormTitle(note.title);
     setFormContent(note.content);
     setFormTags(note.tags.map((t) => t.id || t.name));
+    setFormIndexOnly(note.index_only);
     setError(null);
     setIsEditorOpen(true);
   };
@@ -169,6 +174,7 @@ const NotesPage: FC = () => {
     setFormTitle('');
     setFormContent('');
     setFormTags([]);
+    setFormIndexOnly(false);
     setError(null);
     setIsEditorOpen(true);
   };
@@ -189,10 +195,10 @@ const NotesPage: FC = () => {
       if (editingNote) {
         await updateNote({
           id: editingNote.id,
-          data: { title: formTitle.trim(), content: formContent.trim(), tags: formTags },
+          data: { title: formTitle.trim(), content: formContent.trim(), tags: formTags, index_only: formIndexOnly },
         });
       } else {
-        await createNote({ title: formTitle.trim(), content: formContent.trim(), tags: formTags });
+        await createNote({ title: formTitle.trim(), content: formContent.trim(), tags: formTags, index_only: formIndexOnly });
       }
       closeEditor();
     } catch (err: any) {
@@ -201,7 +207,7 @@ const NotesPage: FC = () => {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('确定要删除这条笔记吗？')) return;
+    if (!(await askConfirm('确定要删除这条笔记吗？'))) return;
     try {
       await deleteNote(id);
       // 删除后同步清理选中态，避免批量操作作用于已删除项
@@ -249,7 +255,7 @@ const NotesPage: FC = () => {
 
   const handleBatchDelete = async () => {
     if (selectedIds.size === 0) return;
-    if (!confirm(`确定要删除选中的 ${selectedIds.size} 条笔记吗？`)) return;
+    if (!(await askConfirm(`确定要删除选中的 ${selectedIds.size} 条笔记吗？`))) return;
     try {
       await batchDeleteNotes(Array.from(selectedIds));
       setSelectedIds(new Set());
@@ -318,7 +324,7 @@ const NotesPage: FC = () => {
           <p className="text-sm text-text-secondary mt-1">记录灵感、整理思绪、建立知识连接</p>
         </div>
         <div className="flex items-center gap-2">
-          <span className="badge-personal">Personal Brain</span>
+          <span className="badge-personal">个人脑</span>
           <button
             onClick={() => navigate('/ingest/batch-import?type=notes')}
             className="btn-secondary flex items-center gap-2"
@@ -678,6 +684,19 @@ const NotesPage: FC = () => {
                     placeholder="输入标签，回车或逗号分隔..."
                   />
                 </div>
+                {/* 仓库模式（index_only）：只进检索层，不进语义加工层 */}
+                <div>
+                  <label className="flex items-center gap-2 cursor-pointer w-fit">
+                    <input
+                      type="checkbox"
+                      checked={formIndexOnly}
+                      onChange={(e) => setFormIndexOnly(e.target.checked)}
+                      className="accent-info cursor-pointer"
+                    />
+                    <span className="text-xs text-text-primary">仅入库检索</span>
+                  </label>
+                  <p className="text-[10px] text-text-muted mt-1">只进检索层：AI 问答仍可检索到，但不进图谱/百科/打标/复盘</p>
+                </div>
                 <div>
                   <label className="block text-xs text-text-muted mb-1.5">内容</label>
                   <textarea
@@ -762,6 +781,7 @@ const NoteGridContent: FC<{
       <div className="flex-1 min-w-0 cursor-pointer" onClick={() => openEdit(note)}>
         <div className="text-sm font-medium text-text-primary truncate hover:text-info transition-colors">
           {note.title}
+          {note.index_only && <span className="badge-archive ml-1.5 align-middle" title="仓库模式：只进检索层，不进图谱/百科/打标/复盘">存档</span>}
         </div>
       </div>
       <input
@@ -846,6 +866,7 @@ const NoteListContent: FC<{
     <div className="flex-1 min-w-0 cursor-pointer" onClick={() => openEdit(note)}>
       <div className="text-sm font-medium text-text-primary hover:text-info transition-colors">
         {note.title}
+        {note.index_only && <span className="badge-archive ml-1.5 align-middle" title="仓库模式：只进检索层，不进图谱/百科/打标/复盘">存档</span>}
       </div>
       <div className="text-xs text-text-secondary line-clamp-1 mt-0.5">
         {note.excerpt}

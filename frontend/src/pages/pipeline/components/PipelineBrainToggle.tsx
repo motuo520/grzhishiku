@@ -1,6 +1,6 @@
 import { FC } from 'react';
 import { useLocation } from 'react-router-dom';
-import { Brain, Home, Globe, Info } from 'lucide-react';
+import { Brain, Home, Globe, Info, type LucideIcon } from 'lucide-react';
 import { useNavigation } from '@/store/navigation';
 import type { BrainSide } from '@/types';
 
@@ -10,7 +10,7 @@ interface PipelineBrainToggleProps {
   stageAware?: boolean;
 }
 
-const options: { id: BrainSide; label: string; icon: React.ElementType; color: string }[] = [
+const options: { id: BrainSide; label: string; icon: LucideIcon; color: string }[] = [
   { id: 'personal', label: '个人脑', icon: Home, color: 'text-personal-primary' },
   { id: 'both', label: '双脑', icon: Brain, color: 'text-fusion-primary' },
   { id: 'network', label: '网络脑', icon: Globe, color: 'text-network-primary' },

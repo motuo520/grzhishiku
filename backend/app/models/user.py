@@ -16,6 +16,9 @@ class User(Base):
     avatar = Column(String)
     password_hash = Column(String)
     status = Column(String, default="active")
+    subscription_tier = Column(String, default="free")
+    subscription_status = Column(String, default="active")
+    subscription_expires_at = Column(DateTime)
     storage_used = Column(Integer, default=0)
     storage_limit = Column(Integer, default=1073741824)
     last_login_at = Column(DateTime)
@@ -24,10 +27,15 @@ class User(Base):
     settings = Column(Text, default='{}')
     active_brain = Column(String, default="personal")
     token_version = Column(Integer, default=0)
+    # refresh 轮换序号（09-30 安全批③）：/refresh 每次 +1 写入新 refresh payload，
+    # 旧两代以上的重放=泄露重用，全端踢下线
+    refresh_seq = Column(Integer, default=0)
+    trial_credit_given = Column(Boolean, default=False)
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
     tenant_id = Column(String)
 
     __table_args__ = (
         Index('ix_users_email_status', 'email', 'status'),
+        Index('ix_users_subscription', 'id', 'subscription_status'),
     )

@@ -23,6 +23,31 @@ interface ClientErrorReport {
   timestamp: string;
 }
 
+// 动态分包加载失败（发版后旧会话引用已删除的旧哈希 chunk，真机实捕：
+// Failed to fetch dynamically imported module …/XxxPage-老哈希.js）——
+// 新版本已在服务器上，自动刷新一次拿到新 index.html 即自愈；
+// 30s 内只刷一次防循环（刷新后仍失败说明不是陈旧缓存，落到错误页）
+const CHUNK_ERROR_RE = /Failed to fetch dynamically imported module|Loading chunk \S+ failed|Importing a module script failed|error loading dynamically imported module/i;
+const CHUNK_RELOAD_KEY = 'psb:chunk-reload-at';
+const CHUNK_RELOAD_WINDOW_MS = 30000;
+
+function isChunkLoadError(error: Error | null): boolean {
+  return !!error?.message && CHUNK_ERROR_RE.test(error.message);
+}
+
+function tryChunkErrorRecovery(error: Error | null): boolean {
+  if (!isChunkLoadError(error)) return false;
+  try {
+    const last = Number(sessionStorage.getItem(CHUNK_RELOAD_KEY) || 0);
+    if (Date.now() - last < CHUNK_RELOAD_WINDOW_MS) return false;
+    sessionStorage.setItem(CHUNK_RELOAD_KEY, String(Date.now()));
+    window.location.reload();
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 function reportError(report: ClientErrorReport) {
   try {
     fetch('/api/v1/client-errors', {
@@ -49,6 +74,8 @@ class ErrorBoundary extends Component<Props, State> {
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     console.error('ErrorBoundary caught error:', error, errorInfo);
+    // 发版后旧会话的 chunk 404：自动刷新一次自愈（30s 窗口防循环），不进错误页
+    if (tryChunkErrorRecovery(error)) return;
     this.setState({ error, errorInfo });
 
     reportError({
@@ -122,6 +149,11 @@ class ErrorBoundary extends Component<Props, State> {
                 <div className="text-xs text-text-secondary break-words whitespace-pre-wrap">
                   {error.message || 'Unknown error'}
                 </div>
+                {isChunkLoadError(error) && (
+                  <div className="text-xs text-text-muted mt-2">
+                    通常是应用发布新版本后，旧页面引用的资源已更新——刷新页面即可恢复。
+                  </div>
+                )}
               </div>
             )}
 

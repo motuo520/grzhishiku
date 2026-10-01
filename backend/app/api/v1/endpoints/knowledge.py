@@ -1,10 +1,10 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
 from sqlalchemy import func, or_
-from typing import List, Optional
-import asyncio
+from typing import List, Optional, Any
 import uuid
 import json
+import logging
 import os
 from pathlib import Path
 from datetime import datetime, timedelta
@@ -19,17 +19,16 @@ from app.schemas.knowledge import (
     DisputeResolutionCreate, SourceInfoResponse, DomainCredibilityResponse
 )
 from app.services.llm_service import chat_completion
+from app.services.knowledge_title import first_line_title
 from app.services import tag_service
-from app.api.v1.endpoints.graph import auto_link_knowledge
+from app.api.v1.endpoints.graph import queue_auto_link
 from app.api.v1.endpoints.folders import validate_folder_assignment
+from app.core.tenant_scope import get_active_tenant, content_filter, scope_condition, content_visible_condition
+from app.core.tenant_scope import audit as _audit
 from app.api.v1.endpoints.jianghu import record_evolution_transition
 from app.utils.search import build_search_filter
 
-async def _auto_link_knowledge_async(db: Session, unit, user_id: str) -> None:
-    """auto_link_knowledge 是同步全表扫描，用线程池卸载避免阻塞事件循环。"""
-    loop = asyncio.get_running_loop()
-    await loop.run_in_executor(None, auto_link_knowledge, db, unit, user_id)
-
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -98,7 +97,7 @@ def _extract_latest_evidence(unit: KnowledgeUnit) -> Optional[dict]:
     return None
 
 
-def _build_knowledge_response(unit: KnowledgeUnit, db: Session) -> dict:
+def _build_knowledge_response(unit: KnowledgeUnit, db: Session, tags: Optional[list] = None) -> dict:
     try:
         attached_practice_ids = json.loads(unit.attached_practice_ids or '[]') if unit.attached_practice_ids else []
     except json.JSONDecodeError:
@@ -111,6 +110,7 @@ def _build_knowledge_response(unit: KnowledgeUnit, db: Session) -> dict:
         "content_processed": unit.content_processed,
         "content_type": unit.content_type,
         "content_confidence": unit.content_confidence,
+        "title": unit.title,
         "source_url": unit.source_url,
         "source_title": unit.source_title,
         "source_type": unit.source_type,
@@ -136,6 +136,7 @@ def _build_knowledge_response(unit: KnowledgeUnit, db: Session) -> dict:
         "review_count": unit.review_count,
         "origin_type": unit.origin_type or "book_excerpt",
         "invoke_count": unit.invoke_count or 0,
+        "ai_invoke_count": getattr(unit, "ai_invoke_count", None) or 0,  # AI 引用分账（R6 观察者效应隔离）
         "last_invoked_at": unit.last_invoked_at,
         "practice_depth": unit.practice_depth or 0,
         "personal_relevance_score": unit.personal_relevance_score if unit.personal_relevance_score is not None else 0.3,
@@ -148,7 +149,7 @@ def _build_knowledge_response(unit: KnowledgeUnit, db: Session) -> dict:
         "source_id": unit.source_id,
         "source_content_type": unit.source_content_type,
         "folder_id": unit.folder_id,
-        "tags": tag_service.get_tags_for(db, tag_service.CONTENT_TYPE_KNOWLEDGE, unit.id),
+        "tags": tags if tags is not None else tag_service.get_tags_for(db, tag_service.CONTENT_TYPE_KNOWLEDGE, unit.id),
         "created_at": unit.created_at,
         "updated_at": unit.updated_at,
     }
@@ -259,7 +260,18 @@ Rules:
             system_prompt="You are a strict knowledge verification engine. Always return valid JSON.",
             preferred_model=preferred_model,
         )
-        
+    except ValueError as e:
+        # 开源本地版保留既有行为：LLM 失败落规则兜底（主仓的计费通道硬报错口径不适用）
+        fallback = _rule_based_verification(content, source_url)
+        fallback["reasoning"] = f"LLM verification failed ({str(e)}). Fallback: {fallback['reasoning']}"
+        return fallback
+    except Exception as e:
+        # Fallback to rule-based if LLM fails
+        fallback = _rule_based_verification(content, source_url)
+        fallback["reasoning"] = f"LLM verification failed ({str(e)}). Fallback: {fallback['reasoning']}"
+        return fallback
+
+    try:
         # Extract JSON from response (handle markdown code blocks)
         json_str = raw_result
         if "```json" in raw_result:
@@ -288,16 +300,9 @@ Rules:
             "reasoning": reasoning,
         }
     except ValueError as e:
-        if "余额不足" in str(e):
-            raise HTTPException(status_code=402, detail=str(e))
-        # Fall through to rule-based for other value errors
+        # 模型返回了非 JSON（小模型输出畸形）：这不是「模型不通」，保留规则兜底但注明原因
         fallback = _rule_based_verification(content, source_url)
-        fallback["reasoning"] = f"LLM verification failed ({str(e)}). Fallback: {fallback['reasoning']}"
-        return fallback
-    except Exception as e:
-        # Fallback to rule-based if LLM fails
-        fallback = _rule_based_verification(content, source_url)
-        fallback["reasoning"] = f"LLM verification failed ({str(e)}). Fallback: {fallback['reasoning']}"
+        fallback["reasoning"] = f"LLM 输出解析失败（{e}），规则兜底：{fallback['reasoning']}"
         return fallback
 
 
@@ -360,18 +365,21 @@ async def list_knowledge(
     evolution_stage: Optional[str] = None,
     origin_type: Optional[str] = None,
     min_relevance: Optional[float] = None,
-    q: Optional[str] = None,
+    q: Optional[str] = Query(None, max_length=200),
     tag_ids: Optional[str] = Query(None, description="Filter by comma-separated tag IDs"),
     folder_id: Optional[str] = Query(None, description="Filter by folder id; 'none' = 未归档"),
     sort_by: Optional[str] = "created_at",
     sort_order: Optional[str] = "desc",
+    limit: Optional[int] = Query(None, ge=1, le=500, description="分页：返回条数上限（默认全量，向后兼容）"),
+    offset: Optional[int] = Query(None, ge=0, description="分页：跳过条数"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    query = db.query(KnowledgeUnit).filter(
-        KnowledgeUnit.user_id == current_user.id,
-        KnowledgeUnit.status != 'deleted'
-    )
+    tenant = get_active_tenant(db, current_user)
+    query = content_filter(
+        db.query(KnowledgeUnit).filter(KnowledgeUnit.status != 'deleted'),
+        KnowledgeUnit, current_user, tenant,
+    ).filter(content_visible_condition(db, KnowledgeUnit, current_user, tenant))
     if status:
         query = query.filter(KnowledgeUnit.verification_status == status)
     # 带 folder_id 过滤时脑侧由文件夹归属规则约束，不再做严格等值过滤（同 notes 列表口径）
@@ -380,10 +388,11 @@ async def list_knowledge(
     if brain_side and brain_side != "both" and not folder_id:
         query = query.filter(KnowledgeUnit.brain_side.in_([brain_side, "both"]))
     if folder_id == "none":
-        # 未归档（按查看脑 P）：brain_side ∈ {P,'both'} 且（folder_id 为空 或 文件夹不属 P 脑）
+        # 未归档（按查看脑 P）：brain_side ∈ {P,'both'} 且（folder_id 为空 或 文件夹不属 P 脑）；
+        # 文件夹范围按空间口径（团队上下文=该租户的夹）
         p = brain_side if brain_side in ("personal", "network") else "personal"
-        own_folder_ids = db.query(Folder.id).filter(
-            Folder.user_id == current_user.id, Folder.brain_side == p
+        own_folder_ids = content_filter(
+            db.query(Folder.id).filter(Folder.brain_side == p), Folder, current_user, tenant
         )
         query = query.filter(KnowledgeUnit.brain_side.in_([p, "both"]))
         query = query.filter(or_(KnowledgeUnit.folder_id.is_(None), ~KnowledgeUnit.folder_id.in_(own_folder_ids)))
@@ -438,10 +447,18 @@ async def list_knowledge(
             query = query.order_by(sort_column.desc())
 
     units = query.all()
-    responses = [_build_knowledge_response(u, db) for u in units]
+    # N+1 根修（10-01 BUG-11）：标签一次性批量取（2000 单元 ~2003 条 SQL → ~4 条）
+    tags_map = tag_service.get_tags_for_many(
+        db, tag_service.CONTENT_TYPE_KNOWLEDGE, [u.id for u in units]) if units else {}
+    responses = [_build_knowledge_response(u, db, tags=tags_map.get(u.id, [])) for u in units]
     if sort_by == "value_score":
         reverse = sort_order != "asc"
         responses.sort(key=lambda x: x["value_score"], reverse=reverse)
+    # 分页在排序后切片（value_score 是 Python 侧计算列，必须先全量排序再切）
+    if offset:
+        responses = responses[offset:]
+    if limit is not None:
+        responses = responses[:limit]
     return responses
 
 @router.post("/", status_code=status.HTTP_201_CREATED, summary="Add knowledge unit", description="Add a new knowledge unit. If a highly similar unit exists (and allow_merge is on), the new content is merged into it instead.")
@@ -455,11 +472,13 @@ async def add_knowledge(
     safe_content, safe_url, safe_title = sanitize_knowledge_input(
         unit_data.content_raw, unit_data.source_url, unit_data.source_title
     )
+    tenant = get_active_tenant(db, current_user)
 
-    # 查重合并：存在高度相似的知识单元时更新旧单元而不是新建（可用 allow_merge=false 关闭）
+    # 查重合并：存在高度相似的知识单元时更新旧单元而不是新建（可用 allow_merge=false 关闭）；
+    # 查重范围跟随租户上下文（个人空间不撞团队单元，反之亦然）
     if allow_merge:
         from app.services.knowledge_dedup import find_similar_unit, merge_into_unit, reembed_unit
-        similar = await find_similar_unit(db, current_user.id, safe_title or "", safe_content)
+        similar = await find_similar_unit(db, current_user.id, safe_title or "", safe_content, tenant=tenant)
         if similar is not None:
             unit = merge_into_unit(similar, safe_content)
             db.commit()
@@ -495,12 +514,17 @@ async def add_knowledge(
         source_id=unit_data.source_id,
         source_content_type=unit_data.source_content_type,
         attached_practice_ids='[]',
+        # 租户上下文创建：内容归团队（tenant_id=激活租户），user_id 仍记创建者
+        tenant_id=tenant.id if tenant else None,
     )
     db.add(unit)
+    # 租户审计：团队空间的内容创建记流水（个人空间不记）
+    if tenant:
+        _audit(db, tenant.id, current_user, "content_create", "knowledge", unit.id, safe_title or safe_content)
     db.commit()
     db.refresh(unit)
 
-    # Set tags
+    # Set tags（团队上下文写/复用该租户的团队标签）
     if unit_data.tags is not None:
         tag_service.set_tags_for(
             db,
@@ -508,16 +532,22 @@ async def add_knowledge(
             content_id=unit.id,
             user_id=current_user.id,
             tag_inputs=unit_data.tags,
+            tenant=tenant,
         )
         db.commit()
         db.refresh(unit)
     
     # Auto-link graph edges
+    # Auto-link（后台队列+防抖，请求路径零扫描）
+    queue_auto_link("knowledge", unit.id, current_user.id, db)
+
+    # 规则归档：直建的知识单元命中文件夹规则（产物/标签维度）自动归位（08-22）
     try:
-        await _auto_link_knowledge_async(db, unit, current_user.id)
-        db.commit()
+        from app.services.folder_service import evaluate_archive_rules
+        if evaluate_archive_rules(db, "knowledge", unit.id, current_user.id):
+            db.commit()
     except Exception as e:
-        print(f"Auto-link failed for knowledge {unit.id}: {e}")
+        logger.warning("archive rule eval failed for %s: %s", unit.id, e)
 
     response = _build_knowledge_response(unit, db)
     response["merged"] = False
@@ -529,8 +559,12 @@ async def get_knowledge_stats(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
+    tenant = get_active_tenant(db, current_user)
+
     def side_stats(side: str):
-        base = db.query(KnowledgeUnit).filter(KnowledgeUnit.user_id == current_user.id)
+        base = content_filter(db.query(KnowledgeUnit), KnowledgeUnit, current_user, tenant)
+        # 目录级权限（批 C）：统计口径与列表一致，不可见夹内容不计入
+        base = base.filter(content_visible_condition(db, KnowledgeUnit, current_user, tenant))
         if side != "both":
             base = base.filter(KnowledgeUnit.brain_side == side)
         total = base.count()
@@ -541,7 +575,7 @@ async def get_knowledge_stats(
         checking = base.filter(KnowledgeUnit.verification_status == 'checking').count()
         outdated = base.filter(KnowledgeUnit.verification_status == 'outdated').count()
         avg_confidence = db.query(func.avg(KnowledgeUnit.verification_consensus)).filter(
-            KnowledgeUnit.user_id == current_user.id,
+            scope_condition(KnowledgeUnit, current_user.id, tenant),
             KnowledgeUnit.brain_side == side if side != "both" else True,
             KnowledgeUnit.verification_consensus != None
         ).scalar() or 0
@@ -570,11 +604,14 @@ async def list_counter_evidence(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    query = db.query(KnowledgeUnit).filter(
-        KnowledgeUnit.user_id == current_user.id,
-        KnowledgeUnit.verification_status.in_(['disputed', 'debunked', 'outdated']),
-        KnowledgeUnit.status != 'deleted'
-    )
+    query = content_filter(
+        db.query(KnowledgeUnit).filter(
+            KnowledgeUnit.verification_status.in_(['disputed', 'debunked', 'outdated']),
+            KnowledgeUnit.status != 'deleted'
+        ),
+        KnowledgeUnit, current_user, get_active_tenant(db, current_user),
+    ).filter(content_visible_condition(
+        db, KnowledgeUnit, current_user, get_active_tenant(db, current_user)))
     if not include_resolved:
         # 未决议才上墙：kept/rejected 已处置的条目不再出现在待审列表
         query = query.filter(KnowledgeUnit.dispute_resolution.is_(None))
@@ -590,7 +627,11 @@ async def list_timeliness(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    query = db.query(KnowledgeUnit).filter(KnowledgeUnit.user_id == current_user.id)
+    query = content_filter(
+        db.query(KnowledgeUnit),
+        KnowledgeUnit, current_user, get_active_tenant(db, current_user),
+    ).filter(content_visible_condition(
+        db, KnowledgeUnit, current_user, get_active_tenant(db, current_user)))
     if brain_side and brain_side != "both":
         query = query.filter(KnowledgeUnit.brain_side == brain_side)
     units = query.order_by(
@@ -606,11 +647,28 @@ async def list_sources(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    units = db.query(KnowledgeUnit).filter(
-        KnowledgeUnit.user_id == current_user.id,
-        KnowledgeUnit.source_url != None,
-        KnowledgeUnit.status != 'deleted'
-    ).all()
+    units = content_filter(
+        db.query(KnowledgeUnit).filter(
+            KnowledgeUnit.source_url != None,
+            KnowledgeUnit.status != 'deleted'
+        ),
+        KnowledgeUnit, current_user, get_active_tenant(db, current_user),
+    ).filter(content_visible_condition(
+        db, KnowledgeUnit, current_user, get_active_tenant(db, current_user))).all()
+
+    # 用户手动信誉档覆盖（来源追溯页三档开关）：覆盖静态信誉表的自动判定
+    try:
+        _user_settings = json.loads(current_user.settings or '{}')
+    except json.JSONDecodeError:
+        _user_settings = {}
+    _tier_overrides: dict = _user_settings.get("source_tiers") or {}
+
+    def _auto_tier(reputation: str) -> str:
+        if reputation == "high":
+            return "trusted"
+        if reputation == "medium":
+            return "normal"
+        return "review"  # low / very low / unknown
 
     domains: dict[str, dict[str, Any]] = {}
     for u in units:
@@ -619,12 +677,18 @@ async def list_sources(
             continue
         if domain not in domains:
             cred = _get_domain_credibility(u.source_url)
+            reputation = cred.get("reputation", "unknown")
+            override = _tier_overrides.get(domain)
+            if override not in ("trusted", "normal", "review"):
+                override = None  # 'auto' 哨兵或脏值一律回落自动判定
             domains[domain] = {
                 "domain": domain,
                 "count": 0,
                 "avg_verification_consensus": 0.0,
                 "avg_source_credibility": 0.0,
-                "reputation": cred.get("reputation", "unknown"),
+                "reputation": reputation,
+                "tier": override or _auto_tier(reputation),
+                "tier_source": "manual" if override else "auto",
                 "factors": cred.get("factors", []),
             }
         domains[domain]["count"] += 1
@@ -645,22 +709,198 @@ class SeedDemoRequest(BaseModel):
     overwrite: bool = Field(False, description="If true, delete existing demo knowledge units before seeding.")
 
 
+@router.post("/seed-demo", summary="Seed demo brain", description="Import 200 sample knowledge units (book notes, recipes, work records) for the current user.")
+async def seed_demo_brain(
+    request: SeedDemoRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Import the sample brain for onboarding / empty-state demo."""
+    data_path = Path(__file__).resolve().parents[3] / "data" / "seed_demo_brain.json"
+    if not data_path.exists():
+        raise HTTPException(status_code=500, detail="Seed data file not found")
+
+    with open(data_path, "r", encoding="utf-8") as f:
+        seed_data = json.load(f)
+
+    entries = seed_data.get("entries", [])
+    if not entries:
+        raise HTTPException(status_code=500, detail="Seed data is empty")
+
+    # 空间口径：团队上下文 seed 落团队，overwrite 只删本空间内容（不碰另一空间的示例数据）
+    tenant = get_active_tenant(db, current_user)
+
+    # Idempotency: remove previously seeded demo units if overwrite is requested.
+    if request.overwrite:
+        db.query(KnowledgeUnit).filter(
+            scope_condition(KnowledgeUnit, current_user.id, tenant),
+            KnowledgeUnit.source_type.in_(["book", "recipe", "work_note"])
+        ).delete(synchronize_session=False)
+        db.commit()
+    else:
+        existing_count = db.query(KnowledgeUnit).filter(
+            scope_condition(KnowledgeUnit, current_user.id, tenant),
+            KnowledgeUnit.source_type.in_(["book", "recipe", "work_note"])
+        ).count()
+        if existing_count > 0:
+            return {
+                "seeded": 0,
+                "total": len(entries),
+                "skipped": True,
+                "message": "示例大脑已导入，如需重新导入请传入 overwrite=true",
+            }
+
+    created = 0
+    for entry in entries:
+        unit = KnowledgeUnit(
+            id=str(uuid.uuid4()),
+            user_id=current_user.id,
+            brain_side=entry.get("brain_side", "personal"),
+            content_raw=entry.get("content_raw", ""),
+            content_type=entry.get("content_type"),
+            source_title=entry.get("source_title"),
+            source_author=entry.get("source_author"),
+            source_type=entry.get("source_type"),
+            verification_status="unverified",
+            trust_level="tentative",
+            verification_history="[]",
+            origin_type=entry.get("origin_type", "book_excerpt"),
+            practice_depth=entry.get("practice_depth", 0),
+            personal_relevance_score=entry.get("personal_relevance_score", 0.3),
+            evolution_stage=entry.get("evolution_stage", "collected"),
+            pipeline_stage=entry.get("pipeline_stage", "raw"),
+            content_subtype=entry.get("content_subtype", "note"),
+            attached_practice_ids="[]",
+            # 租户上下文创建：seed 内容归团队，user_id 仍记创建者
+            tenant_id=tenant.id if tenant else None,
+        )
+        db.add(unit)
+        db.flush()
+
+        # Attach a single tag based on content type for easy filtering.
+        content_type = entry.get("content_type")
+        if content_type:
+            tag_service.set_tags_for(
+                db,
+                tag_service.CONTENT_TYPE_KNOWLEDGE,
+                unit.id,
+                current_user.id,
+                [content_type],
+                tenant=tenant,
+            )
+        created += 1
+
+    db.commit()
+    return {
+        "seeded": created,
+        "total": len(entries),
+        "skipped": False,
+        "message": f"成功导入 {created} 条示例笔记",
+    }
+
+
+@router.post("/rag-eval", summary="RAG evaluation", description="Run the 50-question RAG evaluation set against the current user's knowledge base. Tests retrieval recall and keyword coverage without calling the LLM.")
+async def run_rag_evaluation(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Run the RAG eval set and return a score report."""
+    from app.api.v1.endpoints.llm import _retrieve_knowledge_sources
+
+    data_path = Path(__file__).resolve().parents[3] / "data" / "rag_eval_set.json"
+    if not data_path.exists():
+        raise HTTPException(status_code=500, detail="RAG eval set file not found")
+
+    with open(data_path, "r", encoding="utf-8") as f:
+        eval_data = json.load(f)
+
+    questions = eval_data.get("questions", [])
+    threshold = eval_data.get("pass_threshold", 0.7)
+    results = []
+    passed = 0
+
+    for q in questions:
+        sources = await _retrieve_knowledge_sources(
+            db=db,
+            user_id=current_user.id,
+            message=q["question"],
+            brain_side="both",
+            top_k=5,
+        )
+
+        # Find the best matching source.
+        matched_source = None
+        for src in sources:
+            if q.get("expected_source_contains") and q["expected_source_contains"] in src["title"]:
+                matched_source = src
+                break
+            if q.get("expected_source_type") and src["source_type"] == q["expected_source_type"]:
+                # Accept as fallback only if keywords also match.
+                full_text = (src.get("content_raw") or src["preview"]) + " " + src["title"]
+                if all(kw.lower() in full_text.lower() for kw in q.get("expected_keywords", [])):
+                    matched_source = src
+                    break
+
+        # Keyword coverage in retrieved sources (use full raw text for accurate check).
+        combined = " ".join((s.get("content_raw") or s["preview"]) + " " + s["title"] for s in sources).lower()
+        keyword_hits = [kw for kw in q.get("expected_keywords", []) if kw.lower() in combined]
+        keyword_score = len(keyword_hits) / max(len(q.get("expected_keywords", [])), 1)
+
+        # A question passes if expected source is in top-k AND keyword coverage >= 60%.
+        source_ok = matched_source is not None
+        ok = source_ok and keyword_score >= 0.6
+        if ok:
+            passed += 1
+
+        results.append({
+            "id": q["id"],
+            "category": q["category"],
+            "question": q["question"],
+            "passed": ok,
+            "source_found": source_ok,
+            "keyword_score": round(keyword_score, 2),
+            "matched_source_title": matched_source["title"] if matched_source else None,
+            "retrieved_count": len(sources),
+        })
+
+    total = len(questions)
+    score = round(passed / total, 4) if total else 0.0
+
+    return {
+        "total": total,
+        "passed": passed,
+        "failed": total - passed,
+        "score": score,
+        "threshold": threshold,
+        "release_ready": score >= threshold,
+        "results": results,
+    }
+
+
 @router.get("/{unit_id}", response_model=KnowledgeUnitResponse, summary="Get knowledge unit", description="Get a specific knowledge unit.")
 async def get_knowledge(
     unit_id: str,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    unit = db.query(KnowledgeUnit).filter(KnowledgeUnit.id == unit_id, KnowledgeUnit.user_id == current_user.id, KnowledgeUnit.status != 'deleted').first()
+    unit = content_filter(
+        db.query(KnowledgeUnit).filter(KnowledgeUnit.id == unit_id, KnowledgeUnit.status != 'deleted'),
+        KnowledgeUnit, current_user, get_active_tenant(db, current_user),
+    ).filter(content_visible_condition(
+        db, KnowledgeUnit, current_user, get_active_tenant(db, current_user))).first()
     if not unit:
         raise HTTPException(status_code=404, detail="Knowledge unit not found")
     # Opening a knowledge unit counts as an invocation ("调用") signal.
     # Debounced: re-opens within 30 minutes don't re-count (avoids refocus/refetch inflation).
-    now = datetime.now()
-    if not unit.last_invoked_at or (now - unit.last_invoked_at) > timedelta(minutes=30):
-        unit.invoke_count = (unit.invoke_count or 0) + 1
-        unit.last_invoked_at = now
-        db.commit()
+    # 游客注入请求不计数不写库：演示账号数据被所有匿名访客共享，
+    # 游客浏览会把 invoke_count 刷成流量噪声（GET 写副作用收窄）
+    from app.core.guest_demo import is_guest_demo_user
+    if not is_guest_demo_user(current_user):
+        now = datetime.now()
+        if not unit.last_invoked_at or (now - unit.last_invoked_at) > timedelta(minutes=30):
+            unit.invoke_count = (unit.invoke_count or 0) + 1
+            unit.last_invoked_at = now
+            db.commit()
     return _build_knowledge_response(unit, db)
 
 
@@ -671,7 +911,11 @@ async def update_knowledge(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    unit = db.query(KnowledgeUnit).filter(KnowledgeUnit.id == unit_id, KnowledgeUnit.user_id == current_user.id, KnowledgeUnit.status != 'deleted').first()
+    tenant = get_active_tenant(db, current_user)
+    unit = content_filter(
+        db.query(KnowledgeUnit).filter(KnowledgeUnit.id == unit_id, KnowledgeUnit.status != 'deleted'),
+        KnowledgeUnit, current_user, tenant,
+    ).filter(content_visible_condition(db, KnowledgeUnit, current_user, tenant)).first()
     if not unit:
         raise HTTPException(status_code=404, detail="Knowledge unit not found")
 
@@ -737,15 +981,17 @@ async def update_knowledge(
             content_id=unit.id,
             user_id=current_user.id,
             tag_inputs=unit_data.tags,
+            tenant=tenant,
         )
-    # folder_id 显式传了才处理（含显式 null = 移出文件夹，未归档），归属校验与笔记同规则
+    # folder_id 显式传了才处理（含显式 null = 移出文件夹，未归档），归属校验与笔记同规则；
+    # 团队上下文归档到团队夹合法（脑侧校验仅个人空间生效）
     if "folder_id" in unit_data.model_fields_set:
         if unit_data.folder_id is not None:
             target_brain = unit_data.brain_side if unit_data.brain_side is not None else unit.brain_side
-            validate_folder_assignment(db, current_user.id, target_brain, unit_data.folder_id)
+            validate_folder_assignment(db, current_user.id, target_brain, unit_data.folder_id, tenant=tenant)
         unit.folder_id = unit_data.folder_id
-    elif unit_data.brain_side is not None and unit.folder_id:
-        # 单改脑侧的兜底：既有文件夹与新脑侧不兼容时自动移出（未归档），不留跨脑脏数据
+    elif unit_data.brain_side is not None and unit.folder_id and not unit.tenant_id:
+        # 单改脑侧的兜底（仅个人空间：脑侧是个人概念）：既有文件夹与新脑侧不兼容时自动移出
         folder = db.query(Folder).filter(Folder.id == unit.folder_id).first()
         if folder and unit.brain_side != "both" and folder.brain_side != unit.brain_side:
             unit.folder_id = None
@@ -754,11 +1000,8 @@ async def update_knowledge(
     db.commit()
     db.refresh(unit)
     
-    try:
-        await _auto_link_knowledge_async(db, unit, current_user.id)
-        db.commit()
-    except Exception as e:
-        print(f"Auto-link failed for knowledge {unit.id}: {e}")
+    # Auto-link（后台队列+防抖，请求路径零扫描）
+    queue_auto_link("knowledge", unit.id, current_user.id, db)
     
     return _build_knowledge_response(unit, db)
 
@@ -780,18 +1023,23 @@ async def batch_delete_knowledge(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    # 语义与单条删除完全一致：软删 + 标签关联清理 + 图边清理；
-    # 不属于当前用户的 id 静默跳过（幂等：不报错，只少删）
+    # 语义与单条删除完全一致：软删 + 标签关联清理 + 图边清理 + 团队空间审计；
+    # 空间口径之外的 id 静默跳过（幂等：不报错，只少删）
+    tenant = get_active_tenant(db, current_user)
     deleted = 0
+    _inv_vis = content_visible_condition(db, KnowledgeUnit, current_user, tenant)
     for unit_id in request.ids:
-        unit = db.query(KnowledgeUnit).filter(
-            KnowledgeUnit.id == unit_id,
-            KnowledgeUnit.user_id == current_user.id,
-            KnowledgeUnit.status != 'deleted',
-        ).first()
+        unit = content_filter(
+            db.query(KnowledgeUnit).filter(KnowledgeUnit.id == unit_id, KnowledgeUnit.status != 'deleted'),
+            KnowledgeUnit, current_user, tenant,
+        ).filter(_inv_vis).first()
         if not unit:
             continue
         unit.status = "deleted"
+        # 租户审计：团队空间的内容删除记流水（个人空间不记）
+        if unit.tenant_id:
+            _audit(db, unit.tenant_id, current_user, "content_delete", "knowledge", unit.id,
+                   unit.source_title or unit.content_raw)
         tag_service.delete_tags_for(db, tag_service.CONTENT_TYPE_KNOWLEDGE, unit_id)
         from app.api.v1.endpoints.graph import cleanup_content_edges
         cleanup_content_edges(db, unit_id)
@@ -806,10 +1054,18 @@ async def delete_knowledge(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    unit = db.query(KnowledgeUnit).filter(KnowledgeUnit.id == unit_id, KnowledgeUnit.user_id == current_user.id, KnowledgeUnit.status != 'deleted').first()
+    unit = content_filter(
+        db.query(KnowledgeUnit).filter(KnowledgeUnit.id == unit_id, KnowledgeUnit.status != 'deleted'),
+        KnowledgeUnit, current_user, get_active_tenant(db, current_user),
+    ).filter(content_visible_condition(
+        db, KnowledgeUnit, current_user, get_active_tenant(db, current_user))).first()
     if not unit:
         raise HTTPException(status_code=404, detail="Knowledge unit not found")
     unit.status = "deleted"
+    # 租户审计：团队空间的内容删除记流水（个人空间不记）
+    if unit.tenant_id:
+        _audit(db, unit.tenant_id, current_user, "content_delete", "knowledge", unit.id,
+               unit.source_title or unit.content_raw)
     tag_service.delete_tags_for(db, tag_service.CONTENT_TYPE_KNOWLEDGE, unit_id)
     from app.api.v1.endpoints.graph import cleanup_content_edges
     cleanup_content_edges(db, unit_id)
@@ -824,12 +1080,16 @@ async def verify_knowledge(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    unit = db.query(KnowledgeUnit).filter(KnowledgeUnit.id == unit_id, KnowledgeUnit.user_id == current_user.id, KnowledgeUnit.status != 'deleted').first()
+    unit = content_filter(
+        db.query(KnowledgeUnit).filter(KnowledgeUnit.id == unit_id, KnowledgeUnit.status != 'deleted'),
+        KnowledgeUnit, current_user, get_active_tenant(db, current_user),
+    ).filter(content_visible_condition(
+        db, KnowledgeUnit, current_user, get_active_tenant(db, current_user))).first()
     if not unit:
         raise HTTPException(status_code=404, detail="Knowledge unit not found")
 
-    # 顺序口径：先跑 LLM 验证拿到结果，再落状态——
-    # 不先置 checking，失败不会留下卡死的 checking 中间态。
+    # 顺序口径：先跑 LLM 验证（计费在其中）拿到结果，再落状态——
+    # 不先置 checking，余额不足等失败不会留下卡死的 checking 中间态。
     try:
         result = await _run_llm_verification(
             unit.content_raw,
@@ -839,7 +1099,7 @@ async def verify_knowledge(
             user_id=current_user.id,
         )
     except HTTPException:
-        # 业务异常：状态未被改动，直接抛
+        # 计费不足等业务异常：状态未被改动，直接抛
         raise
     except Exception:
         unit.verification_status = 'failed'
@@ -861,7 +1121,7 @@ async def verify_knowledge(
     unit.verification_consensus = round(result["confidence"] * 100, 2)
     unit.source_bias_indicator = json.dumps(result["bias_indicators"], ensure_ascii=False)
     unit.last_verified = datetime.now()
-    unit.review_count += 1
+    unit.review_count = (unit.review_count or 0) + 1
     
     # Append verification history
     try:
@@ -884,12 +1144,18 @@ async def verify_knowledge(
     db.commit()
     db.refresh(unit)
     
+    # 规则归档换道：验证通过（confirmed）的知识命中「可信沉淀」类规则夹时迁入——
+    # 只许在规则夹之间换道（用户手动归的档不动），见 folder_service（08-22）
+    if result["verdict"] == "confirmed":
+        try:
+            from app.services.folder_service import evaluate_archive_rules
+            if evaluate_archive_rules(db, "knowledge", unit.id, current_user.id, allow_lane_switch=True):
+                db.commit()
+        except Exception as e:
+            logger.warning("archive rule eval failed for %s: %s", unit.id, e)
     # Re-compute auto links after verification
-    try:
-        await _auto_link_knowledge_async(db, unit, current_user.id)
-        db.commit()
-    except Exception as e:
-        print(f"Auto-link failed for knowledge {unit.id}: {e}")
+    # Auto-link（后台队列+防抖，请求路径零扫描）
+    queue_auto_link("knowledge", unit.id, current_user.id, db)
     
     return {
         "unit_id": unit_id,
@@ -908,7 +1174,11 @@ async def submit_counter_evidence(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    unit = db.query(KnowledgeUnit).filter(KnowledgeUnit.id == unit_id, KnowledgeUnit.user_id == current_user.id, KnowledgeUnit.status != 'deleted').first()
+    unit = content_filter(
+        db.query(KnowledgeUnit).filter(KnowledgeUnit.id == unit_id, KnowledgeUnit.status != 'deleted'),
+        KnowledgeUnit, current_user, get_active_tenant(db, current_user),
+    ).filter(content_visible_condition(
+        db, KnowledgeUnit, current_user, get_active_tenant(db, current_user))).first()
     if not unit:
         raise HTTPException(status_code=404, detail="Knowledge unit not found")
     
@@ -960,7 +1230,11 @@ async def resolve_dispute(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    unit = db.query(KnowledgeUnit).filter(KnowledgeUnit.id == unit_id, KnowledgeUnit.user_id == current_user.id, KnowledgeUnit.status != 'deleted').first()
+    unit = content_filter(
+        db.query(KnowledgeUnit).filter(KnowledgeUnit.id == unit_id, KnowledgeUnit.status != 'deleted'),
+        KnowledgeUnit, current_user, get_active_tenant(db, current_user),
+    ).filter(content_visible_condition(
+        db, KnowledgeUnit, current_user, get_active_tenant(db, current_user))).first()
     if not unit:
         raise HTTPException(status_code=404, detail="Knowledge unit not found")
 
@@ -999,7 +1273,11 @@ async def get_knowledge_sources(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    unit = db.query(KnowledgeUnit).filter(KnowledgeUnit.id == unit_id, KnowledgeUnit.user_id == current_user.id, KnowledgeUnit.status != 'deleted').first()
+    unit = content_filter(
+        db.query(KnowledgeUnit).filter(KnowledgeUnit.id == unit_id, KnowledgeUnit.status != 'deleted'),
+        KnowledgeUnit, current_user, get_active_tenant(db, current_user),
+    ).filter(content_visible_condition(
+        db, KnowledgeUnit, current_user, get_active_tenant(db, current_user))).first()
     if not unit:
         raise HTTPException(status_code=404, detail="Knowledge unit not found")
     

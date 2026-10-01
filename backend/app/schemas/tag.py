@@ -46,3 +46,4 @@ class TagAssociationsResponse(BaseModel):
     note: List[TagAssociationItem] = []
     clip: List[TagAssociationItem] = []
     knowledge: List[TagAssociationItem] = []
+    document: List[TagAssociationItem] = []  # 09-11 文档纳入自动打标：关联展示同步纳入

@@ -13,7 +13,7 @@ cd grzhishiku
 docker compose up -d
 ```
 
-首次启动会自动拉取 Ollama 模型 `qwen2.5:0.5b` 与 `nomic-embed-text`（需联网），模型就绪后后端才开始服务。
+首次启动会自动拉取 Ollama 模型 `qwen3.5:0.8b` 与 `bge-m3`（需联网），模型就绪后后端才开始服务。
 
 访问：
 

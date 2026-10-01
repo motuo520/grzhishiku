@@ -67,15 +67,15 @@ class ModelConfig:
 
     MODELS = {
         # ─── Local / Ollama ───
-        "ollama-qwen2.5-0.5b": {
+        "ollama-qwen3.5-0.8b": {
             "provider": ModelProvider.OLLAMA,
-            "name": "Ollama / Qwen 2.5 0.5B",
-            "description": "本地轻量小模型，约 400MB",
+            "name": "Ollama / Qwen 3.5 0.8B",
+            "description": "本地轻量小模型，约 1GB",
             "capabilities": ["privacy", "chinese", "fast", "offline"],
             "context_length": 32000,
             "temperature": 0.7,
             "endpoint": settings.OLLAMA_BASE_URL,
-            "model_id": "qwen2.5:0.5b",
+            "model_id": "qwen3.5:0.8b",
             "available": True,
         },
         "ollama-smollm2": {
@@ -111,7 +111,7 @@ class ProviderStatus:
             "name": "Ollama",
             "base_url": settings.OLLAMA_BASE_URL,
             "health_endpoint": "/api/tags",
-            "default_model": "qwen2.5:0.5b",
+            "default_model": "qwen3.5:0.8b",
             "icon_color": "from-emerald-400 to-teal-500",
         },
     }
@@ -167,9 +167,9 @@ class LLMRouterService:
         # 2. Default -> local Ollama. Sensitive content is kept local by
         # construction, since Ollama is the only provider available.
         return {
-            "model_name": "ollama-qwen2.5-0.5b",
+            "model_name": "ollama-qwen3.5-0.8b",
             "provider": ModelProvider.OLLAMA,
-            "model_id": "qwen2.5:0.5b",
+            "model_id": "qwen3.5:0.8b",
             "reason": "default",
             "token_count": LLMRouterService.estimate_tokens(content),
         }
@@ -454,7 +454,7 @@ class LLMService:
 
     async def embed(self, text: str) -> List[float]:
         """Generate text embedding via Ollama（可用 OLLAMA_EMBED_MODEL 配置专用模型）or fallback."""
-        model = getattr(settings, "OLLAMA_EMBED_MODEL", "") or "nomic-embed-text"
+        model = getattr(settings, "OLLAMA_EMBED_MODEL", "") or "bge-m3"
         try:
             async with httpx.AsyncClient(timeout=30.0) as client:
                 response = await client.post(
@@ -512,7 +512,7 @@ class LLMService:
                 content_id=content_id,
                 embedding_json=json.dumps(embedding),
                 dimensions=len(embedding),
-                model_name="qwen2.5:0.5b",
+                model_name="bge-m3",
             ))
             db.commit()
             db.close()
@@ -520,7 +520,7 @@ class LLMService:
                 "success": True,
                 "id": emb_id,
                 "dimensions": len(embedding),
-                "model": "qwen2.5:0.5b",
+                "model": "bge-m3",
             }
         except Exception as e:
             return {"success": False, "error": str(e)}

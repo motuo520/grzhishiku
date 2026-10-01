@@ -1,3 +1,10 @@
+import os
+
+# ENV 钉 test（setdefault：个别测试用 monkeypatch 翻 development/production 验护栏）。
+# 不钉的话 auto-link 等「ENV=test 走桥接直跑」的判定会落到后台线程分支——
+# 断言即时性的回归测试必红（移植主仓同口径）。
+os.environ.setdefault("ENV", "test")
+
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine, event

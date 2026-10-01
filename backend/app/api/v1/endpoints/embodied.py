@@ -8,6 +8,8 @@ from datetime import datetime
 
 from app.core.database import get_db
 from app.core.security import get_current_user
+from app.core.crypto import decrypt_capsule_content
+from app.core.tenant_scope import get_active_tenant, scope_condition
 from app.models.base import User, DepthCheckLog, EvolutionReflection, Capsule
 from app.schemas.embodied import (
     DepthCheckRequest, DepthCheckResponse, DepthCheckLogResponse,
@@ -87,6 +89,9 @@ async def evaluate_depth(
 ):
     content = request.content
     preview = content[:200]
+    # 空间戳：评估流水随当前激活空间（团队空间归团队，个人空间 NULL）
+    tenant = get_active_tenant(db, current_user)
+    tenant_id = tenant.id if tenant else None
 
     # 默认免费规则评估，不调用付费 LLM；用户显式选择 AI 深度评估时才计费
     if not request.use_ai:
@@ -100,6 +105,7 @@ async def evaluate_depth(
         log = DepthCheckLog(
             id=str(uuid.uuid4()),
             user_id=current_user.id,
+            tenant_id=tenant_id,
             content_type=request.content_type,
             content_id=request.content_id,
             content_preview=preview,
@@ -167,6 +173,7 @@ async def evaluate_depth(
     log = DepthCheckLog(
         id=str(uuid.uuid4()),
         user_id=current_user.id,
+        tenant_id=tenant_id,
         content_type=request.content_type,
         content_id=request.content_id,
         content_preview=preview,
@@ -174,7 +181,7 @@ async def evaluate_depth(
         is_passed=passed,
         feedback=feedback,
         suggestions=json.dumps(suggestions, ensure_ascii=False),
-        model_used=request.preferred_model or "ollama-qwen2.5-0.5b",
+        model_used=request.preferred_model or "ollama-qwen3.5-0.8b",
     )
     db.add(log)
     db.commit()
@@ -194,7 +201,7 @@ async def list_depth_check_logs(
     current_user: User = Depends(get_current_user)
 ):
     logs = db.query(DepthCheckLog).filter(
-        DepthCheckLog.user_id == current_user.id
+        scope_condition(DepthCheckLog, current_user.id, get_active_tenant(db, current_user))
     ).order_by(DepthCheckLog.created_at.desc()).limit(limit).all()
     return [
         DepthCheckLogResponse(
@@ -240,7 +247,9 @@ async def list_evolution_reflections(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    query = db.query(EvolutionReflection).filter(EvolutionReflection.user_id == current_user.id)
+    query = db.query(EvolutionReflection).filter(
+        scope_condition(EvolutionReflection, current_user.id, get_active_tenant(db, current_user))
+    )
     if brain_side and brain_side != "both":
         query = query.filter(EvolutionReflection.brain_side == brain_side)
     reflections = query.order_by(EvolutionReflection.created_at.desc()).all()
@@ -253,9 +262,11 @@ async def create_evolution_reflection(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
+    tenant = get_active_tenant(db, current_user)
     reflection = EvolutionReflection(
         id=str(uuid.uuid4()),
         user_id=current_user.id,
+        tenant_id=tenant.id if tenant else None,  # 空间戳：团队空间反思归团队
         title=data.title,
         discomfort_level=data.discomfort_level,
         pain_description=data.pain_description,
@@ -280,7 +291,7 @@ async def get_evolution_reflection(
 ):
     r = db.query(EvolutionReflection).filter(
         EvolutionReflection.id == reflection_id,
-        EvolutionReflection.user_id == current_user.id
+        scope_condition(EvolutionReflection, current_user.id, get_active_tenant(db, current_user))
     ).first()
     if not r:
         raise HTTPException(status_code=404, detail="Reflection not found")
@@ -296,7 +307,7 @@ async def update_evolution_reflection(
 ):
     r = db.query(EvolutionReflection).filter(
         EvolutionReflection.id == reflection_id,
-        EvolutionReflection.user_id == current_user.id
+        scope_condition(EvolutionReflection, current_user.id, get_active_tenant(db, current_user))
     ).first()
     if not r:
         raise HTTPException(status_code=404, detail="Reflection not found")
@@ -317,7 +328,7 @@ async def delete_evolution_reflection(
 ):
     r = db.query(EvolutionReflection).filter(
         EvolutionReflection.id == reflection_id,
-        EvolutionReflection.user_id == current_user.id
+        scope_condition(EvolutionReflection, current_user.id, get_active_tenant(db, current_user))
     ).first()
     if not r:
         raise HTTPException(status_code=404, detail="Reflection not found")
@@ -332,7 +343,9 @@ async def analyze_evolution_reflections(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    query = db.query(EvolutionReflection).filter(EvolutionReflection.user_id == current_user.id)
+    query = db.query(EvolutionReflection).filter(
+        scope_condition(EvolutionReflection, current_user.id, get_active_tenant(db, current_user))
+    )
     if request.brain_side and request.brain_side != "both":
         query = query.filter(EvolutionReflection.brain_side == request.brain_side)
     reflections = query.order_by(EvolutionReflection.created_at.desc()).limit(30).all()
@@ -344,19 +357,19 @@ async def analyze_evolution_reflections(
     lines = []
     for r in reflections:
         lines.append(
-            f"- 标题：{r.title}\n  不适等级：{r.discomfort_level}\n  痛苦：{(r.pain_description or '')[:100]}\n  喜悦：{(r.joy_description or '')[:100]}\n  收获：{(r.learning or '')[:100]}\n  是否真进化：{'是' if r.is_true_evolution else '否'}"
+            f"- 标题：{r.title}\n  不适等级：{r.discomfort_level}\n  痛苦：{(r.pain_description or '')[:100]}\n  喜悦：{(r.joy_description or '')[:100]}\n  收获：{(r.learning or '')[:100]}\n  是否真成长：{'是' if r.is_true_evolution else '否'}"
         )
 
-    prompt = f"""你是一位成长教练。请基于用户最近的「真进化 vs 伪成熟」反思记录，给出整体评估。
+    prompt = f"""你是一位成长教练。请基于用户最近的「真成长 vs 伪熟练」反思记录，给出整体评估。
 
-反思记录（共 {total} 条，真进化比例 {ratio:.0%}）：
+反思记录（共 {total} 条，真成长比例 {ratio:.0%}）：
 {chr(10).join(lines) or "暂无记录"}
 
 请只返回 JSON：
 {{
   "summary": "整体判断，100字以内",
   "patterns": ["发现的模式1", "模式2"],
-  "warnings": ["伪成熟信号1"],
+  "warnings": ["伪熟练信号1"],
   "next_steps": ["下一步建议1"]
 }}
 """
@@ -398,8 +411,11 @@ async def aggregate_mood_location(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
+    # 聚合限当前空间：团队空间聚合团队胶囊，个人空间只看本人 tenant_id 为空的
+    from app.core.tenant_scope import get_active_tenant, scope_condition
+    tenant = get_active_tenant(db, current_user)
     query = db.query(Capsule).filter(
-        Capsule.user_id == current_user.id,
+        scope_condition(Capsule, current_user.id, tenant),
         Capsule.status == "active"
     ).filter(
         (Capsule.mood_emotion != None) |
@@ -431,7 +447,7 @@ async def aggregate_mood_location(
             mood_trigger=c.mood_trigger,
             mood_weather=c.mood_weather,
             mood_location=c.mood_location,
-            content_preview=(c.content_body or "")[:120],
+            content_preview=decrypt_capsule_content(c.content_body)[:120],
             created_at=c.created_at,
         ))
 

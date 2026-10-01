@@ -3,13 +3,12 @@ import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Clock, AlertTriangle, Search, ArrowRight, Calendar, RefreshCw,
-  ShieldCheck, HelpCircle, XCircle, Loader2
-} from 'lucide-react';
+  ShieldCheck, HelpCircle, XCircle, Loader2, type LucideIcon } from 'lucide-react';
 import { useTimeliness } from '@/hooks/useKnowledge';
 import ErrorState from '@/components/ErrorState';
 import type { KnowledgeUnit } from '@/types';
 
-const statusConfig: Record<string, { icon: React.ElementType; label: string; badgeClass: string }> = {
+const statusConfig: Record<string, { icon: LucideIcon; label: string; badgeClass: string }> = {
   confirmed: { icon: ShieldCheck, label: '已验证', badgeClass: 'bg-success/10 text-success border-success/30' },
   disputed: { icon: AlertTriangle, label: '有争议', badgeClass: 'bg-warning/10 text-warning border-warning/30' },
   debunked: { icon: XCircle, label: '已证伪', badgeClass: 'bg-danger/10 text-danger border-danger/30' },

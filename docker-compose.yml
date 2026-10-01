@@ -1,7 +1,7 @@
 # 个人第二大脑 — 开源精简版（Ollama 本地模型）
 # 用法：
 #   1. docker compose up -d
-#   2. 首次启动会自动拉取模型 qwen2.5:0.5b 与 nomic-embed-text（需联网，约几百 MB）
+#   2. 首次启动会自动拉取模型 qwen3.5:0.8b 与 bge-m3（需联网，约几百 MB）
 #   3. 访问 http://localhost/  （前端 80 端口，/api 由 nginx 代理到 backend:8000）
 # 所有配置均有默认值，fresh clone 即可启动，不依赖任何 .env 文件。
 # 密钥（SECRET_KEY / ADMIN_SECRET_KEY / DATABASE_ENCRYPT_KEY）无需手工配置：
@@ -36,8 +36,8 @@ services:
         condition: service_healthy
     entrypoint: >
       /bin/sh -c "
-      OLLAMA_HOST=http://ollama:11434 ollama pull qwen2.5:0.5b &&
-      OLLAMA_HOST=http://ollama:11434 ollama pull nomic-embed-text
+      OLLAMA_HOST=http://ollama:11434 ollama pull qwen3.5:0.8b &&
+      OLLAMA_HOST=http://ollama:11434 ollama pull bge-m3
       "
     restart: "no"
 
@@ -47,8 +47,8 @@ services:
       ENV: production
       # 本地模型（compose 内部走 ollama 服务，请勿改为 localhost）
       OLLAMA_BASE_URL: http://ollama:11434
-      OLLAMA_MODEL: qwen2.5:0.5b
-      OLLAMA_EMBED_MODEL: nomic-embed-text
+      OLLAMA_MODEL: qwen3.5:0.8b
+      OLLAMA_EMBED_MODEL: bge-m3
       GRAPHIFY_OLLAMA_MODEL: ${GRAPHIFY_OLLAMA_MODEL:-}
       # 数据统一放 /data（挂载 ./server-data）
       DATABASE_URL: sqlite:////data/psb.db

@@ -6,6 +6,7 @@ import json
 
 from app.core.database import get_db
 from app.core.security import get_current_user
+from app.core.crypto import decrypt_capsule_content
 from app.models.base import (
     User, Note, BrowserClip, KnowledgeUnit, Capsule, GraphEdge, Tag, content_tags
 )
@@ -17,6 +18,11 @@ from app.services.embedding_service import embedding_service
 
 router = APIRouter()
 
+# fusion-search 时间胶囊候选上限：正文落库为密文，匹配前必须逐条 AES 解密
+# （无法 SQL 下推），大库不设限会拖死请求；notes/clips/knowledge 走 ILIKE
+# 预过滤，匹配行 Python 打分很便宜，不设上限
+_CAPSULE_FUSION_CANDIDATE_LIMIT = 2000
+
 
 @router.get("/status", response_model=BrainStatus, summary="Brain status", description="Get current brain status from database.")
 async def get_brain_status(
@@ -25,17 +31,25 @@ async def get_brain_status(
 ):
     # Read from DB, fallback to session-like default
     active_brain = current_user.active_brain or "personal"
+    # 计数限当前空间：团队空间数团队内容，个人空间只数本人 tenant_id 为空的行
+    from app.core.tenant_scope import get_active_tenant, scope_condition
+    tenant = get_active_tenant(db, current_user)
     personal_count = (
-        db.query(Note).filter(Note.user_id == current_user.id, Note.status == "active").count()
-        + db.query(Capsule).filter(Capsule.user_id == current_user.id).count()
+        db.query(Note).filter(scope_condition(Note, current_user.id, tenant), Note.status == "active").count()
+        + db.query(Capsule).filter(scope_condition(Capsule, current_user.id, tenant)).count()
     )
     network_count = (
-        db.query(BrowserClip).filter(BrowserClip.user_id == current_user.id, BrowserClip.status == "active").count()
-        + db.query(KnowledgeUnit).filter(KnowledgeUnit.user_id == current_user.id).count()
+        db.query(BrowserClip).filter(scope_condition(BrowserClip, current_user.id, tenant), BrowserClip.status == "active").count()
+        + db.query(KnowledgeUnit).filter(scope_condition(KnowledgeUnit, current_user.id, tenant)).count()
     )
     both_count = db.query(GraphEdge).filter(
-        GraphEdge.user_id == current_user.id, GraphEdge.cross_brain == True
+        scope_condition(GraphEdge, current_user.id, tenant), GraphEdge.cross_brain == True
     ).count()
+
+    # 未归档条数（Dashboard 行动页「N 条待整理」）：口径与站内事实快照一致
+    # （site_knowledge._folder_content_counts，note/clip/knowledge 三表 UNION，None 键=未归档）
+    from app.services.site_knowledge import _folder_content_counts
+    unfiled_count = _folder_content_counts(db, current_user.id, tenant, "both").get(None, 0)
 
     return BrainStatus(
         active_brain=active_brain,
@@ -43,6 +57,7 @@ async def get_brain_status(
         network_count=network_count,
         both_count=both_count,
         total_items=personal_count + network_count,
+        unfiled_count=unfiled_count,
     )
 
 
@@ -107,8 +122,7 @@ async def fusion_search(
     current_user: User = Depends(get_current_user)
 ):
     query = request.query.lower().strip()
-    # 转义 LIKE 通配符，防 %/_ 注入导致分页不准与全表扫描
-    escaped_query = query.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+    escaped_query = query.replace("\\", "\\\\").replace("%", "\%").replace("_", "\_")
     brain_sides = request.brain_sides or []
     if request.brain_side:
         brain_sides = [request.brain_side]
@@ -116,12 +130,15 @@ async def fusion_search(
         brain_sides = [BrainSide.PERSONAL, BrainSide.NETWORK]
     results: List[Dict[str, Any]] = []
     limit = request.limit or 20
+    # 租户上下文：检索范围换团队内容（tenant_id=T），个人空间则限本人且 tenant_id 为空
+    from app.core.tenant_scope import get_active_tenant, scope_condition
+    tenant = get_active_tenant(db, current_user)
 
     # --- Personal brain search (notes + capsules) ---
     if BrainSide.PERSONAL in brain_sides or BrainSide.BOTH in brain_sides:
         # Notes: title + content FTS-like match
         notes = db.query(Note).filter(
-            Note.user_id == current_user.id,
+            scope_condition(Note, current_user.id, tenant),
             Note.status == "active",
             or_(
                 Note.title.ilike(f"%{escaped_query}%", escape="\\"),
@@ -147,41 +164,46 @@ async def fusion_search(
                 "relevance_score": round(relevance, 3),
                 "source_url": None,
                 "created_at": note.created_at.isoformat() if note.created_at else "",
+                "origin": "user",
                 "raw_title": note.title,
             })
 
-        # Capsules
+        # Capsules：正文落库为密文，需解密后在 Python 侧匹配（无法 SQL ilike）；
+        # 逐条解密前先按 updated_at 截断到上限，避免大库全量解密
         capsules = db.query(Capsule).filter(
-            Capsule.user_id == current_user.id,
-            Capsule.content_body.ilike(f"%{escaped_query}%", escape="\\")
-        ).all()
+            scope_condition(Capsule, current_user.id, tenant)
+        ).order_by(Capsule.updated_at.desc()).limit(_CAPSULE_FUSION_CANDIDATE_LIMIT).all()
 
         for cap in capsules:
+            body = decrypt_capsule_content(cap.content_body)
+            if query not in body.lower():
+                continue
             relevance = 0.75
-            snippet = _extract_snippet(cap.content_body, request.query)
+            snippet = _extract_snippet(body, request.query)
             results.append({
                 "id": cap.id,
                 "type": "capsule",
-                "title": _highlight(cap.content_body[:50], request.query),
+                "title": _highlight(body[:50], request.query),
                 "brain_side": BrainSide.PERSONAL,
                 "content": _highlight(snippet, request.query),
                 "relevance_score": round(relevance, 3),
                 "source_url": None,
                 "created_at": cap.created_at.isoformat() if cap.created_at else "",
-                "raw_title": cap.content_body[:50],
+                "origin": "user",
+                "raw_title": body[:50],
             })
 
     # --- Network brain search (clips + knowledge) ---
     if BrainSide.NETWORK in brain_sides or BrainSide.BOTH in brain_sides:
         clips = db.query(BrowserClip).filter(
-            BrowserClip.user_id == current_user.id,
+            scope_condition(BrowserClip, current_user.id, tenant),
             BrowserClip.status == "active",
             or_(
                 BrowserClip.title.ilike(f"%{escaped_query}%", escape="\\"),
-                BrowserClip.excerpt.ilike(f"%{escaped_query}%", escape="\\"),
-                BrowserClip.full_text.ilike(f"%{escaped_query}%", escape="\\")
-            )
-        ).all()
+            BrowserClip.excerpt.ilike(f"%{escaped_query}%", escape="\\"),
+            BrowserClip.full_text.ilike(f"%{escaped_query}%", escape="\\")
+        )
+    ).all()
 
         for clip in clips:
             title_match = query in (clip.title or "").lower()
@@ -198,15 +220,19 @@ async def fusion_search(
                 "relevance_score": round(relevance, 3),
                 "source_url": clip.url,
                 "created_at": clip.created_at.isoformat() if clip.created_at else "",
+                "origin": "user",
                 "raw_title": clip.title,
             })
 
         knowledge = db.query(KnowledgeUnit).filter(
-            KnowledgeUnit.user_id == current_user.id,
+            scope_condition(KnowledgeUnit, current_user.id, tenant),
             KnowledgeUnit.content_raw.ilike(f"%{escaped_query}%", escape="\\")
-        ).limit(limit * 2).all()
+        ).all()
 
         for ku in knowledge:
+            ku_origin = "ai" if (ku.origin_type or "") == "llm_generated" else "user"
+            if request.origin == "user" and ku_origin == "ai":
+                continue  # 「只看我的原文」：排除管线提取/碰撞等 AI 产物
             relevance = 0.78
             snippet = _extract_snippet(ku.content_raw, request.query)
             results.append({
@@ -218,6 +244,7 @@ async def fusion_search(
                 "relevance_score": round(relevance, 3),
                 "source_url": ku.source_url,
                 "created_at": ku.created_at.isoformat() if ku.created_at else "",
+                "origin": ku_origin,
                 "raw_title": ku.content_raw[:50],
             })
 
@@ -243,11 +270,12 @@ async def search_get(
     q: str = Query(..., min_length=1, max_length=1000, description="Search query"),
     limit: int = Query(20, ge=1, le=100),
     offset: int = Query(0, ge=0),
+    origin: Optional[str] = Query(None, description="user=只看我的原文"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     return await fusion_search(
-        FusionSearchRequest(query=q, limit=limit, offset=offset),
+        FusionSearchRequest(query=q, limit=limit, offset=offset, origin=origin),
         db,
         current_user,
     )
@@ -269,16 +297,20 @@ async def get_search_suggestions(
     current_user: User = Depends(get_current_user)
 ):
     suggestions: List[str] = []
+    # 建议来源限当前空间（与 fusion-search 同口径）
+    from app.core.tenant_scope import get_active_tenant, scope_condition
+    tenant = get_active_tenant(db, current_user)
     # 1. Popular tags
-    tags = db.query(Tag).filter(Tag.user_id == current_user.id).limit(10).all()
+    tags = db.query(Tag).filter(scope_condition(Tag, current_user.id, tenant)).limit(10).all()
     for t in tags:
         if t.name not in suggestions:
             suggestions.append(t.name)
     # 2. Recent note titles (partial match)
     if q:
-        escaped_q = q.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+        # 与 fusion-search 同口径：LIKE 元字符 %/_ 按字面匹配
+        escaped_q = q.replace("\\", "\\\\").replace("%", "\%").replace("_", "\_")
         notes = db.query(Note).filter(
-            Note.user_id == current_user.id,
+            scope_condition(Note, current_user.id, tenant),
             Note.status == "active",
             Note.title.ilike(f"%{escaped_q}%", escape="\\")
         ).limit(5).all()
@@ -287,7 +319,7 @@ async def get_search_suggestions(
                 suggestions.append(n.title)
     # 3. Knowledge source domains
     domains = db.query(BrowserClip.domain).filter(
-        BrowserClip.user_id == current_user.id,
+        scope_condition(BrowserClip, current_user.id, tenant),
         BrowserClip.status == "active",
         BrowserClip.domain != None
     ).distinct().limit(5).all()
@@ -303,31 +335,35 @@ async def get_brain_stats(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
+    # 统计限当前空间（与 fusion-search 同口径）
+    from app.core.tenant_scope import get_active_tenant, scope_condition
+    tenant = get_active_tenant(db, current_user)
     # Personal stats
-    note_count = db.query(Note).filter(Note.user_id == current_user.id, Note.status == "active").count()
-    capsule_count = db.query(Capsule).filter(Capsule.user_id == current_user.id).count()
-    tag_count = db.query(Tag).filter(Tag.user_id == current_user.id).count()
+    note_count = db.query(Note).filter(scope_condition(Note, current_user.id, tenant), Note.status == "active").count()
+    capsule_count = db.query(Capsule).filter(scope_condition(Capsule, current_user.id, tenant)).count()
+    tag_count = db.query(Tag).filter(scope_condition(Tag, current_user.id, tenant)).count()
     note_chars = db.query(func.sum(func.length(Note.content))).filter(
-        Note.user_id == current_user.id, Note.status == "active"
+        scope_condition(Note, current_user.id, tenant), Note.status == "active"
     ).scalar() or 0
-    capsule_chars = db.query(func.sum(func.length(Capsule.content_body))).filter(
-        Capsule.user_id == current_user.id
-    ).scalar() or 0
+    capsule_chars = sum(
+        len(decrypt_capsule_content(row.content_body or ""))
+        for row in db.query(Capsule.content_body).filter(scope_condition(Capsule, current_user.id, tenant)).all()
+    )
     total_words = note_chars + capsule_chars
 
     # Network stats
-    clip_count = db.query(BrowserClip).filter(BrowserClip.user_id == current_user.id, BrowserClip.status == "active").count()
-    knowledge_count = db.query(KnowledgeUnit).filter(KnowledgeUnit.user_id == current_user.id).count()
+    clip_count = db.query(BrowserClip).filter(scope_condition(BrowserClip, current_user.id, tenant), BrowserClip.status == "active").count()
+    knowledge_count = db.query(KnowledgeUnit).filter(scope_condition(KnowledgeUnit, current_user.id, tenant)).count()
     domains = db.query(BrowserClip.domain).filter(
-        BrowserClip.user_id == current_user.id, BrowserClip.status == "active", BrowserClip.domain != None
+        scope_condition(BrowserClip, current_user.id, tenant), BrowserClip.status == "active", BrowserClip.domain != None
     ).distinct().count()
     verified = db.query(KnowledgeUnit).filter(
-        KnowledgeUnit.user_id == current_user.id, KnowledgeUnit.verification_status == "confirmed"
+        scope_condition(KnowledgeUnit, current_user.id, tenant), KnowledgeUnit.verification_status == "confirmed"
     ).count()
 
     # Fusion stats
     cross_brain_edges = db.query(GraphEdge).filter(
-        GraphEdge.user_id == current_user.id, GraphEdge.cross_brain == True
+        scope_condition(GraphEdge, current_user.id, tenant), GraphEdge.cross_brain == True
     ).count()
     total_content = note_count + capsule_count + clip_count + knowledge_count
     fusion_ratio = round(cross_brain_edges / max(total_content, 1), 4)
@@ -359,57 +395,46 @@ async def create_cross_link(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    # Verify ownership of source and target; brain side 由实际命中的表推断，
-    # 不信任请求里的 source_type/target_type（用户可伪造）
-    _MODEL_BRAIN_SIDE = {
-        Note: "personal",
-        Capsule: "personal",
-        BrowserClip: "network",
-        KnowledgeUnit: "network",
-    }
-
-    source_brain = None
-    for Model, side in _MODEL_BRAIN_SIDE.items():
-        if db.query(Model).filter(Model.id == request.source_id, Model.user_id == current_user.id).first():
-            source_brain = side
+    # Verify ownership of source and target
+    # 归属校验限当前空间：跨空间建边直接 404，防止个人/团队内容被拴在一起
+    from app.core.tenant_scope import get_active_tenant, scope_condition
+    tenant = get_active_tenant(db, current_user)
+    owned = False
+    for Model in [Note, Capsule, BrowserClip, KnowledgeUnit]:
+        if db.query(Model).filter(Model.id == request.source_id, scope_condition(Model, current_user.id, tenant)).first():
+            owned = True
             break
-    if not source_brain:
+    if not owned:
         raise HTTPException(status_code=404, detail="Source item not found")
 
-    target_brain = None
-    for Model, side in _MODEL_BRAIN_SIDE.items():
-        if db.query(Model).filter(Model.id == request.target_id, Model.user_id == current_user.id).first():
-            target_brain = side
+    owned = False
+    for Model in [Note, Capsule, BrowserClip, KnowledgeUnit]:
+        if db.query(Model).filter(Model.id == request.target_id, scope_condition(Model, current_user.id, tenant)).first():
+            owned = True
             break
-    if not target_brain:
+    if not owned:
         raise HTTPException(status_code=404, detail="Target item not found")
 
+    # Determine brain sides for source and target
+    source_brain = "unknown"
+    target_brain = "unknown"
+    
+    if request.source_type in ["note", "capsule"]:
+        source_brain = "personal"
+    elif request.source_type in ["clip", "knowledge"]:
+        source_brain = "network"
+    
+    if request.target_type in ["note", "capsule"]:
+        target_brain = "personal"
+    elif request.target_type in ["clip", "knowledge"]:
+        target_brain = "network"
+    
     cross_brain = source_brain != target_brain
-
-    # 双向去重：同向由 db.merge 幂等覆盖，反向边存在时直接复用
-    existing = db.query(GraphEdge).filter(
-        GraphEdge.user_id == current_user.id,
-        GraphEdge.source_id == request.target_id,
-        GraphEdge.target_id == request.source_id,
-    ).first()
-    if existing:
-        return CrossLinkResponse(
-            id=existing.id,
-            source_id=existing.source_id,
-            source_type=request.target_type,
-            source_brain_side=existing.source_brain_side,
-            target_id=existing.target_id,
-            target_type=request.source_type,
-            target_brain_side=existing.target_brain_side,
-            link_type=existing.edge_type,
-            strength=existing.strength,
-            cross_brain=existing.cross_brain,
-            created_at=existing.created_at.isoformat() if existing.created_at else "",
-        )
-
+    
     edge = GraphEdge(
         id=f"{request.source_id}-{request.target_id}",
         user_id=current_user.id,
+        tenant_id=tenant.id if tenant else None,
         source_id=request.source_id,
         target_id=request.target_id,
         source_brain_side=source_brain,
@@ -446,14 +471,17 @@ async def get_cross_brain_graph(
     current_user: User = Depends(get_current_user)
 ):
     # Collect all user-owned content IDs
+    # 图谱限当前空间：节点/边都按空间口径，跨空间内容不进图
+    from app.core.tenant_scope import get_active_tenant, scope_condition
+    tenant = get_active_tenant(db, current_user)
     user_ids = set()
     for Model in [Note, Capsule, BrowserClip, KnowledgeUnit]:
-        for row in db.query(Model.id).filter(Model.user_id == current_user.id).all():
+        for row in db.query(Model.id).filter(scope_condition(Model, current_user.id, tenant)).all():
             user_ids.add(row[0])
-    
+
     # Get cross-brain edges where both source and target belong to current user
     edges = db.query(GraphEdge).filter(
-        GraphEdge.user_id == current_user.id,
+        scope_condition(GraphEdge, current_user.id, tenant),
         GraphEdge.cross_brain == True,
         GraphEdge.source_id.in_(user_ids),
         GraphEdge.target_id.in_(user_ids),
@@ -468,7 +496,7 @@ async def get_cross_brain_graph(
     nodes = []
     for node_id in node_ids:
         # Try to find in each table (already verified ownership, but filter anyway)
-        note = db.query(Note).filter(Note.id == node_id, Note.user_id == current_user.id).first()
+        note = db.query(Note).filter(Note.id == node_id, scope_condition(Note, current_user.id, tenant)).first()
         if note:
             nodes.append({
                 "id": note.id,
@@ -478,7 +506,7 @@ async def get_cross_brain_graph(
             })
             continue
         
-        clip = db.query(BrowserClip).filter(BrowserClip.id == node_id, BrowserClip.user_id == current_user.id).first()
+        clip = db.query(BrowserClip).filter(BrowserClip.id == node_id, scope_condition(BrowserClip, current_user.id, tenant)).first()
         if clip:
             nodes.append({
                 "id": clip.id,
@@ -488,7 +516,7 @@ async def get_cross_brain_graph(
             })
             continue
         
-        knowledge = db.query(KnowledgeUnit).filter(KnowledgeUnit.id == node_id, KnowledgeUnit.user_id == current_user.id).first()
+        knowledge = db.query(KnowledgeUnit).filter(KnowledgeUnit.id == node_id, scope_condition(KnowledgeUnit, current_user.id, tenant)).first()
         if knowledge:
             nodes.append({
                 "id": knowledge.id,
@@ -498,11 +526,11 @@ async def get_cross_brain_graph(
             })
             continue
         
-        capsule = db.query(Capsule).filter(Capsule.id == node_id, Capsule.user_id == current_user.id).first()
+        capsule = db.query(Capsule).filter(Capsule.id == node_id, scope_condition(Capsule, current_user.id, tenant)).first()
         if capsule:
             nodes.append({
                 "id": capsule.id,
-                "label": (capsule.content_body or '')[:30],
+                "label": decrypt_capsule_content(capsule.content_body)[:30],
                 "type": "capsule",
                 "brain_side": "personal",
             })

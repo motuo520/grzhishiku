@@ -10,6 +10,7 @@ export interface Tag {
     note?: number;
     clip?: number;
     knowledge?: number;
+    document?: number;
   };
   created_at: string;
   updated_at: string;
@@ -39,12 +40,12 @@ export interface TagAssociationsResponse {
   note: TagAssociationItem[];
   clip: TagAssociationItem[];
   knowledge: TagAssociationItem[];
+  document: TagAssociationItem[];
 }
 
 export const tagsApi = {
   list: () => api.get<Tag[]>('/api/v1/tags/'),
   create: (data: TagCreateData) => api.post<Tag>('/api/v1/tags/', data),
-  get: (id: string) => api.get<Tag>(`/api/v1/tags/${id}`),
   update: (id: string, data: TagUpdateData) => api.put<Tag>(`/api/v1/tags/${id}`, data),
   delete: (id: string) => api.delete(`/api/v1/tags/${id}`),
   merge: (id: string, targetTagId: string) => api.post<Tag>(`/api/v1/tags/${id}/merge`, { target_tag_id: targetTagId }),

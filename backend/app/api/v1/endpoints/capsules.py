@@ -9,6 +9,12 @@ import json
 
 from app.core.database import get_db
 from app.core.security import get_current_user
+from app.core.tenant_scope import get_active_tenant, content_filter
+from app.core.crypto import (
+    decrypt_capsule_content,
+    encrypt_capsule_content,
+    should_encrypt_capsule,
+)
 from app.core.xss_sanitizer import sanitize_capsule_input
 from app.models.base import User, Capsule, CapsuleDialogue
 from app.schemas.capsule import (
@@ -18,6 +24,11 @@ from app.schemas.capsule import (
 from app.services.llm_service import chat_completion
 
 router = APIRouter()
+
+
+class BatchCapsuleDelete(BaseModel):
+    # 批量删除上限 500 条：超出直接 422，避免单次请求打爆库
+    ids: List[str] = Field(..., max_length=500)
 
 
 def _build_dialogue_response(dialogue: CapsuleDialogue) -> CapsuleDialogueResponse:
@@ -44,6 +55,20 @@ def _build_dialogue_response(dialogue: CapsuleDialogue) -> CapsuleDialogueRespon
         closure=dialogue.closure,
     )
 
+LOCKED_CONTENT_PLACEHOLDER = '（内容封存中，到达解锁时间后可见）'
+
+
+def _extract_unlock_date(capsule: Capsule) -> Optional[str]:
+    """从 unlock_config 提取解锁时间（ISO 字符串），用于锁定提示。"""
+    if capsule.unlock_type != 'temporal':
+        return None
+    try:
+        config = json.loads(capsule.unlock_config) if isinstance(capsule.unlock_config, str) else (capsule.unlock_config or {})
+    except Exception:
+        return None
+    return config.get('unlock_date')
+
+
 def check_unlock_conditions(capsule: Capsule) -> bool:
     """Check if capsule unlock conditions are met"""
     if capsule.unlock_status != 'locked':
@@ -69,14 +94,14 @@ def check_unlock_conditions(capsule: Capsule) -> bool:
     return False
 
 def _capsule_to_response(capsule: Capsule, db: Session) -> CapsuleResponse:
-    # 不再在响应构造中自动修改胶囊并 commit（副作用/性能问题）；
+    # 不再在响应构造中自动修改他人胶囊并 commit（副作用/性能问题）；
     # 自动解锁应交给显式服务/定时任务
     return CapsuleResponse(
         id=capsule.id,
         user_id=capsule.user_id,
         brain_side=capsule.brain_side,
         content_type=capsule.content_type or 'text',
-        content_body=capsule.content_body,
+        content_body=decrypt_capsule_content(capsule.content_body),
         content_attachments=capsule.content_attachments,
         mood_emotion=capsule.mood_emotion,
         mood_intensity=capsule.mood_intensity,
@@ -103,7 +128,7 @@ async def list_capsules(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    query = db.query(Capsule).filter(Capsule.user_id == current_user.id)
+    query = content_filter(db.query(Capsule), Capsule, current_user, get_active_tenant(db, current_user))
     if brain_side and brain_side != "both":
         query = query.filter(Capsule.brain_side == brain_side)
     if privacy_level:
@@ -121,12 +146,19 @@ async def create_capsule(
     safe_content, safe_mood_tags = sanitize_capsule_input(
         capsule_data.content_body, capsule_data.mood_tags
     )
+    tenant = get_active_tenant(db, current_user)
     capsule = Capsule(
         id=str(uuid.uuid4()),
         user_id=current_user.id,
+        # 租户上下文创建：内容归团队（tenant_id=激活租户），user_id 仍记创建者
+        tenant_id=tenant.id if tenant else None,
         brain_side=capsule_data.brain_side or 'personal',
         content_type=capsule_data.content_type,
-        content_body=safe_content,
+        content_body=(
+            encrypt_capsule_content(safe_content)
+            if should_encrypt_capsule(capsule_data.privacy_encryption_level)
+            else safe_content
+        ),
         content_attachments=json.dumps(capsule_data.content_attachments) if capsule_data.content_attachments else None,
         mood_emotion=capsule_data.mood_emotion,
         mood_intensity=capsule_data.mood_intensity,
@@ -195,7 +227,7 @@ async def get_capsule_plaza(
         resp = _capsule_to_response(c, db)
         # Never leak sealed content of other people's capsules
         if c.user_id != current_user.id and resp.unlock_status == 'locked':
-            resp.content_body = '（内容封存中，到达解锁时间后可见）'
+            resp.content_body = LOCKED_CONTENT_PLACEHOLDER
         result.append(resp)
     return result
 
@@ -247,7 +279,12 @@ async def collect_capsule(
         user_id=current_user.id,
         brain_side='personal',
         content_type=capsule.content_type,
-        content_body=capsule.content_body,
+        # 幂等：已是密文原样保留，存量明文按源胶囊的加密级别补加密
+        content_body=(
+            encrypt_capsule_content(capsule.content_body)
+            if should_encrypt_capsule(capsule.privacy_encryption_level)
+            else capsule.content_body
+        ),
         content_attachments=capsule.content_attachments,
         mood_emotion=capsule.mood_emotion,
         mood_intensity=capsule.mood_intensity,
@@ -277,28 +314,31 @@ async def get_capsule(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    capsule = db.query(Capsule).filter(Capsule.id == capsule_id, Capsule.user_id == current_user.id).first()
+    capsule = content_filter(db.query(Capsule).filter(Capsule.id == capsule_id), Capsule, current_user, get_active_tenant(db, current_user)).first()
     if not capsule:
         raise HTTPException(status_code=404, detail="Capsule not found")
-    return _capsule_to_response(capsule, db)
+    resp = _capsule_to_response(capsule, db)
+    # BUG-M02：未到解锁时间的锁定胶囊，详情接口不返回正文，
+    # 只回锁定标记与解锁时间，防止时间锁被详情接口绕过
+    if capsule.unlock_status == 'locked' and not check_unlock_conditions(capsule):
+        resp.content_body = LOCKED_CONTENT_PLACEHOLDER
+        resp.content_locked = True
+        resp.unlock_at = _extract_unlock_date(capsule)
+    return resp
 
 # 路由顺序铁律（血泪 #10）：/batch 必须注册在 /{capsule_id} 的 DELETE 之前，否则被路径参数抢路由
-class BatchCapsuleDelete(BaseModel):
-    # 批量删除上限 500 条：超出直接 422，避免单次请求打爆库
-    ids: List[str] = Field(..., max_length=500)
-
-
 @router.delete("/batch", response_model=dict, summary="Batch delete capsules", description="Delete multiple capsules by IDs.")
 async def batch_delete_capsules(
     request: BatchCapsuleDelete,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    # 语义与单条删除完全一致：图边清理 + 硬删（无软删状态位）；
-    # 不属于当前用户的 id 静默跳过（幂等：不报错，只少删）
+    # 语义与单条删除完全一致：图边清理 + 硬删（无软删状态位、无审计）；
+    # 空间口径之外的 id 静默跳过（幂等：不报错，只少删）
+    tenant = get_active_tenant(db, current_user)
     deleted = 0
     for capsule_id in request.ids:
-        capsule = db.query(Capsule).filter(Capsule.id == capsule_id, Capsule.user_id == current_user.id).first()
+        capsule = content_filter(db.query(Capsule).filter(Capsule.id == capsule_id), Capsule, current_user, tenant).first()
         if not capsule:
             continue
         from app.api.v1.endpoints.graph import cleanup_content_edges
@@ -315,7 +355,7 @@ async def delete_capsule(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    capsule = db.query(Capsule).filter(Capsule.id == capsule_id, Capsule.user_id == current_user.id).first()
+    capsule = content_filter(db.query(Capsule).filter(Capsule.id == capsule_id), Capsule, current_user, get_active_tenant(db, current_user)).first()
     if not capsule:
         raise HTTPException(status_code=404, detail="Capsule not found")
     from app.api.v1.endpoints.graph import cleanup_content_edges
@@ -330,7 +370,8 @@ async def unlock_capsule(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    capsule = db.query(Capsule).filter(Capsule.id == capsule_id, Capsule.user_id == current_user.id).first()
+    # 空间口径（09-12）同详情/删除/对话：个人胶囊在团队空间不可解锁，反之亦然（跨空间 404）
+    capsule = content_filter(db.query(Capsule).filter(Capsule.id == capsule_id), Capsule, current_user, get_active_tenant(db, current_user)).first()
     if not capsule:
         raise HTTPException(status_code=404, detail="Capsule not found")
 
@@ -354,7 +395,8 @@ async def get_capsule_dialogue(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    capsule = db.query(Capsule).filter(Capsule.id == capsule_id, Capsule.user_id == current_user.id).first()
+    # 空间口径（09-12）：个人胶囊在团队空间不可对话，反之亦然（同列表/详情）
+    capsule = content_filter(db.query(Capsule).filter(Capsule.id == capsule_id), Capsule, current_user, get_active_tenant(db, current_user)).first()
     if not capsule:
         raise HTTPException(status_code=404, detail="Capsule not found")
 
@@ -371,9 +413,13 @@ async def get_capsule_dialogue(
             opened_by='user',
             conversation=json.dumps([]),
         )
-        db.add(dialogue)
-        db.commit()
-        db.refresh(dialogue)
+        # 游客注入请求只返回空壳不落库（GET 写副作用收窄）：
+        # 演示胶囊被所有匿名访客共享，自动建行会把库刷满孤儿对话行
+        from app.core.guest_demo import is_guest_demo_user
+        if not is_guest_demo_user(current_user):
+            db.add(dialogue)
+            db.commit()
+            db.refresh(dialogue)
 
     return _build_dialogue_response(dialogue)
 
@@ -385,7 +431,8 @@ async def capsule_dialogue(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    capsule = db.query(Capsule).filter(Capsule.id == capsule_id, Capsule.user_id == current_user.id).first()
+    # 空间口径（09-12）：个人胶囊在团队空间不可对话，反之亦然（同列表/详情）
+    capsule = content_filter(db.query(Capsule).filter(Capsule.id == capsule_id), Capsule, current_user, get_active_tenant(db, current_user)).first()
     if not capsule:
         raise HTTPException(status_code=404, detail="Capsule not found")
 
@@ -439,7 +486,7 @@ async def capsule_dialogue(
     past_context = (
         f"你是用户过去的自己。下面是一封用户在 {capsule.created_at.isoformat() if capsule.created_at else '过去'} "
         f"封存的时间胶囊内容，代表了当时的心境、想法和处境。\n\n"
-        f"【时间胶囊原文】\n{capsule.content_body}\n\n"
+        f"【时间胶囊原文】\n{decrypt_capsule_content(capsule.content_body)}\n\n"
     )
     if mood_parts:
         past_context += f"【封存时的心境】\n{'；'.join(mood_parts)}\n\n"

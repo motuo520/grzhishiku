@@ -32,7 +32,7 @@ class PipelineStage(str, Enum):
 
 class NoteCreate(BaseModel):
     title: str = Field(..., min_length=1, max_length=200, description="Note title (1-200 chars)")
-    content: str = Field(..., min_length=1, max_length=50000, description="Note content (Markdown supported, max 50KB)")
+    content: str = Field(..., min_length=1, description="Note content (Markdown supported)")
     brain_side: str = Field("personal", max_length=50, description="Brain side: personal / network")
     tags: Optional[List[str]] = Field(None, max_length=50, description="List of tag names or IDs to associate (max 50)")
     origin_type: Optional[OriginType] = Field(OriginType.SELF_PRACTICE, description="Origin type")
@@ -41,10 +41,11 @@ class NoteCreate(BaseModel):
     evolution_stage: Optional[EvolutionStage] = Field(EvolutionStage.COLLECTED, description="Evolution stage")
     pipeline_stage: Optional[PipelineStage] = Field(PipelineStage.RAW, description="Pipeline stage")
     folder_id: Optional[str] = Field(None, description="所属文件夹 id，空=未归档")
+    index_only: Optional[bool] = Field(False, description="仓库模式：只进检索层（RAG 可答），不进图谱/百科/打标/复盘")
 
 class NoteUpdate(BaseModel):
     title: Optional[str] = Field(None, min_length=1, max_length=200, description="Updated title")
-    content: Optional[str] = Field(None, min_length=1, max_length=50000, description="Updated content (max 50KB)")
+    content: Optional[str] = Field(None, min_length=1, description="Updated content")
     brain_side: Optional[str] = Field(None, max_length=50, description="Updated brain side")
     tags: Optional[List[str]] = Field(None, max_length=50, description="Updated tag list (replaces existing, max 50)")
     origin_type: Optional[OriginType] = Field(None, description="Origin type")
@@ -53,6 +54,7 @@ class NoteUpdate(BaseModel):
     evolution_stage: Optional[EvolutionStage] = Field(None, description="Evolution stage")
     pipeline_stage: Optional[PipelineStage] = Field(None, description="Pipeline stage")
     folder_id: Optional[str] = Field(None, description="所属文件夹 id；显式传 null 表示移出文件夹（未归档）")
+    index_only: Optional[bool] = Field(None, description="仓库模式开关：true=只进检索层，false/null=不改变")
 
 class NoteResponse(BaseModel):
     id: str = Field(..., description="Note ID (UUID)")
@@ -71,6 +73,7 @@ class NoteResponse(BaseModel):
     attached_practice_ids: List[str] = Field(default_factory=list, description="Associated practice record IDs")
     pipeline_stage: str = Field("raw", description="Pipeline stage: raw / card / extracted / collided / approved")
     folder_id: Optional[str] = Field(None, description="所属文件夹 id，空=未归档")
+    index_only: bool = Field(False, description="仓库模式：只进检索层，不进语义加工层")
     created_at: datetime = Field(..., description="Creation timestamp")
     updated_at: datetime = Field(..., description="Last update timestamp")
 

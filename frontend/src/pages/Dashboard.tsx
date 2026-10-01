@@ -1,20 +1,19 @@
-import { FC, useState } from 'react';
-import { Brain, TrendingUp, Clock, BookOpen, Target, Sparkles, ArrowRight, Download, Search, MessageCircle, Loader2 } from 'lucide-react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { FC } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { Brain, TrendingUp, Clock, BookOpen, Target, Inbox, ArrowRight, FileText, PenLine } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
 import { useNavigation } from '@/store/navigation';
 import { brainApi } from '@/api/brain';
 import { attentionApi } from '@/api/attention';
 import { knowledgeApi } from '@/api/knowledge';
 import { capsulesApi } from '@/api/capsules';
-import { authApi } from '@/api/auth';
+import { notesApi } from '@/api/notes';
 
+// Dashboard = 行动页（09-05 拍板）：首屏回答「我现在该干什么」——待整理入口 +
+// 最近 5 条笔记；四个统计卡压缩成一行（大数字卡片空落落，信息密度为零）。
 const Dashboard: FC = () => {
-  const navigate = useNavigate();
-  const queryClient = useQueryClient();
   const { brainSide } = useNavigation();
-  const [seedMessage, setSeedMessage] = useState<string | null>(null);
-
+  const navigate = useNavigate();
   const { data: brainStatus } = useQuery({
     queryKey: ['brain', 'status'],
     queryFn: async () => {
@@ -55,51 +54,30 @@ const Dashboard: FC = () => {
     refetchOnWindowFocus: false,
   });
 
-  const seedMutation = useMutation({
-    mutationFn: () => authApi.seedSamples(),
-    onSuccess: (response) => {
-      const total = Object.values(response.data.seeded).reduce((a, b) => a + b, 0);
-      setSeedMessage(total > 0 ? `已为 ${Object.keys(response.data.seeded).length} 个功能补齐 ${total} 条示例内容，去各页面看看吧` : '各功能已有内容，无需补充示例');
-      queryClient.invalidateQueries({ queryKey: ['knowledge'] });
-      queryClient.invalidateQueries({ queryKey: ['tags'] });
-      queryClient.invalidateQueries({ queryKey: ['brain', 'status'] });
+  // 最近 5 条笔记（行动页主内容区）
+  const { data: recentNotes } = useQuery({
+    queryKey: ['notes', 'recent5'],
+    queryFn: async () => {
+      const response = await notesApi.list({ limit: 5, sort: 'created_at', order: 'desc' });
+      return response.data;
     },
-    onError: (error: any) => {
-      setSeedMessage(error?.response?.data?.detail || '导入失败，请稍后重试');
-    },
+    staleTime: 30 * 1000,
+    refetchOnWindowFocus: false,
   });
 
   const personalCount = brainStatus?.personal_count ?? 0;
   const networkCount = brainStatus?.network_count ?? 0;
   const totalItems = brainStatus?.total_items ?? 0;
+  const unfiledCount = brainStatus?.unfiled_count ?? 0;
   const totalPercent = totalItems > 0 ? Math.round((networkCount / totalItems) * 100) : 0;
   const personalPercent = totalItems > 0 ? Math.round((personalCount / totalItems) * 100) : 0;
 
-  const stats = [
-    {
-      icon: BookOpen,
-      label: '知识单元',
-      value: String(knowledgeStats?.both?.total ?? 0),
-      color: 'text-info',
-    },
-    {
-      icon: Clock,
-      label: '时间胶囊',
-      value: String(capsuleStats?.both?.total ?? 0),
-      color: 'text-warning',
-    },
-    {
-      icon: Target,
-      label: '今日专注',
-      value: `${attentionDashboard?.total_focus_today ?? 0}h`,
-      color: 'text-success',
-    },
-    {
-      icon: TrendingUp,
-      label: '大脑内容',
-      value: String(totalItems),
-      color: 'text-fusion-primary',
-    },
+  // 压缩到一行的统计条
+  const statsRow = [
+    { icon: TrendingUp, label: '大脑内容', value: String(totalItems) },
+    { icon: BookOpen, label: '知识单元', value: String(knowledgeStats?.both?.total ?? 0) },
+    { icon: Clock, label: '时间胶囊', value: String(capsuleStats?.both?.total ?? 0) },
+    { icon: Target, label: '今日专注', value: `${attentionDashboard?.total_focus_today ?? 0}h` },
   ];
 
   const dateStr = new Date().toLocaleDateString('zh-CN', {
@@ -109,8 +87,6 @@ const Dashboard: FC = () => {
     weekday: 'long',
   });
 
-  const isEmpty = (knowledgeStats?.both?.total ?? 0) === 0;
-
   return (
     <div className="p-6 max-w-7xl mx-auto space-y-6">
       <div className="border-b border-border-light pb-5">
@@ -118,109 +94,96 @@ const Dashboard: FC = () => {
         <div className="flex items-end justify-between gap-4">
           <h1 className="text-3xl sm:text-4xl font-bold text-text-primary tracking-tight">欢迎回来</h1>
           <span className={`badge-${brainSide === 'network' ? 'network' : brainSide === 'both' ? 'fusion' : 'personal'}`}>
-            {brainSide === 'network' ? 'Network Brain' : brainSide === 'both' ? 'Dual Brain' : 'Personal Brain'}
+            {brainSide === 'network' ? '网络脑' : brainSide === 'both' ? '整合脑' : '个人脑'}
           </span>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        {stats.map((stat, i) => (
-          <div key={i} className="card transition-colors">
-            <div className="flex items-start justify-between">
-              <div>
-                <div className="eyebrow">{stat.label}</div>
-                <div className="text-3xl font-bold text-text-primary mt-2">{stat.value}</div>
-              </div>
-              <stat.icon className={`w-5 h-5 ${stat.color} opacity-70`} />
-            </div>
+      {/* 统计条：一行压缩（原四大卡片信息密度过低） */}
+      <div className="card !py-3 flex flex-wrap items-center gap-x-6 gap-y-2">
+        {statsRow.map((stat, i) => (
+          <div key={i} className="flex items-center gap-2">
+            <stat.icon className="w-4 h-4 text-text-muted" />
+            <span className="text-xs text-text-secondary">{stat.label}</span>
+            <span className="text-sm font-semibold text-text-primary">{stat.value}</span>
           </div>
         ))}
       </div>
 
-      {isEmpty && (
-        <div className="card border border-accent/30 bg-accent/[0.03]">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-5">
-            <div className="flex-1">
-              <div className="flex items-center gap-2 mb-2">
-                <Sparkles className="w-4 h-4 text-accent" />
-                <span className="text-sm font-semibold text-accent">首次使用</span>
-              </div>
-              <h3 className="text-xl font-bold text-text-primary mb-2">每个功能导入 1-2 条示例，快速上手</h3>
-              <p className="text-sm text-text-secondary leading-relaxed">
-                我们会在笔记、便签墙、剪藏、稍后读、知识库、时间胶囊里各放一两条示例内容，让你一眼看到每个功能的用法。随时可编辑或删除。
-              </p>
-              {seedMessage && (
-                <p className="text-sm text-accent mt-3">{seedMessage}</p>
-              )}
-            </div>
-            <button
-              onClick={() => seedMutation.mutate()}
-              disabled={seedMutation.isPending}
-              className="shrink-0 inline-flex items-center gap-2 px-5 py-2.5 rounded-[2px] bg-accent hover:bg-[var(--accent-hover)] text-[var(--accent-ink)] text-sm font-medium transition-colors disabled:opacity-60"
-            >
-              {seedMutation.isPending ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <Download className="w-4 h-4" />
-              )}
-              {seedMutation.isPending ? '导入中…' : '导入示例内容'}
-            </button>
-          </div>
+      {/* 行动主卡：待整理入口——首屏回答「现在该干什么」 */}
+      <div className="card flex items-center gap-4 border-l-2 border-l-info">
+        <div className="w-10 h-10 rounded-[2px] bg-info/10 flex items-center justify-center shrink-0">
+          <Inbox className="w-5 h-5 text-info" />
         </div>
-      )}
+        <div className="flex-1 min-w-0">
+          {unfiledCount > 0 ? (
+            <>
+              <div className="text-base font-semibold text-text-primary">{unfiledCount} 条内容待整理</div>
+              <div className="text-xs text-text-secondary mt-0.5">未归档的笔记/剪藏/知识——归档进目录树，或交给「自动理好」管线加工</div>
+            </>
+          ) : (
+            <>
+              <div className="text-base font-semibold text-text-primary">库里没有待整理的内容</div>
+              <div className="text-xs text-text-secondary mt-0.5">都归置好了。去记一条新的，或让 AI 帮你回顾</div>
+            </>
+          )}
+        </div>
+        {unfiledCount > 0 ? (
+          <button
+            onClick={() => navigate('/ingest/notes?folder_id=none')}
+            className="btn-primary flex items-center gap-1.5 shrink-0"
+          >
+            开始整理
+            <ArrowRight className="w-4 h-4" />
+          </button>
+        ) : (
+          <button
+            onClick={() => navigate('/ingest/notes')}
+            className="btn-primary flex items-center gap-1.5 shrink-0"
+          >
+            <PenLine className="w-4 h-4" />
+            写一条笔记
+          </button>
+        )}
+      </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* 最近 5 条笔记（替代原「最近活动」空卡） */}
         <div className="card">
-          <h3 className="text-lg font-semibold text-text-primary mb-4 pb-3 border-b border-border-light">新手三步</h3>
-          <div className="space-y-4">
-            {[
-              {
-                step: '1',
-                icon: Download,
-                title: isEmpty ? '导入示例内容（或自己存一条）' : '继续存资料',
-                desc: isEmpty ? '点击上方按钮，每个功能获得 1-2 条示例。' : '用剪藏、笔记、导入继续丰富知识库。',
-                action: isEmpty ? () => seedMutation.mutate() : () => navigate('/ingest'),
-                actionLabel: isEmpty ? '导入' : '去存资料',
-              },
-              {
-                step: '2',
-                icon: MessageCircle,
-                title: '问一句话',
-                desc: '打开右下角 AI 助手，用本地模型向你的知识库提问。',
-                action: () => window.dispatchEvent(new CustomEvent('psb:chat:open')),
-                actionLabel: '打开 AI 助手',
-              },
-              {
-                step: '3',
-                icon: Search,
-                title: '看到引用出处',
-                desc: '每个回答都会标注来自哪条笔记，点击即可跳回原文。',
-                action: () => navigate('/knowledge'),
-                actionLabel: '查看知识库',
-              },
-            ].map((item) => (
-              <div key={item.step} className="flex gap-4">
-                <div className="w-8 h-8 rounded-[2px] bg-bg-tertiary border border-border-color flex items-center justify-center shrink-0 text-sm font-bold text-accent">
-                  {item.step}
-                </div>
-                <div className="flex-1">
-                  <h4 className="text-base font-bold text-text-primary mb-1 flex items-center gap-2">
-                    <item.icon className="w-4 h-4 text-text-secondary" />
-                    {item.title}
-                  </h4>
-                  <p className="text-sm text-text-secondary mb-2">{item.desc}</p>
-                  <button
-                    onClick={item.action}
-                    disabled={seedMutation.isPending && item.step === '1' && isEmpty}
-                    className="inline-flex items-center gap-1 text-xs text-accent hover:text-[var(--accent-link)] transition-colors disabled:opacity-60"
-                  >
-                    {item.actionLabel}
-                    <ArrowRight className="w-3 h-3" />
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
+          <h3 className="text-lg font-semibold text-text-primary mb-4 pb-3 border-b border-border-light">最近笔记</h3>
+          {(recentNotes || []).length > 0 ? (
+            <div className="divide-y divide-border-light">
+              {recentNotes!.map((n) => (
+                <button
+                  key={n.id}
+                  onClick={() => navigate(`/ingest/notes/${n.id}`)}
+                  className="w-full flex items-start gap-3 py-2.5 text-left hover:bg-white/[0.03] transition-colors rounded-[2px] px-1"
+                >
+                  <FileText className="w-4 h-4 text-text-muted shrink-0 mt-0.5" />
+                  <div className="min-w-0 flex-1">
+                    <div className="text-sm text-text-primary truncate">{n.title || '无标题笔记'}</div>
+                    <div className="text-xs text-text-muted truncate mt-0.5">
+                      {(n.content || '').replace(/[#>*`\n]/g, ' ').trim().slice(0, 60)}
+                    </div>
+                  </div>
+                  <span className="text-[10px] text-text-muted shrink-0 mt-1">
+                    {new Date(n.created_at).toLocaleDateString('zh-CN', { month: 'numeric', day: 'numeric' })}
+                  </span>
+                </button>
+              ))}
+            </div>
+          ) : (
+            <div className="flex flex-col items-center justify-center h-48 gap-3 text-text-secondary">
+              <p className="text-sm">还没有笔记</p>
+              <button
+                onClick={() => navigate('/ingest/notes')}
+                className="btn-primary flex items-center gap-1.5 text-xs"
+              >
+                <PenLine className="w-3.5 h-3.5" />
+                写第一条笔记
+              </button>
+            </div>
+          )}
         </div>
 
         <div className="card">
@@ -245,13 +208,6 @@ const Dashboard: FC = () => {
               <span className="text-sm text-text-secondary">个人 {personalPercent}%</span>
             </div>
           </div>
-        </div>
-      </div>
-
-      <div className="card">
-        <h3 className="text-lg font-semibold text-text-primary mb-4 pb-3 border-b border-border-light">最近活动</h3>
-        <div className="flex items-center justify-center h-48 text-text-secondary">
-          <p>暂无最近活动</p>
         </div>
       </div>
     </div>

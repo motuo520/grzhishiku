@@ -20,7 +20,7 @@ const MOOD_TAGS = [
 
 const PRIVACY_OPTIONS = [
   { key: 'public', label: '公开', icon: Globe, desc: '所有人可见' },
-  { key: 'shared', label: '仅共享', icon: Users, desc: '仅分享的人可见' },
+  { key: 'shared', label: '仅共享', icon: Users, desc: '指定分享未上线，当前等同私密' },
   { key: 'private', label: '私密', icon: EyeOff, desc: '仅自己可见' },
 ];
 

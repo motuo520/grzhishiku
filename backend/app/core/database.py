@@ -7,9 +7,11 @@ from app.core.config import settings
 # ── Synchronous engine (primary, SQLite) ─────────────────────────
 # SQLite does not support pool_size; these parameters are ignored for SQLite
 # but will take effect when migrating to PostgreSQL.
+# check_same_thread 是 SQLite 专属连接参数，仅对 SQLite 传递
+connect_args = {"check_same_thread": False} if settings.DATABASE_URL.startswith("sqlite") else {}
 engine = create_engine(
     settings.DATABASE_URL,
-    connect_args={"check_same_thread": False},
+    connect_args=connect_args,
     echo=False,
     pool_pre_ping=True,
     pool_size=20,
@@ -36,17 +38,18 @@ if settings.DATABASE_URL.startswith("postgresql"):
         autocommit=False, autoflush=False, bind=async_engine, class_=AsyncSession
     )
 
-# Enable SQLite WAL mode for better concurrency
-@event.listens_for(engine, "connect")
-def set_sqlite_pragma(dbapi_conn, connection_record):
-    cursor = dbapi_conn.cursor()
-    cursor.execute("PRAGMA foreign_keys=ON")
-    cursor.execute("PRAGMA journal_mode=WAL")
-    cursor.execute("PRAGMA cache_size=-64000")  # 64MB page cache
-    # 写锁等待 5s 再报错：多写者（请求路径+后台监听/回填线程）并发时
-    # 立即报 database is locked 会把删除等写操作打 500（QA BUG-009 生产实捕）
-    cursor.execute("PRAGMA busy_timeout=5000")
-    cursor.close()
+# Enable SQLite WAL mode for better concurrency (SQLite-only, PRAGMA 对非 SQLite 非法)
+if engine.dialect.name == "sqlite":
+    @event.listens_for(engine, "connect")
+    def set_sqlite_pragma(dbapi_conn, connection_record):
+        cursor = dbapi_conn.cursor()
+        cursor.execute("PRAGMA foreign_keys=ON")
+        cursor.execute("PRAGMA journal_mode=WAL")
+        cursor.execute("PRAGMA cache_size=-64000")  # 64MB page cache
+        # 写锁等待 5s 再报错：多写者（请求路径+后台监听/回填线程）并发时
+        # 立即报 database is locked 会把删除等写操作打 500（QA BUG-009 生产实捕）
+        cursor.execute("PRAGMA busy_timeout=5000")
+        cursor.close()
 
 def get_db() -> Session:
     db = SessionLocal()

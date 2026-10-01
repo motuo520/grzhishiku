@@ -5,7 +5,9 @@ from datetime import datetime
 import uuid
 
 from app.core.database import get_db
+from app.core.audit import audit_request_meta
 from app.core.admin_permissions import Permission, require_permission
+from app.core.crypto import decrypt_capsule_content
 from app.models.base import (
     User, Note, Capsule, BrowserClip, KnowledgeUnit,
     AttentionActivity, AttentionCategory, DeepWorkSession,
@@ -35,16 +37,17 @@ async def gdpr_delete_user(
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     
-    # Log the deletion request
+    # Log the deletion request（IP 与全站限流同口径：可信代理 XFF 末段）
+    _meta = audit_request_meta(request)
     log = AdminAuditLog(
         id=str(uuid.uuid4()),
         admin_id=current_admin.id,
         action="GDPR_DELETE_USER",
         resource_type="user",
         resource_id=data.user_id,
-        details=f"Reason: {data.reason}. IP: {request.client.host if request.client else 'unknown'}",
+        details=f"Reason: {data.reason}. IP: {_meta['ip_address'] or 'unknown'}",
         risk_level="high",
-        ip_address=request.client.host if request.client else "unknown",
+        **_meta,
     )
     db.add(log)
     
@@ -86,14 +89,30 @@ async def gdpr_delete_user(
 
 @router.post("/export-user", summary="GDPR Data Export", description="Export all user data in a portable format (GDPR Article 20).")
 async def gdpr_export_user(
+    request: Request,
     data: DataExportRequest,
     db: Session = Depends(get_db),
-    current_admin: AdminUser = Depends(require_permission(Permission.USERS_READ))
+    current_admin: AdminUser = Depends(require_permission(Permission.SYSTEM_CONFIG))
 ):
     """Export all user data in a structured format."""
     user = db.query(User).filter(User.id == data.user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
+
+    # Log the export request (full PII + content export is high risk)
+    _meta = audit_request_meta(request)
+    log = AdminAuditLog(
+        id=str(uuid.uuid4()),
+        admin_id=current_admin.id,
+        action="GDPR_EXPORT_USER",
+        resource_type="user",
+        resource_id=data.user_id,
+        details=f"Format: {data.format}. IP: {_meta['ip_address'] or 'unknown'}",
+        risk_level="high",
+        **_meta,
+    )
+    db.add(log)
+    db.commit()
     
     notes = db.query(Note).filter(Note.user_id == data.user_id).all()
     capsules = db.query(Capsule).filter(Capsule.user_id == data.user_id).all()
@@ -106,11 +125,12 @@ async def gdpr_export_user(
             "email": user.email,
             "name": user.name,
             "created_at": user.created_at.isoformat() if user.created_at else None,
+            "subscription_tier": user.subscription_tier,
         },
-        "notes": [{"id": n.id, "title": n.title, "content": n.content, "created_at": n.created_at.isoformat()} for n in notes],
-        "capsules": [{"id": c.id, "content": c.content_body, "created_at": c.created_at.isoformat()} for c in capsules],
-        "clips": [{"id": c.id, "title": c.title, "url": c.url, "created_at": c.created_at.isoformat()} for c in clips],
-        "knowledge": [{"id": k.id, "title": k.source_title, "created_at": k.created_at.isoformat()} for k in knowledge],
+        "notes": [{"id": n.id, "title": n.title, "content": n.content, "created_at": n.created_at.isoformat() if n.created_at else None} for n in notes],
+        "capsules": [{"id": c.id, "content": decrypt_capsule_content(c.content_body), "created_at": c.created_at.isoformat() if c.created_at else None} for c in capsules],
+        "clips": [{"id": c.id, "title": c.title, "url": c.url, "created_at": c.created_at.isoformat() if c.created_at else None} for c in clips],
+        "knowledge": [{"id": k.id, "title": k.source_title, "created_at": k.created_at.isoformat() if k.created_at else None} for k in knowledge],
     }
     
     return {

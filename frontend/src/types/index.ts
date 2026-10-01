@@ -8,6 +8,8 @@ export interface KnowledgeUnit {
   content_processed: string | null;
   content_type: string | null;
   source_url: string | null;
+  /** 单元自身标题（09-16 后端数据层填好；空时兜底首行/source_title） */
+  title?: string | null;
   source_title: string | null;
   source_type: string | null;
   source_author: string | null;
@@ -114,5 +116,9 @@ export interface KnowledgeSourceAggregate {
   avg_verification_consensus: number;
   avg_source_credibility: number;
   reputation: string;
+  /** 生效信誉档（trusted/normal/review）：手动覆盖优先，否则信誉表自动判定 */
+  tier?: string;
+  /** tier 来源：manual=用户手动设置 / auto=信誉表自动判定 */
+  tier_source?: 'manual' | 'auto';
   factors: string[];
 }

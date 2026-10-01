@@ -8,8 +8,8 @@
 
 - 启动 `ollama` 服务（模型持久化在 `ollama-data` volume）
 - 首次启动时自动拉取所需模型：
-  - `qwen2.5:0.5b` — 对话 / 摘要 / 标签
-  - `nomic-embed-text` — 向量化 / 语义搜索
+  - `qwen3.5:0.8b` — 对话 / 摘要 / 标签
+  - `bge-m3` — 向量化 / 语义搜索
 - 模型拉取完成后后端才开始服务
 
 如需更换模型，在 `docker-compose.yml` 中修改 `OLLAMA_MODEL` / `OLLAMA_EMBED_MODEL`，
@@ -24,16 +24,16 @@
 ### 拉取模型
 
 ```bash
-ollama pull qwen2.5:0.5b
-ollama pull nomic-embed-text
+ollama pull qwen3.5:0.8b
+ollama pull bge-m3
 ```
 
 ### 配置环境变量
 
 ```ini
 OLLAMA_BASE_URL=http://localhost:11434
-OLLAMA_MODEL=qwen2.5:0.5b
-OLLAMA_EMBED_MODEL=nomic-embed-text
+OLLAMA_MODEL=qwen3.5:0.8b
+OLLAMA_EMBED_MODEL=bge-m3
 ```
 
 ## 切换模型

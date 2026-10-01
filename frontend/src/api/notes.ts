@@ -13,6 +13,8 @@ export interface Note {
   brain_side: string;
   evolution_stage?: string;
   tags: NoteTag[];
+  // 仓库模式：true=只进检索层（AI 问答可答），不进图谱/百科/打标/复盘
+  index_only: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -22,6 +24,7 @@ export interface NoteCreateData {
   content: string;
   brain_side?: string;
   tags?: string[];
+  index_only?: boolean;
 }
 
 export interface NoteUpdateData {
@@ -29,6 +32,7 @@ export interface NoteUpdateData {
   content?: string;
   brain_side?: string;
   tags?: string[];
+  index_only?: boolean;
   // 显式传 null = 移出文件夹（未归档）
   folder_id?: string | null;
 }

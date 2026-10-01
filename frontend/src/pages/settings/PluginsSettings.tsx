@@ -1,10 +1,14 @@
 import { FC, useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Puzzle, Check, Loader2, AlertTriangle,
-  Code, Save, RefreshCw, Play, Clock, CalendarClock,
+  Code, Save, RefreshCw, Play, Clock, CalendarClock, Download, Trash2,
 } from 'lucide-react';
 import { pluginsApi, type PluginInfo, type AutoSyncStatus } from '@/api/plugins';
+
+// 桌面端（Electron）判定：浏览器中 window.psbDesktop 为 undefined
+const isDesktop = !!window.psbDesktop?.isDesktop;
 
 const SYNCABLE_PLUGIN_IDS = ['notion-import', 'pocket-sync', 'readwise-sync'];
 
@@ -75,6 +79,27 @@ const PluginsSettings: FC = () => {
     onError: (err: any) => showToast(err?.message || '保存失败', 'error'),
   });
 
+  const [installUrl, setInstallUrl] = useState('');
+
+  const installMutation = useMutation({
+    mutationFn: (url: string) => pluginsApi.installFromUrl(url),
+    onSuccess: (res) => {
+      queryClient.invalidateQueries({ queryKey: ['plugins'] });
+      showToast(`插件「${res.data.name}」安装完成`, 'success');
+      setInstallUrl('');
+    },
+    onError: (err: any) => showToast(err?.response?.data?.detail || err?.message || '安装失败', 'error'),
+  });
+
+  const uninstallMutation = useMutation({
+    mutationFn: (id: string) => pluginsApi.uninstall(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['plugins'] });
+      showToast('插件已卸载', 'success');
+    },
+    onError: (err: any) => showToast(err?.response?.data?.detail || err?.message || '卸载失败', 'error'),
+  });
+
   const togglePlugin = (plugin: PluginInfo) => {
     enableMutation.mutate({ id: plugin.id, enabled: !plugin.enabled });
   };
@@ -112,7 +137,7 @@ const PluginsSettings: FC = () => {
 
   return (
     <div className="space-y-6">
-      {toast && (
+      {toast && createPortal(
         <div className={`fixed top-4 right-4 z-50 px-4 py-3 rounded-[2px] border ${
           toast.type === 'success'
             ? 'bg-success/20 border-success/30 text-success'
@@ -122,7 +147,8 @@ const PluginsSettings: FC = () => {
             {toast.type === 'success' ? <Check size={16} /> : <AlertTriangle size={16} />}
             <span className="text-sm">{toast.message}</span>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       <section className="glass-card p-6">
@@ -140,13 +166,13 @@ const PluginsSettings: FC = () => {
           </button>
         </div>
         <p className="text-sm text-text-muted mb-4">
-          后端会从 <code className="text-info">backend/app/plugins/builtin</code> 和 <code className="text-info">backend/plugins</code> 自动扫描插件。启用后，插件的 MCP 工具/REST 接口会生效。
+          后端自动扫描内置插件与用户插件目录（桌面端为数据目录下的 <code className="text-info">plugins/</code>）。启用后，插件的 MCP 工具/REST 接口会生效。
         </p>
 
         <div className="space-y-4">
           {plugins?.length === 0 && (
             <div className="text-sm text-text-muted py-4 text-center">
-              暂无插件，请在 <code>backend/plugins</code> 目录添加插件包。
+              暂无插件{isDesktop ? '，可在下方从 URL 安装插件包' : ''}。
             </div>
           )}
           {plugins?.map(plugin => (
@@ -219,10 +245,52 @@ const PluginsSettings: FC = () => {
                   />
                 </button>
               </div>
+              {isDesktop && plugin.type === 'local' && (
+                <div className="flex justify-end mt-2">
+                  <button
+                    onClick={() => uninstallMutation.mutate(plugin.id)}
+                    disabled={plugin.enabled || uninstallMutation.isPending}
+                    className="flex items-center gap-1.5 px-2.5 py-1 text-xs text-danger/80 hover:text-danger border border-danger/20 hover:border-danger/40 rounded-[2px] transition-all disabled:opacity-40"
+                    title={plugin.enabled ? '先禁用再卸载' : '卸载该插件（路由重启后彻底移除）'}
+                  >
+                    {uninstallMutation.isPending ? <Loader2 size={12} className="animate-spin" /> : <Trash2 size={12} />}
+                    卸载
+                  </button>
+                </div>
+              )}
             </div>
           ))}
         </div>
       </section>
+
+      {/* 从 URL 安装（仅桌面端）：官方源 zip 插件包，下载后运行时挂载 */}
+      {isDesktop && (
+        <section className="glass-card p-6">
+          <h2 className="text-lg font-semibold text-text-primary mb-4 flex items-center gap-2">
+            <Download size={18} className="text-info" />
+            从 URL 安装插件
+          </h2>
+          <p className="text-sm text-text-muted mb-4">
+            输入官方发布的插件包（zip）地址，下载校验后立即生效，无需重启。插件代码将在本机后端进程内运行，请只安装可信来源的包。
+          </p>
+          <div className="flex gap-2">
+            <input
+              className="input flex-1"
+              placeholder="https://grzhishiku.com/download/plugins/xxx.zip"
+              value={installUrl}
+              onChange={(e) => setInstallUrl(e.target.value)}
+            />
+            <button
+              onClick={() => installUrl.trim() && installMutation.mutate(installUrl.trim())}
+              disabled={!installUrl.trim() || installMutation.isPending}
+              className="btn-primary flex items-center gap-2 shrink-0"
+            >
+              {installMutation.isPending ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} />}
+              安装
+            </button>
+          </div>
+        </section>
+      )}
 
       <section className="glass-card p-6">
         <h2 className="text-lg font-semibold text-text-primary mb-4 flex items-center gap-2">

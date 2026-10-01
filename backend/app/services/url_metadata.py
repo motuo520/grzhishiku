@@ -4,7 +4,7 @@ import re
 from typing import Optional
 from pydantic import BaseModel
 
-from app.services.url_guard import validate_fetch_url, UrlNotAllowed, open_checked_url, read_capped
+from app.core.ssrf import open_checked_url, read_capped
 
 logger = logging.getLogger(__name__)
 
@@ -32,11 +32,7 @@ def extract_domain(url: str) -> str:
 
 def fetch_url_metadata(url: str, timeout: int = 8) -> UrlMetadata:
     try:
-        validate_fetch_url(url)
-    except UrlNotAllowed as e:
-        return UrlMetadata(url=url, title=url, domain=extract_domain(url), error=str(e))
-    try:
-        # SSRF 防护：重定向逐跳校验，响应体限 5MB
+        # SSRF 防护：仅 http/https、拒绝内网地址；重定向逐跳校验，响应体限 5MB
         with open_checked_url(
             url,
             timeout=timeout,

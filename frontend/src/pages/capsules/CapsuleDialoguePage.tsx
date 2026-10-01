@@ -5,6 +5,7 @@ import { MessageCircle, Send, Lock, Unlock, ArrowLeft, Loader2, AlertCircle } fr
 import { useCapsules, useCapsuleDialogue } from '@/hooks/useCapsules';
 import type { CapsuleDialogueMessage } from '@/api/capsules';
 import ModelSelector from '@/components/llm/ModelSelector';
+import LLMCostBadge from '@/components/llm/LLMCostBadge';
 
 const CapsuleDialoguePage: FC = () => {
   const navigate = useNavigate();
@@ -37,8 +38,9 @@ const CapsuleDialoguePage: FC = () => {
         setLocalDialogue(response.data.messages);
       }
     } catch (err: any) {
+      const status = err?.response?.status;
       const detail = err?.response?.data?.detail;
-      setSendError(detail || '发送失败，请稍后重试');
+      setSendError(status === 402 ? (detail || '余额不足，请先充值') : (detail || '发送失败，请稍后重试'));
     }
   };
 
@@ -145,6 +147,9 @@ const CapsuleDialoguePage: FC = () => {
             <div className="mb-3 p-2.5 rounded-lg bg-danger/10 border border-danger/20 text-danger text-xs flex items-center gap-1.5">
               <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
               <span>{sendError}</span>
+              {sendError.includes('余额不足') && (
+                <a href="/topup" className="underline ml-1 hover:opacity-80">去充值</a>
+              )}
             </div>
           )}
 
@@ -155,6 +160,11 @@ const CapsuleDialoguePage: FC = () => {
                 onChange={setModelId}
                 taskType="chat"
                 className="w-56"
+              />
+              <LLMCostBadge
+                modelId={modelId}
+                inputText={message}
+                outputTokenEstimate={200}
               />
             </div>
             <div className="flex gap-2">

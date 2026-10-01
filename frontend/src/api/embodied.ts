@@ -1,4 +1,5 @@
 import api from './client';
+import { getConsolePreferredModel } from './consoleModel';
 
 export type BrainSide = 'personal' | 'network' | 'both';
 
@@ -99,7 +100,7 @@ export interface MoodLocationResponse {
 export const embodiedApi = {
   // Depth check
   depthCheck: (data: DepthCheckRequest) =>
-    api.post<DepthCheckResponse>('/api/v1/embodied/depth-check', data),
+    api.post<DepthCheckResponse>('/api/v1/embodied/depth-check', { ...data, preferred_model: data.preferred_model || getConsolePreferredModel() }),
   listDepthCheckLogs: (limit = 50) =>
     api.get<DepthCheckLog[]>('/api/v1/embodied/depth-check/logs', { params: { limit } }),
 
@@ -108,8 +109,6 @@ export const embodiedApi = {
     api.get<EvolutionReflection[]>('/api/v1/embodied/evolution-reflections', {
       params: brainSide && brainSide !== 'both' ? { brain_side: brainSide } : undefined,
     }),
-  getEvolutionReflection: (id: string) =>
-    api.get<EvolutionReflection>(`/api/v1/embodied/evolution-reflections/${id}`),
   createEvolutionReflection: (data: EvolutionReflectionCreate) =>
     api.post<EvolutionReflection>('/api/v1/embodied/evolution-reflections', data),
   updateEvolutionReflection: (id: string, data: EvolutionReflectionUpdate) =>
@@ -119,7 +118,7 @@ export const embodiedApi = {
   analyzeEvolutionReflections: (brainSide?: BrainSide, preferred_model?: string) =>
     api.post<EvolutionAnalysisResponse>('/api/v1/embodied/evolution-reflections/analyze', {
       brain_side: brainSide,
-      preferred_model,
+      preferred_model: preferred_model || getConsolePreferredModel(),
     }),
 
   // Mood & location

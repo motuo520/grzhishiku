@@ -8,7 +8,9 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useRssFeeds, useRssEntries } from '@/hooks/useRss';
 import { rssApi } from '@/api/rss';
 import ModelSelector from '@/components/llm/ModelSelector';
+import LLMCostBadge from '@/components/llm/LLMCostBadge';
 import { summarizeText } from '@/api/llm';
+import { useConfirm } from '@/components/common/dialogContext';
 
 const AUTO_FETCH_INTERVALS = [
   { value: 30, label: '30 分钟' },
@@ -93,6 +95,7 @@ const FeedAutoFetchPanel: FC<{ feedId: string }> = ({ feedId }) => {
 };
 
 const RssPage: FC = () => {
+  const askConfirm = useConfirm();
   const [newUrl, setNewUrl] = useState('');
   const [newTitle, setNewTitle] = useState('');
   const [selectedFeedId, setSelectedFeedId] = useState<string | null>(null);
@@ -173,7 +176,7 @@ const RssPage: FC = () => {
   };
 
   const handleDelete = async (feedId: string) => {
-    if (!confirm('确定要删除这个 RSS 源吗？')) return;
+    if (!(await askConfirm('确定要删除这个 RSS 源吗？'))) return;
     try {
       await deleteFeed(feedId);
       if (selectedFeedId === feedId) setSelectedFeedId(null);
@@ -229,7 +232,7 @@ const RssPage: FC = () => {
       return;
     }
     const count = selectedEntryIds.size;
-    if (!confirm(`确定要删除选中的 ${count} 条消息吗？`)) return;
+    if (!(await askConfirm(`确定要删除选中的 ${count} 条消息吗？`))) return;
     const failed: string[] = [];
     for (const entryId of selectedEntryIds) {
       try {
@@ -298,7 +301,8 @@ const RssPage: FC = () => {
         </div>
         <div className="flex items-center gap-3">
           <ModelSelector value={modelId} onChange={setModelId} taskType="analysis" className="w-48" />
-          <span className="badge-network">Network Brain</span>
+          <LLMCostBadge modelId={modelId} inputText="" outputTokenEstimate={150} />
+          <span className="badge-network">网络脑</span>
         </div>
       </div>
 
@@ -612,7 +616,7 @@ const RssPage: FC = () => {
                               </button>
                             )}
                             <button
-                              onClick={() => saveEntry(entry.id)}
+                              onClick={() => saveEntry({ entryId: entry.id, aiSummary: summaries[entry.id] })}
                               disabled={entry.is_saved}
                               className={`p-1.5 rounded-[2px] transition-colors ${
                                 entry.is_saved

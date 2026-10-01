@@ -184,12 +184,14 @@ export function parseLocalCsv(text: string): ImportItem[] {
     const rows = parseCsvRows(text).filter((r) => r.some((c) => c.trim() !== ''));
     if (rows.length < 2) return items;
     const header = rows[0].map((h) => h.trim().toLowerCase());
-    const titleIdx = header.indexOf('title');
-    const contentIdx = header.indexOf('content');
-    const urlIdx = header.indexOf('url');
-    const domainIdx = header.indexOf('domain');
-    const excerptIdx = header.indexOf('excerpt');
-    const tagsIdx = header.indexOf('tags');
+    // 中英文表头别名（中文表头常见于手工整理的表格导出）
+    const idxOf = (aliases: string[]) => header.findIndex((h) => aliases.includes(h));
+    const titleIdx = idxOf(['title', '标题', '题目', '名称']);
+    const contentIdx = idxOf(['content', '内容', '正文', '笔记', '摘录', '核心摘录/笔记']);
+    const urlIdx = idxOf(['url', '网址', '链接']);
+    const domainIdx = idxOf(['domain', '域名']);
+    const excerptIdx = idxOf(['excerpt', '摘要', '简介']);
+    const tagsIdx = idxOf(['tags', '标签', '类别', '分类']);
 
     for (let i = 1; i < rows.length; i++) {
       const cols = rows[i];

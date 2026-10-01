@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **同步主仓至 0.2.137 口径**：共享的 backend app/ 与 frontend src/ 漂移文件整体追齐主仓当前形态（目录级权限、X-Request-ID、软删向量残留根修、审计补强等）。剥离面保持不变——计费/BYOK/云代理/桌面安装/群组/回收站/分享/语音/租户/wiki 端点与服务、agent_*/memory/wiki/llm 等包形态服务均未带入；llm.py / cognitive.py / pipeline.py / llm_service.py / sync_service.py / sync_storage_service.py 等合并形态单文件保持开源版现版。
+- **模型口径升级**：默认对话模型 qwen2.5:0.5b → qwen3.5:0.8b，嵌入模型 nomic-embed-text → bge-m3（1024d）；README/docker-compose/.env.example/docs 同步。存量库启动时按维度不一致自动后台重嵌（dimension migration）；embedding_service 保留旧嵌入模型的在场降级过渡（主仓同款）。
+
+### Fixed
+
+- **同步附带的剥离面接续**：被拷文件中指向剥离模块的 import 全部最小化修复——LLM 计费通道回调本地 `chat_completion`、配额改走 `user.storage_limit`、FTS/vec 影子索引调用移除（embeddings 表暴力余弦唯一路径）、OCR/自动打标/相似度物理图/回收站快照/实体消歧等入口按开源版口径闸停或报错。
+- **存量库通用增量列迁移**：模型新增列在启动时自动 ALTER TABLE 补齐（只加不改不删），修复旧库升级后 `no such column` 启动失败。
+
 ### Added
 
 - **RSS 定时自动刷新**：单源可配自动刷新（30 分钟/1/6/24 小时），后端 sweeper 每 15 分钟扫描到期源，重启自动恢复。

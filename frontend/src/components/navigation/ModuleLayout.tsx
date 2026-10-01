@@ -11,17 +11,14 @@ import {
   CheckCircle, GitCommit, Activity, XCircle, Map,
   User, Lock, Cpu, RefreshCw, Puzzle, Database, Palette, Bookmark,
   Scale, Gamepad2, Wallet, Newspaper, Dumbbell, HeartPulse, Filter, Users,
-  Workflow, SquareStack, BrainCircuit, FlaskConical, Heart, ShieldAlert, MapPin, Pencil, Monitor
-} from 'lucide-react';
+  Workflow, SquareStack, BrainCircuit, FlaskConical, Heart, ShieldAlert, MapPin, Pencil, type LucideIcon } from 'lucide-react';
 
-import { useNavigation, useMenuData, getVisibleItems, type MenuId, type BrainSide } from '@/store/navigation';
-import { useSettings } from '@/store/settings';
+import { useNavigation, useMenuData, getMenuIdByPath, getVisibleItems, type MenuId, type BrainSide } from '@/store/navigation';
 import BrainSideToggle from '@/components/brain/BrainSideToggle';
 
 import { useSystemFeatures } from '@/hooks/useSystemFeatures';
 
-const ICON_MAP: Record<string, React.ElementType> = {
-  Monitor,
+const ICON_MAP: Record<string, LucideIcon> = {
   Download, Network, Sparkles, Target, Package, Shield, Settings, Brain,
   Globe, FileText, Upload, Rss, Tag, Tags, Mail, MessageCircle, BookOpen, FolderOpen, StickyNote,
   Share2, Search, Route, Clock, Calendar, Link2, BarChart3, GitMerge,
@@ -43,45 +40,45 @@ interface ModuleLayoutProps {
 const ModuleLayout: FC<ModuleLayoutProps> = ({ menuId, showOverview = true }) => {
   const location = useLocation();
   const { menuData } = useMenuData();
-  const menu = menuData[menuId];
+  // 二级菜单归属按当前路径反查菜单配置，路由上写死的 menuId 只作兜底：
+  // 菜单允许跨路径前缀调动（简化版 /knowledge/verify 属「知识进化」、
+  // /knowledge/network 属「问答」），否则顶部高亮桶与页面二级菜单会对不上
+  const effectiveMenuId = getMenuIdByPath(location.pathname, menuData) ?? menuId;
+  const menu = menuData[effectiveMenuId];
   const allItems = menu?.items || [];
   const { brainSide, setBrainSide } = useNavigation();
-  const isClassic = useSettings((s) => s.uiMode === 'classic');
-  // 顶部二级菜单只在经典版且暴露脑侧切换的模块（社会大脑/具身认知）里按脑侧过滤；
-  // 其余模块显示全部二级项——否则进入某页自动切脑侧后，顶部菜单会缺项
-  const showBrainToggle = isClassic && (menuId === 'social-brain' || menuId === 'embodied-cognition');
+  // 显示全部二级项——否则进入某页自动切脑侧后，顶部菜单会缺项
+  const showBrainToggle = effectiveMenuId === 'social-brain' || effectiveMenuId === 'embodied-cognition';
   const visibleItems = showBrainToggle ? getVisibleItems(allItems, brainSide) : allItems;
   const autoSwitchedRef = useRef<Set<string>>(new Set());
   const { data: features } = useSystemFeatures();
 
   // Determine if we are at the module root (e.g. /ingest or /ingest/)
   const pathSegments = location.pathname.split('/').filter(Boolean);
-  const isModuleRoot = pathSegments.length === 1 && pathSegments[0] === menuId;
+  const isModuleRoot = pathSegments.length === 1 && pathSegments[0] === effectiveMenuId;
 
   // Find current submenu item to apply preferred brain side (use unfiltered items)
   const currentItem = isModuleRoot
-    ? allItems.find((item) => item.path === `/${menuId}`)
-    : allItems.find((item) => location.pathname.startsWith(item.path) && item.path !== `/${menuId}`);
+    ? allItems.find((item) => item.path === `/${effectiveMenuId}`)
+    : allItems.find((item) => location.pathname.startsWith(item.path) && item.path !== `/${effectiveMenuId}`);
 
   // Auto-switch brain side to stage-preferred value when user is on default "both".
   // Only auto-switch once per path to avoid fighting manual user selection.
-  // 简化版不做自动切换：脑侧是经典版概念，避免隐式改变全局 brainSide 影响问答/数据范围
   useEffect(() => {
-    if (!isClassic) return;
     const preferred = currentItem?.preferredBrainSide as BrainSide | undefined;
     if (!preferred) return;
     if (brainSide === 'both' && !autoSwitchedRef.current.has(location.pathname)) {
       setBrainSide(preferred);
       autoSwitchedRef.current.add(location.pathname);
     }
-  }, [currentItem, brainSide, setBrainSide, location.pathname, isClassic]);
+  }, [currentItem, brainSide, setBrainSide, location.pathname]);
 
-  if (!menu) {
+  // Respect backend module kill-switch. Pipeline can be disabled from admin.
+  if (effectiveMenuId === 'pipeline' && features?.modules?.pipeline === false) {
     return <Navigate to="/" replace />;
   }
 
-  // Respect backend module kill-switch. Pipeline can be disabled from admin.
-  if (menuId === 'pipeline' && features?.modules?.pipeline === false) {
+  if (!menu) {
     return <Navigate to="/" replace />;
   }
 
@@ -93,7 +90,7 @@ const ModuleLayout: FC<ModuleLayoutProps> = ({ menuId, showOverview = true }) =>
           <div className="flex items-center gap-1 overflow-x-auto">
           {showOverview && (
             <NavLink
-              to={`/${menuId}`}
+              to={`/${effectiveMenuId}`}
               end
               className={({ isActive }) =>
                 `flex items-center gap-1.5 px-3 py-1.5 rounded-[2px] text-xs font-medium whitespace-nowrap transition-colors ${
@@ -128,10 +125,9 @@ const ModuleLayout: FC<ModuleLayoutProps> = ({ menuId, showOverview = true }) =>
             );
           })}
         </div>
-        {/* 脑侧过滤开关：仅暴露脑侧切换的模块显示；条目被脑侧过滤隐藏时，用户可在此切回“双脑融合”显示全部 */}
-        {showBrainToggle && (
+        {(showBrainToggle) && (
           <div className="flex-shrink-0">
-            <BrainSideToggle value={brainSide} onChange={setBrainSide} size="sm" />
+            <BrainSideToggle value={brainSide} onChange={setBrainSide} />
           </div>
         )}
       </div>

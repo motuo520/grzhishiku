@@ -15,6 +15,7 @@ export const BrainSideBadge = ({ side, className = 'text-[10px]' }: BrainSideBad
   return <span className={`badge-network ${className}`}>网络脑</span>;
 };
 
+// 仅 SourceLink 内部使用，不导出（react-refresh：组件文件只导出组件）
 function isValidHttpUrl(url?: string | null): boolean {
   if (!url) return false;
   try {

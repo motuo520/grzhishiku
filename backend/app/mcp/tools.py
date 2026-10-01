@@ -1,36 +1,39 @@
 from datetime import datetime
-from typing import List, Optional
+from typing import Optional
 
 from mcp.server.fastmcp import Context, FastMCP
 
 from app.core.database import SessionLocal
+from app.services.knowledge_title import first_line_title
+from app.core.security import decode_token
 from app.models.base import KnowledgeUnit, Note, User
-from app.mcp.server import authenticate_token
 
 
 def _current_user_id(ctx: Context) -> str:
     """Resolve the authenticated user from the HTTP request carrying this MCP call."""
     request = getattr(ctx.request_context, "request", None)
     auth = request.headers.get("authorization", "") if request is not None else ""
-    token = auth[len("bearer "):] if auth.lower().startswith("bearer ") else ""
-    user_id = authenticate_token(token)
-    if not user_id:
-        raise ValueError("未认证：请在 MCP 客户端配置 Authorization: Bearer <token>")
-    return user_id
+    if auth.lower().startswith("bearer "):
+        payload = decode_token(auth[7:].strip())
+        if payload and payload.get("type") == "user" and payload.get("sub"):
+            return payload["sub"]
+    raise ValueError("未认证：请在 MCP 客户端配置 Authorization: Bearer <token>")
 
 
 def register_core_tools(mcp: FastMCP) -> None:
     """Register core Molore tools on the given FastMCP instance."""
 
     @mcp.tool()
-    def search_knowledge(
+    async def search_knowledge(
         query: str,
         ctx: Context,
         brain_side: str = "both",
         limit: int = 10,
-    ) -> List[dict]:
-        """Search the user's knowledge units by content or source title."""
+    ) -> dict:
+        """混合检索知识库（笔记/剪藏/知识单元/文档：向量+全文+图谱，与智能体
+        search_notes 同一口径）。返回命中 id/类型/标题/摘要，可再用 read_note 读全文。"""
         user_id = _current_user_id(ctx)
+        # 开源版无 agent_tools：用本地全文检索（ilike）同口径实现
         limit = max(1, min(limit, 100))
         db = SessionLocal()
         try:
@@ -42,18 +45,75 @@ def register_core_tools(mcp: FastMCP) -> None:
                 | KnowledgeUnit.source_title.ilike(f"%{query}%")
             )
             items = q.order_by(KnowledgeUnit.created_at.desc()).limit(limit).all()
-            return [
-                {
-                    "id": item.id,
-                    "content_raw": item.content_raw[:500],
-                    "brain_side": item.brain_side,
-                    "verification_status": item.verification_status,
-                    "source_title": item.source_title,
-                    "source_url": item.source_url,
-                    "created_at": item.created_at.isoformat() if item.created_at else None,
+            return {
+                "count": len(items),
+                "results": [
+                    {
+                        "id": item.id,
+                        "content_type": "knowledge",
+                        "title": item.source_title or (item.content_raw or "")[:30],
+                        "snippet": (item.content_raw or "")[:500],
+                        "brain_side": item.brain_side,
+                        "created_at": item.created_at.isoformat() if item.created_at else None,
+                    }
+                    for item in items
+                ],
+            }
+        finally:
+            db.close()
+
+    @mcp.tool()
+    def read_note(content_id: str, ctx: Context) -> dict:
+        """按 id 读内容全文（笔记/剪藏/知识单元/文档四类通用，截断 2000 字）。"""
+        user_id = _current_user_id(ctx)
+        # 开源版无 agent_tools：按 id 直查四类内容，截断 2000 字
+        from app.models.base import BrowserClip, Document
+
+        db = SessionLocal()
+        try:
+            for model, ctype in ((Note, "note"), (BrowserClip, "clip"),
+                                 (KnowledgeUnit, "knowledge"), (Document, "document")):
+                row = db.query(model).filter(model.id == content_id, model.user_id == user_id).first()
+                if row is None:
+                    continue
+                body = getattr(row, "content", None) or getattr(row, "content_raw", None) or ""
+                title = getattr(row, "title", None) or getattr(row, "source_title", None) or ""
+                return {
+                    "id": row.id,
+                    "content_type": ctype,
+                    "title": title,
+                    "content": body[:2000],
+                    "truncated": len(body) > 2000,
                 }
-                for item in items
-            ]
+            return {"error": "内容不存在"}
+        finally:
+            db.close()
+
+    @mcp.tool()
+    def list_recent_notes(ctx: Context, limit: int = 10) -> dict:
+        """最近更新的笔记列表（id/标题/脑侧/更新时间），按 updated_at 降序。"""
+        user_id = _current_user_id(ctx)
+        db = SessionLocal()
+        try:
+            rows = (
+                db.query(Note)
+                .filter(Note.user_id == user_id, Note.tenant_id.is_(None), Note.status == "active")
+                .order_by(Note.updated_at.desc())
+                .limit(max(1, min(int(limit or 10), 50)))
+                .all()
+            )
+            return {
+                "count": len(rows),
+                "notes": [
+                    {
+                        "id": n.id,
+                        "title": n.title,
+                        "brain_side": n.brain_side,
+                        "updated_at": n.updated_at.isoformat() if n.updated_at else None,
+                    }
+                    for n in rows
+                ],
+            }
         finally:
             db.close()
 
@@ -109,6 +169,7 @@ def register_core_tools(mcp: FastMCP) -> None:
                 user_id=user_id,
                 brain_side=brain_side,
                 content_raw=content_raw,
+                title=source_title or first_line_title(content_raw) or None,  # 09-16
                 source_url=source_url,
                 source_title=source_title,
                 source_type="external",

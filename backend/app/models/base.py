@@ -8,9 +8,14 @@ from app.models.capsule import *
 from app.models.knowledge import *
 from app.models.attention import *
 from app.models.admin import *
+from app.models.login_audit import *
 from app.models.graph import *
+from app.models.graph_build import *
 from app.models.emergence import *
 from app.models.support import *
 from app.models.cognitive import *
 from app.models.messaging import *
+from app.models.lead import *
+from app.models.tenant import *
+from app.models.cloud import *
 from app.models.folder import *

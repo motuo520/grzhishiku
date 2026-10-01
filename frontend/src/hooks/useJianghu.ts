@@ -65,21 +65,6 @@ export function useKnowledgeHealth(brain_side?: string) {
   });
 }
 
-export function useRelevanceCheck() {
-  return useMutation({
-    mutationFn: async ({
-      data,
-      preferred_model,
-    }: {
-      data: RelevanceCheckRequest;
-      preferred_model?: string;
-    }) => {
-      const response = await jianghuApi.checkRelevance(data, preferred_model);
-      return response.data;
-    },
-  });
-}
-
 export function useContextGuides(is_active?: boolean) {
   return useQuery({
     queryKey: [JIANGHU_KEY, 'context-guides', is_active],
@@ -204,3 +189,20 @@ export function useDeletePracticeRecord() {
     },
   });
 }
+
+// 开源版独有（主仓同名 hook 不含）：相关度检查（RelevanceCheckPage 用）
+export function useRelevanceCheck() {
+  return useMutation({
+    mutationFn: async ({
+      data,
+      preferred_model,
+    }: {
+      data: RelevanceCheckRequest;
+      preferred_model?: string;
+    }) => {
+      const response = await jianghuApi.checkRelevance(data, preferred_model);
+      return response.data;
+    },
+  });
+}
+

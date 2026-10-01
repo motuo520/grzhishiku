@@ -8,6 +8,7 @@ import uuid
 
 from app.core.database import get_db
 from app.core.security import get_current_user, validate_password_complexity
+from app.core.tenant_scope import get_active_tenant, scope_condition
 from app.models.base import User, AttentionActivity, AttentionCategory, AttentionGuardianRule, AttentionRation, DeepWorkSession
 from app.schemas.attention import (
     AttentionActivityCreate, AttentionActivityResponse,
@@ -30,7 +31,9 @@ async def list_activities(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    query = db.query(AttentionActivity).filter(AttentionActivity.user_id == current_user.id)
+    query = db.query(AttentionActivity).filter(
+        scope_condition(AttentionActivity, current_user.id, get_active_tenant(db, current_user))
+    )
     if start:
         try:
             start_dt = datetime.fromisoformat(start)
@@ -52,9 +55,12 @@ async def create_activity(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
+    # 空间戳：团队空间活动归团队（仪表盘/统计按空间各自聚合）
+    tenant = get_active_tenant(db, current_user)
     activity = AttentionActivity(
         id=str(uuid.uuid4()),
         user_id=current_user.id,
+        tenant_id=tenant.id if tenant else None,
         category_id=activity_data.category_id,
         category=activity_data.category.value if activity_data.category else "other",
         brain_side=activity_data.brain_side,
@@ -89,17 +95,19 @@ async def get_dashboard(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
+    # 空间口径：团队空间只聚团队行，个人空间只聚本人 tenant_id 为空的行
+    tenant = get_active_tenant(db, current_user)
     today = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
 
     total_focus_query = db.query(func.sum(AttentionActivity.actual_duration)).filter(
-        AttentionActivity.user_id == current_user.id,
+        scope_condition(AttentionActivity, current_user.id, tenant),
         AttentionActivity.start_time >= today
     )
     total_focus_query = _apply_brain_side(total_focus_query, AttentionActivity.brain_side, brain_side)
     total_focus = total_focus_query.scalar() or 0
 
     interruptions_query = db.query(AttentionActivity).filter(
-        AttentionActivity.user_id == current_user.id,
+        scope_condition(AttentionActivity, current_user.id, tenant),
         AttentionActivity.start_time >= today,
         AttentionActivity.completion_status == 'interrupted'
     )
@@ -107,21 +115,21 @@ async def get_dashboard(
     interruptions = interruptions_query.count()
 
     sessions_query = db.query(DeepWorkSession).filter(
-        DeepWorkSession.user_id == current_user.id,
+        scope_condition(DeepWorkSession, current_user.id, tenant),
         DeepWorkSession.started_at >= today
     )
     sessions_query = _apply_brain_side(sessions_query, DeepWorkSession.brain_side, brain_side)
     sessions = sessions_query.count()
 
     avg_focus_query = db.query(func.avg(AttentionActivity.focus_score)).filter(
-        AttentionActivity.user_id == current_user.id,
+        scope_condition(AttentionActivity, current_user.id, tenant),
         AttentionActivity.start_time >= today
     )
     avg_focus_query = _apply_brain_side(avg_focus_query, AttentionActivity.brain_side, brain_side)
     avg_focus = avg_focus_query.scalar() or 0
 
     categories = db.query(AttentionCategory).filter(
-        AttentionCategory.user_id == current_user.id,
+        scope_condition(AttentionCategory, current_user.id, tenant),
         AttentionCategory.brain_side.in_([brain_side, "both"]) if brain_side != "both" else True
     ).all()
     category_distribution = [
@@ -133,7 +141,7 @@ async def get_dashboard(
     for i in range(6, -1, -1):
         day = today - timedelta(days=i)
         day_focus_query = db.query(func.sum(AttentionActivity.actual_duration)).filter(
-            AttentionActivity.user_id == current_user.id,
+            scope_condition(AttentionActivity, current_user.id, tenant),
             AttentionActivity.start_time >= day,
             AttentionActivity.start_time < day + timedelta(days=1)
         )
@@ -156,32 +164,34 @@ async def get_stats(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
+    # 空间口径：团队空间只聚团队行，个人空间只聚本人 tenant_id 为空的行
+    tenant = get_active_tenant(db, current_user)
     today = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
 
     # Daily overview
     total_activities_query = db.query(AttentionActivity).filter(
-        AttentionActivity.user_id == current_user.id,
+        scope_condition(AttentionActivity, current_user.id, tenant),
         AttentionActivity.start_time >= today
     )
     total_activities_query = _apply_brain_side(total_activities_query, AttentionActivity.brain_side, brain_side)
     total_activities = total_activities_query.count()
 
     total_focus_minutes_query = db.query(func.sum(AttentionActivity.actual_duration)).filter(
-        AttentionActivity.user_id == current_user.id,
+        scope_condition(AttentionActivity, current_user.id, tenant),
         AttentionActivity.start_time >= today
     )
     total_focus_minutes_query = _apply_brain_side(total_focus_minutes_query, AttentionActivity.brain_side, brain_side)
     total_focus_minutes = total_focus_minutes_query.scalar() or 0
 
     deep_work_count_query = db.query(DeepWorkSession).filter(
-        DeepWorkSession.user_id == current_user.id,
+        scope_condition(DeepWorkSession, current_user.id, tenant),
         DeepWorkSession.started_at >= today
     )
     deep_work_count_query = _apply_brain_side(deep_work_count_query, DeepWorkSession.brain_side, brain_side)
     deep_work_count = deep_work_count_query.count()
 
     interruption_count_query = db.query(AttentionActivity).filter(
-        AttentionActivity.user_id == current_user.id,
+        scope_condition(AttentionActivity, current_user.id, tenant),
         AttentionActivity.start_time >= today,
         AttentionActivity.completion_status == 'interrupted'
     )
@@ -193,7 +203,7 @@ async def get_stats(
     for i in range(6, -1, -1):
         day = today - timedelta(days=i)
         day_focus_query = db.query(func.sum(AttentionActivity.actual_duration)).filter(
-            AttentionActivity.user_id == current_user.id,
+            scope_condition(AttentionActivity, current_user.id, tenant),
             AttentionActivity.start_time >= day,
             AttentionActivity.start_time < day + timedelta(days=1)
         )
@@ -211,7 +221,7 @@ async def get_stats(
         func.sum(AttentionActivity.actual_duration),
         func.count(AttentionActivity.id)
     ).filter(
-        AttentionActivity.user_id == current_user.id,
+        scope_condition(AttentionActivity, current_user.id, tenant),
         AttentionActivity.start_time >= today
     )
     category_counts_query = _apply_brain_side(category_counts_query, AttentionActivity.brain_side, brain_side)
@@ -253,11 +263,13 @@ async def get_weekly_report(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
+    # 空间口径：团队空间只聚团队行，个人空间只聚本人 tenant_id 为空的行
+    tenant = get_active_tenant(db, current_user)
     today = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
     week_start = today - timedelta(days=6)
 
     base_filter = [
-        AttentionActivity.user_id == current_user.id,
+        scope_condition(AttentionActivity, current_user.id, tenant),
         AttentionActivity.start_time >= week_start,
     ]
 
@@ -278,7 +290,7 @@ async def get_weekly_report(
     interruptions = int_q.count()
 
     dw_q = db.query(DeepWorkSession).filter(
-        DeepWorkSession.user_id == current_user.id,
+        scope_condition(DeepWorkSession, current_user.id, tenant),
         DeepWorkSession.started_at >= week_start
     )
     dw_q = _apply_brain_side(dw_q, DeepWorkSession.brain_side, brain_side)
@@ -288,7 +300,7 @@ async def get_weekly_report(
     for i in range(6, -1, -1):
         day = today - timedelta(days=i)
         dq = db.query(func.sum(AttentionActivity.actual_duration)).filter(
-            AttentionActivity.user_id == current_user.id,
+            scope_condition(AttentionActivity, current_user.id, tenant),
             AttentionActivity.start_time >= day,
             AttentionActivity.start_time < day + timedelta(days=1)
         )
@@ -344,11 +356,13 @@ async def get_score(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
+    # 空间口径：团队空间只聚团队行，个人空间只聚本人 tenant_id 为空的行
+    tenant = get_active_tenant(db, current_user)
     today = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
 
     # Focus duration score (60%): max 8 hours = 100
     total_focus_query = db.query(func.sum(AttentionActivity.actual_duration)).filter(
-        AttentionActivity.user_id == current_user.id,
+        scope_condition(AttentionActivity, current_user.id, tenant),
         AttentionActivity.start_time >= today
     )
     total_focus_query = _apply_brain_side(total_focus_query, AttentionActivity.brain_side, brain_side)
@@ -357,7 +371,7 @@ async def get_score(
 
     # Interruption penalty (20%): each interruption -5, min 0
     interruption_count_query = db.query(AttentionActivity).filter(
-        AttentionActivity.user_id == current_user.id,
+        scope_condition(AttentionActivity, current_user.id, tenant),
         AttentionActivity.start_time >= today,
         AttentionActivity.completion_status == 'interrupted'
     )
@@ -367,7 +381,7 @@ async def get_score(
 
     # Deep work score (20%): each session +15, max 100
     deep_work_count_query = db.query(DeepWorkSession).filter(
-        DeepWorkSession.user_id == current_user.id,
+        scope_condition(DeepWorkSession, current_user.id, tenant),
         DeepWorkSession.started_at >= today
     )
     deep_work_count_query = _apply_brain_side(deep_work_count_query, DeepWorkSession.brain_side, brain_side)
@@ -387,7 +401,7 @@ async def get_score(
     for i in range(6, -1, -1):
         day = today - timedelta(days=i)
         day_focus_query = db.query(func.sum(AttentionActivity.actual_duration)).filter(
-            AttentionActivity.user_id == current_user.id,
+            scope_condition(AttentionActivity, current_user.id, tenant),
             AttentionActivity.start_time >= day,
             AttentionActivity.start_time < day + timedelta(days=1)
         )
@@ -395,7 +409,7 @@ async def get_score(
         day_focus = day_focus_query.scalar() or 0
 
         day_interruptions_query = db.query(AttentionActivity).filter(
-            AttentionActivity.user_id == current_user.id,
+            scope_condition(AttentionActivity, current_user.id, tenant),
             AttentionActivity.start_time >= day,
             AttentionActivity.start_time < day + timedelta(days=1),
             AttentionActivity.completion_status == 'interrupted'
@@ -404,7 +418,7 @@ async def get_score(
         day_interruptions = day_interruptions_query.count()
 
         day_deep_query = db.query(DeepWorkSession).filter(
-            DeepWorkSession.user_id == current_user.id,
+            scope_condition(DeepWorkSession, current_user.id, tenant),
             DeepWorkSession.started_at >= day,
             DeepWorkSession.started_at < day + timedelta(days=1)
         )
@@ -438,9 +452,12 @@ async def start_deep_work(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
+    # 空间戳：团队空间的深工会话归团队
+    tenant = get_active_tenant(db, current_user)
     session = DeepWorkSession(
         id=str(uuid.uuid4()),
         user_id=current_user.id,
+        tenant_id=tenant.id if tenant else None,
         brain_side=config.brain_side or "personal",
         task=config.task,
         planned_duration=config.planned_duration,
@@ -464,7 +481,7 @@ async def pause_deep_work(
 ):
     session = db.query(DeepWorkSession).filter(
         DeepWorkSession.id == session_id,
-        DeepWorkSession.user_id == current_user.id
+        scope_condition(DeepWorkSession, current_user.id, get_active_tenant(db, current_user))
     ).first()
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")
@@ -489,7 +506,7 @@ async def resume_deep_work(
 ):
     session = db.query(DeepWorkSession).filter(
         DeepWorkSession.id == session_id,
-        DeepWorkSession.user_id == current_user.id
+        scope_condition(DeepWorkSession, current_user.id, get_active_tenant(db, current_user))
     ).first()
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")
@@ -512,7 +529,7 @@ async def record_interruption(
 ):
     session = db.query(DeepWorkSession).filter(
         DeepWorkSession.id == session_id,
-        DeepWorkSession.user_id == current_user.id
+        scope_condition(DeepWorkSession, current_user.id, get_active_tenant(db, current_user))
     ).first()
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")
@@ -545,7 +562,7 @@ async def end_deep_work(
 ):
     session = db.query(DeepWorkSession).filter(
         DeepWorkSession.id == session_id,
-        DeepWorkSession.user_id == current_user.id
+        scope_condition(DeepWorkSession, current_user.id, get_active_tenant(db, current_user))
     ).first()
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")
@@ -562,10 +579,12 @@ async def end_deep_work(
     session.completion_status = 'completed'
 
     # 同步写入注意力活动，让仪表盘/统计/评分拿到真实专注时长
+    # 活动落会话所属空间（session.tenant_id）：用户中途切空间也不串边
     duration_min = session.actual_duration or 0
     activity = AttentionActivity(
         id=str(uuid.uuid4()),
         user_id=current_user.id,
+        tenant_id=session.tenant_id,
         category_id="deep-work",
         category="work",
         brain_side=session.brain_side,
@@ -590,7 +609,7 @@ async def list_deep_work(
     current_user: User = Depends(get_current_user)
 ):
     query = db.query(DeepWorkSession).filter(
-        DeepWorkSession.user_id == current_user.id
+        scope_condition(DeepWorkSession, current_user.id, get_active_tenant(db, current_user))
     )
     if brain_side and brain_side != "both":
         query = query.filter(DeepWorkSession.brain_side == brain_side)
@@ -603,7 +622,10 @@ async def list_categories(
     current_user: User = Depends(get_current_user)
 ):
     from datetime import date
-    categories = db.query(AttentionCategory).filter(AttentionCategory.user_id == current_user.id).all()
+    tenant = get_active_tenant(db, current_user)
+    categories = db.query(AttentionCategory).filter(
+        scope_condition(AttentionCategory, current_user.id, tenant)
+    ).all()
 
     today_start = datetime.combine(date.today(), datetime.min.time())
     today_end = datetime.combine(date.today(), datetime.max.time())
@@ -611,7 +633,7 @@ async def list_categories(
         AttentionActivity.category_id,
         func.coalesce(func.sum(AttentionActivity.actual_duration), 0)
     ).filter(
-        AttentionActivity.user_id == current_user.id,
+        scope_condition(AttentionActivity, current_user.id, tenant),
         AttentionActivity.start_time >= today_start,
         AttentionActivity.start_time <= today_end,
     ).group_by(AttentionActivity.category_id).all()
@@ -630,9 +652,11 @@ async def create_category(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
+    tenant = get_active_tenant(db, current_user)
     category = AttentionCategory(
         id=str(uuid.uuid4()),
         user_id=current_user.id,
+        tenant_id=tenant.id if tenant else None,  # 空间戳：团队分类归团队
         name=category_data.name,
         icon=category_data.icon,
         color=category_data.color,
@@ -658,7 +682,7 @@ async def update_category(
 ):
     category = db.query(AttentionCategory).filter(
         AttentionCategory.id == category_id,
-        AttentionCategory.user_id == current_user.id,
+        scope_condition(AttentionCategory, current_user.id, get_active_tenant(db, current_user)),
     ).first()
     if not category:
         raise HTTPException(status_code=404, detail="Category not found")
@@ -680,7 +704,7 @@ async def delete_category(
 ):
     category = db.query(AttentionCategory).filter(
         AttentionCategory.id == category_id,
-        AttentionCategory.user_id == current_user.id,
+        scope_condition(AttentionCategory, current_user.id, get_active_tenant(db, current_user)),
     ).first()
     if not category:
         raise HTTPException(status_code=404, detail="Category not found")
@@ -697,7 +721,7 @@ async def list_guardian_rules(
     current_user: User = Depends(get_current_user)
 ):
     rules = db.query(AttentionGuardianRule).filter(
-        AttentionGuardianRule.user_id == current_user.id
+        scope_condition(AttentionGuardianRule, current_user.id, get_active_tenant(db, current_user))
     ).order_by(AttentionGuardianRule.created_at.desc()).all()
     return rules
 
@@ -708,9 +732,11 @@ async def create_guardian_rule(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
+    tenant = get_active_tenant(db, current_user)
     rule = AttentionGuardianRule(
         id=str(uuid.uuid4()),
         user_id=current_user.id,
+        tenant_id=tenant.id if tenant else None,  # 空间戳：团队规则归团队
         type=data.type,
         target=data.target,
         mode=data.mode,
@@ -735,7 +761,7 @@ async def update_guardian_rule(
 ):
     rule = db.query(AttentionGuardianRule).filter(
         AttentionGuardianRule.id == rule_id,
-        AttentionGuardianRule.user_id == current_user.id,
+        scope_condition(AttentionGuardianRule, current_user.id, get_active_tenant(db, current_user)),
     ).first()
     if not rule:
         raise HTTPException(status_code=404, detail="Rule not found")
@@ -758,7 +784,7 @@ async def delete_guardian_rule(
 ):
     rule = db.query(AttentionGuardianRule).filter(
         AttentionGuardianRule.id == rule_id,
-        AttentionGuardianRule.user_id == current_user.id,
+        scope_condition(AttentionGuardianRule, current_user.id, get_active_tenant(db, current_user)),
     ).first()
     if not rule:
         raise HTTPException(status_code=404, detail="Rule not found")
@@ -775,7 +801,7 @@ async def list_rations(
     current_user: User = Depends(get_current_user)
 ):
     rations = db.query(AttentionRation).filter(
-        AttentionRation.user_id == current_user.id
+        scope_condition(AttentionRation, current_user.id, get_active_tenant(db, current_user))
     ).order_by(AttentionRation.created_at.desc()).all()
     return rations
 
@@ -786,9 +812,11 @@ async def create_ration(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
+    tenant = get_active_tenant(db, current_user)
     ration = AttentionRation(
         id=str(uuid.uuid4()),
         user_id=current_user.id,
+        tenant_id=tenant.id if tenant else None,  # 空间戳：团队配额归团队
         source_type=data.source_type,
         source_id=data.source_id,
         name=data.name,
@@ -810,7 +838,7 @@ async def update_ration(
 ):
     ration = db.query(AttentionRation).filter(
         AttentionRation.id == ration_id,
-        AttentionRation.user_id == current_user.id,
+        scope_condition(AttentionRation, current_user.id, get_active_tenant(db, current_user)),
     ).first()
     if not ration:
         raise HTTPException(status_code=404, detail="Ration not found")
@@ -831,7 +859,7 @@ async def delete_ration(
 ):
     ration = db.query(AttentionRation).filter(
         AttentionRation.id == ration_id,
-        AttentionRation.user_id == current_user.id,
+        scope_condition(AttentionRation, current_user.id, get_active_tenant(db, current_user)),
     ).first()
     if not ration:
         raise HTTPException(status_code=404, detail="Ration not found")

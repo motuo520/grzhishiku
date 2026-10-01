@@ -8,6 +8,7 @@ import { useEmailAccounts, useEmailMessages } from '@/hooks/useEmail';
 import { useTags } from '@/hooks/useTags';
 import TagSelector from '@/components/TagSelector';
 import type { EmailAccount, EmailMessage } from '@/api/email';
+import { useConfirm } from '@/components/common/dialogContext';
 
 const PROVIDER_OPTIONS = [
   { key: 'gmail', label: 'Gmail', host: 'imap.gmail.com', port: 993 },
@@ -20,6 +21,7 @@ const PROVIDER_OPTIONS = [
 ];
 
 const EmailPage: FC = () => {
+  const askConfirm = useConfirm();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedAccountId, setSelectedAccountId] = useState<string>('');
   const [isAddAccountOpen, setIsAddAccountOpen] = useState(false);
@@ -104,7 +106,7 @@ const EmailPage: FC = () => {
   };
 
   const handleDeleteAccount = async (id: string) => {
-    if (!confirm('确定要删除这个邮箱账号吗？同步的邮件也会被移除。')) return;
+    if (!(await askConfirm('确定要删除这个邮箱账号吗？同步的邮件也会被移除。'))) return;
     try {
       await deleteAccount(id);
       showSuccess('账号已删除');
@@ -169,7 +171,7 @@ const EmailPage: FC = () => {
           <p className="text-sm text-text-secondary mt-1">把收件箱沉淀的信息纳入知识库</p>
         </div>
         <div className="flex items-center gap-2">
-          <span className="badge-network">Network Brain</span>
+          <span className="badge-network">网络脑</span>
           <button onClick={() => { resetAddForm(); setIsAddAccountOpen(true); }} className="btn-primary flex items-center gap-2">
             <Plus className="w-4 h-4" />
             添加邮箱

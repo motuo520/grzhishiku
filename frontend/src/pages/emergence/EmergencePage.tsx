@@ -3,8 +3,7 @@ import { FC, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Shuffle, Flame, GitMerge, GitBranch, ArrowRight, ArrowLeft, Sparkles, Lightbulb, Zap,
-  Database, BookOpen, Clock, Loader2, X, Trash, Network,
-} from 'lucide-react';
+  Database, BookOpen, Clock, Loader2, X, Trash, Network, type LucideIcon } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { emergenceApi, EmergenceHistoryItem } from '@/api/emergence';
@@ -501,7 +500,7 @@ export const HistoryPanel: FC<HistoryPanelProps> = ({ currentType, onLoadHistory
   );
 };
 
-export const EmergenceSubLayout: FC<{ title: string; icon: React.ElementType; children: React.ReactNode }> = ({ title, icon: Icon, children }) => {
+export const EmergenceSubLayout: FC<{ title: string; icon: LucideIcon; children: React.ReactNode }> = ({ title, icon: Icon, children }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const currentType = location.pathname.split('/').pop();

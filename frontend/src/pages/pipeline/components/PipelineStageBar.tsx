@@ -1,12 +1,12 @@
 import { FC } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Database, SquareStack, Filter, Shuffle, Pencil, CheckCircle2, ArrowRight } from 'lucide-react';
+import { Database, SquareStack, Filter, Shuffle, Pencil, CheckCircle2, ArrowRight, type LucideIcon } from 'lucide-react';
 
 interface Stage {
   id: string;
   label: string;
   path: string;
-  icon: React.ElementType;
+  icon: LucideIcon;
   from: string;
   to: string;
 }

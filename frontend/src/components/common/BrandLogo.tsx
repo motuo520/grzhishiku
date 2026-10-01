@@ -10,7 +10,7 @@ interface BrandLogoProps {
 }
 
 /**
- * 品牌印章：朱砂方印 + 双层内框 + 衬线"钤"字。
+ * 品牌印章：朱砂方印 + 双层内框 + 衬线 "M" 字。
  * 形制取法中式印章，比例更收敛，线条更锐利，适合深色与浅色两种背景。
  */
 export const SealMark: FC<{ size?: number; dark?: boolean }> = ({ size = 32, dark = false }) => {
@@ -52,7 +52,7 @@ export const SealMark: FC<{ size?: number; dark?: boolean }> = ({ size = 32, dar
           transform: 'translateY(-1%)',
         }}
       >
-        钤
+        M
       </span>
     </div>
   );

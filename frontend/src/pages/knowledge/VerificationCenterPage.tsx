@@ -3,15 +3,15 @@ import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   CheckCircle, ShieldCheck, AlertTriangle, XCircle, HelpCircle, AlertCircle, Clock,
-  Search, RefreshCw, Loader2, BarChart3, ArrowRight
-} from 'lucide-react';
+  Search, RefreshCw, Loader2, BarChart3, ArrowRight, type LucideIcon } from 'lucide-react';
 import { useKnowledge } from '@/hooks/useKnowledge';
 import ErrorState from '@/components/ErrorState';
 import EvolutionChainBar from '@/components/EvolutionChainBar';
 import ModelSelector from '@/components/llm/ModelSelector';
+import LLMCostBadge from '@/components/llm/LLMCostBadge';
 import type { KnowledgeUnit } from '@/types';
 
-const statusConfig: Record<string, { icon: React.ElementType; label: string; badgeClass: string }> = {
+const statusConfig: Record<string, { icon: LucideIcon; label: string; badgeClass: string }> = {
   confirmed: { icon: ShieldCheck, label: '已验证', badgeClass: 'bg-success/10 text-success border-success/30' },
   disputed: { icon: AlertTriangle, label: '有争议', badgeClass: 'bg-warning/10 text-warning border-warning/30' },
   debunked: { icon: XCircle, label: '已证伪', badgeClass: 'bg-danger/10 text-danger border-danger/30' },
@@ -124,7 +124,9 @@ const VerificationCenterPage: FC = () => {
           </div>
           <div className="w-44 space-y-2">
             <ModelSelector value={modelId} onChange={setModelId} taskType="analysis" className="w-full" />
-            {pending.length === 0 && (
+            {pending.length > 0 ? (
+              <LLMCostBadge modelId={modelId} inputText={pending[0]?.content_raw || ''} outputTokenEstimate={600} className="w-full" />
+            ) : (
               <div className="text-[10px] text-text-muted text-center py-1">暂无待验证内容</div>
             )}
           </div>

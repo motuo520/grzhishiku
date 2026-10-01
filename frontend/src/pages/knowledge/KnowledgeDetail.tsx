@@ -5,14 +5,16 @@ import {
   ShieldCheck, AlertTriangle, XCircle, HelpCircle, ArrowLeft,
   RefreshCw, ExternalLink, BarChart3, Clock, Globe, User,
   Calendar, CheckCircle2, AlertCircle, FileText, ChevronDown,
-  ChevronUp, Loader2, Layers, Sparkles, BookOpen
-} from 'lucide-react';
+  ChevronUp, Loader2, Layers, Sparkles, BookOpen, Link2, type LucideIcon } from 'lucide-react';
 import { useKnowledgeUnit } from '@/hooks/useKnowledge';
 import ErrorState from '@/components/ErrorState';
 import ModelSelector from '@/components/llm/ModelSelector';
+import LLMCostBadge from '@/components/llm/LLMCostBadge';
+import ManualLinkModal from '@/components/ManualLinkModal';
+import ManualLinksPanel from '@/components/ManualLinksPanel';
 import type { VerificationHistoryEntry } from '@/types';
 
-const statusConfig: Record<string, { icon: React.ElementType; label: string; badgeClass: string; desc: string }> = {
+const statusConfig: Record<string, { icon: LucideIcon; label: string; badgeClass: string; desc: string }> = {
   confirmed: {
     icon: ShieldCheck, label: '已验证', badgeClass: 'bg-success/10 text-success border-success/30',
     desc: '该知识经过验证，可信度较高',
@@ -79,6 +81,8 @@ const KnowledgeDetail: FC = () => {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [modelId, setModelId] = useState<string>('');
+  const [showLinkModal, setShowLinkModal] = useState(false);
+  const [linksRefresh, setLinksRefresh] = useState(0);
 
   const handleVerify = async () => {
     setErrorMsg(null);
@@ -425,6 +429,7 @@ const KnowledgeDetail: FC = () => {
             <h2 className="text-sm font-semibold text-text-primary">操作</h2>
             <div className="space-y-2">
               <ModelSelector value={modelId} onChange={setModelId} taskType="analysis" className="w-full" />
+              <LLMCostBadge modelId={modelId} inputText={unit.content_raw ?? ''} outputTokenEstimate={600} className="w-full" />
             </div>
             <button onClick={handleVerify} disabled={isVerifying}
               className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-accent text-white rounded-[2px] text-sm font-medium hover:bg-[var(--accent-hover)] transition-all disabled:opacity-60 disabled:cursor-not-allowed">
@@ -435,6 +440,12 @@ const KnowledgeDetail: FC = () => {
               className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-white/[0.05] text-warning border border-warning/20 rounded-[2px] text-sm font-medium hover:bg-warning/10 transition-all">
               <AlertTriangle className="w-4 h-4" /> 添加反证
             </button>
+            <button onClick={() => setShowLinkModal(true)}
+              className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-white/[0.05] text-info border border-info/20 rounded-[2px] text-sm font-medium hover:bg-info/10 transition-all">
+              <Link2 className="w-4 h-4" /> 关联到…
+            </button>
+            {/* 手动关联列表 */}
+            <ManualLinksPanel contentId={unit.id} refreshKey={linksRefresh} />
             <AnimatePresence>
               {showCounterForm && (
                 <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden space-y-2">
@@ -462,6 +473,14 @@ const KnowledgeDetail: FC = () => {
           </div>
         </div>
       </div>
+
+      <ManualLinkModal
+        isOpen={showLinkModal}
+        onClose={() => setShowLinkModal(false)}
+        sourceId={unit.id}
+        sourceTitle={(unit.content_raw || '').slice(0, 60)}
+        onLinked={() => setLinksRefresh((k) => k + 1)}
+      />
     </div>
   );
 };

@@ -1,6 +1,17 @@
 import { FC, useMemo, useState } from 'react';
-import { GitMerge, Brain, Globe, Loader2, AlertCircle } from 'lucide-react';
+import { GitMerge, Brain, Globe, Loader2, AlertCircle, ArrowRight, Sparkles } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { useGraphBridges } from '@/hooks/useGraph';
+import type { GraphBridgeNode } from '@/api/graph';
+
+// 直达原文路由：note 进详情页；clip 打开原始网页；知识/文档进各自列表页；胶囊（加密）不给入口
+const originalLink = (node: GraphBridgeNode): { to?: string; href?: string } => {
+  if (node.type === 'note') return { to: `/ingest/notes/${node.id}` };
+  if (node.type === 'clip' && node.url) return { href: node.url };
+  if (node.type === 'knowledge') return { to: '/knowledge/all' };
+  if (node.type === 'document') return { to: '/ingest/documents' };
+  return {};
+};
 
 const BRIDGE_TYPE_LABELS: Record<string, string> = {
   graphify: '语义图谱',
@@ -15,6 +26,16 @@ const BRIDGE_TYPE_LABELS: Record<string, string> = {
 };
 
 const bridgeTypeLabel = (type: string) => BRIDGE_TYPE_LABELS[type] || type;
+
+// 直达原文小按钮：note 进详情 / clip 开原网页 / 知识文档进列表页；胶囊不给出入口
+const NodeOriginalLink: FC<{ node: GraphBridgeNode; align?: 'left' | 'right' }> = ({ node, align = 'left' }) => {
+  const link = originalLink(node);
+  const cls = `inline-flex items-center gap-0.5 mt-1 text-[10px] text-info/80 hover:text-info transition-colors ${align === 'right' ? 'flex-row-reverse' : ''}`;
+  const inner = <>直达原文 <ArrowRight className="w-2.5 h-2.5" /></>;
+  if (link.to) return <Link to={link.to} className={cls}>{inner}</Link>;
+  if (link.href) return <a href={link.href} target="_blank" rel="noreferrer" className={cls}>{inner}</a>;
+  return null;
+};
 
 const GraphBridgesPage: FC = () => {
   // 递增加载：后端无 offset，靠放大 limit 重取；上限与后端 le=1000 对齐
@@ -96,6 +117,7 @@ const GraphBridgesPage: FC = () => {
                     <span className="text-[10px] text-[#d29922] font-medium">个人脑</span>
                   </div>
                   <div className="text-sm text-text-primary truncate">{bridge.personal_node.label}</div>
+                  <NodeOriginalLink node={bridge.personal_node} />
                 </div>
 
                 {/* 中间：边类型 + 强度条 */}
@@ -119,8 +141,23 @@ const GraphBridgesPage: FC = () => {
                     <Globe className="w-3 h-3 text-info shrink-0" />
                   </div>
                   <div className="text-sm text-text-primary truncate">{bridge.network_node.label}</div>
+                  <NodeOriginalLink node={bridge.network_node} align="right" />
                 </div>
               </div>
+
+              {/* 共同点：这座桥为什么搭起来（graphify=经概念枢纽，标签边=共享标签） */}
+              {(bridge.shared_points?.length ?? 0) > 0 && (
+                <div className="mt-3 flex items-start gap-1.5 flex-wrap">
+                  <span className="inline-flex items-center gap-1 text-[10px] text-fusion-primary shrink-0 mt-0.5">
+                    <Sparkles className="w-3 h-3" /> 共同点
+                  </span>
+                  {bridge.shared_points!.map((p, i) => (
+                    <span key={i} className="px-1.5 py-0.5 rounded bg-fusion-primary/10 text-fusion-primary text-[10px] border border-fusion-primary/20">
+                      {p}
+                    </span>
+                  ))}
+                </div>
+              )}
 
               {bridge.context && (
                 <div className="mt-3 pt-3 border-t border-white/[0.06] text-xs text-text-secondary line-clamp-2">

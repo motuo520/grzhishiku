@@ -31,7 +31,7 @@ docker compose up -d
 - API：由前端 nginx 代理到后端（`/api/` 前缀），无需额外配置
 - API 文档：调试时在 `docker-compose.yml` 中放开 backend 的 `8000:8000` 端口映射，访问 `http://localhost:8000/docs`
 
-首次启动会自动拉取 Ollama 模型 `qwen2.5:0.5b`（对话）与 `nomic-embed-text`（向量化），需要联网，请耐心等待。模型下载完成后后端才会就绪。
+首次启动会自动拉取 Ollama 模型 `qwen3.5:0.8b`（对话）与 `bge-m3`（向量化），需要联网，请耐心等待。模型下载完成后后端才会就绪。
 
 打开就能用：默认进入「简化版」——只有五个动作，零学习成本。想要全部 12 个模块，点顶栏的版本图标切到「经典版」即可。
 
@@ -59,7 +59,7 @@ docker compose up -d
 - API: proxied to the backend by the frontend nginx under the `/api/` prefix — no extra setup needed
 - API docs: for debugging, uncomment the `8000:8000` port mapping of `backend` in `docker-compose.yml`, then visit `http://localhost:8000/docs`
 
-On first launch the Ollama models `qwen2.5:0.5b` (chat) and `nomic-embed-text` (embeddings) are pulled automatically — this requires internet access, please be patient. The backend becomes ready once the models are downloaded.
+On first launch the Ollama models `qwen3.5:0.8b` (chat) and `bge-m3` (embeddings) are pulled automatically — this requires internet access, please be patient. The backend becomes ready once the models are downloaded.
 
 It starts in **Simple Mode** — three actions, zero learning curve. Switch to **Classic Mode** (12 modules) anytime from the top bar.
 

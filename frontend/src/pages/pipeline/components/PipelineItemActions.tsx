@@ -2,6 +2,7 @@ import { FC, useState } from 'react';
 import { Trash2, Loader2, Undo2 } from 'lucide-react';
 import { useRevertPipelineItem, useDeletePipelineItem } from '@/hooks/usePipeline';
 import type { PipelineItem } from '@/api/pipeline';
+import { useConfirm } from '@/components/common/dialogContext';
 
 const LABEL: Record<string, string> = {
   note: '笔记',
@@ -18,6 +19,7 @@ interface PipelineItemActionsProps {
 }
 
 const PipelineItemActions: FC<PipelineItemActionsProps> = ({ item, hideRevert }) => {
+  const askConfirm = useConfirm();
   const revert = useRevertPipelineItem();
   const del = useDeletePipelineItem();
   const [revertBusy, setRevertBusy] = useState(false);
@@ -28,7 +30,7 @@ const PipelineItemActions: FC<PipelineItemActionsProps> = ({ item, hideRevert })
 
   const handleRevert = async () => {
     if (!canRevert) return;
-    if (!confirm(`将「${name}」退回为原始素材？`)) return;
+    if (!(await askConfirm(`将「${name}」退回为原始素材？`))) return;
     setRevertBusy(true);
     try {
       await revert.mutateAsync({ content_type: item.content_type, content_id: item.content_id });
@@ -41,7 +43,7 @@ const PipelineItemActions: FC<PipelineItemActionsProps> = ({ item, hideRevert })
   };
 
   const handleDelete = async () => {
-    if (!confirm(`删除${LABEL[item.content_type] || '内容'}「${name}」？\n（软删除，数据保留可恢复）`)) return;
+    if (!(await askConfirm(`删除${LABEL[item.content_type] || '内容'}「${name}」？\n（软删除，数据保留可恢复）`))) return;
     setDeleteBusy(true);
     try {
       await del.mutateAsync({ content_type: item.content_type, content_id: item.content_id });

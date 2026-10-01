@@ -2,23 +2,17 @@
   "id": "mcp-server",
   "name": "MCP Server",
   "version": "1.0.0",
-  "description": "把Molore知识库暴露为 Model Context Protocol Server，让外部 AI Agent 通过 SSE 读写知识库。",
+  "description": "把 Molore 知识库暴露为 Model Context Protocol Server，让外部 AI Agent 通过 SSE 读写知识库。",
   "type": "builtin",
   "entrypoint": "plugin:McpServerPlugin",
   "enabled_default": true,
-  "permissions": [
-    "storage.read",
-    "storage.write",
-    "mcp.expose"
-  ],
+  "permissions": ["storage.read", "storage.write", "mcp.expose"],
   "config_schema": {
     "type": "object",
     "properties": {
       "expose_tools": {
         "type": "array",
-        "items": {
-          "type": "string"
-        },
+        "items": { "type": "string" },
         "description": "允许暴露的工具列表，留空表示全部"
       },
       "require_user_id": {

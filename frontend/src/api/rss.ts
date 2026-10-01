@@ -60,8 +60,8 @@ export const rssApi = {
   listEntries: (feedId: string, params?: { unread_only?: boolean; saved_only?: boolean; limit?: number }) =>
     api.get<RssEntry[]>(`/api/v1/rss/sources/${feedId}/entries`, { params }),
   markRead: (entryId: string) => api.post<RssEntry>(`/api/v1/rss/entries/${entryId}/read`),
-  saveEntry: (entryId: string, asClip?: boolean) =>
-    api.post(`/api/v1/rss/entries/${entryId}/save`, { as_clip: asClip ?? true }),
+  saveEntry: (entryId: string, asClip?: boolean, aiSummary?: string) =>
+    api.post(`/api/v1/rss/entries/${entryId}/save`, { as_clip: asClip ?? true, ai_summary: aiSummary || undefined }),
   deleteEntry: (entryId: string) => api.delete(`/api/v1/rss/entries/${entryId}`),
   batchDeleteEntries: (ids: string[]) => api.request({ method: 'DELETE', url: '/api/v1/rss/entries/batch', data: { ids } }),
 };

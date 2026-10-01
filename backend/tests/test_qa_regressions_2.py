@@ -108,9 +108,9 @@ class TestIdentityPromptNoEcho:
 
     def test_identity_prompt_forbids_echo(self):
         from app.api.v1.endpoints.llm import _build_identity_prompt
-        prompt = _build_identity_prompt("platform:qwen2.5:0.5b")
+        prompt = _build_identity_prompt("platform:qwen3.5:0.8b")
         assert "[身份信息]" in prompt
-        assert "qwen2.5:0.5b" in prompt and "platform:qwen" not in prompt
+        assert "qwen3.5:0.8b" in prompt and "platform:qwen" not in prompt
         assert "不要在回答中复述" in prompt
 
 
@@ -238,7 +238,7 @@ class TestNoteEmbedWorkersBounded:
         monkeypatch.setattr(nes, "embed_note", fake_embed)
         ids = [str(uuid.uuid4()) for _ in range(50)]
         for nid in ids:
-            nes._enqueue_embed(nid, "u")
+            nes._enqueue_embed("note", nid, "u")
         nes._embed_queue.join()
         assert sorted(processed) == sorted(ids), "有界派发不得丢笔记"
         workers = [t for t in threading.enumerate() if t.name.startswith("note-embed-")]
@@ -259,14 +259,20 @@ class TestNoteEmbedWorkersBounded:
         monkeypatch.setattr(nes, "embed_note", slow_embed)
         nid = str(uuid.uuid4())
         try:
-            nes._enqueue_embed(nid, "u")
-            # 等 worker 取出（出队标记先清，跑着的这条占住 worker）
+            nes._enqueue_embed("note", nid, "u")
+            # 等 worker 取出（跑着的这条占住 worker）
             assert started.wait(timeout=5)
-            # worker 正在跑：此时入队应成功挂上（重嵌幂等允许补一次），
-            # 但同一 id 已在队列里再入队必须去重
-            nes._enqueue_embed(nid, "u")
-            nes._enqueue_embed(nid, "u")
+            # 新口径（同步主仓）：出队标记保留到 embed 完成才移除——执行期间
+            # 同一内容的重复入队被拒（防并发重嵌互踩「删旧写新」事务）
+            nes._enqueue_embed("note", nid, "u")
+            nes._enqueue_embed("note", nid, "u")
+            assert nes._embed_queue.qsize() == 0
+            # 跑完后允许再次入队（重嵌幂等）
+            gate.set()
+            nes._embed_queue.join()
+            nes._enqueue_embed("note", nid, "u")
             assert nes._embed_queue.qsize() == 1
+            gate.set()
         finally:
             gate.set()
         nes._embed_queue.join()

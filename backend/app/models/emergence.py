@@ -10,6 +10,7 @@ class EmergenceResult(Base):
 
     id = Column(String, primary_key=True)
     user_id = Column(String, nullable=False)
+    tenant_id = Column(String)  # NULL=个人空间；团队空间结果归团队（成员共享可见）
     type = Column(String, nullable=False)  # associate / collision / hybrid / counterfactual
     brain_side = Column(String, default="both")  # personal / network / both
     source_ids = Column(Text, default="[]")  # JSON array of source content ids
@@ -26,6 +27,7 @@ class EmergenceIdea(Base):
 
     id = Column(String, primary_key=True)
     user_id = Column(String, nullable=False)
+    tenant_id = Column(String)  # NULL=个人空间；团队空间成果归团队
     title = Column(String, nullable=False)
     summary = Column(Text)
     brain_side = Column(String, default="both")  # personal / network / both
@@ -47,6 +49,7 @@ class EmergenceCanvas(Base):
 
     id = Column(String, primary_key=True)
     user_id = Column(String, nullable=False)
+    tenant_id = Column(String)  # NULL=个人空间；团队空间画布归团队
     title = Column(String, nullable=False)
     description = Column(Text)
     brain_side = Column(String, default="both")  # personal / network / both

@@ -2,13 +2,16 @@ from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
 from typing import List, Optional, Dict, Any
 from datetime import datetime
-import logging
 import uuid
 import json
 import re
+import logging
 
 from app.core.database import get_db
 from app.core.security import get_current_user
+from app.core.crypto import decrypt_capsule_content, encrypt_capsule_content
+from app.core.tenant_scope import get_active_tenant, scope_condition
+# NOTE: emergence endpoints are billed via LLM prepaid balance, not subscription tier.
 from app.models.base import (
     User, EmergenceResult, EmergenceIdea, EmergenceCanvas,
     Note, Capsule, BrowserClip, KnowledgeUnit,
@@ -122,8 +125,14 @@ def _build_source_context(
     user_id: str,
     source_ids: Optional[List[str]],
     source_types: Optional[List[str]],
+    tenant=None,
 ) -> str:
-    """Fetch selected source contents and format them for LLM prompts."""
+    """Fetch selected source contents and format them for LLM prompts.
+
+    空间口径（09-10 收口）：素材按当前空间校验——个人空间只认本人且
+    tenant_id 为空的行，团队空间只认本团队内容（不限作者）；客户端构造的
+    跨空间 source_ids 查不到记录，随「未找到」口径静默剔除，不进 prompt。
+    """
     if not source_ids:
         return ""
 
@@ -134,6 +143,16 @@ def _build_source_context(
     types = source_types or []
     types = (types + [None] * len(source_ids))[: len(source_ids)]
 
+    def _scoped_query(model, source_id: str):
+        """有 tenant_id 列的模型走空间口径（同 emergence_sources）；
+        无 tenant_id 列的个人通道（email/social 等）维持本人过滤。"""
+        q = db.query(model).filter(model.id == source_id)
+        if hasattr(model, "tenant_id"):
+            q = q.filter(scope_condition(model, user_id, tenant))
+        else:
+            q = q.filter(model.user_id == user_id)
+        return q
+
     snippets: List[str] = []
     for idx, source_id in enumerate(source_ids):
         source_type = types[idx]
@@ -142,18 +161,12 @@ def _build_source_context(
 
         if source_type and source_type in SOURCE_TYPE_CONFIG:
             cfg = SOURCE_TYPE_CONFIG[source_type]
-            record = db.query(cfg["model"]).filter(
-                cfg["model"].id == source_id,
-                cfg["model"].user_id == user_id,
-            ).first()
+            record = _scoped_query(cfg["model"], source_id).first()
 
         if not record:
             # Fallback: scan all candidate tables
             for stype, cfg in SOURCE_TYPE_CONFIG.items():
-                rec = db.query(cfg["model"]).filter(
-                    cfg["model"].id == source_id,
-                    cfg["model"].user_id == user_id,
-                ).first()
+                rec = _scoped_query(cfg["model"], source_id).first()
                 if rec:
                     record = rec
                     found_type = stype
@@ -165,6 +178,9 @@ def _build_source_context(
         cfg = SOURCE_TYPE_CONFIG.get(found_type, {})
         title = getattr(record, cfg.get("title_attr", "id"), source_id) or ""
         content = getattr(record, cfg.get("content_attr", "id"), "") or ""
+        if isinstance(record, Capsule):
+            title = decrypt_capsule_content(title)
+            content = decrypt_capsule_content(content)
         side = _resolve_source_brain_side(found_type or "", record)
         snippets.append(
             f"[来源 {idx + 1}] 类型:{found_type} 脑侧:{side}\n标题:{str(title)[:120]}\n内容:{str(content)[:800]}"
@@ -256,10 +272,14 @@ def _save_result(
     source_types: Optional[List[str]] = None,
     model_used: Optional[str] = None,
     scores: Optional[Dict[str, Any]] = None,
+    tenant=None,
 ) -> EmergenceResult:
     record = EmergenceResult(
         id=str(uuid.uuid4()),
         user_id=user_id,
+        # 空间戳（09-12 双空间隔离）：团队空间结果归团队，个人空间 NULL；
+        # 列表/删除按 scope_condition 过滤，打而不滤会跨空间混出
+        tenant_id=tenant.id if tenant else None,
         type=result_type,
         brain_side=brain_side,
         source_ids=json.dumps(source_ids or [], ensure_ascii=False),
@@ -297,6 +317,9 @@ async def emergence_sources(
 ):
     """Return candidate source contents for emergence tools."""
     items: List[EmergenceSourceItem] = []
+    # 素材池限当前空间：email/social 是个人通道（无 tenant_id 列），保持本人口径
+    from app.core.tenant_scope import get_active_tenant, scope_condition
+    tenant = get_active_tenant(db, current_user)
     # 默认列表隐藏「标签」类型：标签是组织工具不是素材，混进来会灌水成
     # 「暂无摘要且删不了」的幽灵卡片（296 个标签=296 张废卡）；显式
     # type_filter=tag 的调用不受影响，已有画布/想法里的标签引用不破坏
@@ -309,7 +332,10 @@ async def emergence_sources(
         title_attr = cfg["title_attr"]
         content_attr = cfg["content_attr"]
 
-        query = db.query(model).filter(model.user_id == current_user.id)
+        if hasattr(model, "tenant_id"):
+            query = db.query(model).filter(scope_condition(model, current_user.id, tenant))
+        else:
+            query = db.query(model).filter(model.user_id == current_user.id)
 
         # status / active filters
         if hasattr(model, "status"):
@@ -328,6 +354,9 @@ async def emergence_sources(
 
             title = getattr(rec, title_attr, "") or ""
             content = getattr(rec, content_attr, "") or ""
+            if isinstance(rec, Capsule):
+                title = decrypt_capsule_content(title)
+                content = decrypt_capsule_content(content)
             excerpt = (content[:300] + "...") if len(content) > 300 else content
 
             if q and q.lower() not in (str(title) + " " + str(content)).lower():
@@ -380,8 +409,10 @@ async def emergence_associate(
     current_user: User = Depends(get_current_user),
 ):
     brain_side = _brain_side_from_request(req)
+    tenant = get_active_tenant(db, current_user)
     source_context = _build_source_context(
-        db, current_user.id, req.source_ids, req.source_types
+        db, current_user.id, req.source_ids, req.source_types,
+        tenant=tenant,
     )
     prompt = (
         f"你是一位创新思维专家。请对'{req.topic_a}'和'{req.topic_b}'进行跨域联想。\n"
@@ -423,6 +454,7 @@ async def emergence_associate(
         source_types=req.source_types,
         model_used=req.preferred_model,
         scores=scores,
+        tenant=tenant,
     )
     return {
         "id": record.id,
@@ -444,8 +476,10 @@ async def emergence_collision(
 ):
     brain_side = _brain_side_from_request(req)
     perspectives = req.perspectives or ["法律", "伦理", "经济", "技术"]
+    tenant = get_active_tenant(db, current_user)
     source_context = _build_source_context(
-        db, current_user.id, req.source_ids, req.source_types
+        db, current_user.id, req.source_ids, req.source_types,
+        tenant=tenant,
     )
     prompt = (
         f"你是一位跨领域辩论专家。请对话题'{req.topic}'进行多视角观点碰撞。\n"
@@ -484,6 +518,7 @@ async def emergence_collision(
         source_ids=req.source_ids,
         source_types=req.source_types,
         model_used=req.preferred_model,
+        tenant=tenant,
     )
     return {
         "id": record.id,
@@ -503,8 +538,10 @@ async def emergence_hybrid(
     current_user: User = Depends(get_current_user),
 ):
     brain_side = _brain_side_from_request(req)
+    tenant = get_active_tenant(db, current_user)
     source_context = _build_source_context(
-        db, current_user.id, req.source_ids, req.source_types
+        db, current_user.id, req.source_ids, req.source_types,
+        tenant=tenant,
     )
     prompt = (
         f"你是一位概念创新专家。请将'{req.concept_a}'和'{req.concept_b}'融合，生成一个新概念。\n"
@@ -544,6 +581,7 @@ async def emergence_hybrid(
         source_types=req.source_types,
         model_used=req.preferred_model,
         scores=scores,
+        tenant=tenant,
     )
     return {
         "id": record.id,
@@ -565,8 +603,10 @@ async def emergence_counterfactual(
 ):
     brain_side = _brain_side_from_request(req)
     depth = max(1, min(5, req.timeline_depth))
+    tenant = get_active_tenant(db, current_user)
     source_context = _build_source_context(
-        db, current_user.id, req.source_ids, req.source_types
+        db, current_user.id, req.source_ids, req.source_types,
+        tenant=tenant,
     )
     prompt = (
         f"你是一位历史推演和系统思维专家。请对假设'{req.premise}'进行反事实推演。\n"
@@ -601,6 +641,7 @@ async def emergence_counterfactual(
         source_ids=req.source_ids,
         source_types=req.source_types,
         model_used=req.preferred_model,
+        tenant=tenant,
     )
     return {
         "id": record.id,
@@ -624,7 +665,7 @@ async def emergence_history(
     current_user: User = Depends(get_current_user),
 ):
     query = db.query(EmergenceResult).filter(
-        EmergenceResult.user_id == current_user.id
+        scope_condition(EmergenceResult, current_user.id, get_active_tenant(db, current_user))
     )
     if type_filter:
         query = query.filter(EmergenceResult.type == type_filter)
@@ -664,12 +705,13 @@ async def emergence_history(
 
 # ─────────────────────────── 成果库（Emergence Idea） ───────────────────────────
 
-def _compute_idea_brain_side(db: Session, user_id: str, source_result_ids: List[str]) -> str:
+def _compute_idea_brain_side(db: Session, user_id: str, source_result_ids: List[str], tenant=None) -> str:
     if not source_result_ids:
         return "both"
+    # 来源结果按当前空间取（跨空间 id 查不到，不混入脑侧推断）
     results = db.query(EmergenceResult).filter(
         EmergenceResult.id.in_(source_result_ids),
-        EmergenceResult.user_id == user_id,
+        scope_condition(EmergenceResult, user_id, tenant),
     ).all()
     sides = {r.brain_side for r in results}
     if sides == {"personal"}:
@@ -685,10 +727,12 @@ async def save_emergence_idea(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    brain_side = _compute_idea_brain_side(db, current_user.id, req.source_result_ids)
+    tenant = get_active_tenant(db, current_user)
+    brain_side = _compute_idea_brain_side(db, current_user.id, req.source_result_ids, tenant=tenant)
     idea = EmergenceIdea(
         id=str(uuid.uuid4()),
         user_id=current_user.id,
+        tenant_id=tenant.id if tenant else None,  # 空间戳：团队成果归团队
         title=req.title,
         summary=req.summary,
         brain_side=brain_side,
@@ -724,7 +768,9 @@ async def list_emergence_ideas(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    query = db.query(EmergenceIdea).filter(EmergenceIdea.user_id == current_user.id)
+    query = db.query(EmergenceIdea).filter(
+        scope_condition(EmergenceIdea, current_user.id, get_active_tenant(db, current_user))
+    )
     if status:
         query = query.filter(EmergenceIdea.status == status)
     if brain_side:
@@ -766,9 +812,10 @@ async def promote_emergence_idea(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
+    tenant = get_active_tenant(db, current_user)
     idea = db.query(EmergenceIdea).filter(
         EmergenceIdea.id == idea_id,
-        EmergenceIdea.user_id == current_user.id,
+        scope_condition(EmergenceIdea, current_user.id, tenant),
     ).first()
     if not idea:
         raise HTTPException(status_code=404, detail="Idea not found")
@@ -777,11 +824,14 @@ async def promote_emergence_idea(
     title = idea.title
     body = idea.summary or ""
     brain_side = idea.brain_side
+    # 转化产物落同一空间：团队成果转出的笔记/胶囊/知识单元归团队
+    tenant_id = tenant.id if tenant else None
 
     if req.target_type == "note":
         note = Note(
             id=target_id,
             user_id=current_user.id,
+            tenant_id=tenant_id,
             brain_side=brain_side,
             title=title,
             content=body,
@@ -794,9 +844,10 @@ async def promote_emergence_idea(
         capsule = Capsule(
             id=target_id,
             user_id=current_user.id,
+            tenant_id=tenant_id,
             brain_side=brain_side,
             content_type="text",
-            content_body=body or title,
+            content_body=encrypt_capsule_content(body or title),
             unlock_type="manual",
             unlock_config=json.dumps({}),
             unlock_status="unlocked",
@@ -810,8 +861,10 @@ async def promote_emergence_idea(
         knowledge = KnowledgeUnit(
             id=target_id,
             user_id=current_user.id,
+            tenant_id=tenant_id,
             brain_side=brain_side,
             content_raw=body or title,
+            title=title or None,  # 09-16 单元自身标题
             source_type="emergence",
             created_at=datetime.utcnow(),
             updated_at=datetime.utcnow(),
@@ -879,7 +932,9 @@ async def list_emergence_canvases(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    query = db.query(EmergenceCanvas).filter(EmergenceCanvas.user_id == current_user.id)
+    query = db.query(EmergenceCanvas).filter(
+        scope_condition(EmergenceCanvas, current_user.id, get_active_tenant(db, current_user))
+    )
     total = query.count()
     canvases = (
         query.order_by(EmergenceCanvas.updated_at.desc())
@@ -901,9 +956,12 @@ async def create_emergence_canvas(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
+    # 空间戳：团队空间画布归团队（成员共享可见）
+    tenant = get_active_tenant(db, current_user)
     canvas = EmergenceCanvas(
         id=str(uuid.uuid4()),
         user_id=current_user.id,
+        tenant_id=tenant.id if tenant else None,
         title=req.title,
         description=req.description,
         brain_side=req.brain_side or "both",
@@ -926,7 +984,7 @@ async def get_emergence_canvas(
 ):
     canvas = db.query(EmergenceCanvas).filter(
         EmergenceCanvas.id == canvas_id,
-        EmergenceCanvas.user_id == current_user.id,
+        scope_condition(EmergenceCanvas, current_user.id, get_active_tenant(db, current_user)),
     ).first()
     if not canvas:
         raise HTTPException(status_code=404, detail="Canvas not found")
@@ -942,7 +1000,7 @@ async def update_emergence_canvas(
 ):
     canvas = db.query(EmergenceCanvas).filter(
         EmergenceCanvas.id == canvas_id,
-        EmergenceCanvas.user_id == current_user.id,
+        scope_condition(EmergenceCanvas, current_user.id, get_active_tenant(db, current_user)),
     ).first()
     if not canvas:
         raise HTTPException(status_code=404, detail="Canvas not found")
@@ -971,7 +1029,7 @@ async def delete_emergence_canvas(
 ):
     canvas = db.query(EmergenceCanvas).filter(
         EmergenceCanvas.id == canvas_id,
-        EmergenceCanvas.user_id == current_user.id,
+        scope_condition(EmergenceCanvas, current_user.id, get_active_tenant(db, current_user)),
     ).first()
     if not canvas:
         raise HTTPException(status_code=404, detail="Canvas not found")
@@ -989,7 +1047,7 @@ async def combine_canvas_nodes(
 ):
     canvas = db.query(EmergenceCanvas).filter(
         EmergenceCanvas.id == canvas_id,
-        EmergenceCanvas.user_id == current_user.id,
+        scope_condition(EmergenceCanvas, current_user.id, get_active_tenant(db, current_user)),
     ).first()
     if not canvas:
         raise HTTPException(status_code=404, detail="Canvas not found")
@@ -1013,6 +1071,7 @@ async def combine_canvas_nodes(
     idea = EmergenceIdea(
         id=str(uuid.uuid4()),
         user_id=current_user.id,
+        tenant_id=canvas.tenant_id,  # 组合产物随画布同空间
         title=req.title,
         summary=req.summary or "",
         brain_side=brain_side,
@@ -1050,7 +1109,7 @@ async def generate_canvas_report(
 ):
     canvas = db.query(EmergenceCanvas).filter(
         EmergenceCanvas.id == canvas_id,
-        EmergenceCanvas.user_id == current_user.id,
+        scope_condition(EmergenceCanvas, current_user.id, get_active_tenant(db, current_user)),
     ).first()
     if not canvas:
         raise HTTPException(status_code=404, detail="Canvas not found")
@@ -1093,7 +1152,7 @@ async def generate_canvas_report(
         route.get("model_name")
         or route.get("model")
         or req.preferred_model
-        or "ollama-qwen2.5-0.5b"
+        or "ollama-qwen3.5-0.8b"
     )
     try:
         content = await _call_llm_text(
@@ -1125,7 +1184,7 @@ async def convert_canvas_to_note(
 ):
     canvas = db.query(EmergenceCanvas).filter(
         EmergenceCanvas.id == canvas_id,
-        EmergenceCanvas.user_id == current_user.id,
+        scope_condition(EmergenceCanvas, current_user.id, get_active_tenant(db, current_user)),
     ).first()
     if not canvas:
         raise HTTPException(status_code=404, detail="Canvas not found")
@@ -1158,6 +1217,7 @@ async def convert_canvas_to_note(
     note = Note(
         id=str(uuid.uuid4()),
         user_id=current_user.id,
+        tenant_id=canvas.tenant_id,  # 转出的笔记随画布同空间
         brain_side=canvas.brain_side,
         title=title,
         content=content,
@@ -1180,7 +1240,7 @@ async def delete_emergence_idea(
 ):
     idea = db.query(EmergenceIdea).filter(
         EmergenceIdea.id == idea_id,
-        EmergenceIdea.user_id == current_user.id,
+        scope_condition(EmergenceIdea, current_user.id, get_active_tenant(db, current_user)),
     ).first()
     if not idea:
         raise HTTPException(status_code=404, detail="Idea not found")
@@ -1197,7 +1257,7 @@ async def delete_emergence_record(
 ):
     record = db.query(EmergenceResult).filter(
         EmergenceResult.id == record_id,
-        EmergenceResult.user_id == current_user.id,
+        scope_condition(EmergenceResult, current_user.id, get_active_tenant(db, current_user)),
     ).first()
     if not record:
         raise HTTPException(status_code=404, detail="Record not found")

@@ -6,6 +6,7 @@ import { useNavigation } from '@/store/navigation';
 import { Dumbbell, Loader2, Plus, Filter, ExternalLink, Trash2 } from 'lucide-react';
 import { Link, useSearchParams } from 'react-router-dom';
 import EvolutionChainBar from '@/components/EvolutionChainBar';
+import { useConfirm } from '@/components/common/dialogContext';
 
 const PRACTICE_TYPES = [
   { value: 'applied', label: '应用', color: 'text-network-primary bg-network-primary/10' },
@@ -16,6 +17,7 @@ const PRACTICE_TYPES = [
 ];
 
 const PracticeRecordsPage: FC = () => {
+  const askConfirm = useConfirm();
   const { brainSide } = useNavigation();
   const [limit, setLimit] = useState(50);
   const { data: records, isLoading, isFetching } = usePracticeRecords({ brain_side: brainSide, limit });
@@ -227,8 +229,8 @@ const PracticeRecordsPage: FC = () => {
                   <span className="text-xs text-text-muted">{new Date(record.created_at).toLocaleDateString('zh-CN')}</span>
                 </div>
                 <button
-                  onClick={() => {
-                    if (window.confirm('确定删除这条践行记录吗？')) del.mutate(record.id);
+                  onClick={async () => {
+                    if (await askConfirm('确定删除这条践行记录吗？')) del.mutate(record.id);
                   }}
                   disabled={del.isPending && del.variables === record.id}
                   className="p-1.5 rounded-[2px] text-text-muted hover:text-danger hover:bg-danger/10 transition-colors disabled:opacity-50 shrink-0"

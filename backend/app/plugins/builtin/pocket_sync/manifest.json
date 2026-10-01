@@ -6,16 +6,10 @@
   "type": "builtin",
   "entrypoint": "plugin:PocketSyncPlugin",
   "enabled_default": false,
-  "permissions": [
-    "network.outbound",
-    "storage.write"
-  ],
+  "permissions": ["network.outbound", "storage.write"],
   "config_schema": {
     "type": "object",
-    "required": [
-      "consumer_key",
-      "access_token"
-    ],
+    "required": ["consumer_key", "access_token"],
     "properties": {
       "consumer_key": {
         "type": "string",
@@ -42,12 +36,7 @@
           },
           "interval_minutes": {
             "type": "integer",
-            "enum": [
-              30,
-              60,
-              360,
-              1440
-            ],
+            "enum": [30, 60, 360, 1440],
             "default": 60,
             "title": "同步间隔"
           },

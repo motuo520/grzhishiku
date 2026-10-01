@@ -12,6 +12,7 @@ class StickyNote(Base):
 
     id = Column(String, primary_key=True)
     user_id = Column(String, nullable=False, index=True)
+    tenant_id = Column(String)  # 团队空间归属（可空）：非空=团队共享，空=个人空间
     content = Column(Text, nullable=False)
     color = Column(String, default="#f59e0b")
     position_x = Column(Integer, default=0)
@@ -36,6 +37,7 @@ class Reminder(Base):
 
     id = Column(String, primary_key=True)
     user_id = Column(String, nullable=False, index=True)
+    tenant_id = Column(String)  # 团队空间归属（可空）：非空=团队共享，空=个人空间
     title = Column(String, nullable=False)
     content = Column(Text, nullable=True)
     remind_at = Column(DateTime, nullable=False)

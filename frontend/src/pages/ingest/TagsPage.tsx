@@ -1,5 +1,5 @@
 import { FC, useState, useMemo, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { useSearchParams, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Tag,
@@ -17,12 +17,14 @@ import {
   Eraser,
   Eye,
   FileText,
+  File,
   Scissors,
   BookOpen,
   ExternalLink,
 } from 'lucide-react';
 import { useTags, useTagAssociations } from '@/hooks/useTags';
 import type { Tag as TagType } from '@/api/tags';
+import { useConfirm } from '@/components/common/dialogContext';
 
 const PRESET_COLORS = [
   { key: 'amber', value: '#d29922' },
@@ -36,6 +38,7 @@ const PRESET_COLORS = [
 ];
 
 const TagsPage: FC = () => {
+  const askConfirm = useConfirm();
   const { tags, isLoading, createTag, updateTag, deleteTag, mergeTags, cleanupOrphanedTags, isCreating, isUpdating, isDeleting, isMerging, isCleaningUp } = useTags();
   const [searchQuery, setSearchQuery] = useState('');
   const [viewMode, setViewMode] = useState<'list' | 'cloud'>('list');
@@ -64,6 +67,17 @@ const TagsPage: FC = () => {
     if (!q) return items;
     return items.filter((item) => item.title?.toLowerCase().includes(q));
   };
+
+  // 从标签图谱点节点跳入：?assoc=<tagId> 自动打开该标签的关联内容
+  const [searchParams, setSearchParams] = useSearchParams();
+  useEffect(() => {
+    const assocId = searchParams.get('assoc');
+    if (!assocId || !tags) return;
+    const tag = tags.find((t) => t.id === assocId);
+    if (tag) setAssociationsTag(tag);
+    searchParams.delete('assoc');
+    setSearchParams(searchParams, { replace: true });
+  }, [tags, searchParams, setSearchParams]);
 
   const filteredTags = useMemo(() => {
     if (!tags) return [];
@@ -147,7 +161,7 @@ const TagsPage: FC = () => {
   };
 
   const handleCleanup = async () => {
-    if (!confirm('确定删除所有未使用的空标签吗？此操作不可恢复。')) return;
+    if (!(await askConfirm('确定删除所有未使用的空标签吗？此操作不可恢复。'))) return;
     try {
       setError(null);
       const res = await cleanupOrphanedTags();
@@ -167,16 +181,20 @@ const TagsPage: FC = () => {
     if (b.note) parts.push(`笔记 ${b.note}`);
     if (b.clip) parts.push(`剪藏 ${b.clip}`);
     if (b.knowledge) parts.push(`知识 ${b.knowledge}`);
+    if (b.document) parts.push(`文档 ${b.document}`);
     return parts.length > 0 ? parts.join(' / ') : '未使用';
   };
 
   const renderAssociationItem = (item: { id: string; title: string; type: string; url?: string }) => {
     const icon = item.type === 'note' ? <FileText className="w-3.5 h-3.5" />
       : item.type === 'clip' ? <Scissors className="w-3.5 h-3.5" />
+      : item.type === 'document' ? <File className="w-3.5 h-3.5" />
       : <BookOpen className="w-3.5 h-3.5" />;
-    // 原文内链：笔记/知识单元跳应用内详情页（不用再回去找）；剪藏有 URL 走外链
+    // 原文内链：笔记/知识单元跳应用内详情页（不用再回去找）；剪藏有 URL 走外链；
+    // 文档无独立详情路由，跳文档库列表（09-11 文档纳入打标）
     const internalTo = item.type === 'note' ? `/ingest/notes/${item.id}`
       : item.type === 'knowledge' ? `/knowledge/${item.id}`
+      : item.type === 'document' ? '/ingest/documents'
       : null;
     return (
       <div key={item.id} className="flex items-center gap-2 py-1.5 text-sm text-text-primary">
@@ -213,11 +231,14 @@ const TagsPage: FC = () => {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-text-primary">标签管理</h1>
-          <p className="text-sm text-text-secondary mt-1">多维度知识组织与跨实体标签关联</p>
+          <h1 className="text-2xl font-bold text-text-primary">标签档夹</h1>
+          <p className="text-sm text-text-secondary mt-1">
+            内容按标签自动归集，点标签看下面有什么
+            <a href="/graph/tags" className="ml-2 text-fusion-primary hover:underline text-xs">查看标签图谱 →</a>
+          </p>
         </div>
         <div className="flex items-center gap-2">
-          <span className="badge-fusion">Fusion</span>
+          <span className="badge-fusion">整合脑</span>
           <button
             onClick={handleCleanup}
             disabled={isCleaningUp}
@@ -614,6 +635,7 @@ const TagsPage: FC = () => {
                       const notes = filterAssocItems(associations.note);
                       const clips = filterAssocItems(associations.clip);
                       const knowledge = filterAssocItems(associations.knowledge);
+                      const documents = filterAssocItems(associations.document || []);
                       return (
                         <>
                           {notes.length > 0 && (
@@ -646,7 +668,17 @@ const TagsPage: FC = () => {
                               </div>
                             </div>
                           )}
-                          {notes.length === 0 && clips.length === 0 && knowledge.length === 0 && (
+                          {documents.length > 0 && (
+                            <div>
+                              <div className="flex items-center gap-2 text-xs text-text-muted mb-1.5">
+                                <File className="w-3.5 h-3.5" /> 文档 ({documents.length})
+                              </div>
+                              <div className="space-y-1">
+                                {documents.map(renderAssociationItem)}
+                              </div>
+                            </div>
+                          )}
+                          {notes.length === 0 && clips.length === 0 && knowledge.length === 0 && documents.length === 0 && (
                             <div className="text-sm text-text-secondary text-center py-6">
                               {assocSearch.trim() ? '没有匹配的关联内容' : '暂无关联内容'}
                             </div>

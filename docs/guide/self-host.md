@@ -25,7 +25,7 @@ docker compose up -d
 ```
 
 默认会启动：Ollama（内部网络）、前端（80）、后端（经前端 nginx 代理）、MinIO（9000/9001）。
-首次启动自动拉取模型 `qwen2.5:0.5b` 与 `nomic-embed-text`。云同步依赖 MinIO，无需额外配置。
+首次启动自动拉取模型 `qwen3.5:0.8b` 与 `bge-m3`。云同步依赖 MinIO，无需额外配置。
 
 ## 反向代理与 SSL
 

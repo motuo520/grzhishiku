@@ -8,13 +8,14 @@ import {
   useGenerateContextGuide,
 } from '@/hooks/useJianghu';
 import ModelSelector from '@/components/llm/ModelSelector';
+import LLMCostBadge from '@/components/llm/LLMCostBadge';
 import {
   BrainCircuit, Plus, Loader2, Trash2, Edit3, CheckCircle2, XCircle,
-  Save, Sparkles, Eye, FileText, Home, Globe, Brain
-} from 'lucide-react';
+  Save, Sparkles, Eye, FileText, Home, Globe, Brain, type LucideIcon } from 'lucide-react';
 import type { ContextGuide } from '@/api/jianghu';
+import { useConfirm } from '@/components/common/dialogContext';
 
-const SCOPE_OPTIONS: { value: ContextGuide['scope']; label: string; icon: React.ElementType; color: string }[] = [
+const SCOPE_OPTIONS: { value: ContextGuide['scope']; label: string; icon: LucideIcon; color: string }[] = [
   { value: 'personal', label: '个人脑', icon: Home, color: 'text-personal-primary' },
   { value: 'network', label: '网络脑', icon: Globe, color: 'text-network-primary' },
   { value: 'both', label: '双脑', icon: Brain, color: 'text-fusion-primary' },
@@ -116,6 +117,7 @@ const renderMarkdown = (content: string): React.ReactNode[] => {
 };
 
 const AiContextPage: FC = () => {
+  const askConfirm = useConfirm();
   const { brainSide } = useNavigation();
   const { data: guides, isLoading, isError, error } = useContextGuides();
   const create = useCreateContextGuide();
@@ -162,8 +164,8 @@ const AiContextPage: FC = () => {
     }
   };
 
-  const handleDelete = (id: string) => {
-    if (confirm('确定删除这条上下文引导文件？')) {
+  const handleDelete = async (id: string) => {
+    if (await askConfirm('确定删除这条上下文引导文件？')) {
       remove.mutate(id, {
         onSuccess: () => {
           // 删除的正是当前预览项时，清空 previewId，避免预览区引用已删项
@@ -210,6 +212,7 @@ const AiContextPage: FC = () => {
         <div className="flex items-center gap-3">
           <div className="flex flex-col items-end gap-1.5">
             <ModelSelector value={modelId} onChange={setModelId} taskType="analysis" className="w-48" />
+            <LLMCostBadge modelId={modelId} inputText="最近 30 条笔记 + 30 条知识单元" outputTokenEstimate={1200} />
           </div>
           <button
             onClick={handleGenerate}

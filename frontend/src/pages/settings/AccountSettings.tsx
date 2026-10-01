@@ -1,15 +1,20 @@
 import { FC, useState, useRef, useCallback, useEffect } from 'react';
-import { User, Camera, Lock, Trash2, AlertTriangle, Eye, EyeOff, Loader2, CheckCircle, XCircle } from 'lucide-react';
+import { createPortal } from 'react-dom';
+import { User, Camera, Lock, Trash2, AlertTriangle, Eye, EyeOff, Loader2, CheckCircle, XCircle, CreditCard, RefreshCcw } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { settingsApi } from '@/api/settings';
 import { clearToken } from '@/api/auth';
+import apiClient from '@/api/client';
+import { useConfirm } from '@/components/common/dialogContext';
 
 const Toast: FC<{ message: string; type: 'success' | 'error'; onClose: () => void }> = ({ message, type, onClose }) => {
   useEffect(() => {
     const timer = setTimeout(onClose, 3000);
     return () => clearTimeout(timer);
   }, [onClose]);
-  return (
+  // Portal 到 body：设置页内容区的层叠上下文（z-10）在顶栏（z-40）之下，
+  // 直接渲染会被不透明的顶栏盖住而"看不到"
+  return createPortal(
     <div className={`fixed top-5 right-5 z-50 flex items-center gap-2 px-4 py-3 rounded-[2px] border ${
       type === 'success'
         ? 'bg-success/10 border-success/30 text-success'
@@ -17,10 +22,152 @@ const Toast: FC<{ message: string; type: 'success' | 'error'; onClose: () => voi
     }`}>
       {type === 'success' ? <CheckCircle size={18} /> : <XCircle size={18} />}
       <span className="text-sm">{message}</span>
-    </div>
+    </div>,
+    document.body
   );
 };
 
+interface PaymentRecord {
+  id: string;
+  amount: number;
+  currency: string;
+  status: string;
+  description?: string;
+  paid_at?: string;
+  created_at?: string;
+}
+
+const BillingHistory: FC = () => {
+  const askConfirm = useConfirm();
+  const [payments, setPayments] = useState<PaymentRecord[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [refundingId, setRefundingId] = useState<string | null>(null);
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+
+  const showToast = useCallback((message: string, type: 'success' | 'error') => {
+    setToast({ message, type });
+  }, []);
+
+  const fetchPayments = useCallback(async () => {
+    setLoading(true);
+    try {
+      const { data } = await apiClient.get('/api/v1/billing/payments');
+      setPayments(data || []);
+    } catch (err: any) {
+      showToast(err?.response?.data?.detail || '加载账单失败', 'error');
+    } finally {
+      setLoading(false);
+    }
+  }, [showToast]);
+
+  useEffect(() => {
+    fetchPayments();
+  }, [fetchPayments]);
+
+  const handleRefund = async (paymentId: string) => {
+    if (!(await askConfirm('确认申请退款？订阅类订单退款后会取消当前订阅。'))) return;
+    setRefundingId(paymentId);
+    try {
+      await apiClient.post(`/api/v1/billing/payments/${paymentId}/refund`, { reason: '用户申请退款' });
+      showToast('退款申请已提交', 'success');
+      await fetchPayments();
+    } catch (err: any) {
+      showToast(err?.response?.data?.detail || '退款失败', 'error');
+    } finally {
+      setRefundingId(null);
+    }
+  };
+
+  const formatMoney = (cents?: number) =>
+    typeof cents === 'number' ? `¥${(cents / 100).toFixed(2)}` : '-';
+
+  const formatDate = (s?: string) =>
+    s ? new Date(s).toLocaleString('zh-CN') : '-';
+
+  const statusClass = (status: string) => {
+    switch (status) {
+      case 'success':
+        return 'bg-success/10 text-success';
+      case 'refunded':
+        return 'bg-warning/10 text-warning';
+      case 'pending':
+        return 'bg-network-primary/10 text-network-primary';
+      case 'failed':
+        return 'bg-danger/10 text-danger';
+      default:
+        return 'bg-white/5 text-text-muted';
+    }
+  };
+
+  return (
+    <div className="glass-card p-6">
+      {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-lg font-medium text-text-primary flex items-center gap-2">
+          <CreditCard size={18} className="text-info" />
+          账单与退款
+        </h3>
+        <button
+          onClick={() => window.location.href = '/billing'}
+          className="text-xs text-info hover:underline"
+        >
+          查看用量与余额 →
+        </button>
+      </div>
+      {loading ? (
+        <div className="flex items-center gap-2 text-text-muted text-sm">
+          <Loader2 size={16} className="animate-spin" />
+          加载中…
+        </div>
+      ) : payments.length === 0 ? (
+        <p className="text-sm text-text-secondary">暂无支付记录</p>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-white/[0.06] text-text-muted">
+                <th className="text-left py-2 font-medium">订单号</th>
+                <th className="text-left py-2 font-medium">描述</th>
+                <th className="text-left py-2 font-medium">金额</th>
+                <th className="text-left py-2 font-medium">状态</th>
+                <th className="text-left py-2 font-medium">时间</th>
+                <th className="text-right py-2 font-medium">操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              {payments.map((p) => (
+                <tr key={p.id} className="border-b border-white/[0.04] hover:bg-white/[0.02]">
+                  <td className="py-3 font-mono text-xs text-text-secondary">{p.id}</td>
+                  <td className="py-3 text-text-secondary">{p.description || '-'}</td>
+                  <td className="py-3 text-text-primary">{formatMoney(p.amount)}</td>
+                  <td className="py-3">
+                    <span className={`inline-flex px-2 py-0.5 rounded-full text-xs ${statusClass(p.status)}`}>
+                      {p.status}
+                    </span>
+                  </td>
+                  <td className="py-3 text-text-muted text-xs">{formatDate(p.paid_at || p.created_at)}</td>
+                  <td className="py-3 text-right">
+                    {p.status === 'success' && (
+                      <button
+                        onClick={() => handleRefund(p.id)}
+                        disabled={refundingId === p.id}
+                        className="inline-flex items-center gap-1 px-2 py-1 rounded-[2px] bg-white/[0.06] border border-white/[0.1] text-text-secondary hover:text-white hover:bg-white/[0.1] transition-colors disabled:opacity-50 text-xs"
+                      >
+                        {refundingId === p.id && <Loader2 size={12} className="animate-spin" />}
+                        <RefreshCcw size={12} />
+                        退款
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+};
 
 const AccountSettings: FC = () => {
   const { user, refreshUser } = useAuth();
@@ -127,13 +274,15 @@ const AccountSettings: FC = () => {
       showToast('请输入当前密码', 'error');
       return;
     }
-    if (deleteConfirmText !== '删除我的账户') {
-      showToast('确认文字不匹配', 'error');
+    // 容忍首尾空白、「」引号与「帐/账」异体混用
+    const normalizedConfirm = deleteConfirmText.trim().replace(/^[「『"']+|[」』"']+$/g, '').replace(/帐/g, '账');
+    if (normalizedConfirm !== '删除我的账户') {
+      showToast('确认文字不匹配，请输入：删除我的账户（不带引号）', 'error');
       return;
     }
     setDeleting(true);
     try {
-      await settingsApi.deleteAccount({ password: deletePassword, confirmation: deleteConfirmText });
+      await settingsApi.deleteAccount({ password: deletePassword, confirmation: normalizedConfirm });
       showToast('账户已标记删除', 'success');
       setTimeout(() => {
         clearToken();
@@ -280,6 +429,9 @@ const AccountSettings: FC = () => {
         </div>
       </div>
 
+      {/* Billing History */}
+      <BillingHistory />
+
       {/* Danger Zone */}
       <div className="glass-card p-6 border-danger/30">
         <h3 className="text-lg font-medium text-danger mb-4 flex items-center gap-2">
@@ -313,7 +465,7 @@ const AccountSettings: FC = () => {
             </div>
             <input
               className="input border-danger/30 focus:border-danger/60"
-              placeholder='请输入「删除我的账户」以确认'
+              placeholder='请输入「删除我的账户」以确认（不带引号）'
               value={deleteConfirmText}
               onChange={(e) => setDeleteConfirmText(e.target.value)}
             />

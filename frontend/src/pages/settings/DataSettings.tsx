@@ -1,4 +1,5 @@
 import { FC, useState, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { settingsApi } from '@/api/settings';
@@ -6,10 +7,14 @@ import { notesApi } from '@/api/notes';
 import { capsulesApi } from '@/api/capsules';
 import { clipsApi } from '@/api/clips';
 import { knowledgeApi } from '@/api/knowledge';
+import { obsidianApi, ObsidianImportResult, MarkdownExportResult } from '@/api/obsidian';
 import { detectFullExport } from '@/utils/importParsers';
-import { Download, Upload, Trash2, AlertTriangle, Check, Loader2, FileJson, FileText } from 'lucide-react';
+import { Download, Upload, Trash2, AlertTriangle, Check, Loader2, FileJson, FileText, FolderInput, FolderOutput } from 'lucide-react';
 import { downloadBlob, filenameFromDisposition } from '@/utils/download';
 import { invalidateContentQueries } from '@/utils/invalidateContent';
+
+// 桌面端（Electron）判定：浏览器中 window.psbDesktop 为 undefined
+const isDesktop = !!window.psbDesktop?.isDesktop;
 
 interface ImportPreviewItem {
   type: 'note' | 'capsule' | 'clip' | 'knowledge';
@@ -26,6 +31,12 @@ const DataSettings: FC = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const queryClient = useQueryClient();
   const navigate = useNavigate();
+
+  // Obsidian 导入 / Markdown 导出（仅桌面端）
+  const [vaultPath, setVaultPath] = useState('');
+  const [obsidianResult, setObsidianResult] = useState<ObsidianImportResult | null>(null);
+  const [exportDir, setExportDir] = useState('');
+  const [mdExportResult, setMdExportResult] = useState<MarkdownExportResult | null>(null);
 
   const showToast = (message: string, type: 'success' | 'error') => {
     setToast({ message, type });
@@ -131,12 +142,37 @@ const DataSettings: FC = () => {
     }
   };
 
+  const obsidianImportMutation = useMutation({
+    mutationFn: (path: string) => obsidianApi.importVault(path),
+    onSuccess: async (res) => {
+      setObsidianResult(res.data);
+      invalidateContentQueries(queryClient);
+      showToast('Obsidian 库导入完成，已转入笔记列表', 'success');
+      navigate('/ingest/notes');
+    },
+    onError: (error: any) => {
+      setObsidianResult(null);
+      showToast(error?.response?.data?.detail || error?.message || '导入失败', 'error');
+    },
+  });
+
+  const markdownExportMutation = useMutation({
+    mutationFn: (dir: string) => obsidianApi.exportMarkdown(dir),
+    onSuccess: (res) => {
+      setMdExportResult(res.data);
+      showToast('Markdown 导出完成', 'success');
+    },
+    onError: (error: any) => {
+      setMdExportResult(null);
+      showToast(error?.response?.data?.detail || error?.message || '导出失败', 'error');
+    },
+  });
+
   const handleImport = async () => {
     if (!preview || preview.length === 0) return;
     setImportLoading(true);
     let success = 0;
-    let failed = 0;
-    for (const item of preview) {
+    let failed = 0;    for (const item of preview) {
       try {
         if (item.type === 'note') {
           await notesApi.create({ title: item.title || '导入笔记', content: item.content || '' });
@@ -183,7 +219,7 @@ const DataSettings: FC = () => {
 
   return (
     <div className="space-y-6">
-      {toast && (
+      {toast && createPortal(
         <div className={`fixed top-4 right-4 z-50 px-4 py-3 rounded-[2px] border ${
           toast.type === 'success'
             ? 'bg-success/20 border-success/30 text-success'
@@ -193,7 +229,8 @@ const DataSettings: FC = () => {
             {toast.type === 'success' ? <Check size={16} /> : <AlertTriangle size={16} />}
             <span className="text-sm">{toast.message}</span>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Export */}
@@ -281,6 +318,106 @@ const DataSettings: FC = () => {
               </button>
             </div>
           </div>
+        )}
+      </section>
+
+      {/* Obsidian Import */}
+      <section className="glass-card p-6">
+        <h2 className="text-lg font-semibold text-text-primary mb-4 flex items-center gap-2">
+          <FolderInput size={18} className="text-personal-primary" />
+          连接 Obsidian 库
+        </h2>
+        {!isDesktop ? (
+          <p className="text-sm text-text-muted">此功能在桌面端可用。</p>
+        ) : (
+          <>
+            <p className="text-sm text-text-muted mb-4">
+              选择本地 Obsidian 库（vault）文件夹，把其中的 Markdown 笔记导入 Molore，wiki 链接会同步生成知识图谱边。重复导入即为增量同步。
+            </p>
+            <div className="flex items-center gap-3">
+              <input
+                type="text"
+                value={vaultPath}
+                readOnly
+                placeholder="点击「选择文件夹」定位 Obsidian 库"
+                className="flex-1 bg-bg-tertiary border border-border-color rounded-[2px] px-3 py-2 text-sm text-text-primary placeholder-text-secondary focus:outline-none cursor-default"
+              />
+              <button
+                onClick={async () => {
+                  const p = await window.psbDesktop?.pickDirectory('选择 Obsidian 库文件夹');
+                  if (p) setVaultPath(p);
+                }}
+                className="btn-secondary flex items-center gap-2 shrink-0"
+              >
+                <FolderInput size={16} />
+                选择文件夹
+              </button>
+              <button
+                onClick={() => vaultPath.trim() && obsidianImportMutation.mutate(vaultPath.trim())}
+                disabled={obsidianImportMutation.isPending || !vaultPath.trim()}
+                className="btn-secondary flex items-center gap-2"
+              >
+                {obsidianImportMutation.isPending && <Loader2 size={16} className="animate-spin" />}
+                导入
+              </button>
+            </div>
+            {obsidianResult && (
+              <div className="mt-4 text-sm text-text-muted space-y-1">
+                <div>扫描文件 {obsidianResult.files} 个，新建笔记 {obsidianResult.notes_created} 条，更新 {obsidianResult.notes_updated} 条</div>
+                <div>生成图谱边 {obsidianResult.edges_created} 条，悬空链接 {obsidianResult.unresolved_links} 条，跳过文件 {obsidianResult.skipped_files} 个</div>
+              </div>
+            )}
+          </>
+        )}
+      </section>
+
+      {/* Markdown Export */}
+      <section className="glass-card p-6">
+        <h2 className="text-lg font-semibold text-text-primary mb-4 flex items-center gap-2">
+          <FolderOutput size={18} className="text-info" />
+          导出为 Markdown
+        </h2>
+        {!isDesktop ? (
+          <p className="text-sm text-text-muted">此功能在桌面端可用。</p>
+        ) : (
+          <>
+            <p className="text-sm text-text-muted mb-4">
+              把全部笔记和知识单元导出为带 frontmatter 的 Markdown 文件（可直接放入 Obsidian 库），图谱边会回写为「相关」wiki 链接。
+            </p>
+            <div className="flex items-center gap-3">
+              <input
+                type="text"
+                value={exportDir}
+                readOnly
+                placeholder="点击「选择文件夹」定位导出目录"
+                className="flex-1 bg-bg-tertiary border border-border-color rounded-[2px] px-3 py-2 text-sm text-text-primary placeholder-text-secondary focus:outline-none cursor-default"
+              />
+              <button
+                onClick={async () => {
+                  const p = await window.psbDesktop?.pickDirectory('选择 Markdown 导出目录');
+                  if (p) setExportDir(p);
+                }}
+                className="btn-secondary flex items-center gap-2 shrink-0"
+              >
+                <FolderOutput size={16} />
+                选择文件夹
+              </button>
+              <button
+                onClick={() => exportDir.trim() && markdownExportMutation.mutate(exportDir.trim())}
+                disabled={markdownExportMutation.isPending || !exportDir.trim()}
+                className="btn-secondary flex items-center gap-2"
+              >
+                {markdownExportMutation.isPending && <Loader2 size={16} className="animate-spin" />}
+                导出
+              </button>
+            </div>
+            {mdExportResult && (
+              <div className="mt-4 text-sm text-text-muted space-y-1">
+                <div>导出笔记 {mdExportResult.exported_notes} 条，知识单元 {mdExportResult.exported_knowledge} 条</div>
+                <div className="truncate">目录：{mdExportResult.target_dir}</div>
+              </div>
+            )}
+          </>
         )}
       </section>
 

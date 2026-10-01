@@ -1,4 +1,4 @@
-import { FC, useMemo, useState } from 'react';
+import { FC, useEffect, useMemo, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Share2, Plus, Search, Trash2, AlertCircle, X, Loader2,
@@ -9,6 +9,7 @@ import { useSocialAccounts, useSocialMessages, useSocialUpload } from '@/hooks/u
 import { useTags } from '@/hooks/useTags';
 import TagSelector from '@/components/TagSelector';
 import type { SocialAccount, SocialMessage } from '@/api/social';
+import { useConfirm } from '@/components/common/dialogContext';
 
 const PROVIDER_OPTIONS: { key: SocialAccount['provider']; label: string; color: string; ext: string }[] = [
   { key: 'wechat', label: '微信', color: 'text-success', ext: '.txt / .csv / .html / .zip' },
@@ -23,6 +24,7 @@ const PROVIDER_LABEL: Record<string, string> = {
 };
 
 const SocialPage: FC = () => {
+  const askConfirm = useConfirm();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedAccountId, setSelectedAccountId] = useState<string>('');
   const [isAddAccountOpen, setIsAddAccountOpen] = useState(false);
@@ -37,6 +39,8 @@ const SocialPage: FC = () => {
   const [success, setSuccess] = useState<string | null>(null);
   // 服务端分页上限（无 total 返回，靠「返回数达到 limit」判断可能还有更多）；上限与后端 le=1000 对齐
   const [limit, setLimit] = useState(200);
+  const errorTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const successTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const { accounts, isLoading: isAccountsLoading, createAccount, deleteAccount, isCreating, isDeleting } = useSocialAccounts();
   const { tags: allTags, isLoading: isTagsLoading } = useTags();
@@ -54,16 +58,27 @@ const SocialPage: FC = () => {
     limit,
   });
 
+  useEffect(() => {
+    return () => {
+      if (errorTimerRef.current) clearTimeout(errorTimerRef.current);
+      if (successTimerRef.current) clearTimeout(successTimerRef.current);
+    };
+  }, []);
+
   const showError = (message: string) => {
+    if (errorTimerRef.current) clearTimeout(errorTimerRef.current);
+    if (successTimerRef.current) clearTimeout(successTimerRef.current);
     setError(message);
     setSuccess(null);
-    setTimeout(() => setError(null), 4000);
+    errorTimerRef.current = setTimeout(() => setError(null), 4000);
   };
 
   const showSuccess = (message: string) => {
+    if (errorTimerRef.current) clearTimeout(errorTimerRef.current);
+    if (successTimerRef.current) clearTimeout(successTimerRef.current);
     setSuccess(message);
     setError(null);
-    setTimeout(() => setSuccess(null), 3000);
+    successTimerRef.current = setTimeout(() => setSuccess(null), 3000);
   };
 
   const resetAddForm = () => {
@@ -84,7 +99,7 @@ const SocialPage: FC = () => {
   };
 
   const handleDeleteAccount = async (id: string) => {
-    if (!confirm('确定要删除这个导入源吗？已解析的消息也会被移除。')) return;
+    if (!(await askConfirm('确定要删除这个导入源吗？已解析的消息也会被移除。'))) return;
     try {
       await deleteAccount(id);
       if (selectedAccountId === id) setSelectedAccountId('');
@@ -95,6 +110,17 @@ const SocialPage: FC = () => {
   };
 
   const handleUpload = async (accountId: string, file: File) => {
+    // 前端最小防护：扩展名白名单 + 大小限制（完整校验仍需后端严格校验）
+    const ext = file.name.split('.').pop()?.toLowerCase() || '';
+    const allowedExts = ['txt', 'csv', 'html', 'htm', 'json', 'zip'];
+    if (!allowedExts.includes(ext)) {
+      showError('仅支持 .txt、.csv、.html、.htm、.json、.zip 文件');
+      return;
+    }
+    if (file.size > 50 * 1024 * 1024) {
+      showError('文件大小不能超过 50MB');
+      return;
+    }
     try {
       const res = await uploadFile({ id: accountId, file });
       const { parsed_count, skipped_count } = res.data;
@@ -126,7 +152,7 @@ const SocialPage: FC = () => {
   };
 
   const handleDeleteMessage = async (id: string) => {
-    if (!confirm('确定要删除这条消息吗？')) return;
+    if (!(await askConfirm('确定要删除这条消息吗？'))) return;
     try {
       await deleteMessage(id);
     } catch (err: any) {
@@ -147,7 +173,8 @@ const SocialPage: FC = () => {
   const groupedMessages = useMemo(() => {
     const map = new Map<string, SocialMessage[]>();
     messages?.forEach((msg) => {
-      const key = msg.conversation_id || 'default';
+      // 复合 key：账号 + 会话，避免不同账号的同名/空会话被合并
+      const key = `${msg.account_id || 'default'}:${msg.conversation_id || 'default'}`;
       if (!map.has(key)) map.set(key, []);
       map.get(key)!.push(msg);
     });
@@ -160,7 +187,9 @@ const SocialPage: FC = () => {
 
   const formatDate = (dateStr: string | null) => {
     if (!dateStr) return '-';
-    return new Date(dateStr).toLocaleDateString('zh-CN', {
+    const date = new Date(dateStr);
+    if (Number.isNaN(date.getTime())) return '-';
+    return date.toLocaleDateString('zh-CN', {
       month: 'short',
       day: 'numeric',
       hour: '2-digit',
@@ -183,7 +212,7 @@ const SocialPage: FC = () => {
           <p className="text-sm text-text-secondary mt-1">整合微信、钉钉、飞书等社交/协作数据</p>
         </div>
         <div className="flex items-center gap-2">
-          <span className="badge-network">Network Brain</span>
+          <span className="badge-network">网络脑</span>
           <button
             onClick={() => { resetAddForm(); setIsAddAccountOpen(true); }}
             className="btn-primary flex items-center gap-2"

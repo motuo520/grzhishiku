@@ -93,13 +93,13 @@ class TestConversationCRUD:
             user_content="问题一",
             assistant_content="回答一",
             refs=[{"id": "k1", "title": "资料一", "source_type": "note"}],
-            model="qwen2.5:0.5b",
+            model="qwen3.5:0.8b",
         )
         resp = client.get(f"/api/v1/chat/conversations/{conv['id']}", headers=auth_headers)
         assert resp.status_code == 200
         data = resp.json()
         assert [m["role"] for m in data["messages"]] == ["user", "assistant"]
-        assert data["messages"][1]["model"] == "qwen2.5:0.5b"
+        assert data["messages"][1]["model"] == "qwen3.5:0.8b"
         refs = json.loads(data["messages"][1]["refs"])
         assert refs[0]["title"] == "资料一"
         # 标题用首条用户消息前 20 字补齐
@@ -169,7 +169,7 @@ class TestChatPersistenceHook:
             headers=auth_headers,
             json={
                 "message": "什么是 PARA 方法？",
-                "preferred_model": "qwen2.5:0.5b",
+                "preferred_model": "qwen3.5:0.8b",
                 "conversation_id": conv["id"],
             },
         )
@@ -180,7 +180,7 @@ class TestChatPersistenceHook:
         assert [m["role"] for m in detail["messages"]] == ["user", "assistant"]
         assert detail["messages"][0]["content"] == "什么是 PARA 方法？"
         assert detail["messages"][1]["content"] == "你好，这是回答。"
-        assert detail["messages"][1]["model"] == "qwen2.5:0.5b"
+        assert detail["messages"][1]["model"] == "qwen3.5:0.8b"
         # 标题取首条用户消息前 20 字
         assert detail["title"] == "什么是 PARA 方法？"
 
@@ -203,7 +203,7 @@ class TestChatPersistenceHook:
             headers=auth_headers,
             json={
                 "message": "什么是 PARA 方法？",
-                "preferred_model": "qwen2.5:0.5b",
+                "preferred_model": "qwen3.5:0.8b",
                 "conversation_id": conv["id"],
             },
         )
@@ -226,7 +226,7 @@ class TestChatPersistenceHook:
         resp = client.post(
             "/api/v1/llm/chat",
             headers=auth_headers,
-            json={"message": "hi", "preferred_model": "qwen2.5:0.5b"},
+            json={"message": "hi", "preferred_model": "qwen3.5:0.8b"},
         )
         assert resp.status_code == 200
         assert "ok" in resp.text
@@ -242,7 +242,7 @@ class TestChatPersistenceHook:
             headers=auth_headers,
             json={
                 "message": "hi",
-                "preferred_model": "qwen2.5:0.5b",
+                "preferred_model": "qwen3.5:0.8b",
                 "conversation_id": conv.id,
             },
         )

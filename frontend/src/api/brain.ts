@@ -5,6 +5,8 @@ export type BrainSide = 'personal' | 'network' | 'both' | 'unknown';
 export interface BrainStatus {
   active_brain: BrainSide; personal_count: number; network_count: number;
   both_count: number; total_items: number;
+  /** 未归档条数（文件夹外内容），Dashboard 行动页「N 条待整理」用 */
+  unfiled_count: number;
 }
 
 export interface FusionSearchResult {
@@ -31,18 +33,10 @@ export interface FusionSearchResponse {
   brain_sides: BrainSide[];
 }
 
-export interface SearchSuggestions {
-  suggestions: string[];
-}
-
 export const brainApi = {
   status: () => api.get<BrainStatus>('/api/v1/brain/status'),
   switch: (target_brain: BrainSide) => api.post<BrainStatus>('/api/v1/brain/switch', { target_brain }),
   stats: () => api.get<BrainStatsResponse>('/api/v1/brain/stats'),
-  fusionSearch: (query: string, brain_sides?: BrainSide[]) =>
-    api.post<FusionSearchResponse>('/api/v1/brain/fusion-search', { query, brain_sides }),
-  searchSuggestions: (q: string) => api.get<SearchSuggestions>(`/api/v1/brain/search/suggestions?q=${encodeURIComponent(q)}`),
-  crossLink: (data: { source_id: string; source_type: string; target_id: string; target_type: string; link_type?: string }) =>
-    api.post('/api/v1/brain/cross-link', data),
-  crossBrainGraph: () => api.get('/api/v1/brain/cross-brain-graph'),
+  fusionSearch: (query: string, brain_sides?: BrainSide[], origin?: 'user') =>
+    api.post<FusionSearchResponse>('/api/v1/brain/fusion-search', { query, brain_sides, ...(origin ? { origin } : {}) }),
 };

@@ -1,25 +1,21 @@
 import React, { FC, Suspense, lazy, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
 import {
   ArrowRight,
   Shield,
   Search,
-  FolderOpen,
-  Lock,
-  Server,
-  Cloud,
   Github,
-  Terminal,
   ChevronDown,
+  Download,
+  Monitor,
+  WifiOff,
+  CloudCog,
   Sparkles,
-  Eye,
-  Building2,
-  Briefcase,
-  LayoutGrid,
 } from 'lucide-react';
 import { SealMark } from '@/components/common/BrandLogo';
 import BrandLogo from '@/components/common/BrandLogo';
+import LoginModal from '@/components/auth/LoginModal';
+import { useAuth } from '@/hooks/useAuth';
 
 // 湖光背景（底层 WebGL shader）
 const MoonlitRipple = lazy(() => import('@/components/backgrounds/MoonlitRipple'));
@@ -27,12 +23,9 @@ const MoonlitRipple = lazy(() => import('@/components/backgrounds/MoonlitRipple'
 const WelcomeNetwork3D = lazy(() => import('@/components/backgrounds/WelcomeNetwork3D'));
 
 const GITHUB_URL = 'https://github.com/motuo520/grzhishiku';
-const DOCKER_CMD = 'docker-compose up -d';
 
-const fadeInUp = {
-  hidden: { opacity: 0, y: 24 },
-  visible: { opacity: 1, y: 0 },
-};
+// 桌面端（Electron）判定：桌面端用户已在应用内，不显示下载入口
+const isDesktop = !!window.psbDesktop?.isDesktop;
 
 // 背景组件（WebGL/3D）异常时降级为隐藏，避免整个欢迎页白屏
 class BgErrorBoundary extends React.Component<{ children: React.ReactNode }, { hasError: boolean }> {
@@ -51,14 +44,12 @@ class BgErrorBoundary extends React.Component<{ children: React.ReactNode }, { h
 
 const WelcomePage: FC = () => {
   const navigate = useNavigate();
-  const [mounted, setMounted] = useState(false);
   // LCP 快赢：three.js 3D 球体（独立大 chunk）延到首屏绘制后再挂载，
   // 避免它在 LCP 窗口内抢占带宽与主线程
   const [load3D, setLoad3D] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+  const { isLoggedIn } = useAuth();
+  // 未登录用户的唯一入口：欢迎页必须能登录（否则桌面端登出后被永久困在欢迎页）
+  const [loginOpen, setLoginOpen] = useState(false);
 
   // 浏览器空闲时再加载 3D 背景（requestIdleCallback；Safari 不支持则回退 setTimeout）
   useEffect(() => {
@@ -74,17 +65,35 @@ const WelcomePage: FC = () => {
     return () => clearTimeout(t);
   }, []);
 
-  const handleEnter = () => {
-    navigate('/app');
-  };
+  // 登录成功（isLoggedIn 翻 true）后自动进应用
+  useEffect(() => {
+    if (isLoggedIn) navigate('/app', { replace: true });
+  }, [isLoggedIn, navigate]);
 
-  const scrollToContent = () => {
-    document.getElementById('problem')?.scrollIntoView({ behavior: 'smooth' });
+  // SEO：/welcome 与首页正文同源，canonical 指首页防重复内容降权（09-28 GEO 审计实捕）
+  useEffect(() => {
+    const link = document.createElement('link');
+    link.rel = 'canonical';
+    link.href = 'https://grzhishiku.com/';
+    link.id = 'welcome-canonical';
+    document.head.appendChild(link);
+    return () => { document.getElementById('welcome-canonical')?.remove(); };
+  }, []);
+
+  const handleEnter = () => {
+    // 桌面端没有游客演示（无演示账号自动关闭），未登录时点「进入应用/免费试用」
+    // 会被 AuthGuard 弹回本页——按钮看似没反应（0.2.78 实锤）。桌面端未登录
+    // 直接开登录弹窗（本机注册免邮箱验证码）；网页端照旧进游客演示。
+    if (isDesktop && !isLoggedIn) {
+      setLoginOpen(true);
+      return;
+    }
+    navigate('/app');
   };
 
   return (
     <div className="min-h-screen w-full relative overflow-x-hidden bg-black">
-      {/* Hero 背景层 */}
+      {/* Hero 背景层（湖光 + 引力球，09-27 本人召回） */}
       <div className="fixed inset-0 z-0 pointer-events-none">
         <BgErrorBoundary>
           <Suspense fallback={null}>
@@ -109,276 +118,286 @@ const WelcomePage: FC = () => {
         }}
       />
 
-      {/* 固定顶部导航 */}
+      {/* 固定顶部导航（背景 3D 可拖拽：导航容器不吃指针，按钮单独放行） */}
       <header className="fixed top-0 left-0 right-0 z-50 px-6 py-4 flex items-center justify-between pointer-events-none">
         <div className="pointer-events-auto">
           <BrandLogo size={34} dark />
         </div>
-        <button
-          onClick={handleEnter}
-          className="pointer-events-auto group inline-flex items-center gap-2 px-4 py-2 max-sm:min-h-[44px] rounded-[2px] bg-[#bd4a2e] hover:bg-[#a83c22] text-[#f6ece6] text-sm font-medium transition-colors duration-200"
-        >
-          进入应用
-          <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
-        </button>
+        <div className="flex items-center gap-2 pointer-events-auto">
+          {!isDesktop && (
+            <a
+              href="/download/PSB-Setup-0.2.137.exe"
+              className="inline-flex items-center gap-2 px-4 py-2 max-sm:min-h-[44px] rounded-[2px] border border-[rgba(232,226,216,0.18)] hover:border-[#bd4a2e]/60 text-[#e8e2d8] text-sm font-medium transition-colors duration-200"
+            >
+              <Download className="w-4 h-4" />
+              下载桌面端
+            </a>
+          )}
+          {!isLoggedIn && (
+            <button
+              onClick={() => setLoginOpen(true)}
+              className="inline-flex items-center gap-2 px-4 py-2 max-sm:min-h-[44px] rounded-[2px] border border-[rgba(232,226,216,0.18)] hover:border-[#bd4a2e]/60 text-[#e8e2d8] text-sm font-medium transition-colors duration-200"
+            >
+              登录
+            </button>
+          )}
+          <button
+            onClick={handleEnter}
+            className="group inline-flex items-center gap-2 px-4 py-2 max-sm:min-h-[44px] rounded-[2px] bg-[#bd4a2e] hover:bg-[#a83c22] text-[#f6ece6] text-sm font-medium transition-colors duration-200"
+          >
+            进入应用
+            <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
+          </button>
+        </div>
       </header>
 
-      {/* Hero 首屏 */}
+      {/* 登录/注册弹窗（欢迎页是未登录用户的唯一落点，必须能从这里登录） */}
+      <LoginModal isOpen={loginOpen} onClose={() => setLoginOpen(false)} />
+
+      {/* Hero 首屏（section 不吃指针让 3D 球可拖拽，按钮行单独放行） */}
       <section className="relative z-10 min-h-screen flex flex-col items-center justify-center px-6 text-center pointer-events-none">
-        <motion.div
-          initial="hidden"
-          animate={mounted ? 'visible' : 'hidden'}
-          variants={fadeInUp}
-          transition={{ duration: 0.9, ease: [0.4, 0, 0.2, 1] }}
-          className="max-w-3xl mx-auto"
-        >
+        <div className="max-w-3xl mx-auto">
           <div className="flex items-center justify-center mb-6">
             <SealMark size={80} />
           </div>
 
-          <p className="text-[11px] sm:text-xs text-[#9a9286] tracking-[0.35em] uppercase mb-4">
-            Open Source · Self-Hosted · Private AI
-          </p>
-
-          <h1 className="text-3xl sm:text-5xl lg:text-6xl font-bold text-[#f0ebe2] tracking-[0.04em] mb-5 leading-tight">
+          <h1 className="text-4xl sm:text-6xl font-bold text-[#f0ebe2] tracking-[0.04em] mb-5 leading-tight">
             用你自己的资料
             <br />
             <span className="text-[#e0704f]">回答你自己</span>
           </h1>
 
-          <p className="text-lg sm:text-xl text-[#b8b0a4] leading-relaxed mb-6 max-w-2xl mx-auto">
+          <p className="text-lg sm:text-xl text-[#b8b0a4] leading-relaxed mb-8 max-w-2xl mx-auto">
             开源、可自托管、数据不出本机的 AI 知识库。
             <br className="hidden sm:block" />
             剪藏 → 整理 → 提问，每一步都带引用出处。
           </p>
 
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-2.5 mb-8 text-sm">
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-2.5 mb-10 text-sm">
             <span className="inline-flex items-center gap-2 px-4 py-2 rounded-[2px] border border-[rgba(232,226,216,0.14)] text-[#b8b0a4]">
-              <LayoutGrid className="w-4 h-4 text-[#e0704f]" />
-              经典版 ⇄ 简化版，两种界面随心切换
+              <Shield className="w-4 h-4 text-[#e0704f]" />
+              桌面端离线可用
+            </span>
+            <span className="inline-flex items-center gap-2 px-4 py-2 rounded-[2px] border border-[rgba(232,226,216,0.14)] text-[#b8b0a4]">
+              <Search className="w-4 h-4 text-[#e0704f]" />
+              回答带原文出处
+            </span>
+            <span className="inline-flex items-center gap-2 px-4 py-2 rounded-[2px] border border-[rgba(232,226,216,0.14)] text-[#b8b0a4]">
+              <Sparkles className="w-4 h-4 text-[#e0704f]" />
+              智能体替你跑腿查证
             </span>
           </div>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pointer-events-auto">
+            <button
+              onClick={handleEnter}
+              className="group inline-flex items-center gap-2 px-7 py-3.5 rounded-[2px] bg-[#bd4a2e] hover:bg-[#a83c22] text-[#f6ece6] text-base font-medium transition-colors duration-200"
+            >
+              免费试用
+              <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+            </button>
             <a
               href={GITHUB_URL}
               target="_blank"
               rel="noreferrer"
-              className="group inline-flex items-center gap-2 px-7 py-3.5 max-sm:min-h-[44px] rounded-[2px] bg-[#bd4a2e] hover:bg-[#a83c22] text-[#f6ece6] text-base font-medium transition-colors duration-200"
+              className="inline-flex items-center gap-2 px-7 py-3.5 rounded-[2px] border border-[rgba(232,226,216,0.18)] hover:border-[#bd4a2e]/60 text-[#e8e2d8] text-base font-medium transition-colors duration-200"
             >
               <Github className="w-5 h-5" />
-              快速开始
-              <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+              GitHub
             </a>
-            <button
-              onClick={handleEnter}
-              className="inline-flex items-center gap-2 px-7 py-3.5 max-sm:min-h-[44px] rounded-[2px] border border-[rgba(232,226,216,0.18)] hover:border-[#bd4a2e]/60 text-[#e8e2d8] text-base font-medium transition-colors duration-200"
-            >
-              进入在线演示
-            </button>
-          </div>
-        </motion.div>
-
-        <motion.button
-          initial={{ opacity: 0 }}
-          animate={{ opacity: mounted ? 1 : 0 }}
-          transition={{ duration: 0.9, delay: 0.5 }}
-          onClick={scrollToContent}
-          className="absolute bottom-8 text-[#6b655c] hover:text-[#9a9286] text-xs flex flex-col items-center justify-center gap-1 pointer-events-auto transition-colors max-sm:min-h-[44px] max-sm:min-w-[44px]"
-        >
-          了解更多
-          <ChevronDown className="w-4 h-4 animate-bounce" />
-        </motion.button>
-      </section>
-
-      {/* 问题与解决 */}
-      <section id="problem" className="relative z-10 bg-[#161311]/90 backdrop-blur-sm border-t border-[rgba(232,226,216,0.08)]">
-        <div className="max-w-6xl mx-auto px-6 py-24">
-          <div className="grid md:grid-cols-2 gap-12 items-center">
-            <div>
-              <p className="text-[11px] tracking-[0.3em] uppercase text-[#e0704f] mb-3">问题</p>
-              <h2 className="text-3xl sm:text-4xl font-bold text-[#f0ebe2] mb-6 leading-snug">
-                资料存了一堆，
-                <br />
-                用的时候找不到
-              </h2>
-              <ul className="space-y-4 text-[#b8b0a4]">
-                <li className="flex items-start gap-3">
-                  <Cloud className="w-5 h-5 text-[#e0704f] mt-0.5 shrink-0" />
-                  <span>不敢把笔记、病历、合同交给云端大模型</span>
-                </li>
-                <li className="flex items-start gap-3">
-                  <Search className="w-5 h-5 text-[#e0704f] mt-0.5 shrink-0" />
-                  <span>收藏即冷藏，再问只能凭印象搜索关键词</span>
-                </li>
-                <li className="flex items-start gap-3">
-                  <Sparkles className="w-5 h-5 text-[#e0704f] mt-0.5 shrink-0" />
-                  <span>ChatGPT 能聊天，但读不到你的私有资料</span>
-                </li>
-              </ul>
-            </div>
-            <div className="glass-card p-8">
-              <p className="text-[11px] tracking-[0.3em] uppercase text-[#e0704f] mb-3">解法</p>
-              <h3 className="text-2xl font-bold text-[#f0ebe2] mb-4">RAG 问答 + 本地模型 + 引用溯源</h3>
-              <p className="text-[#b8b0a4] leading-relaxed mb-6">
-                把资料存进本地知识库，提问时 AI 只在你的笔记里检索，回答的每一句话都标注来源，点击即可跳回原笔记。
-              </p>
-              <div className="grid grid-cols-3 gap-3">
-                <div className="bg-[#1b1815] border border-[rgba(232,226,216,0.08)] p-3 rounded-[2px] text-center">
-                  <FolderOpen className="w-5 h-5 text-[#e0704f] mx-auto mb-2" />
-                  <div className="text-xs text-[#e8e2d8]">存进来</div>
-                </div>
-                <div className="bg-[#1b1815] border border-[rgba(232,226,216,0.08)] p-3 rounded-[2px] text-center">
-                  <Server className="w-5 h-5 text-[#e0704f] mx-auto mb-2" />
-                  <div className="text-xs text-[#e8e2d8]">自动理好</div>
-                </div>
-                <div className="bg-[#1b1815] border border-[rgba(232,226,216,0.08)] p-3 rounded-[2px] text-center">
-                  <Search className="w-5 h-5 text-[#e0704f] mx-auto mb-2" />
-                  <div className="text-xs text-[#e8e2d8]">一句话问出来</div>
-                </div>
-              </div>
-            </div>
           </div>
         </div>
       </section>
 
-      {/* 目标人群 */}
-      <section className="relative z-10 bg-[#161311]/95 border-t border-[rgba(232,226,216,0.06)]">
-        <div className="max-w-6xl mx-auto px-6 py-24">
-          <div className="text-center mb-14">
-            <p className="text-[11px] tracking-[0.3em] uppercase text-[#e0704f] mb-3">写给谁</p>
-            <h2 className="text-3xl sm:text-4xl font-bold text-[#f0ebe2]">三类人最需要它</h2>
+      {/* 桌面端 */}
+      <section id="download" className="relative z-10 bg-[#161311]/95 border-t border-[rgba(232,226,216,0.06)]">
+        <div className="max-w-6xl mx-auto px-6 py-20">
+          <div className="text-center mb-12">
+            <p className="text-[11px] tracking-[0.3em] uppercase text-[#e0704f] mb-3">桌面端</p>
+            <h2 className="text-3xl sm:text-4xl font-bold text-[#f0ebe2] mb-5">真桌面端，不是套壳网页</h2>
+            <p className="text-[#b8b0a4] leading-relaxed max-w-3xl mx-auto">
+              安装包内嵌完整后端服务，打开就在你自己的电脑上启动——不连我们的服务器，断网也照常用。
+              需要备份时再绑定云端账号：传不传、传什么，你说了算。
+            </p>
+            {!isDesktop && (
+              <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3">
+                <a
+                  href="/download/PSB-Setup-0.2.137.exe"
+                  className="group inline-flex items-center gap-2 px-7 py-3.5 rounded-[2px] bg-[#bd4a2e] hover:bg-[#a83c22] text-[#f6ece6] text-base font-medium transition-colors duration-200"
+                >
+                  <Download className="w-5 h-5" />
+                  下载 Windows 桌面端
+                </a>
+                <a
+                  href="/download/PSB-Portable-0.2.137.exe"
+                  className="inline-flex items-center gap-2 px-5 py-3 max-sm:min-h-[44px] rounded-[2px] border border-[rgba(232,226,216,0.18)] hover:border-[#bd4a2e]/60 text-[#e8e2d8] text-sm transition-colors duration-200"
+                >
+                  便携版（免安装）
+                </a>
+              </div>
+            )}
           </div>
           <div className="grid md:grid-cols-3 gap-6">
             {[
-              {
-                icon: Shield,
-                title: '隐私敏感专业人群',
-                desc: '律师、医生、咨询师、记者。资料不敢上云，本地模型 + 端到端加密同步才是刚需。',
-              },
-              {
-                icon: Server,
-                title: '自托管 / 开源爱好者',
-                desc: '代码可审计、数据不出本机、Docker 一键启动。GitHub 基本盘，也是最好的传播者。',
-              },
-              {
-                icon: Building2,
-                title: '20–200 人小企业',
-                desc: '客服知识库、产品手册问答、SOP 查询。私有化部署，新人三天上手。',
-              },
-            ].map((item, i) => (
-              <motion.div
-                key={item.title}
-                initial="hidden"
-                whileInView="visible"
-                viewport={{ once: true, margin: '-50px' }}
-                variants={fadeInUp}
-                transition={{ duration: 0.5, delay: i * 0.1 }}
-                className="glass-card p-7"
-              >
-                <item.icon className="w-8 h-8 text-[#e0704f] mb-5" />
-                <h3 className="text-xl font-bold text-[#f0ebe2] mb-3">{item.title}</h3>
-                <p className="text-sm text-[#9a9286] leading-relaxed">{item.desc}</p>
-              </motion.div>
+              { icon: Monitor, title: '内嵌完整后端', desc: '无需装 Python、Docker 或任何环境，双击即用。' },
+              { icon: WifiOff, title: '数据只在你电脑上', desc: '本地 SQLite 存储，拔了网线照样记、照样问。' },
+              { icon: CloudCog, title: '可选云端备份', desc: '绑定网页端账号后可打包备份到云端，随时恢复。' },
+            ].map((item) => (
+              <div key={item.title} className="bg-[#1b1815] border border-[rgba(232,226,216,0.08)] rounded-[2px] p-7">
+                <div className="w-10 h-10 rounded-[2px] bg-[#bd4a2e]/10 flex items-center justify-center mb-4">
+                  <item.icon className="w-5 h-5 text-[#e0704f]" />
+                </div>
+                <h4 className="text-base font-bold text-[#f0ebe2] mb-2">{item.title}</h4>
+                <p className="text-sm text-[#9a9286]">{item.desc}</p>
+              </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* 信任卖点 */}
-      <section className="relative z-10 bg-[#161311]/90 border-t border-[rgba(232,226,216,0.06)]">
-        <div className="max-w-6xl mx-auto px-6 py-24">
-          <div className="grid md:grid-cols-2 gap-12 items-center">
-            <div className="order-2 md:order-1 glass-card p-8">
-              <div className="space-y-6">
-                {[
-                  { icon: Lock, title: '数据不出本机', desc: '本地 Ollama 模型可离线运行，笔记永不离开你的设备。' },
-                  { icon: Eye, title: '每次回答都带出处', desc: 'RAG 检索结果直接嵌入回答，脚注即原文，拒绝编造。' },
-                  { icon: Briefcase, title: '端到端加密同步', desc: '云同步层存的是密文，服务器也读不懂你的笔记。' },
-                ].map((item) => (
-                  <div key={item.title} className="flex gap-4">
-                    <div className="w-10 h-10 rounded-[2px] bg-[#bd4a2e]/10 flex items-center justify-center shrink-0">
-                      <item.icon className="w-5 h-5 text-[#e0704f]" />
-                    </div>
-                    <div>
-                      <h4 className="text-base font-bold text-[#f0ebe2] mb-1">{item.title}</h4>
-                      <p className="text-sm text-[#9a9286]">{item.desc}</p>
-                    </div>
-                  </div>
-                ))}
+      {/* 价格（与现行商业化口径一致：免费层 / Pro 三档同权 / 云端按量） */}
+      <section id="pricing" className="relative z-10 bg-[#161311]/90 border-t border-[rgba(232,226,216,0.06)]">
+        <div className="max-w-5xl mx-auto px-6 py-20">
+          <div className="text-center mb-12">
+            <p className="text-[11px] tracking-[0.3em] uppercase text-[#e0704f] mb-3">定价</p>
+            <h2 className="text-3xl sm:text-4xl font-bold text-[#f0ebe2]">本地免费，付费的是会员与云端模型</h2>
+          </div>
+          <div className="grid md:grid-cols-3 gap-6">
+            {[
+              {
+                name: '免费版',
+                price: '永久免费',
+                desc: '本地注册即用，功能全开。',
+                features: ['本地模型问答', 'RAG 检索 + 引用溯源', '剪藏 / 笔记 / 知识地图', '条数不限，100MB 储存护栏'],
+                highlight: false,
+              },
+              {
+                name: 'Pro 会员',
+                price: '¥9.9 / 月 · ¥99 / 年',
+                desc: '三档同权，功能完全一致。',
+                features: ['模型管家与 BYOK 自填 key', '云端同步与备份', '年付档每月返 ¥3 按量余额', '本地免费版的全部功能'],
+                highlight: true,
+              },
+              {
+                name: '云端模型',
+                price: '按量计费',
+                desc: '平台模型随用随付。',
+                features: ['有余额即可用，不需 Pro', 'DeepSeek / GLM / 通义等', '小额起充，用多少算多少', '与本地模型自由切换'],
+                highlight: false,
+              },
+            ].map((tier) => (
+              <div
+                key={tier.name}
+                className={`bg-[#1b1815] border rounded-[2px] p-7 flex flex-col ${tier.highlight ? 'border-[#bd4a2e]/60' : 'border-[rgba(232,226,216,0.08)]'}`}
+              >
+                <h3 className="text-lg font-bold text-[#f0ebe2] mb-2">{tier.name}</h3>
+                <div className="text-xl font-bold text-[#e0704f] mb-3">{tier.price}</div>
+                <p className="text-sm text-[#9a9286] mb-5">{tier.desc}</p>
+                <ul className="space-y-2 mb-6 flex-1">
+                  {tier.features.map((f) => (
+                    <li key={f} className="flex items-center gap-2 text-sm text-[#b8b0a4]">
+                      <div className="w-1 h-1 rounded-full bg-[#e0704f]" />
+                      {f}
+                    </li>
+                  ))}
+                </ul>
+                <button
+                  onClick={handleEnter}
+                  className={`w-full py-2.5 max-sm:min-h-[44px] rounded-[2px] text-sm font-medium transition-colors ${
+                    tier.highlight
+                      ? 'bg-[#bd4a2e] hover:bg-[#a83c22] text-[#f6ece6]'
+                      : 'border border-[rgba(232,226,216,0.14)] hover:border-[#bd4a2e]/60 text-[#e8e2d8]'
+                  }`}
+                >
+                  {tier.price === '永久免费' ? '立即开始' : '查看详情'}
+                </button>
               </div>
-            </div>
-            <div className="order-1 md:order-2">
-              <p className="text-[11px] tracking-[0.3em] uppercase text-[#e0704f] mb-3">差异</p>
-              <h2 className="text-3xl sm:text-4xl font-bold text-[#f0ebe2] mb-6 leading-snug">
-                不是又一个笔记 App，
-                <br />
-                是你的私有 AI 资料库
-              </h2>
-              <p className="text-[#b8b0a4] leading-relaxed mb-6">
-                Obsidian 的笔记很强，但 AI 是插件；Notion AI 很方便，但数据必须上云。Molore把"可自托管"和"AI 原生"做在同一个架构里。
-              </p>
-              <p className="text-[#b8b0a4] leading-relaxed">
-                这是 ChatGPT 做不到的事：让它读你的病历、合同、私人文档，并告诉你答案来自哪一页。
-              </p>
-            </div>
+            ))}
           </div>
         </div>
       </section>
 
-
-      {/* 快速开始 */}
-      <section className="relative z-10 bg-[#161311]/90 border-t border-[rgba(232,226,216,0.06)]">
-        <div className="max-w-4xl mx-auto px-6 py-24 text-center">
-          <p className="text-[11px] tracking-[0.3em] uppercase text-[#e0704f] mb-3">开始</p>
-          <h2 className="text-3xl sm:text-4xl font-bold text-[#f0ebe2] mb-6">一行命令跑起来</h2>
-          <p className="text-[#b8b0a4] mb-8 max-w-2xl mx-auto">
-            克隆仓库，执行 docker-compose，30 秒后注册账号，每个功能就有示例内容可玩了。
-          </p>
-
-          <div className="glass-card p-4 mb-8 text-left overflow-x-auto">
-            <div className="flex items-center gap-2 mb-3 pb-3 border-b border-[rgba(232,226,216,0.08)]">
-              <Terminal className="w-4 h-4 text-[#e0704f]" />
-              <span className="text-xs text-[#9a9286]">Terminal</span>
-            </div>
-            <code className="text-sm text-[#e8e2d8] font-mono whitespace-nowrap">
-              git clone {GITHUB_URL}.git && cd grzhishiku && {DOCKER_CMD}
-            </code>
+      {/* 常见问题 */}
+      <section className="relative z-10 bg-[#161311]/95 border-t border-[rgba(232,226,216,0.06)]">
+        <div className="max-w-4xl mx-auto px-6 py-20">
+          <div className="text-center mb-10">
+            <p className="text-[11px] tracking-[0.3em] uppercase text-[#e0704f] mb-3">FAQ</p>
+            <h2 className="text-3xl sm:text-4xl font-bold text-[#f0ebe2]">常见问题</h2>
           </div>
-
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
-            <a
-              href={GITHUB_URL}
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex items-center gap-2 px-7 py-3.5 max-sm:min-h-[44px] rounded-[2px] bg-[#bd4a2e] hover:bg-[#a83c22] text-[#f6ece6] text-base font-medium transition-colors duration-200"
-            >
-              <Github className="w-5 h-5" />
-              访问 GitHub
-            </a>
-            <button
-              onClick={handleEnter}
-              className="inline-flex items-center gap-2 px-7 py-3.5 max-sm:min-h-[44px] rounded-[2px] border border-[rgba(232,226,216,0.18)] hover:border-[#bd4a2e]/60 text-[#e8e2d8] text-base font-medium transition-colors duration-200"
-            >
-              进入在线演示
-              <ArrowRight className="w-5 h-5" />
-            </button>
+          <div className="space-y-4">
+            {[
+              {
+                q: 'Molore 是什么？',
+                a: '本地优先的个人 AI 知识库：笔记、剪藏、文档存进本机，AI 问答只检索你自己的资料，每句回答带原文出处。支持桌面端离线使用、Docker 一键自托管。',
+              },
+              {
+                q: '数据不出本机是真的吗？',
+                a: '真的。桌面端内嵌完整后端，本地模型 + 本地 SQLite 检索，断网也能记、也能问。云端备份是可选项，打包上传由你手动发起。',
+              },
+              {
+                q: '用 Molore 要花钱吗？',
+                a: '本地使用永久免费（本地注册+本地模型，条数不限）。Pro 会员 ¥9.9/月、¥99/年（模型管家、BYOK、云同步）。云端平台模型按量计费，有余额即可用。',
+              },
+              {
+                q: '支持哪些 AI 模型？',
+                a: '本地 Ollama 模型（免费离线）；BYOK 自填 key 走自己的厂商账户；云端平台模型按量计费。自动生成类链路只走本地模型，不花一分钱。',
+              },
+            ].map((f) => (
+              <details key={f.q} className="bg-[#1b1815] border border-[rgba(232,226,216,0.08)] rounded-[2px] p-6 group">
+                <summary className="flex items-center justify-between gap-4 cursor-pointer list-none text-base font-bold text-[#f0ebe2] [&::-webkit-details-marker]:hidden">
+                  <span>Q：{f.q}</span>
+                  <ChevronDown className="w-4 h-4 text-[#9a9286] shrink-0 transition-transform duration-200 group-open:rotate-180" />
+                </summary>
+                <p className="text-sm text-[#9a9286] leading-relaxed mt-3">A：{f.a}</p>
+              </details>
+            ))}
           </div>
         </div>
       </section>
 
-      {/* Footer */}
+      {/* Footer：品牌锚文本 + 站内内链（产品/学习/资源三列，SEO 基本盘）+ 版权 */}
       <footer className="relative z-10 bg-[#161311] border-t border-[rgba(232,226,216,0.06)]">
-        <div className="max-w-6xl mx-auto px-6 py-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-[#6b655c]">
-          <div className="flex items-center gap-2">
-            <BrandLogo size={22} dark withWordmark={false} />
-            <span>Molore · grzhishiku.com</span>
+        <div className="max-w-6xl mx-auto px-6 py-12">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mb-10">
+            <div className="col-span-2 md:col-span-1">
+              <div className="flex items-center gap-2 mb-3">
+                <BrandLogo size={22} dark withWordmark={false} />
+                <span className="text-sm font-bold text-[#f0ebe2]">Molore</span>
+              </div>
+              <p className="text-xs text-[#6b655c] leading-relaxed">
+                本地优先的个人 AI 知识库：笔记、网页剪藏、知识图谱与 AI 问答都在你自己的设备上运行，数据不出机器。开源免费，可自托管。
+              </p>
+            </div>
+            <nav aria-label="产品">
+              <h3 className="text-xs font-bold text-[#9a9286] uppercase tracking-wider mb-3">产品</h3>
+              <ul className="space-y-2 text-xs text-[#6b655c]">
+                <li><a href="#download" className="hover:text-[#f0ebe2] transition-colors">下载桌面端（Windows）</a></li>
+                <li><a href="/app" className="hover:text-[#f0ebe2] transition-colors">在线体验（游客免注册）</a></li>
+                <li><a href="#pricing" className="hover:text-[#f0ebe2] transition-colors">价格方案</a></li>
+              </ul>
+            </nav>
+            <nav aria-label="学习指南">
+              <h3 className="text-xs font-bold text-[#9a9286] uppercase tracking-wider mb-3">学习指南</h3>
+              <ul className="space-y-2 text-xs text-[#6b655c]">
+                <li><a href="/learn" className="hover:text-[#f0ebe2] transition-colors">知识管理专栏</a></li>
+                <li><a href="/learn/what-is-second-brain" className="hover:text-[#f0ebe2] transition-colors">什么是第二大脑</a></li>
+                <li><a href="/learn/ai-rag-knowledge-base" className="hover:text-[#f0ebe2] transition-colors">AI 知识库与 RAG 通俗解读</a></li>
+                <li><a href="/learn/qianji-vs-notion-obsidian" className="hover:text-[#f0ebe2] transition-colors">Molore vs Notion vs Obsidian</a></li>
+                <li><a href="/learn/local-ai-knowledge-base-guide" className="hover:text-[#f0ebe2] transition-colors">本地知识库搭建指南</a></li>
+              </ul>
+            </nav>
+            <nav aria-label="资源">
+              <h3 className="text-xs font-bold text-[#9a9286] uppercase tracking-wider mb-3">资源</h3>
+              <ul className="space-y-2 text-xs text-[#6b655c]">
+                <li><a href="/docs" target="_blank" rel="noreferrer" className="hover:text-[#f0ebe2] transition-colors">使用文档</a></li>
+                <li><a href={GITHUB_URL} target="_blank" rel="noreferrer" className="hover:text-[#f0ebe2] transition-colors">GitHub 开源仓库</a></li>
+                <li><a href="/sitemap.xml" className="hover:text-[#f0ebe2] transition-colors">站点地图</a></li>
+              </ul>
+            </nav>
           </div>
-          <div className="flex items-center gap-6">
-            <a href={GITHUB_URL} target="_blank" rel="noreferrer" className="inline-flex items-center justify-center max-sm:min-h-[44px] max-sm:min-w-[44px] hover:text-[#9a9286] transition-colors">
-              GitHub
-            </a>
-            <span>开源协议：AGPL-3.0</span>
+          <div className="pt-6 border-t border-[rgba(232,226,216,0.06)] flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-[#6b655c]">
+            <span>© 2026 Molore · 本地优先的个人 AI 知识库</span>
+            <span>开源协议：AGPL-3.0 · grzhishiku.com</span>
           </div>
         </div>
       </footer>

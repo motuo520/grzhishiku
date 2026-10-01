@@ -81,6 +81,7 @@ class NotionImportPlugin(BasePlugin):
                 user_id=user.id,
                 brain_side=brain_side,
                 content_raw=title,
+                title=title,  # 09-16 单元自身标题
                 content_type="notion",
                 source_url=item.get("url"),
                 source_title=title,

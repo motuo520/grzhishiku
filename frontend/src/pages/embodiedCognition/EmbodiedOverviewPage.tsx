@@ -10,7 +10,7 @@ import {
 const MODULES = [
   {
     id: 'depth-check',
-    label: '内容深度检查',
+    label: '内容深度评估',
     desc: '保存时 AI 自动评估：这条内容是否太肤浅？作为认知防御系统，拦截低质量输入。',
     icon: ShieldAlert,
     path: '/embodied-cognition/depth-check',
@@ -19,7 +19,7 @@ const MODULES = [
   },
   {
     id: 'true-evolution',
-    label: '真进化 vs 伪成熟',
+    label: '真成长 vs 伪熟练',
     desc: '真正的进化伴随摩擦与痛苦后的喜悦；舒服往往只是在吃老本。',
     icon: TrendingUp,
     path: '/embodied-cognition/true-evolution',
@@ -74,7 +74,7 @@ const EmbodiedOverviewPage: FC = () => {
         <div className="rounded-[2px] border border-white/[0.06] bg-bg-secondary p-4">
           <div className="flex items-center gap-2 mb-2">
             <ShieldAlert className="w-4 h-4 text-info" />
-            <span className="text-sm text-text-secondary">深度检查拦截次数</span>
+            <span className="text-sm text-text-secondary">深度评估拦截次数</span>
           </div>
           <p className="text-2xl font-bold text-text-primary">
             {isLoadingDepthLogs ? '—' : depthLogs.filter((l) => !l.is_passed).length}
@@ -84,7 +84,7 @@ const EmbodiedOverviewPage: FC = () => {
         <div className="rounded-[2px] border border-white/[0.06] bg-bg-secondary p-4">
           <div className="flex items-center gap-2 mb-2">
             <TrendingUp className="w-4 h-4 text-warning" />
-            <span className="text-sm text-text-secondary">真进化比例</span>
+            <span className="text-sm text-text-secondary">真成长比例</span>
           </div>
           <p className={`text-2xl font-bold ${ratio >= 0.6 ? 'text-success' : ratio >= 0.3 ? 'text-warning' : 'text-danger'}`}>
             {isLoadingEvolutionReflections ? '—' : `${(ratio * 100).toFixed(0)}%`}
@@ -142,11 +142,11 @@ const EmbodiedOverviewPage: FC = () => {
         <ul className="space-y-2 text-xs text-text-secondary">
           <li className="flex items-start gap-2">
             <CheckCircle2 className="w-3.5 h-3.5 text-success mt-0.5 shrink-0" />
-            <span><strong>内容深度检查</strong>可作用于笔记、知识单元；低质量内容会被标记，帮你建立输入防御。</span>
+            <span><strong>内容深度评估</strong>可作用于笔记、知识单元；低质量内容会被标记，帮你建立输入防御。</span>
           </li>
           <li className="flex items-start gap-2">
             <TrendingUp className="w-3.5 h-3.5 text-warning mt-0.5 shrink-0" />
-            <span><strong>真进化 vs 伪成熟</strong>可关联到笔记、知识单元或实验记录，让成长有迹可循。</span>
+            <span><strong>真成长 vs 伪熟练</strong>可关联到笔记、知识单元或实验记录，让成长有迹可循。</span>
           </li>
           <li className="flex items-start gap-2">
             <MapPin className="w-3.5 h-3.5 text-fusion-primary mt-0.5 shrink-0" />

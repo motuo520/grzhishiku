@@ -56,14 +56,14 @@ class WeChatParser(BaseSocialParser):
             if total_bytes > _MAX_TOTAL_BYTES:
                 raise ValueError("压缩包解压后总大小超过 500MB 上限")
             for name in zf.namelist():
-                # 防 zip 路径穿越：拒绝绝对路径和含 .. 的条目
-                normalized = os.path.normpath(name)
-                if (name.startswith(("/", "\\")) or os.path.isabs(name)
-                        or normalized.startswith("..") or os.path.isabs(normalized)):
-                    continue
                 if name.lower().endswith(('.txt', '.csv', '.html', '.htm')):
+                    # 09-30 安全批：写读都用消毒后的落盘路径——此前 zf.extract 写出虽被
+                    # stdlib 净化，但 open() 用的是原始 zip 名拼接（路径穿越读任意文件）
+                    src = os.path.join(temp_dir, os.path.basename(name))
                     zf.extract(name, temp_dir)
-                    src = os.path.join(temp_dir, name)
+                    # stdlib extract 净化后若目标不存在（非法名被剥空），跳过
+                    if not os.path.isfile(src):
+                        continue
                     messages.extend(self.parse(src, account_id, user_id))
         return messages
 

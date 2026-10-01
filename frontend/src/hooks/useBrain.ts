@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect } from 'react';
 import { brainApi } from '@/api/brain';
+import { getToken } from '@/api/auth';
 import { useNavigation } from '@/store/navigation';
 import type { BrainSide } from '@/types';
 
@@ -18,6 +19,8 @@ export const useBrain = () => {
 
   // Sync backend brain state to local navigation store
   useEffect(() => {
+    // 游客演示（无本地 token）：脑侧是纯前端状态，不被演示号服务端的 active_brain 回顶
+    if (!getToken()) return;
     if (status?.active_brain) {
       setBrainSide(status.active_brain);
     }

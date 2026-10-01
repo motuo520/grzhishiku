@@ -15,7 +15,7 @@ const PROVIDER_ICONS: Record<string, React.ElementType> = {
   ollama: Server,
 };
 
-const FALLBACK_OLLAMA_MODELS = ['qwen2.5:0.5b'];
+const FALLBACK_OLLAMA_MODELS = ['qwen3.5:0.8b'];
 
 const AISettings: FC = () => {
   const [selectedModel, setSelectedModel] = useState('ollama');
@@ -24,7 +24,7 @@ const AISettings: FC = () => {
   const [localEnabled, setLocalEnabled] = useState(true);
   const [modelRoutingEnabled, setModelRoutingEnabled] = useState(true);
   const [ollamaUrl, setOllamaUrl] = useState('http://localhost:11434');
-  const [ollamaModel, setOllamaModel] = useState('qwen2.5:0.5b');
+  const [ollamaModel, setOllamaModel] = useState('qwen3.5:0.8b');
 
   const setActiveProvider = useSettings((state) => state.setActiveProvider);
   const queryClient = useQueryClient();
@@ -84,14 +84,14 @@ const AISettings: FC = () => {
               m.provider_model_id === ai.active_model
           )
         : undefined;
-      const derivedModel = activeCat?.id || ai.model || 'ollama-qwen2.5-0.5b';
+      const derivedModel = activeCat?.id || ai.model || 'ollama-qwen3.5-0.8b';
       setSelectedModel(derivedModel);
       setTemperature(settings.ai.temperature ?? 0.7);
       setMaxTokens(settings.ai.max_tokens ?? 2048);
       setLocalEnabled(settings.ai.local_enabled ?? true);
       setModelRoutingEnabled(settings.ai.model_routing_enabled ?? true);
       setOllamaUrl(settings.ai.ollama_url || 'http://localhost:11434');
-      setOllamaModel(settings.ai.ollama_model || 'qwen2.5:0.5b');
+      setOllamaModel(settings.ai.ollama_model || 'qwen3.5:0.8b');
     }
   }, [settings, catalog]);
 

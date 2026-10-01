@@ -8,6 +8,7 @@ POST /export/markdown  — 把当前用户的笔记 / 知识单元导出为带 Y
 """
 
 import json
+import os
 import re
 import uuid
 from pathlib import Path
@@ -24,6 +25,7 @@ except ImportError:  # pragma: no cover - pyyaml 不可用时降级为不解析 
 
 from app.core.database import get_db
 from app.core.security import get_current_user
+from app.core.tenant_scope import get_active_tenant, scope_condition
 from app.core.xss_sanitizer import sanitize_note_input
 from app.models.base import User, Note, KnowledgeUnit, GraphEdge, Tag, content_tags
 
@@ -147,7 +149,7 @@ async def import_obsidian_vault(
         raise HTTPException(status_code=400, detail="vault_path 不能为空")
     # 根目录白名单防路径穿越（默认用户主目录，可用 OBSIDIAN_VAULT_ROOT 覆盖）
     from app.core.config import settings
-    allowed_root = Path(getattr(settings, "OBSIDIAN_VAULT_ROOT", None) or "~").expanduser().resolve()
+    allowed_root = Path(getattr(settings, "OBSIDIAN_VAULT_ROOT", None) or os.path.expanduser("~")).resolve()
     try:
         vault.resolve().relative_to(allowed_root)
     except ValueError:
@@ -163,6 +165,9 @@ async def import_obsidian_vault(
             status_code=400,
             detail=f"库中 Markdown 文件超过 {MAX_VAULT_FILES} 个（{len(md_files)}），请分批导入",
         )
+
+    # 导入落当前空间：去重/建标签/建边全部按空间口径，跨空间互不可见
+    tenant = get_active_tenant(db, current_user)
 
     notes_created = 0
     notes_updated = 0
@@ -188,7 +193,7 @@ async def import_obsidian_vault(
 
         note = (
             db.query(Note)
-            .filter(Note.user_id == current_user.id, Note.title == safe_title)
+            .filter(scope_condition(Note, current_user.id, tenant), Note.title == safe_title)
             .first()
         )
         if note:
@@ -203,6 +208,7 @@ async def import_obsidian_vault(
             note = Note(
                 id=str(uuid.uuid4()),
                 user_id=current_user.id,
+                tenant_id=tenant.id if tenant else None,
                 title=safe_title,
                 content=safe_body,
                 content_format="markdown",
@@ -221,11 +227,12 @@ async def import_obsidian_vault(
         for tag_name in fm_tags:
             tag = (
                 db.query(Tag)
-                .filter(Tag.user_id == current_user.id, Tag.name == tag_name)
+                .filter(scope_condition(Tag, current_user.id, tenant), Tag.name == tag_name)
                 .first()
             )
             if not tag:
-                tag = Tag(id=str(uuid.uuid4()), user_id=current_user.id, name=tag_name)
+                tag = Tag(id=str(uuid.uuid4()), user_id=current_user.id,
+                          tenant_id=tenant.id if tenant else None, name=tag_name)
                 db.add(tag)
                 db.flush()
             exists = db.execute(
@@ -257,7 +264,7 @@ async def import_obsidian_vault(
     existing_edges = {
         (e.source_id, e.target_id)
         for e in db.query(GraphEdge.source_id, GraphEdge.target_id)
-        .filter(GraphEdge.user_id == current_user.id, GraphEdge.edge_type == "wiki")
+        .filter(scope_condition(GraphEdge, current_user.id, tenant), GraphEdge.edge_type == "wiki")
         .all()
     }
 
@@ -282,6 +289,7 @@ async def import_obsidian_vault(
                 GraphEdge(
                     id=str(uuid.uuid4()),
                     user_id=current_user.id,
+                    tenant_id=tenant.id if tenant else None,
                     source_id=note.id,
                     target_id=target.id,
                     source_brain_side=note.brain_side or "personal",
@@ -330,7 +338,7 @@ async def export_markdown(
         raise HTTPException(status_code=400, detail="不允许直接导出到根目录")
     # 根目录白名单防路径穿越/任意文件写（默认用户主目录，可用 OBSIDIAN_EXPORT_ROOT 覆盖）
     from app.core.config import settings
-    allowed_export_root = Path(getattr(settings, "OBSIDIAN_EXPORT_ROOT", None) or "~").expanduser().resolve()
+    allowed_export_root = Path(getattr(settings, "OBSIDIAN_EXPORT_ROOT", None) or os.path.expanduser("~")).resolve()
     try:
         target.resolve().relative_to(allowed_export_root)
     except ValueError:
@@ -344,15 +352,22 @@ async def export_markdown(
     except OSError as e:
         raise HTTPException(status_code=400, detail=f"无法创建导出目录: {e}")
 
+    # 导出限当前空间：笔记/知识单元/边都按空间口径，团队内容不带进个人导出
+    tenant = get_active_tenant(db, current_user)
+    # 目录级权限（批 C）：不可见夹内容不进导出（个人空间恒真条件，零变化）
+    from app.core.tenant_scope import content_visible_condition, invisible_folder_ids
+    _inv = invisible_folder_ids(db, current_user, tenant)
     notes = (
         db.query(Note)
-        .filter(Note.user_id == current_user.id, Note.status == "active")
+        .filter(scope_condition(Note, current_user.id, tenant), Note.status == "active",
+                content_visible_condition(db, Note, current_user, tenant, inv=_inv))
         .order_by(Note.created_at)
         .all()
     )
     units = (
         db.query(KnowledgeUnit)
-        .filter(KnowledgeUnit.user_id == current_user.id, KnowledgeUnit.status == "active")
+        .filter(scope_condition(KnowledgeUnit, current_user.id, tenant), KnowledgeUnit.status == "active",
+                content_visible_condition(db, KnowledgeUnit, current_user, tenant, inv=_inv))
         .order_by(KnowledgeUnit.first_seen)
         .all()
     )
@@ -366,7 +381,7 @@ async def export_markdown(
 
     # 每个笔记的相关目标（出边 + 入边，去重）
     related: Dict[str, List[str]] = {n.id: [] for n in notes}
-    edges = db.query(GraphEdge).filter(GraphEdge.user_id == current_user.id).all()
+    edges = db.query(GraphEdge).filter(scope_condition(GraphEdge, current_user.id, tenant)).all()
     for e in edges:
         for src, dst in ((e.source_id, e.target_id), (e.target_id, e.source_id)):
             if src in related and dst in title_by_id and dst != src:

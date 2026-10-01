@@ -35,7 +35,7 @@ export const useEmbodied = (brainSide: BrainSide = 'both') => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['embodied', 'depth-check', 'logs'] });
     },
-    onError: (err: any) => showToast(err?.message || '深度检查失败', 'error'),
+    onError: (err: any) => showToast(err?.message || '深度评估失败', 'error'),
   });
 
   // Evolution reflections

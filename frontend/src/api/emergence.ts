@@ -1,4 +1,5 @@
 import api from './client';
+import { getConsolePreferredModel } from './consoleModel';
 import type { AxiosResponse } from 'axios';
 
 export type BrainSide = 'personal' | 'network' | 'both';
@@ -262,19 +263,19 @@ export interface CanvasToNoteRequest {
 }
 
 export function associate(data: AssociateRequest): Promise<AxiosResponse<AssociateResponse>> {
-  return api.post<AssociateResponse>('/api/v1/emergence/associate', data);
+  return api.post<AssociateResponse>('/api/v1/emergence/associate', { ...data, preferred_model: data.preferred_model || getConsolePreferredModel() });
 }
 
 export function collision(data: CollisionRequest): Promise<AxiosResponse<CollisionResponse>> {
-  return api.post<CollisionResponse>('/api/v1/emergence/collision', data);
+  return api.post<CollisionResponse>('/api/v1/emergence/collision', { ...data, preferred_model: data.preferred_model || getConsolePreferredModel() });
 }
 
 export function hybrid(data: HybridRequest): Promise<AxiosResponse<HybridResponse>> {
-  return api.post<HybridResponse>('/api/v1/emergence/hybrid', data);
+  return api.post<HybridResponse>('/api/v1/emergence/hybrid', { ...data, preferred_model: data.preferred_model || getConsolePreferredModel() });
 }
 
 export function counterfactual(data: CounterfactualRequest): Promise<AxiosResponse<CounterfactualResponse>> {
-  return api.post<CounterfactualResponse>('/api/v1/emergence/counterfactual', data);
+  return api.post<CounterfactualResponse>('/api/v1/emergence/counterfactual', { ...data, preferred_model: data.preferred_model || getConsolePreferredModel() });
 }
 
 export function getSources(
@@ -364,7 +365,7 @@ export function generateCanvasReport(
   canvasId: string,
   data: CanvasReportRequest
 ): Promise<AxiosResponse<CanvasReportResponse>> {
-  return api.post<CanvasReportResponse>(`/api/v1/emergence/canvases/${canvasId}/report`, data);
+  return api.post<CanvasReportResponse>(`/api/v1/emergence/canvases/${canvasId}/report`, { ...data, preferred_model: data.preferred_model || getConsolePreferredModel() });
 }
 
 export function convertCanvasToNote(

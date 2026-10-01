@@ -2,7 +2,7 @@ import { FC } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useKnowledgeHealth } from '@/hooks/useJianghu';
 import { useNavigation } from '@/store/navigation';
-import { HeartPulse, Loader2, TrendingUp, Zap, Skull, Activity, BarChart3, HelpCircle } from 'lucide-react';
+import { HeartPulse, Loader2, TrendingUp, Zap, Skull, Activity, BarChart3, HelpCircle, type LucideIcon } from 'lucide-react';
 import type { KnowledgeHealthResponse } from '@/api/jianghu';
 
 const KnowledgeHealthPage: FC = () => {
@@ -124,7 +124,7 @@ const buildSuggestions = (health: KnowledgeHealthResponse): string[] => {
   return items.length > 0 ? items : ['状态良好，继续保持'];
 };
 
-const StatCard: FC<{ icon: React.ElementType; label: string; value: string | number; color: string; bg: string; suffix?: string; tooltip?: string; onClick?: () => void }> = ({
+const StatCard: FC<{ icon: LucideIcon; label: string; value: string | number; color: string; bg: string; suffix?: string; tooltip?: string; onClick?: () => void }> = ({
   icon: Icon, label, value, color, bg, suffix, tooltip, onClick,
 }) => (
   <div

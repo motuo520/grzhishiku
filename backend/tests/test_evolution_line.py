@@ -380,7 +380,7 @@ class TestRagInvokeCounting:
         resp = client.post(
             "/api/v1/llm/chat",
             headers=auth_headers,
-            json={"message": "相关问题", "preferred_model": "qwen2.5:0.5b"},
+            json={"message": "相关问题", "preferred_model": "qwen3.5:0.8b"},
         )
         assert resp.status_code == 200
 
@@ -420,7 +420,7 @@ class TestCollisionParents:
         resp = client.post(
             "/api/v1/pipeline/concepts/collide",
             headers=auth_headers,
-            json={"concept_id": a.id, "preferred_model": "qwen2.5:0.5b"},
+            json={"concept_id": a.id, "preferred_model": "qwen3.5:0.8b"},
         )
         assert resp.status_code in (200, 201), resp.text
 
@@ -465,7 +465,7 @@ class TestCollisionPairing:
         monkeypatch.setattr("app.api.v1.endpoints.pipeline.chat_completion", fake_chat)
         resp = client.post("/api/v1/pipeline/concepts/collide", headers=auth_headers,
                            json={"concept_id": a.id, "partner_id": b.id,
-                                 "preferred_model": "qwen2.5:0.5b"})
+                                 "preferred_model": "qwen3.5:0.8b"})
         assert resp.status_code in (200, 201), resp.text
         body = resp.json()
         assert body["pairing"] == "manual"
@@ -473,7 +473,7 @@ class TestCollisionPairing:
 
         bad = client.post("/api/v1/pipeline/concepts/collide", headers=auth_headers,
                           json={"concept_id": a.id, "partner_id": str(uuid.uuid4()),
-                                "preferred_model": "qwen2.5:0.5b"})
+                                "preferred_model": "qwen3.5:0.8b"})
         assert bad.status_code == 404
 
 

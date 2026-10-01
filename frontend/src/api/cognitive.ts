@@ -1,4 +1,5 @@
 import api from './client';
+import { getConsolePreferredModel } from './consoleModel';
 import type { BrainSide } from '@/types';
 
 export type { BrainSide };
@@ -244,10 +245,23 @@ export interface WeeklyDimension {
 export interface WeeklyStats {
   notes_count: number;
   knowledge_count: number;
-  challenges_completed: number;
-  decisions_audited: number;
-  biases_found: number;
-  simulations_run: number;
+  clips_count?: number;
+  prev_notes?: number;
+  daily_counts?: { day: string; notes: number }[];
+  top_tags?: string[];
+  new_embeddings?: number;
+  edge_type_counts?: Record<string, number>;
+  chat_total?: number;
+  chat_no_sources?: number;
+  confirmed_count?: number;
+  pending_verify?: number;
+  review_days?: number;
+  stage_moves?: Record<string, number>;
+  // 旧字段（老周报行）
+  challenges_completed?: number;
+  decisions_audited?: number;
+  biases_found?: number;
+  simulations_run?: number;
 }
 
 export interface WeeklyReport {
@@ -260,6 +274,7 @@ export interface WeeklyReport {
   highlights: string[];
   risks: string[];
   suggestions: string[];
+  connections: string[];
   stats: WeeklyStats;
   status: string;
   created_at: string;
@@ -271,40 +286,50 @@ export interface WeeklyReportListResponse {
 }
 
 export const cognitiveApi = {
-  fingerprint: (limit: number = 50, brainSide: BrainSide = 'both', preferred_model?: string) =>
-    api.post<FingerprintResponse>(`/api/v1/cognitive/fingerprint?brain_side=${brainSide}${preferred_model ? `&preferred_model=${encodeURIComponent(preferred_model)}` : ''}`, { content_limit: limit }),
-  detectBias: (limit: number = 50, brainSide: BrainSide = 'both', preferred_model?: string) =>
-    api.post<BiasDetectionResponse>(`/api/v1/cognitive/bias-detection?brain_side=${brainSide}${preferred_model ? `&preferred_model=${encodeURIComponent(preferred_model)}` : ''}`, { content_limit: limit }),
-  biasSummary: (brainSide: BrainSide = 'both', preferred_model?: string) =>
-    api.get<BiasSummaryResponse>(`/api/v1/cognitive/bias-summary?brain_side=${brainSide}${preferred_model ? `&preferred_model=${encodeURIComponent(preferred_model)}` : ''}`),
-  brainContrast: (brainSide: BrainSide = 'both', preferred_model?: string) =>
-    api.get<BrainContrastResponse>('/api/v1/cognitive/brain-contrast', { params: { brain_side: brainSide, ...(preferred_model ? { preferred_model } : {}) } }),
-  cognitiveConflict: (brainSide: BrainSide = 'both', preferred_model?: string) =>
-    api.post<CognitiveConflictResponse>('/api/v1/cognitive/cognitive-conflict', null, { params: { brain_side: brainSide, ...(preferred_model ? { preferred_model } : {}) } }),
+  fingerprint: (limit: number = 50, brainSide: BrainSide = 'both', preferred_model?: string) => {
+    const pm = preferred_model || getConsolePreferredModel();
+    return api.post<FingerprintResponse>(`/api/v1/cognitive/fingerprint?brain_side=${brainSide}${pm ? `&preferred_model=${encodeURIComponent(pm)}` : ''}`, { content_limit: limit });
+  },
+  detectBias: (limit: number = 50, brainSide: BrainSide = 'both', preferred_model?: string) => {
+    const pm = preferred_model || getConsolePreferredModel();
+    return api.post<BiasDetectionResponse>(`/api/v1/cognitive/bias-detection?brain_side=${brainSide}${pm ? `&preferred_model=${encodeURIComponent(pm)}` : ''}`, { content_limit: limit });
+  },
+  biasSummary: (brainSide: BrainSide = 'both', preferred_model?: string) => {
+    const pm = preferred_model || getConsolePreferredModel();
+    return api.get<BiasSummaryResponse>(`/api/v1/cognitive/bias-summary?brain_side=${brainSide}${pm ? `&preferred_model=${encodeURIComponent(pm)}` : ''}`);
+  },
+  brainContrast: (brainSide: BrainSide = 'both', preferred_model?: string) => {
+    const pm = preferred_model || getConsolePreferredModel();
+    return api.get<BrainContrastResponse>('/api/v1/cognitive/brain-contrast', { params: { brain_side: brainSide, ...(pm ? { preferred_model: pm } : {}) } });
+  },
+  cognitiveConflict: (brainSide: BrainSide = 'both', preferred_model?: string) => {
+    const pm = preferred_model || getConsolePreferredModel();
+    return api.post<CognitiveConflictResponse>('/api/v1/cognitive/cognitive-conflict', null, { params: { brain_side: brainSide, ...(pm ? { preferred_model: pm } : {}) } });
+  },
   listDecisionAudits: (params?: { status?: string; limit?: number; offset?: number }) =>
     api.get<DecisionAuditListResponse>('/api/v1/cognitive/decision-audits', { params }),
-  getDecisionAudit: (id: string) =>
-    api.get<DecisionAudit>(`/api/v1/cognitive/decision-audits/${id}`),
   createDecisionAudit: (data: DecisionAuditCreateRequest) =>
     api.post<DecisionAudit>('/api/v1/cognitive/decision-audits', data),
   updateDecisionAudit: (id: string, data: Partial<DecisionAuditCreateRequest>) =>
     api.put<DecisionAudit>(`/api/v1/cognitive/decision-audits/${id}`, data),
   deleteDecisionAudit: (id: string) =>
     api.delete(`/api/v1/cognitive/decision-audits/${id}`),
-  analyzeDecisionAudit: (id: string, preferred_model?: string) =>
-    api.post<DecisionAudit>(`/api/v1/cognitive/decision-audits/${id}/analyze${preferred_model ? `?preferred_model=${encodeURIComponent(preferred_model)}` : ''}`),
+  analyzeDecisionAudit: (id: string, preferred_model?: string) => {
+    const pm = preferred_model || getConsolePreferredModel();
+    return api.post<DecisionAudit>(`/api/v1/cognitive/decision-audits/${id}/analyze${pm ? `?preferred_model=${encodeURIComponent(pm)}` : ''}`);
+  },
   listFutureSimulations: (params?: { status?: string; limit?: number; offset?: number }) =>
     api.get<FutureSimulationListResponse>('/api/v1/cognitive/future-simulations', { params }),
-  getFutureSimulation: (id: string) =>
-    api.get<FutureSimulation>(`/api/v1/cognitive/future-simulations/${id}`),
   createFutureSimulation: (data: FutureSimulationCreateRequest) =>
     api.post<FutureSimulation>('/api/v1/cognitive/future-simulations', data),
   updateFutureSimulation: (id: string, data: Partial<FutureSimulationCreateRequest>) =>
     api.put<FutureSimulation>(`/api/v1/cognitive/future-simulations/${id}`, data),
   deleteFutureSimulation: (id: string) =>
     api.delete(`/api/v1/cognitive/future-simulations/${id}`),
-  runFutureSimulation: (id: string, preferred_model?: string) =>
-    api.post<FutureSimulation>(`/api/v1/cognitive/future-simulations/${id}/run${preferred_model ? `?preferred_model=${encodeURIComponent(preferred_model)}` : ''}`),
+  runFutureSimulation: (id: string, preferred_model?: string) => {
+    const pm = preferred_model || getConsolePreferredModel();
+    return api.post<FutureSimulation>(`/api/v1/cognitive/future-simulations/${id}/run${pm ? `?preferred_model=${encodeURIComponent(pm)}` : ''}`);
+  },
   getDailyChallenge: () =>
     api.get<Challenge>('/api/v1/cognitive/challenge/daily'),
   submitChallengeAnswer: (id: string, answer: string) =>
@@ -315,8 +340,10 @@ export const cognitiveApi = {
     api.get<ChallengeStats>('/api/v1/cognitive/challenge/stats'),
   getChallengeHistory: () =>
     api.get<Challenge[]>('/api/v1/cognitive/challenge/history'),
-  generateWeeklyReport: (force = false, preferred_model?: string) =>
-    api.post<WeeklyReport>('/api/v1/cognitive/weekly-reports/generate', null, { params: { force, ...(preferred_model ? { preferred_model } : {}) } }),
+  generateWeeklyReport: (force = false, preferred_model?: string) => {
+    const pm = preferred_model || getConsolePreferredModel();
+    return api.post<WeeklyReport>('/api/v1/cognitive/weekly-reports/generate', null, { params: { force, ...(pm ? { preferred_model: pm } : {}) } });
+  },
   listWeeklyReports: (params?: { limit?: number; offset?: number }) =>
     api.get<WeeklyReportListResponse>('/api/v1/cognitive/weekly-reports', { params }),
   getLatestWeeklyReport: () =>

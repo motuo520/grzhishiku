@@ -23,13 +23,3 @@ export const useGraphTagNetwork = (minCooccurrence = 1) => {
   });
 };
 
-export const useGraphNodes = () => {
-  return useQuery({
-    queryKey: ['graph-nodes'],
-    queryFn: async () => {
-      const response = await graphApi.getNodes();
-      return response.data;
-    },
-    staleTime: 60 * 1000,
-  });
-};

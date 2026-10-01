@@ -1,4 +1,5 @@
 import { FC, useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { settingsApi, UserSettings } from '@/api/settings';
 import { useSettings } from '@/store/settings';
@@ -95,7 +96,7 @@ const AppearanceSettings: FC = () => {
 
   return (
     <div className="space-y-6">
-      {toast && (
+      {toast && createPortal(
         <div className={`fixed top-4 right-4 z-50 px-4 py-3 rounded-[2px] border ${
           toast.type === 'success'
             ? 'bg-success/20 border-success/30 text-success'
@@ -105,7 +106,8 @@ const AppearanceSettings: FC = () => {
             {toast.type === 'success' ? <Check size={16} /> : <AlertTriangle size={16} />}
             <span className="text-sm">{toast.message}</span>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Theme */}
@@ -212,8 +214,8 @@ const AppearanceSettings: FC = () => {
         </h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {([
-            { value: 'classic' as const, label: '经典版', desc: '旧版完整功能：全部 12 个模块' },
-            { value: 'simple' as const, label: '简化版', desc: '只保留五个动作：存进来 / 自动理好 / 知识地图 / 每日 / 问出来' },
+            { value: 'classic' as const, label: '经典版', desc: '完整功能：全部 12 个模块与计费/会员' },
+            { value: 'simple' as const, label: '简化版', desc: '只保留五个动作：采集 / 自动理好 / 知识地图 / 知识进化 / 问答' },
           ]).map(opt => {
             const selected = uiMode === opt.value;
             return (

@@ -4,13 +4,16 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   Save, ArrowLeft, X, Loader2, AlertCircle, FileText, Eye, EyeOff,
   Bold, Italic, Heading, List, ListOrdered, Code, Quote, Link as LinkIcon,
-  Sparkles, PenLine, AlignLeft, Hash, Check, Wand2,
+  Sparkles, PenLine, AlignLeft, Hash, Check, Wand2, Link2,
 } from 'lucide-react';
 import { notesApi } from '@/api/notes';
 import { useTags } from '@/hooks/useTags';
 import { useNotes } from '@/hooks/useNotes';
 import TagSelector from '@/components/TagSelector';
+import ManualLinkModal from '@/components/ManualLinkModal';
+import ManualLinksPanel from '@/components/ManualLinksPanel';
 import ModelSelector from '@/components/llm/ModelSelector';
+import LLMCostBadge from '@/components/llm/LLMCostBadge';
 import { summarizeText, extractTags, completeText } from '@/api/llm';
 
 const NoteDetail: FC = () => {
@@ -25,10 +28,14 @@ const NoteDetail: FC = () => {
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  // 仓库模式开关：新建默认 false；编辑时随笔记加载一次性初始化（血泪#32：不做 effect 回写）
+  const [indexOnly, setIndexOnly] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(!isNew);
   const [showPreview, setShowPreview] = useState(false);
+  const [showLinkModal, setShowLinkModal] = useState(false);
+  const [linksRefresh, setLinksRefresh] = useState(0);
 
   const [linkQuery, setLinkQuery] = useState('');
   const [showLinkDropdown, setShowLinkDropdown] = useState(false);
@@ -44,6 +51,7 @@ const NoteDetail: FC = () => {
       setTitle('');
       setContent('');
       setSelectedTags([]);
+      setIndexOnly(false);
       setIsLoading(false);
       return;
     }
@@ -56,6 +64,7 @@ const NoteDetail: FC = () => {
       setTitle(note.title);
       setContent(note.content);
       setSelectedTags(note.tags.map((t) => t.id || t.name));
+      setIndexOnly(note.index_only);
       setIsLoading(false);
     }).catch((err) => {
       if (cancelled) return;
@@ -192,9 +201,9 @@ const NoteDetail: FC = () => {
       setError(null);
       const tagPayload = [...selectedTags];
       if (isNew) {
-        await createNote({ title: title.trim(), content: content.trim(), tags: tagPayload });
+        await createNote({ title: title.trim(), content: content.trim(), tags: tagPayload, index_only: indexOnly });
       } else if (id) {
-        await updateNote({ id, data: { title: title.trim(), content: content.trim(), tags: tagPayload } });
+        await updateNote({ id, data: { title: title.trim(), content: content.trim(), tags: tagPayload, index_only: indexOnly } });
       }
       navigate('/ingest/notes');
     } catch (err: any) {
@@ -214,8 +223,7 @@ const NoteDetail: FC = () => {
   };
 
   // Simple markdown preview renderer
-  const renderMarkdown = (md: string) => {
-    return md
+  const renderMarkdown = (md: string) => {    return md
       .replace(/^###### (.*$)/gim, '<h6 class="text-sm font-semibold text-text-primary mt-3 mb-1">$1</h6>')
       .replace(/^##### (.*$)/gim, '<h5 class="text-sm font-semibold text-text-primary mt-3 mb-1">$1</h5>')
       .replace(/^#### (.*$)/gim, '<h4 class="text-sm font-semibold text-text-primary mt-3 mb-1">$1</h4>')
@@ -264,6 +272,15 @@ const NoteDetail: FC = () => {
             {showPreview ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
             {showPreview ? '编辑' : '预览'}
           </button>
+          {!isNew && id && (
+            <button
+              onClick={() => setShowLinkModal(true)}
+              className="btn-secondary text-xs py-2 px-3 flex items-center gap-1.5"
+            >
+              <Link2 className="w-3.5 h-3.5" />
+              关联到…
+            </button>
+          )}
           <button onClick={() => navigate('/ingest/notes')} className="btn-secondary text-xs py-2 px-4">
             取消
           </button>
@@ -319,6 +336,20 @@ const NoteDetail: FC = () => {
             isLoading={tagsLoading}
             placeholder="输入标签，回车或逗号分隔..."
           />
+        </div>
+
+        {/* 仓库模式（index_only）：只进检索层，不进语义加工层 */}
+        <div>
+          <label className="flex items-center gap-2 cursor-pointer w-fit">
+            <input
+              type="checkbox"
+              checked={indexOnly}
+              onChange={(e) => setIndexOnly(e.target.checked)}
+              className="accent-info cursor-pointer"
+            />
+            <span className="text-xs text-text-primary">仅入库检索</span>
+          </label>
+          <p className="text-[10px] text-text-muted mt-1">只进检索层：AI 问答仍可检索到，但不进图谱/百科/打标/复盘</p>
         </div>
 
         {/* Toolbar */}
@@ -395,6 +426,7 @@ const NoteDetail: FC = () => {
             </div>
             <div className="w-px h-5 bg-white/[0.08] mx-1" />
             <ModelSelector value={modelId} onChange={setModelId} taskType="creative" className="w-44" />
+            <LLMCostBadge modelId={modelId} inputText={content} outputTokenEstimate={200} />
           </div>
         )}
 
@@ -478,6 +510,19 @@ const NoteDetail: FC = () => {
           </AnimatePresence>
         </div>
       </div>
+
+      {/* 手动关联列表（编辑态才可见——新建笔记尚无 id 可关联） */}
+      {!isNew && id && (
+        <ManualLinksPanel contentId={id} refreshKey={linksRefresh} />
+      )}
+
+      <ManualLinkModal
+        isOpen={showLinkModal}
+        onClose={() => setShowLinkModal(false)}
+        sourceId={id || ''}
+        sourceTitle={title}
+        onLinked={() => setLinksRefresh((k) => k + 1)}
+      />
     </div>
   );
 };

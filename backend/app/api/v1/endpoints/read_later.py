@@ -5,6 +5,7 @@ from typing import List, Optional
 
 from app.core.database import get_db
 from app.core.security import get_current_user
+from app.core.tenant_scope import get_active_tenant, content_filter
 from app.models.base import User, ReadLaterItem
 from app.schemas.read_later import (
     ReadLaterCreate,
@@ -66,9 +67,10 @@ async def create_item(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    # 防重：同用户已有相同 URL 的未归档条目则冲突提示（批量导入/重复添加不产重复）
-    _dup = db.query(ReadLaterItem).filter(
-        ReadLaterItem.user_id == current_user.id, ReadLaterItem.url == data.url, ReadLaterItem.item_status == "active"
+    # 防重：同空间已有相同 URL 的未归档条目则冲突提示（批量导入/重复添加不产重复）
+    _dup = content_filter(
+        db.query(ReadLaterItem).filter(ReadLaterItem.url == data.url, ReadLaterItem.item_status == "active"),
+        ReadLaterItem, current_user, get_active_tenant(db, current_user),
     ).first()
     if _dup:
         raise HTTPException(status_code=409, detail="该链接已在稍后读列表中")

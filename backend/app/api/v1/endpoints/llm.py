@@ -113,25 +113,25 @@ HYBRID_VECTOR_WEIGHT = 0.55
 HYBRID_KEYWORD_WEIGHT = 0.45
 
 # 查询改写：检索前用小模型把口语化问题改写成检索查询，失败静默降级为原文。
-# 评测结论（qwen2.5:0.5b，50 题）：0.98 -> 0.98 不降分，保留；代价约 +0.5s 延迟。
+# 评测结论（本地轻量模型，50 题）：0.98 -> 0.98 不降分，保留；代价约 +0.5s 延迟。
 HYBRID_QUERY_REWRITE_ENABLED = True
-HYBRID_QUERY_REWRITE_MODEL = "qwen2.5:0.5b"
+HYBRID_QUERY_REWRITE_MODEL = "qwen3.5:0.8b"
 HYBRID_QUERY_REWRITE_TIMEOUT = 5.0
 
 # 第二段精排（LLM rerank）：融合排序后取 top_k*4 候选让本地小模型重排，
 # 失败/超时/解析失败静默回退到第一轮排序。
-# 评测结论（qwen2.5:0.5b，50 题）：0.98 -> 0.54 严重降分且 +1.3s 延迟，默认关闭。
+# 评测结论（本地轻量模型，50 题）：0.98 -> 0.54 严重降分且 +1.3s 延迟，默认关闭。
 HYBRID_RERANK_ENABLED = False
-HYBRID_RERANK_MODEL = "qwen2.5:0.5b"
+HYBRID_RERANK_MODEL = "qwen3.5:0.8b"
 HYBRID_RERANK_TIMEOUT = 9.0
 
 # BUG-R05 检索最低相关性门槛：无关内容不得作为引用源进上下文。候选须同时过两关：
 #   1) MIN_RELEVANCE_SCORE —— 融合分（0.55*向量余弦 + 0.45*关键词归一分）的相对水位：
-#      0.3 ≈ 「标题命中（0.45）」的 2/3，或「相关向量命中」（nomic-embed-text 相关对
+#      0.3 ≈ 「标题命中（0.45）」的 2/3，或「相关向量命中」（bge-m3 相关对
 #      余弦约 0.65 → 贡献 0.36）的水位；与最佳候选差距过大的零星命中被丢弃。
 #   2) MIN_VECTOR_SIMILARITY 或 MIN_KEYWORD_HITS —— 绝对信号兜底：库里只剩无关长文档
 #      时，归一化会把零星通用 2-gram 命中顶到满分（kw_norm=1 → 0.45），单靠相对水位
-#      拦不住（QA 实锤的「删库后引用无关长文档」就是这个形态）。nomic-embed-text
+#      拦不住（QA 实锤的「删库后引用无关长文档」就是这个形态）。bge-m3
 #      无关文本对余弦通常 <0.5，取 0.55；关键词 3 分 = 一次标题命中或三次不同
 #      n-gram 正文命中。
 MIN_RELEVANCE_SCORE = 0.3
@@ -607,7 +607,7 @@ async def chat(
     # 身份如实声明：被问「你是谁/什么模型」时按实际路由到的模型回答，不含糊。
     # BUG-R06：小模型会把系统提示里的 [身份信息] 块原样复读进正文，
     # 身份块用直接措辞明令禁止复述本段。
-    _identity = _build_identity_prompt(request.preferred_model or "ollama-qwen2.5:0.5b")
+    _identity = _build_identity_prompt(request.preferred_model or "ollama-qwen3.5-0.8b")
     final_system_prompt = (final_system_prompt or "你是用户的本地知识库助手。") + _identity
 
     # 落库用户消息：assistant 回答在流式结束后由 event_generator 的 finally 落库。
@@ -692,7 +692,7 @@ async def complete(
     db: Session = Depends(get_db),
 ):
     route = LLMRouterService.route(request.prompt, preferred_model=request.model)
-    model_id = route.get("model_name") or route.get("model") or request.model or "ollama-qwen2.5-0.5b"
+    model_id = route.get("model_name") or route.get("model") or request.model or "ollama-qwen3.5-0.8b"
     try:
         text = await chat_completion(
             prompt=request.prompt,
@@ -723,7 +723,7 @@ async def summarize(
         f"直接输出摘要内容，不要添加额外解释。\n\n{request.text}"
     )
     route = LLMRouterService.route(prompt, preferred_model=request.model)
-    model_id = route.get("model_name") or route.get("model") or request.model or "ollama-qwen2.5-0.5b"
+    model_id = route.get("model_name") or route.get("model") or request.model or "ollama-qwen3.5-0.8b"
     try:
         summary = await chat_completion(
             prompt=prompt,
@@ -757,7 +757,7 @@ async def extract_tags(
         f"直接输出标签，用逗号分隔{'；并在下一行输出类别，用逗号分隔，顺序与标签一致' if request.suggest_categories else ''}。\n\n{request.text}"
     )
     route = LLMRouterService.route(prompt, preferred_model=request.model)
-    model_id = route.get("model_name") or route.get("model") or request.model or "ollama-qwen2.5-0.5b"
+    model_id = route.get("model_name") or route.get("model") or request.model or "ollama-qwen3.5-0.8b"
     try:
         raw = await chat_completion(
             prompt=prompt,
@@ -782,7 +782,7 @@ async def embed(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    model_id = request.model or f"ollama-{getattr(settings, 'OLLAMA_EMBED_MODEL', 'nomic-embed-text')}"
+    model_id = request.model or f"ollama-{getattr(settings, 'OLLAMA_EMBED_MODEL', 'bge-m3')}"
     embedding = await llm_service.embed(request.text)
 
     dimensions = len(embedding)
@@ -815,7 +815,7 @@ async def embed_batch(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    model_id = request.model or f"ollama-{getattr(settings, 'OLLAMA_EMBED_MODEL', 'nomic-embed-text')}"
+    model_id = request.model or f"ollama-{getattr(settings, 'OLLAMA_EMBED_MODEL', 'bge-m3')}"
     embeddings = await llm_service.batch_embed(request.texts)
 
     dimensions = len(embeddings[0]) if embeddings else 0

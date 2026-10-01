@@ -1,12 +1,12 @@
 import { FC } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowRight, ArrowLeft, Loader2, Database, SquareStack, Filter, Shuffle, Pencil } from 'lucide-react';
+import { ArrowRight, ArrowLeft, Loader2, Database, SquareStack, Filter, Shuffle, Pencil, type LucideIcon } from 'lucide-react';
 
 interface StageInfo {
   id: string;
   label: string;
   path: string;
-  icon: React.ElementType;
+  icon: LucideIcon;
 }
 
 const STAGES: StageInfo[] = [

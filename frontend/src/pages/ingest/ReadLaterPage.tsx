@@ -7,6 +7,7 @@ import {
 import { useReadLater } from '@/hooks/useReadLater';
 import { useTags } from '@/hooks/useTags';
 import type { ReadLaterItem } from '@/api/readLater';
+import { useConfirm } from '@/components/common/dialogContext';
 
 const statusOptions = [
   { value: '', label: '全部' },
@@ -17,6 +18,7 @@ const statusOptions = [
 ];
 
 const ReadLaterPage: FC = () => {
+  const askConfirm = useConfirm();
   const [newUrl, setNewUrl] = useState('');
   const [newTitle, setNewTitle] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
@@ -60,7 +62,7 @@ const ReadLaterPage: FC = () => {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('确定要删除这条稍后读吗？')) return;
+    if (!(await askConfirm('确定要删除这条稍后读吗？'))) return;
     try {
       await deleteItem(id);
       if (detailItem?.id === id) setDetailItem(null);
@@ -133,7 +135,7 @@ const ReadLaterPage: FC = () => {
           <h1 className="text-2xl font-bold text-text-primary">稍后读</h1>
           <p className="text-sm text-text-secondary mt-1">收藏链接，稍后阅读并归档到知识库</p>
         </div>
-        <span className="badge-network">Network Brain</span>
+        <span className="badge-network">网络脑</span>
       </div>
 
       <AnimatePresence>

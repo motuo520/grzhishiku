@@ -41,10 +41,19 @@ def validate_password_complexity(password: str) -> bool:
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """Verify password using bcrypt with timing-attack-safe comparison."""
-    return bcrypt.checkpw(
-        plain_password.encode('utf-8'),
-        hashed_password.encode('utf-8')
-    )
+    if not plain_password or not hashed_password:
+        return False
+    try:
+        return bcrypt.checkpw(
+            # 与 get_password_hash 同口径截断 72 字节——bcrypt 5.x 超长直接抛异常，
+            # 不对称曾导致超长密码永远「密码不正确」（含登录/注销/改密全链路）
+            plain_password.encode('utf-8')[:72],
+            hashed_password.encode('utf-8')
+        )
+    except Exception as e:
+        # 空/非法 bcrypt hash（脏数据）不应导致 500；但必须留痕（静默吞异常血泪）
+        logging.getLogger(__name__).warning("verify_password swallowed error: %s", e)
+        return False
 
 
 def get_password_hash(password: str) -> str:
@@ -88,6 +97,13 @@ def get_current_user(
     if not payload:
         security_logger.warning("security_event type=invalid_token ip=%s", ip)
         raise HTTPException(status_code=401, detail="Invalid token")
+    if payload.get("type") != "user":
+        security_logger.warning("security_event type=invalid_token_type ip=%s", ip)
+        raise HTTPException(status_code=401, detail="Invalid token")
+    # refresh token（30 天有效）不得当 access token 用，否则 token_use 区分形同虚设
+    if payload.get("token_use") == "refresh":
+        security_logger.warning("security_event type=refresh_token_as_access ip=%s", ip)
+        raise HTTPException(status_code=401, detail="Invalid token")
     user_id = payload.get("sub")
     if not user_id:
         security_logger.warning("security_event type=invalid_token_payload ip=%s", ip)
@@ -95,7 +111,7 @@ def get_current_user(
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         security_logger.warning("security_event type=token_user_missing ip=%s", ip)
-        raise HTTPException(status_code=404, detail="User not found")
+        raise HTTPException(status_code=401, detail="Invalid token")
     # token_version 不一致说明改密/登出后已失效，拒绝重放旧 token
     if int(payload.get("token_version") or 0) != int(getattr(user, "token_version", None) or 0):
         security_logger.warning("security_event type=revoked_token_replay ip=%s user_id=%s", ip, user.id)
@@ -115,6 +131,10 @@ def get_current_user_optional(
         return None
     payload = decode_token(credentials.credentials)
     if not payload:
+        return None
+    if payload.get("type") != "user":
+        return None
+    if payload.get("token_use") == "refresh":
         return None
     user_id = payload.get("sub")
     if not user_id:

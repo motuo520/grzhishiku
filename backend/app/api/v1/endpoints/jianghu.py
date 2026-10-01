@@ -9,10 +9,10 @@ from datetime import datetime, date, timedelta
 from app.core.database import get_db
 from app.core.security import get_current_user
 from app.models.base import User, Note, KnowledgeUnit, PracticeRecord, DailyReview, ContextGuide, ExperimentLog, CognitivePotentialResult, EvolutionTransition
+from app.core.tenant_scope import get_active_tenant, content_filter, scope_condition
 from app.schemas.jianghu import (
     PracticeRecordCreate, PracticeRecordResponse,
     DailyReviewGenerateRequest, DailyReviewResponse, DailyReviewUpdate,
-    RelevanceCheckRequest, RelevanceCheckResponse,
     KnowledgeHealthResponse, EvolutionDistribution,
     ContextGuideCreate, ContextGuideUpdate, ContextGuideResponse, ContextGuideGenerateRequest,
     CognitivePotentialRequest, CognitivePotentialResponse, CognitivePotentialItem,
@@ -64,6 +64,7 @@ def _build_daily_review_response(review: DailyReview) -> dict:
         "gaps_found": _json_list_field(review.gaps_found),
         "action_items": _json_list_field(review.action_items),
         "praise_items": _json_list_field(review.praise_items),
+        "connections": _json_list_field(getattr(review, "connections", None)),
         "status": review.status,
         "created_at": review.created_at,
         "updated_at": review.updated_at,
@@ -82,7 +83,7 @@ def record_evolution_transition(db: Session, target, content_type: str, to_stage
     db.add(EvolutionTransition(
         id=str(uuid.uuid4()),
         user_id=target.user_id,
-        tenant_id=getattr(target, "tenant_id", None),
+        tenant_id=target.tenant_id,
         content_type=content_type,
         content_id=target.id,
         from_stage=from_stage,
@@ -91,12 +92,16 @@ def record_evolution_transition(db: Session, target, content_type: str, to_stage
     ))
 
 
-def _update_target_practice_depth(db: Session, target_type: str, target_id: str, user_id: str):
-    """Bump practice_depth on the target note/knowledge unit based on practice records."""
+def _update_target_practice_depth(db: Session, target_type: str, target_id: str, user_id: str, tenant=None):
+    """Bump practice_depth on the target note/knowledge unit based on practice records.
+
+    空间口径：团队目标可能是其他成员建的（成员级共享），不能只按 user_id 找；
+    流水计数同样限当前空间，跨空间同 id 不混（id 全局唯一，这里是口径钉死）。
+    """
     if target_type == "note":
-        target = db.query(Note).filter(Note.id == target_id, Note.user_id == user_id).first()
+        target = db.query(Note).filter(Note.id == target_id, scope_condition(Note, user_id, tenant)).first()
     elif target_type == "knowledge_unit":
-        target = db.query(KnowledgeUnit).filter(KnowledgeUnit.id == target_id, KnowledgeUnit.user_id == user_id).first()
+        target = db.query(KnowledgeUnit).filter(KnowledgeUnit.id == target_id, scope_condition(KnowledgeUnit, user_id, tenant)).first()
     else:
         return
 
@@ -106,7 +111,7 @@ def _update_target_practice_depth(db: Session, target_type: str, target_id: str,
     records = db.query(PracticeRecord).filter(
         PracticeRecord.target_type == target_type,
         PracticeRecord.target_id == target_id,
-        PracticeRecord.user_id == user_id,
+        scope_condition(PracticeRecord, user_id, tenant),
     ).all()
 
     # Map record count to practice_depth 0-5; keep attached ids in sync with the source rows
@@ -130,10 +135,13 @@ def _evolution_stage_from_depth(depth: int) -> str:
     return "collected"
 
 
-def _active_context_guides_prompt(db: Session, user_id: str, brain_side: str) -> str:
-    """Build a system-prompt section from the user's active context guides for the given brain side."""
+def _active_context_guides_prompt(db: Session, user_id: str, brain_side: str, tenant=None) -> str:
+    """Build a system-prompt section from the user's active context guides for the given brain side.
+
+    空间口径（09-12）：引导文件按空间隔离，跨空间的引导不进 prompt。
+    """
     guides = db.query(ContextGuide).filter(
-        ContextGuide.user_id == user_id,
+        scope_condition(ContextGuide, user_id, tenant),
         ContextGuide.is_active == True,  # noqa: E712
     ).all()
     applicable = []
@@ -155,17 +163,19 @@ async def create_practice_record(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    # Validate target exists
+    # Validate target exists（空间口径：跨空间目标 404，不暴露存在性）
+    tenant = get_active_tenant(db, current_user)
     if data.target_type == "note":
-        target = db.query(Note).filter(Note.id == data.target_id, Note.user_id == current_user.id).first()
+        target = db.query(Note).filter(Note.id == data.target_id, scope_condition(Note, current_user.id, tenant)).first()
     else:
-        target = db.query(KnowledgeUnit).filter(KnowledgeUnit.id == data.target_id, KnowledgeUnit.user_id == current_user.id).first()
+        target = db.query(KnowledgeUnit).filter(KnowledgeUnit.id == data.target_id, scope_condition(KnowledgeUnit, current_user.id, tenant)).first()
     if not target:
         raise HTTPException(status_code=404, detail="Target not found")
 
     record = PracticeRecord(
         id=str(uuid.uuid4()),
         user_id=current_user.id,
+        tenant_id=tenant.id if tenant else None,  # 空间戳：践行记录随目标内容同空间
         target_type=data.target_type,
         target_id=data.target_id,
         practice_type=data.practice_type.value,
@@ -178,7 +188,7 @@ async def create_practice_record(
     db.commit()
     db.refresh(record)
 
-    _update_target_practice_depth(db, record.target_type, record.target_id, current_user.id)
+    _update_target_practice_depth(db, record.target_type, record.target_id, current_user.id, tenant=tenant)
     return _build_practice_response(record)
 
 
@@ -193,7 +203,8 @@ async def list_practice_records(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    query = db.query(PracticeRecord).filter(PracticeRecord.user_id == current_user.id)
+    tenant = get_active_tenant(db, current_user)
+    query = db.query(PracticeRecord).filter(scope_condition(PracticeRecord, current_user.id, tenant))
     if target_type:
         query = query.filter(PracticeRecord.target_type == target_type)
     if target_id:
@@ -206,6 +217,7 @@ async def list_practice_records(
             query = query.filter(
                 db.query(Note.id).filter(
                     Note.id == PracticeRecord.target_id,
+                    scope_condition(Note, current_user.id, tenant),
                     Note.brain_side == brain_side,
                 ).correlate(PracticeRecord).exists()
             )
@@ -213,6 +225,7 @@ async def list_practice_records(
             query = query.filter(
                 db.query(KnowledgeUnit.id).filter(
                     KnowledgeUnit.id == PracticeRecord.target_id,
+                    scope_condition(KnowledgeUnit, current_user.id, tenant),
                     KnowledgeUnit.brain_side == brain_side,
                 ).correlate(PracticeRecord).exists()
             )
@@ -221,12 +234,14 @@ async def list_practice_records(
                 ((PracticeRecord.target_type == "note") & (
                     db.query(Note.id).filter(
                         Note.id == PracticeRecord.target_id,
+                        scope_condition(Note, current_user.id, tenant),
                         Note.brain_side == brain_side,
                     ).correlate(PracticeRecord).exists()
                 )) |
                 ((PracticeRecord.target_type == "knowledge_unit") & (
                     db.query(KnowledgeUnit.id).filter(
                         KnowledgeUnit.id == PracticeRecord.target_id,
+                        scope_condition(KnowledgeUnit, current_user.id, tenant),
                         KnowledgeUnit.brain_side == brain_side,
                     ).correlate(PracticeRecord).exists()
                 ))
@@ -242,7 +257,10 @@ async def get_practice_record(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    record = db.query(PracticeRecord).filter(PracticeRecord.id == record_id, PracticeRecord.user_id == current_user.id).first()
+    record = db.query(PracticeRecord).filter(
+        PracticeRecord.id == record_id,
+        scope_condition(PracticeRecord, current_user.id, get_active_tenant(db, current_user)),
+    ).first()
     if not record:
         raise HTTPException(status_code=404, detail="Practice record not found")
     return _build_practice_response(record)
@@ -255,7 +273,11 @@ async def update_practice_record(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    record = db.query(PracticeRecord).filter(PracticeRecord.id == record_id, PracticeRecord.user_id == current_user.id).first()
+    tenant = get_active_tenant(db, current_user)
+    record = db.query(PracticeRecord).filter(
+        PracticeRecord.id == record_id,
+        scope_condition(PracticeRecord, current_user.id, tenant),
+    ).first()
     if not record:
         raise HTTPException(status_code=404, detail="Practice record not found")
 
@@ -270,7 +292,7 @@ async def update_practice_record(
     db.commit()
     db.refresh(record)
 
-    _update_target_practice_depth(db, record.target_type, record.target_id, current_user.id)
+    _update_target_practice_depth(db, record.target_type, record.target_id, current_user.id, tenant=tenant)
     return _build_practice_response(record)
 
 
@@ -280,14 +302,18 @@ async def delete_practice_record(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    record = db.query(PracticeRecord).filter(PracticeRecord.id == record_id, PracticeRecord.user_id == current_user.id).first()
+    tenant = get_active_tenant(db, current_user)
+    record = db.query(PracticeRecord).filter(
+        PracticeRecord.id == record_id,
+        scope_condition(PracticeRecord, current_user.id, tenant),
+    ).first()
     if not record:
         raise HTTPException(status_code=404, detail="Practice record not found")
     target_type = record.target_type
     target_id = record.target_id
     db.delete(record)
     db.commit()
-    _update_target_practice_depth(db, target_type, target_id, current_user.id)
+    _update_target_practice_depth(db, target_type, target_id, current_user.id, tenant=tenant)
     return None
 
 
@@ -435,7 +461,8 @@ async def list_daily_reviews(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    query = db.query(DailyReview).filter(DailyReview.user_id == current_user.id)
+    # 复盘是个人空间产物（生成恒打 NULL）：团队空间列表自然为空，个人空间只见本人的
+    query = db.query(DailyReview).filter(scope_condition(DailyReview, current_user.id, get_active_tenant(db, current_user)))
     if status:
         query = query.filter(DailyReview.status == status)
     reviews = query.order_by(DailyReview.review_date.desc()).offset(offset).limit(limit).all()
@@ -448,7 +475,10 @@ async def get_daily_review(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    review = db.query(DailyReview).filter(DailyReview.id == review_id, DailyReview.user_id == current_user.id).first()
+    review = db.query(DailyReview).filter(
+        DailyReview.id == review_id,
+        scope_condition(DailyReview, current_user.id, get_active_tenant(db, current_user)),
+    ).first()
     if not review:
         raise HTTPException(status_code=404, detail="Daily review not found")
     return _build_daily_review_response(review)
@@ -461,7 +491,10 @@ async def update_daily_review(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    review = db.query(DailyReview).filter(DailyReview.id == review_id, DailyReview.user_id == current_user.id).first()
+    review = db.query(DailyReview).filter(
+        DailyReview.id == review_id,
+        scope_condition(DailyReview, current_user.id, get_active_tenant(db, current_user)),
+    ).first()
     if not review:
         raise HTTPException(status_code=404, detail="Daily review not found")
 
@@ -484,95 +517,16 @@ async def update_daily_review(
     return _build_daily_review_response(review)
 
 
-@router.post("/relevance-check", response_model=RelevanceCheckResponse, summary="Check personal relevance")
-async def check_relevance(
-    request: RelevanceCheckRequest,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
-):
-    # Build context from user's recent notes and knowledge
-    brain_side = request.brain_side or "both"
-    recent_notes_query = db.query(Note).filter(Note.user_id == current_user.id)
-    recent_knowledge_query = db.query(KnowledgeUnit).filter(KnowledgeUnit.user_id == current_user.id)
-    if brain_side != "both":
-        recent_notes_query = recent_notes_query.filter(Note.brain_side == brain_side)
-        recent_knowledge_query = recent_knowledge_query.filter(KnowledgeUnit.brain_side == brain_side)
-    recent_notes = recent_notes_query.order_by(Note.created_at.desc()).limit(10).all()
-    recent_knowledge = recent_knowledge_query.order_by(KnowledgeUnit.created_at.desc()).limit(10).all()
-
-    context_lines = []
-    for n in recent_notes:
-        context_lines.append(f"笔记：{(n.title or '')} {(n.content or '')[:100]}")
-    for k in recent_knowledge:
-        context_lines.append(f"知识：{(k.content_raw or '')[:100]}")
-
-    context = request.user_context_summary or "\n".join(context_lines) or "用户暂无上下文"
-
-    prompt = f"""你是一位个人知识筛选助手。请判断下面的外部内容与用户的关联度。
-
-用户近期上下文：
-{context}
-
-外部内容（类型：{request.content_type}）：
-{request.content[:2000]}
-
-请只返回 JSON：
-{{
-  "personal_relevance_score": 0.0-1.0 的浮点数,
-  "reason": "判断理由",
-  "connection_evidence": "与用户已有内容的关联证据",
-  "first_action": "如果导入，建议的第一步行动",
-  "suggested_action": "import / import_with_practice / read_later / ignore 之一"
-}}
-"""
-
-    try:
-        guide_ctx = _active_context_guides_prompt(db, current_user.id, brain_side)
-        system_prompt = "You are a personal knowledge filter. Always return valid JSON."
-        if guide_ctx:
-            system_prompt += "\n\n" + guide_ctx
-        raw = await chat_completion(
-            prompt=prompt,
-            task_type="analysis",
-            system_prompt=system_prompt,
-            preferred_model=request.preferred_model,
-        )
-
-        json_str = raw
-        if "```json" in raw:
-            json_str = raw.split("```json")[1].split("```")[0].strip()
-        elif "```" in raw:
-            json_str = raw.split("```")[1].split("```")[0].strip()
-
-        result = json.loads(json_str)
-        if not isinstance(result, dict):
-            raise ValueError("AI 返回格式错误：期望 JSON 对象")
-        score = max(0.0, min(1.0, float(result.get("personal_relevance_score", 0.5))))
-        action = result.get("suggested_action", "read_later")
-        if action not in ("import", "import_with_practice", "read_later", "ignore"):
-            action = "read_later"
-
-        return RelevanceCheckResponse(
-            personal_relevance_score=score,
-            reason=result.get("reason", ""),
-            connection_evidence=result.get("connection_evidence"),
-            first_action=result.get("first_action"),
-            suggested_action=action,
-        )
-    except ValueError as e:
-        raise HTTPException(status_code=500, detail=f"AI 关联度分析失败：{str(e)}")
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"AI 关联度分析失败：{str(e)}")
-
-
 @router.get("/knowledge-health", response_model=KnowledgeHealthResponse, summary="Knowledge base health")
 async def get_knowledge_health(
     brain_side: Optional[str] = Query("both", description="Filter by brain side: personal / network / both"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    notes_query = db.query(Note).filter(Note.user_id == current_user.id, Note.status == "active")
-    knowledge_query = db.query(KnowledgeUnit).filter(KnowledgeUnit.user_id == current_user.id)
+    # 空间口径：只统计/只取当前空间内容（团队空间不混进个人条目）
+    tenant = get_active_tenant(db, current_user)
+    notes_query = db.query(Note).filter(scope_condition(Note, current_user.id, tenant), Note.status == "active")
+    knowledge_query = db.query(KnowledgeUnit).filter(scope_condition(KnowledgeUnit, current_user.id, tenant))
     if brain_side and brain_side != "both":
         notes_query = notes_query.filter(Note.brain_side == brain_side)
         knowledge_query = knowledge_query.filter(KnowledgeUnit.brain_side == brain_side)
@@ -666,7 +620,7 @@ async def list_context_guides(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    query = db.query(ContextGuide).filter(ContextGuide.user_id == current_user.id)
+    query = db.query(ContextGuide).filter(scope_condition(ContextGuide, current_user.id, get_active_tenant(db, current_user)))
     if is_active is not None:
         query = query.filter(ContextGuide.is_active == is_active)
     guides = query.order_by(ContextGuide.updated_at.desc()).all()
@@ -679,9 +633,12 @@ async def create_context_guide(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
+    # 空间戳：团队空间引导文件归团队（成员共享）
+    tenant = get_active_tenant(db, current_user)
     guide = ContextGuide(
         id=str(uuid.uuid4()),
         user_id=current_user.id,
+        tenant_id=tenant.id if tenant else None,
         title=data.title,
         content=data.content,
         scope=data.scope.value,
@@ -700,7 +657,10 @@ async def get_context_guide(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    guide = db.query(ContextGuide).filter(ContextGuide.id == guide_id, ContextGuide.user_id == current_user.id).first()
+    guide = db.query(ContextGuide).filter(
+        ContextGuide.id == guide_id,
+        scope_condition(ContextGuide, current_user.id, get_active_tenant(db, current_user)),
+    ).first()
     if not guide:
         raise HTTPException(status_code=404, detail="Context guide not found")
     return _build_context_guide_response(guide)
@@ -713,7 +673,10 @@ async def update_context_guide(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    guide = db.query(ContextGuide).filter(ContextGuide.id == guide_id, ContextGuide.user_id == current_user.id).first()
+    guide = db.query(ContextGuide).filter(
+        ContextGuide.id == guide_id,
+        scope_condition(ContextGuide, current_user.id, get_active_tenant(db, current_user)),
+    ).first()
     if not guide:
         raise HTTPException(status_code=404, detail="Context guide not found")
 
@@ -740,7 +703,10 @@ async def delete_context_guide(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    guide = db.query(ContextGuide).filter(ContextGuide.id == guide_id, ContextGuide.user_id == current_user.id).first()
+    guide = db.query(ContextGuide).filter(
+        ContextGuide.id == guide_id,
+        scope_condition(ContextGuide, current_user.id, get_active_tenant(db, current_user)),
+    ).first()
     if not guide:
         raise HTTPException(status_code=404, detail="Context guide not found")
     db.delete(guide)
@@ -755,8 +721,10 @@ async def generate_context_guide(
     current_user: User = Depends(get_current_user)
 ):
     brain_side = request.brain_side or "both"
-    notes_query = db.query(Note).filter(Note.user_id == current_user.id, Note.status == "active")
-    knowledge_query = db.query(KnowledgeUnit).filter(KnowledgeUnit.user_id == current_user.id)
+    # 空间口径：只统计/只取当前空间内容（团队空间不混进个人条目）
+    tenant = get_active_tenant(db, current_user)
+    notes_query = db.query(Note).filter(scope_condition(Note, current_user.id, tenant), Note.status == "active")
+    knowledge_query = db.query(KnowledgeUnit).filter(scope_condition(KnowledgeUnit, current_user.id, tenant))
     if brain_side != "both":
         notes_query = notes_query.filter(Note.brain_side == brain_side)
         knowledge_query = knowledge_query.filter(KnowledgeUnit.brain_side == brain_side)
@@ -809,6 +777,7 @@ async def generate_context_guide(
     guide = ContextGuide(
         id=str(uuid.uuid4()),
         user_id=current_user.id,
+        tenant_id=tenant.id if tenant else None,  # 空间戳：随素材同空间
         title=title,
         content=content,
         scope=scope,
@@ -828,12 +797,17 @@ async def analyze_cognitive_potential(
     current_user: User = Depends(get_current_user)
 ):
     brain_side = request.brain_side or "both"
+    # 空间口径与详情页一致（content_filter）：分析池必须只含当前空间可见内容，
+    # 否则团队上下文里分析出个人条目（或反之），点进去必然 404「加载失败」。
     # knowledge 此前未滤 deleted——已删条目分析得出、点开 404，一并修掉。
-    # （开源版无租户/团队空间，口径保持 user_id；主仓对应 content_filter 空间口径）
-    notes_query = db.query(Note).filter(Note.user_id == current_user.id, Note.status == "active")
-    knowledge_query = db.query(KnowledgeUnit).filter(
-        KnowledgeUnit.user_id == current_user.id,
-        KnowledgeUnit.status != "deleted",
+    tenant = get_active_tenant(db, current_user)
+    notes_query = content_filter(
+        db.query(Note).filter(Note.status == "active"),
+        Note, current_user, tenant,
+    )
+    knowledge_query = content_filter(
+        db.query(KnowledgeUnit).filter(KnowledgeUnit.status != "deleted"),
+        KnowledgeUnit, current_user, tenant,
     )
     if brain_side != "both":
         notes_query = notes_query.filter(Note.brain_side == brain_side)
@@ -886,7 +860,7 @@ async def analyze_cognitive_potential(
 """
 
     try:
-        guide_ctx = _active_context_guides_prompt(db, current_user.id, brain_side)
+        guide_ctx = _active_context_guides_prompt(db, current_user.id, brain_side, tenant=tenant)
         system_prompt = "You are a cognitive asset analyst. Always return valid JSON with keys summary, sinkable, outputable, monetizable."
         if guide_ctx:
             system_prompt += "\n\n" + guide_ctx
@@ -939,15 +913,22 @@ async def analyze_cognitive_potential(
         outputable=_parse_items("outputable"),
         monetizable=_parse_items("monetizable"),
         analyzed_at=datetime.now().isoformat(),
-        model_used=request.preferred_model or "ollama-qwen2.5-0.5b",
+        model_used=request.preferred_model or "ollama-qwen3.5-0.8b",
     )
 
-    # 结果落库：分析是 LLM 调用，结果必须可回看（换模型/重进页面不丢）。
-    # 每 用户×脑侧 只留最新一份，重跑即替换。（开源版无租户维度）
+    # 结果落库：分析是计费调用，结果必须可回看（换模型/重进页面不丢）。
+    # 每 用户×空间×脑侧 只留最新一份，重跑即替换。
+    scope_tenant_id = tenant.id if tenant else None
     existing_q = db.query(CognitivePotentialResult).filter(
-        CognitivePotentialResult.user_id == current_user.id,
         CognitivePotentialResult.brain_side == brain_side,
     )
+    if scope_tenant_id:
+        existing_q = existing_q.filter(CognitivePotentialResult.tenant_id == scope_tenant_id)
+    else:
+        existing_q = existing_q.filter(
+            CognitivePotentialResult.user_id == current_user.id,
+            CognitivePotentialResult.tenant_id.is_(None),
+        )
     payload_json = json.dumps(response.model_dump(), ensure_ascii=False)
     row = existing_q.first()
     if row:
@@ -958,6 +939,7 @@ async def analyze_cognitive_potential(
         db.add(CognitivePotentialResult(
             id=str(uuid.uuid4()),
             user_id=current_user.id,
+            tenant_id=scope_tenant_id,
             brain_side=brain_side,
             result_json=payload_json,
             model_used=response.model_used,
@@ -972,11 +954,17 @@ async def get_latest_cognitive_potential(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    """取当前用户最近一次已保存的认知势能分析（免费读，不触发 LLM）。"""
-    row = db.query(CognitivePotentialResult).filter(
-        CognitivePotentialResult.user_id == current_user.id,
-        CognitivePotentialResult.brain_side == brain_side,
-    ).order_by(CognitivePotentialResult.created_at.desc()).first()
+    """取当前空间最近一次已保存的认知资产分析（免费读，不触发 LLM）。"""
+    tenant = get_active_tenant(db, current_user)
+    q = db.query(CognitivePotentialResult).filter(CognitivePotentialResult.brain_side == brain_side)
+    if tenant:
+        q = q.filter(CognitivePotentialResult.tenant_id == tenant.id)
+    else:
+        q = q.filter(
+            CognitivePotentialResult.user_id == current_user.id,
+            CognitivePotentialResult.tenant_id.is_(None),
+        )
+    row = q.order_by(CognitivePotentialResult.created_at.desc()).first()
     if not row:
         raise HTTPException(status_code=404, detail="暂无保存的分析结果")
     try:
@@ -1014,7 +1002,7 @@ async def list_experiment_logs(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    query = db.query(ExperimentLog).filter(ExperimentLog.user_id == current_user.id)
+    query = db.query(ExperimentLog).filter(scope_condition(ExperimentLog, current_user.id, get_active_tenant(db, current_user)))
     if status:
         query = query.filter(ExperimentLog.status == status)
     if brain_side and brain_side != "both":
@@ -1029,9 +1017,12 @@ async def create_experiment_log(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
+    # 空间戳：团队空间实验日志归团队
+    tenant = get_active_tenant(db, current_user)
     log = ExperimentLog(
         id=str(uuid.uuid4()),
         user_id=current_user.id,
+        tenant_id=tenant.id if tenant else None,
         title=data.title,
         hypothesis=data.hypothesis,
         controlled_variable=data.controlled_variable,
@@ -1055,7 +1046,10 @@ async def get_experiment_log(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    log = db.query(ExperimentLog).filter(ExperimentLog.id == log_id, ExperimentLog.user_id == current_user.id).first()
+    log = db.query(ExperimentLog).filter(
+        ExperimentLog.id == log_id,
+        scope_condition(ExperimentLog, current_user.id, get_active_tenant(db, current_user)),
+    ).first()
     if not log:
         raise HTTPException(status_code=404, detail="Experiment log not found")
     return _build_experiment_log_response(log)
@@ -1068,7 +1062,10 @@ async def update_experiment_log(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    log = db.query(ExperimentLog).filter(ExperimentLog.id == log_id, ExperimentLog.user_id == current_user.id).first()
+    log = db.query(ExperimentLog).filter(
+        ExperimentLog.id == log_id,
+        scope_condition(ExperimentLog, current_user.id, get_active_tenant(db, current_user)),
+    ).first()
     if not log:
         raise HTTPException(status_code=404, detail="Experiment log not found")
 
@@ -1090,7 +1087,10 @@ async def delete_experiment_log(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    log = db.query(ExperimentLog).filter(ExperimentLog.id == log_id, ExperimentLog.user_id == current_user.id).first()
+    log = db.query(ExperimentLog).filter(
+        ExperimentLog.id == log_id,
+        scope_condition(ExperimentLog, current_user.id, get_active_tenant(db, current_user)),
+    ).first()
     if not log:
         raise HTTPException(status_code=404, detail="Experiment log not found")
     db.delete(log)
@@ -1098,14 +1098,16 @@ async def delete_experiment_log(
     return None
 
 
-@router.get("/evolution-transitions", summary="Evolution transitions", description="Recent evolution_stage change history (practice / manual) for the current user, newest first.")
+@router.get("/evolution-transitions", summary="Evolution transitions", description="Recent evolution_stage change history (practice / manual) for the current space, newest first.")
 async def list_evolution_transitions(
     limit: int = Query(50, ge=1, le=200),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    rows = db.query(EvolutionTransition).filter(
-        EvolutionTransition.user_id == current_user.id,
+    tenant = get_active_tenant(db, current_user)
+    # 空间口径与内容一致：团队上下文看全租户的流水，个人空间只看本人且无租户的
+    rows = content_filter(
+        db.query(EvolutionTransition), EvolutionTransition, current_user, tenant,
     ).order_by(EvolutionTransition.created_at.desc()).limit(limit).all()
 
     # 标题批量补齐：note→标题，knowledge_unit→正文前 60 字；内容已删则 title 为 None

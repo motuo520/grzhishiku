@@ -20,10 +20,10 @@ export const LLM_MODELS: LLMModelConfig[] = [
     id: 'ollama',
     name: 'Ollama 本地',
     provider: 'ollama',
-    model: 'qwen2.5:0.5b',
+    model: 'qwen3.5:0.8b',
     icon: Server,
     color: 'text-success',
-    desc: '本地轻量小模型，约 400MB',
+    desc: '本地轻量小模型，约 1GB',
     tags: ['本地', '低延迟', '中文'],
     context: '32K',
     requiresKey: false,
@@ -66,8 +66,8 @@ export function getModelIdByProviderModel(provider: string, model: string): stri
 /** Map a frontend selector id to the backend `preferred_model` identifier. */
 export function getBackendModelId(selectorId: string, ollamaModel: string): string {
   if (selectorId === 'ollama') {
-    const m = ollamaModel || 'qwen2.5:0.5b';
-    if (m === 'qwen2.5:0.5b') return 'ollama-qwen2.5-0.5b';
+    const m = ollamaModel || 'qwen3.5:0.8b';
+    if (m === 'qwen3.5:0.8b') return 'ollama-qwen3.5-0.8b';
     if (m === 'smollm2:135m') return 'ollama-smollm2';
     return `ollama-${m}`;
   }
@@ -76,4 +76,16 @@ export function getBackendModelId(selectorId: string, ollamaModel: string): stri
   }
   // For cloud models, the selector id matches the backend ModelConfig key.
   return selectorId;
+}
+
+/** `ollama-qwen3.5-0.8b` ↔ `qwen3.5:0.8b` 形态归一（移植主仓同口径）。 */
+export function normalizeOllamaModelName(model: string): string {
+  let m = model;
+  if (m.startsWith('ollama-')) m = m.slice('ollama-'.length);
+  if (m.includes(':')) return m;
+  // 短横形只把「名-标签」之间的那个短横转回冒号：标签段以数字开头（0.8b / 135m / 7b），
+  // 名字段里的短横（bge-m3、phi4-mini 这类无标签名）不动
+  const idx = m.search(/-(?=[0-9][A-Za-z0-9.]*$)/);
+  if (idx > 0) return `${m.slice(0, idx)}:${m.slice(idx + 1)}`;
+  return m;
 }

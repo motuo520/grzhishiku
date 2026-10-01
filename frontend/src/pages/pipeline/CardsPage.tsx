@@ -3,8 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import {
   SquareStack, Filter, Search, Globe, BookOpen, FileText, FolderOpen, Rss,
   Layers, Clock, Loader2, AlertCircle, X, CheckSquare, Square,
-  ArrowRight, Sparkles,
-} from 'lucide-react';
+  ArrowRight, Sparkles, type LucideIcon } from 'lucide-react';
 import PipelineBrainToggle from './components/PipelineBrainToggle';
 import PipelineStageBar from './components/PipelineStageBar';
 import { useNavigation } from '@/store/navigation';
@@ -12,11 +11,13 @@ import { usePipelineStats, usePipelineItems, useExtractConcepts, useTransitionIt
 import type { PipelineItem } from '@/api/pipeline';
 import StageContextBanner from './components/StageContextBanner';
 import ModelSelector from '@/components/llm/ModelSelector';
+import LLMCostBadge from '@/components/llm/LLMCostBadge';
 import { BrainSideBadge, SourceLink } from './components/PipelineHelpers';
 import ErrorState from '@/components/ErrorState';
 import PipelineItemActions from './components/PipelineItemActions';
+import { useConfirm } from '@/components/common/dialogContext';
 
-const CONTENT_TYPE_CONFIG: Record<string, { label: string; icon: React.ElementType; color: string }> = {
+const CONTENT_TYPE_CONFIG: Record<string, { label: string; icon: LucideIcon; color: string }> = {
   note: { label: '笔记', icon: FileText, color: 'text-personal-primary' },
   knowledge: { label: '知识卡片', icon: Layers, color: 'text-info' },
   clip: { label: '剪藏', icon: Globe, color: 'text-network-primary' },
@@ -26,6 +27,7 @@ const CONTENT_TYPE_CONFIG: Record<string, { label: string; icon: React.ElementTy
 };
 
 const CardsPage: FC = () => {
+  const askConfirm = useConfirm();
   const navigate = useNavigate();
   const { brainSide } = useNavigation();
   const [searchQuery, setSearchQuery] = useState('');
@@ -80,6 +82,15 @@ const CardsPage: FC = () => {
     return Array.from(types);
   }, [items]);
 
+  const extractInputText = useMemo(() => {
+    const selected = filteredItems.filter((item) => selectedIds.has(item.id));
+    const source = selected.length > 0 ? selected : filteredItems.slice(0, 5);
+    return source
+      .map((item) => `标题：${item.title || '无标题'}\n内容：${item.content_raw || ''}`)
+      .join('\n---\n')
+      .slice(0, 4000);
+  }, [filteredItems, selectedIds]);
+
   const toggleSelect = (id: string) => {
     setSelectedIds((prev) => {
       const next = new Set(prev);
@@ -116,7 +127,7 @@ const CardsPage: FC = () => {
   const handleBatchExtract = async () => {
     if (selectedIds.size === 0) return;
     const selected = filteredItems.filter((item) => selectedIds.has(item.id));
-    if (!confirm(`确定对选中的 ${selected.length} 张卡片抽取概念？这会调用 AI 进行分析。`)) return;
+    if (!(await askConfirm(`确定对选中的 ${selected.length} 张卡片抽取概念？这会调用 AI 进行分析。`))) return;
     setIsBatchRunning(true);
     setBatchProgress(0);
     setError(null);
@@ -153,7 +164,7 @@ const CardsPage: FC = () => {
   const handlePullFromRaw = async () => {
     const candidates = (rawItems || []).slice(0, 10);
     if (candidates.length === 0) return;
-    if (!confirm(`将把上一阶段 ${candidates.length} 条原始素材卡片化，确定继续？`)) return;
+    if (!(await askConfirm(`将把上一阶段 ${candidates.length} 条原始素材卡片化，确定继续？`))) return;
     setIsPulling(true);
     setError(null);
     let failed = 0;
@@ -294,6 +305,7 @@ const CardsPage: FC = () => {
           <div className="flex flex-col items-end gap-2">
             <div className="flex items-center gap-3">
               <ModelSelector value={modelId} onChange={setModelId} taskType="analysis" className="w-48" />
+              <LLMCostBadge modelId={modelId} inputText={extractInputText} outputTokenEstimate={300} />
             </div>
             <button
               onClick={handleBatchExtract}

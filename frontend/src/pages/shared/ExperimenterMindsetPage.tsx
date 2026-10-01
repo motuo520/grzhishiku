@@ -11,11 +11,11 @@ import { useKnowledge } from '@/hooks/useKnowledge';
 import { useNotes } from '@/hooks/useNotes';
 import {
   FlaskConical, Plus, Loader2, Save, Trash2, Edit3, X,
-  Play, CheckCircle2, XCircle, PauseCircle
-} from 'lucide-react';
+  Play, CheckCircle2, XCircle, PauseCircle, type LucideIcon } from 'lucide-react';
 import type { ExperimentLog, ExperimentLogCreateData, ExperimentLogUpdateData } from '@/api/jianghu';
+import { useConfirm } from '@/components/common/dialogContext';
 
-const STATUS_OPTIONS: { value: ExperimentLog['status']; label: string; icon: React.ElementType; color: string }[] = [
+const STATUS_OPTIONS: { value: ExperimentLog['status']; label: string; icon: LucideIcon; color: string }[] = [
   { value: 'planned', label: '计划中', icon: PauseCircle, color: 'text-text-muted' },
   { value: 'running', label: '进行中', icon: Play, color: 'text-info' },
   { value: 'completed', label: '已完成', icon: CheckCircle2, color: 'text-success' },
@@ -35,6 +35,7 @@ const EMPTY_FORM: ExperimentLogCreateData = {
 };
 
 const ExperimenterMindsetPage: FC = () => {
+  const askConfirm = useConfirm();
   const navigate = useNavigate();
   const { brainSide } = useNavigation();
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -107,8 +108,8 @@ const ExperimenterMindsetPage: FC = () => {
     }
   };
 
-  const handleDelete = (id: string) => {
-    if (confirm('确定删除这条实验记录？')) remove.mutate(id);
+  const handleDelete = async (id: string) => {
+    if (await askConfirm('确定删除这条实验记录？')) remove.mutate(id);
   };
 
   const setRelatedTarget = (value: string) => {
@@ -136,7 +137,7 @@ const ExperimenterMindsetPage: FC = () => {
         <div>
           <h1 className="text-xl font-semibold text-text-primary flex items-center gap-2">
             <FlaskConical className="w-5 h-5 text-success" />
-            实验者心态
+            单变量实验
           </h1>
           <p className="text-sm text-text-secondary mt-1">
             每次只控制一个变量，把创作和知识应用当作实验，用真实反馈迭代。

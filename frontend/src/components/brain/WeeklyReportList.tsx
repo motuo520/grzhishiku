@@ -40,6 +40,7 @@ export const WeeklyReportList: FC<Props> = ({ reports, selectedId, onSelect, loa
           const start = report.week_start.slice(0, 10);
           const end = report.week_end.slice(0, 10);
           const active = report.id === selectedId;
+          const hasScore = (report.health_score ?? 0) > 0; // 09-01 起新周报废分（=0 不显示）
           const scoreColor = report.health_score >= 80 ? 'text-success' : report.health_score >= 60 ? 'text-warning' : 'text-danger';
           return (
             <motion.button
@@ -55,10 +56,10 @@ export const WeeklyReportList: FC<Props> = ({ reports, selectedId, onSelect, loa
               }`}
             >
               <div className="flex items-center gap-3">
-                <Activity className={`w-4 h-4 ${scoreColor}`} />
+                {hasScore && <Activity className={`w-4 h-4 ${scoreColor}`} />}
                 <div>
                   <div className="text-sm font-bold text-text-primary">{start} ~ {end}</div>
-                  <div className="text-xs text-text-secondary">健康分 {report.health_score}</div>
+                  {hasScore && <div className="text-xs text-text-secondary">健康分 {report.health_score}</div>}
                 </div>
               </div>
               <ChevronRight className={`w-4 h-4 ${active ? 'text-fusion-primary' : 'text-text-muted'}`} />

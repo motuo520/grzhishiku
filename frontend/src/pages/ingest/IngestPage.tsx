@@ -11,17 +11,17 @@ const ingestCards = [
     icon: Scissors,
     active: true,
     path: '/ingest/clipper',
-    badge: 'Network Brain',
+    badge: '网络脑',
     badgeClass: 'badge-network',
   },
   {
     key: 'notes',
     title: '笔记管理',
-    desc: '记录灵感、整理思绪，Personal Brain 核心',
+    desc: '记录灵感、整理思绪，个人脑核心',
     icon: FileText,
     active: true,
     path: '/ingest/notes',
-    badge: 'Personal Brain',
+    badge: '个人脑',
     badgeClass: 'badge-personal',
   },
   {
@@ -31,7 +31,7 @@ const ingestCards = [
     icon: Upload,
     active: true,
     path: '/ingest/batch-import',
-    badge: 'Fusion',
+    badge: '整合脑',
     badgeClass: 'badge-fusion',
   },
   {
@@ -41,7 +41,7 @@ const ingestCards = [
     icon: Rss,
     active: true,
     path: '/ingest/rss',
-    badge: 'Network Brain',
+    badge: '网络脑',
     badgeClass: 'badge-network',
   },
   {
@@ -51,7 +51,7 @@ const ingestCards = [
     icon: Tag,
     active: true,
     path: '/ingest/tags',
-    badge: 'Fusion',
+    badge: '整合脑',
     badgeClass: 'badge-fusion',
   },
   {
@@ -60,7 +60,7 @@ const ingestCards = [
     desc: '通过邮件发送内容到双脑系统',
     icon: Mail,
     active: false,
-    badge: 'Personal Brain',
+    badge: '个人脑',
     badgeClass: 'badge-personal',
   },
   {
@@ -70,7 +70,7 @@ const ingestCards = [
     icon: Share2,
     active: true,
     path: '/ingest/social',
-    badge: 'Network Brain',
+    badge: '网络脑',
     badgeClass: 'badge-network',
   },
   {
@@ -80,7 +80,7 @@ const ingestCards = [
     icon: BookOpen,
     active: true,
     path: '/ingest/read-later',
-    badge: 'Network Brain',
+    badge: '网络脑',
     badgeClass: 'badge-network',
   },
   {
@@ -90,7 +90,7 @@ const ingestCards = [
     icon: FolderOpen,
     active: true,
     path: '/ingest/documents',
-    badge: 'Fusion',
+    badge: '整合脑',
     badgeClass: 'badge-fusion',
   },
 ];

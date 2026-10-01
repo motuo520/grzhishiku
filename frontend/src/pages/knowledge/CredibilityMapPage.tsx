@@ -2,12 +2,11 @@ import { FC, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import {
   Map, Globe, Search, ShieldCheck, AlertTriangle, XCircle,
-  HelpCircle, BarChart3
-} from 'lucide-react';
+  HelpCircle, BarChart3, type LucideIcon } from 'lucide-react';
 import { useSourceAggregates } from '@/hooks/useKnowledge';
 import ErrorState from '@/components/ErrorState';
 
-const reputationConfig: Record<string, { icon: React.ElementType; label: string; colorClass: string }> = {
+const reputationConfig: Record<string, { icon: LucideIcon; label: string; colorClass: string }> = {
   high: { icon: ShieldCheck, label: '高可信度', colorClass: 'text-success' },
   medium: { icon: AlertTriangle, label: '中等可信度', colorClass: 'text-warning' },
   low: { icon: XCircle, label: '低可信度', colorClass: 'text-danger' },

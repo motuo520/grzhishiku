@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 import httpx
 
 from app.core.database import get_db
+from app.services.knowledge_title import first_line_title
 from app.core.security import get_current_user
 from app.models.base import KnowledgeUnit, User
 from app.plugins.base import BasePlugin
@@ -77,6 +78,7 @@ class ReadwiseSyncPlugin(BasePlugin):
                             content_raw=content_raw[:50000],
                             content_type="readwise",
                             source_url=highlight.get("url") or user_book.get("source_url"),
+                            title=user_book.get("title") or first_line_title(content_raw) or None,  # 09-16
                             source_title=user_book.get("title") or "Readwise Highlight",
                             source_author=user_book.get("author"),
                             source_type="readwise",

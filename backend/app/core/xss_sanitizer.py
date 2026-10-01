@@ -3,6 +3,7 @@
 import bleach
 import re
 from typing import Optional
+from urllib.parse import urlsplit
 
 # Allowed tags for rich content (if any markdown/HTML is rendered)
 ALLOWED_TAGS = set()
@@ -30,14 +31,16 @@ def sanitize_markdown(text: Optional[str]) -> Optional[str]:
 
 
 def sanitize_url(url: Optional[str]) -> Optional[str]:
-    """Sanitize URL to prevent javascript: and data: protocol XSS."""
+    """Sanitize URL to allow only http/https schemes (防 javascript:/data: 及编码绕过)。"""
     if url is None:
         return None
-    url = url.strip()
-    dangerous_protocols = re.compile(r'^(javascript|data|vbscript|file):', re.IGNORECASE)
-    if dangerous_protocols.match(url):
+    decoded = html.unescape(url)
+    cleaned = re.sub(r"[\x00-\x20\x7f-\xa0\u200b-\u200f\u2028\u2029\ufeff]", "", decoded)
+    if not cleaned:
         return "about:blank"
-    return url
+    if urlsplit(cleaned).scheme.lower() not in {"http", "https"}:
+        return "about:blank"
+    return cleaned
 
 
 def sanitize_note_input(title: Optional[str], content: Optional[str]) -> tuple:
@@ -71,5 +74,5 @@ def sanitize_capsule_input(content_body: Optional[str], mood_tags: Optional[list
 
 
 def sanitize_support_input(subject: Optional[str], description: Optional[str]) -> tuple:
-    """Sanitize support ticket input fields."""
+    """Sanitize support ticket input fields.（开源版保留 support 工单端点用）"""
     return sanitize_html(subject), sanitize_markdown(description)

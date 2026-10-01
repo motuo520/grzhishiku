@@ -16,8 +16,8 @@ from typing import Any, Dict, Optional
 
 from sqlalchemy.orm import Session
 
+from app.core.ssrf import open_checked_url, read_capped
 from app.models.base import User, RssFeed, RssEntry
-from app.services.url_guard import open_checked_url, read_capped
 
 logger = logging.getLogger(__name__)
 
@@ -45,6 +45,7 @@ def fetch_feed_xml(url: str) -> str:
             headers={
                 "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
             },
+            label="RSS 地址",
         ) as response:
             content_type = response.headers.get("Content-Type", "")
             data = read_capped(response)
@@ -112,6 +113,7 @@ def parse_feed(xml: str, feed_id: str, user_id: str):
             if link_el is not None:
                 link = link_el.get("href", "")
             summary = entry.findtext("atom:summary", default=None, namespaces=ns) or entry.findtext("atom:content", default=None, namespaces=ns)
+            content = entry.findtext("atom:content", default=None, namespaces=ns)
             author = entry.findtext("atom:author/atom:name", default=None, namespaces=ns)
             published = entry.findtext("atom:published", default=None, namespaces=ns) or entry.findtext("atom:updated", default=None, namespaces=ns)
             external_id = entry.findtext("atom:id", default=None, namespaces=ns) or link
@@ -119,6 +121,7 @@ def parse_feed(xml: str, feed_id: str, user_id: str):
                 "title": re.sub(r"\s+", " ", title).strip() if title else "无标题",
                 "link": link,
                 "summary": re.sub(r"\s+", " ", summary).strip() if summary else None,
+                "content": content.strip() if content else None,
                 "author": author,
                 "published_at": published,
                 "external_id": external_id,
@@ -135,6 +138,9 @@ def parse_feed(xml: str, feed_id: str, user_id: str):
                 title = item.findtext("title", default="无标题")
                 link = item.findtext("link", default="")
                 summary = item.findtext("description", default=None)
+                # 全文在 content:encoded（阮一峰周刊等 RSS 2.0 全文输出源的实捕：
+                # description 只有几十字摘要，不读 content:encoded 等于没抓到文章）
+                content = item.findtext("content:encoded", default=None, namespaces=ns)
                 author = item.findtext("author", default=None) or item.findtext("{http://purl.org/dc/elements/1.1/}creator", default=None)
                 published = item.findtext("pubDate", default=None)
                 external_id = item.findtext("guid", default=None) or link
@@ -142,6 +148,7 @@ def parse_feed(xml: str, feed_id: str, user_id: str):
                     "title": re.sub(r"\s+", " ", title).strip() if title else "无标题",
                     "link": link,
                     "summary": re.sub(r"\s+", " ", summary).strip() if summary else None,
+                    "content": content.strip() if content else None,
                     "author": author,
                     "published_at": published,
                     "external_id": external_id,
@@ -203,9 +210,12 @@ def refresh_feed(db: Session, feed: RssFeed, user_id: str) -> Dict[str, int]:
                 id=str(uuid.uuid4()),
                 feed_id=feed.id,
                 user_id=user_id,
+                # 条目跟随源的空间归属：团队源的条目归团队
+                tenant_id=feed.tenant_id,
                 title=entry_data.get("title"),
                 link=entry_data.get("link"),
                 summary=entry_data.get("summary"),
+                content=entry_data.get("content"),
                 author=entry_data.get("author"),
                 published_at=parse_datetime(entry_data.get("published_at")),
                 external_id=external_id,

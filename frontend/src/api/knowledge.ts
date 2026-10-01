@@ -1,4 +1,5 @@
 import api from './client';
+import { getConsolePreferredModel } from './consoleModel';
 import type { KnowledgeUnit, CounterEvidenceItem, KnowledgeSourcesResponse, SourceCredibilityResponse } from '@/types';
 
 export interface KnowledgeCreateData {
@@ -45,6 +46,10 @@ export interface KnowledgeSourceAggregate {
   avg_verification_consensus: number;
   avg_source_credibility: number;
   reputation: string;
+  /** 生效信誉档（trusted/normal/review）：手动覆盖优先，否则信誉表自动判定 */
+  tier?: string;
+  /** tier 来源：manual=用户手动设置 / auto=信誉表自动判定 */
+  tier_source?: 'manual' | 'auto';
   factors: string[];
 }
 
@@ -104,7 +109,7 @@ export const knowledgeApi = {
   update: (id: string, data: KnowledgeUpdateData) =>
     api.patch<KnowledgeUnit>(`/api/v1/knowledge/${id}`, data),
   verify: (id: string, preferred_model?: string) =>
-    api.post<VerifyResponse>(`/api/v1/knowledge/${id}/verify`, { preferred_model }),
+    api.post<VerifyResponse>(`/api/v1/knowledge/${id}/verify`, { preferred_model: preferred_model || getConsolePreferredModel() }),
   sources: (id: string) => api.get<KnowledgeSourcesResponse>(`/api/v1/knowledge/${id}/sources`),
   sourceCredibility: (domain: string) => api.get<SourceCredibilityResponse>(`/api/v1/knowledge/domain-credibility/${domain}`),
   counterEvidence: (id: string, data: { evidence_text: string; evidence_url?: string }) =>
@@ -122,6 +127,4 @@ export const knowledgeApi = {
   timelinessList: (brain_side?: string) =>
     api.get<KnowledgeUnit[]>('/api/v1/knowledge/timeliness', { params: brain_side ? { brain_side } : undefined }),
   sourceAggregates: () => api.get<KnowledgeSourceAggregate[]>('/api/v1/knowledge/sources'),
-  domainCredibility: (domain: string) =>
-    api.get(`/api/v1/knowledge/domain-credibility/${domain}`),
 };

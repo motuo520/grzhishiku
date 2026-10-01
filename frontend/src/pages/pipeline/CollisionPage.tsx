@@ -11,10 +11,13 @@ import { usePipelineStats, usePipelineItems, useReviewCollision, useCollideConce
 import type { PipelineItem } from '@/api/pipeline';
 import StageContextBanner from './components/StageContextBanner';
 import ModelSelector from '@/components/llm/ModelSelector';
+import LLMCostBadge from '@/components/llm/LLMCostBadge';
 import ErrorState from '@/components/ErrorState';
 import PipelineItemActions from './components/PipelineItemActions';
+import { useConfirm } from '@/components/common/dialogContext';
 
 const CollisionPage: FC = () => {
+  const askConfirm = useConfirm();
   const navigate = useNavigate();
   const { brainSide } = useNavigation();
   const [searchQuery, setSearchQuery] = useState('');
@@ -61,6 +64,17 @@ const CollisionPage: FC = () => {
     return data;
   }, [items, searchQuery]);
 
+  const collideInputText = useMemo(() => {
+    return (
+      conceptItems
+        ?.filter((item) => item.content_subtype === 'concept')
+        .slice(0, 5)
+        .map((item) => `概念：${item.content_raw || item.title || ''}`)
+        .join('\n---\n')
+        .slice(0, 4000) || '对上一阶段核心概念执行跨领域碰撞，生成跨界洞见。'
+    );
+  }, [conceptItems]);
+
   const toggleSelect = (id: string) => {
     setSelectedIds((prev) => {
       const next = new Set(prev);
@@ -102,7 +116,7 @@ const CollisionPage: FC = () => {
   const handleBatchReview = async (action: 'approve' | 'reject') => {
     if (selectedIds.size === 0) return;
     const selected = filteredItems.filter((item) => selectedIds.has(item.id));
-    if (!confirm(`确定${action === 'approve' ? '批准' : '拒绝'}选中的 ${selected.length} 个碰撞结果？`)) return;
+    if (!(await askConfirm(`确定${action === 'approve' ? '批准' : '拒绝'}选中的 ${selected.length} 个碰撞结果？`))) return;
     setIsBatchRunning(true);
     setBatchProgress(0);
     setError(null);
@@ -138,7 +152,7 @@ const CollisionPage: FC = () => {
       setError('抽取阶段暂无核心概念可碰撞，请先在抽取页生成概念');
       return;
     }
-    if (!confirm(`将对上一阶段 ${candidates.length} 个核心概念执行碰撞，这会调用 AI，确定继续？`)) return;
+    if (!(await askConfirm(`将对上一阶段 ${candidates.length} 个核心概念执行碰撞，这会调用 AI，确定继续？`))) return;
     setIsPulling(true);
     setError(null);
     setNotice(null);
@@ -209,6 +223,7 @@ const CollisionPage: FC = () => {
       <div className="space-y-2">
         <div className="flex items-center justify-end gap-3">
           <ModelSelector value={modelId} onChange={setModelId} taskType="creative" className="w-48" />
+          <LLMCostBadge modelId={modelId} inputText={collideInputText} outputTokenEstimate={800} />
         </div>
         <StageContextBanner
           currentStage="collision"

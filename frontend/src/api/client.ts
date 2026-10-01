@@ -1,11 +1,11 @@
 import axios, { AxiosInstance, AxiosError, InternalAxiosRequestConfig } from 'axios';
-import { getToken, setToken, clearToken, getRefreshToken, setRefreshToken, clearRefreshToken, TOKEN_KEY } from './auth';
+import { getToken, getRefreshToken, setToken, setRefreshToken, clearToken, TOKEN_KEY } from './auth';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || '';
 
 // Endpoints that should NOT send auth header (and should not trigger refresh on 401)
 // 注意：refresh 自己必须在列，否则 refresh 返回 401 时会再次等待自己，死锁导致页面永远转圈
-const PUBLIC_ENDPOINTS = ['/api/v1/auth/login', '/api/v1/auth/register', '/api/v1/auth/refresh'];
+const PUBLIC_ENDPOINTS = ['/api/v1/auth/login', '/api/v1/auth/register', '/api/v1/auth/refresh', '/api/v1/auth/forgot-password', '/api/v1/auth/reset-password'];
 
 class ApiClient {
   private client: AxiosInstance;
@@ -55,7 +55,44 @@ class ApiClient {
           return Promise.reject(error);
         }
 
+        // 429: 限流——统一换成可读文案（带 Retry-After，桶恢复即可重试）
+        if (error.response?.status === 429) {
+          return Promise.reject({ message: '操作太频繁，请稍候', code: 'RATE_LIMITED', status: 429 });
+        }
+
+        // 402: LLM balance insufficient -> broadcast global event so UI can show top-up / local-model hint
+        if (error.response?.status === 402) {
+          const detail = (error.response?.data as { detail?: string })?.detail || '余额不足，无法完成 AI 调用';
+          window.dispatchEvent(
+            new CustomEvent('psb:llm:insufficient-balance', {
+              detail: { message: detail, url: '/topup' },
+            })
+          );
+          return Promise.reject({ message: detail, code: 'INSUFFICIENT_BALANCE', status: 402 });
+        }
+
+        // 403: subscription tier insufficient -> broadcast global event so UI can show upgrade prompt
+        if (error.response?.status === 403) {
+          const detail = (error.response?.data as { detail?: string })?.detail || '当前订阅方案无权使用该功能';
+          // 只有会员/升级类 403 才广播升级引导；模块被管理员关闭、配额外的业务 403 走普通报错，
+          // 避免一刀切把什么都弹成「升级 Pro」
+          const isMembership = /会员|Pro|升级|订阅/.test(detail);
+          if (isMembership) {
+            window.dispatchEvent(
+              new CustomEvent('psb:subscription:upgrade-required', {
+                detail: { message: detail, url: '/payment' },
+              })
+            );
+            return Promise.reject({ message: detail, code: 'UPGRADE_REQUIRED', status: 403 });
+          }
+          return Promise.reject({ message: detail, status: 403 });
+        }
+
         if (error.response?.status === 401 && !originalRequest._retry) {
+          // 调用方显式声明自行处理 401（如 AuthGuard 游客探测）：不刷新、不踢回欢迎页
+          if ((originalRequest as { skipAuthRefresh?: boolean }).skipAuthRefresh) {
+            return Promise.reject({ message: '未登录或会话已过期', code: 'UNAUTHORIZED', status: 401 });
+          }
           // 匿名（无 token）用户的 401：不刷新、不踢回欢迎页，交给调用方按空态处理
           if (!getToken()) {
             return Promise.reject({ message: '未登录或会话已过期', code: 'UNAUTHORIZED', status: 401 });
@@ -69,7 +106,7 @@ class ApiClient {
             return this.client(originalRequest);
           } catch (refreshError) {
             clearToken();
-            clearRefreshToken();
+            try { localStorage.removeItem('refresh_token'); } catch { /* ignore */ }
             window.dispatchEvent(new CustomEvent('psb:auth:logout'));
             // Redirect to welcome after a tick so callers can finish cleanup
             setTimeout(() => {
@@ -119,9 +156,13 @@ class ApiClient {
 
   private async refreshToken(): Promise<string> {
     if (this.refreshPromise) return this.refreshPromise;
+    const refreshToken = getRefreshToken();
+    if (!refreshToken) {
+      return Promise.reject(new Error('no refresh token'));
+    }
     this.refreshPromise = this.client
       .post('/api/v1/auth/refresh', {}, {
-        headers: { Authorization: `Bearer ${getRefreshToken() || getToken() || ''}` },
+        headers: { Authorization: `Bearer ${refreshToken}` },
       })
       .then((response) => {
         const { access_token, refresh_token } = response.data;

@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Query
+from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 from sqlalchemy import func, and_
 from typing import List, Optional
@@ -8,6 +9,7 @@ import uuid
 from app.core.database import get_db
 from app.core.security import get_current_user
 from app.core.xss_sanitizer import sanitize_markdown
+from app.core.tenant_scope import get_active_tenant, content_filter, scope_condition, audit as _audit
 from app.models.base import User, Tag, content_tags, Note
 from app.schemas.tag import TagCreate, TagUpdate, TagResponse, TagMergeRequest, TagAssociationsResponse
 from app.services import tag_service
@@ -15,8 +17,9 @@ from app.services import tag_service
 router = APIRouter()
 
 
-def _build_tag_response(tag: Tag, db: Session) -> dict:
-    usage_breakdown = tag_service.get_tag_usage_breakdown(db, tag.id, tag.user_id)
+def _build_tag_response(tag: Tag, db: Session, usage_breakdown: Optional[dict] = None) -> dict:
+    if usage_breakdown is None:
+        usage_breakdown = tag_service.get_tag_usage_breakdown(db, tag.id, tag.user_id)
     return {
         "id": tag.id,
         "user_id": tag.user_id,
@@ -35,8 +38,10 @@ async def list_tags(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    tags = db.query(Tag).filter(Tag.user_id == current_user.id).order_by(Tag.name.asc()).all()
-    return [_build_tag_response(t, db) for t in tags]
+    tags = content_filter(db.query(Tag), Tag, current_user, get_active_tenant(db, current_user)).order_by(Tag.name.asc()).all()
+    # 批量用量（09-14 N+1 实捕：1296 标签 × 5 查询/个 ≈ 6500 次 SQL 本机 2.2s → 6 条查询）
+    breakdowns = tag_service.get_all_usage_breakdowns(db, [t.id for t in tags])
+    return [_build_tag_response(t, db, usage_breakdown=breakdowns.get(t.id)) for t in tags]
 
 
 @router.post("/", response_model=TagResponse, status_code=status.HTTP_201_CREATED, summary="Create tag", description="Create a new tag for the current user.")
@@ -45,18 +50,24 @@ async def create_tag(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    existing = db.query(Tag).filter(Tag.user_id == current_user.id, Tag.name == tag_data.name).first()
+    tenant = get_active_tenant(db, current_user)
+    # 同名标签按 空间+名称 唯一复用
+    existing = db.query(Tag).filter(scope_condition(Tag, current_user.id, tenant), Tag.name == tag_data.name).first()
     if existing:
         raise HTTPException(status_code=400, detail="Tag with this name already exists")
-    
+
     tag = Tag(
         id=str(uuid.uuid4()),
         user_id=current_user.id,
+        tenant_id=tenant.id if tenant else None,
         name=sanitize_markdown(tag_data.name),
         color=tag_data.color or "#8b949e",
         description=sanitize_markdown(tag_data.description) if tag_data.description else None,
     )
     db.add(tag)
+    # 租户审计：团队空间的标签创建记流水（个人空间不记）
+    if tenant:
+        _audit(db, tenant.id, current_user, "tag_create", "tag", tag.id, tag.name)
     db.commit()
     db.refresh(tag)
     return _build_tag_response(tag, db)
@@ -68,7 +79,7 @@ async def get_tag(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    tag = db.query(Tag).filter(Tag.id == tag_id, Tag.user_id == current_user.id).first()
+    tag = content_filter(db.query(Tag).filter(Tag.id == tag_id), Tag, current_user, get_active_tenant(db, current_user)).first()
     if not tag:
         raise HTTPException(status_code=404, detail="Tag not found")
     return _build_tag_response(tag, db)
@@ -81,13 +92,14 @@ async def update_tag(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    tag = db.query(Tag).filter(Tag.id == tag_id, Tag.user_id == current_user.id).first()
+    tag = content_filter(db.query(Tag).filter(Tag.id == tag_id), Tag, current_user, get_active_tenant(db, current_user)).first()
     if not tag:
         raise HTTPException(status_code=404, detail="Tag not found")
     
     if tag_data.name is not None:
+        tenant = get_active_tenant(db, current_user)
         existing = db.query(Tag).filter(
-            Tag.user_id == current_user.id,
+            scope_condition(Tag, current_user.id, tenant),
             Tag.name == tag_data.name,
             Tag.id != tag_id
         ).first()
@@ -112,7 +124,7 @@ async def cleanup_orphaned_tags(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    deleted = tag_service.cleanup_orphaned_tags(db, current_user.id)
+    deleted = tag_service.cleanup_orphaned_tags(db, current_user.id, tenant=get_active_tenant(db, current_user))
     db.commit()
     return {"success": True, "deleted_count": deleted}
 
@@ -123,14 +135,18 @@ async def delete_tag(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    tag = db.query(Tag).filter(Tag.id == tag_id, Tag.user_id == current_user.id).first()
+    tenant = get_active_tenant(db, current_user)
+    tag = content_filter(db.query(Tag).filter(Tag.id == tag_id), Tag, current_user, tenant).first()
     if not tag:
         raise HTTPException(status_code=404, detail="Tag not found")
-    
+
     usage = tag_service.get_tag_usage_count(db, tag_id)
     if usage > 0:
         raise HTTPException(status_code=400, detail=f"Tag is still used by {usage} content items. Please remove associations first.")
-    
+
+    # 租户审计：团队空间的标签删除记流水（个人空间不记）
+    if tenant:
+        _audit(db, tenant.id, current_user, "tag_delete", "tag", tag.id, tag.name)
     # 删除标签时连带清掉其关联行（含幽灵行）——否则 content_tags 残留成无头引用
     db.execute(content_tags.delete().where(content_tags.c.tag_id == tag_id))
     db.delete(tag)
@@ -145,18 +161,23 @@ async def merge_tag(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    source = db.query(Tag).filter(Tag.id == tag_id, Tag.user_id == current_user.id).first()
+    tenant = get_active_tenant(db, current_user)
+    source = db.query(Tag).filter(Tag.id == tag_id, scope_condition(Tag, current_user.id, tenant)).first()
     if not source:
         raise HTTPException(status_code=404, detail="Source tag not found")
-    
-    target = db.query(Tag).filter(Tag.id == request.target_tag_id, Tag.user_id == current_user.id).first()
+
+    target = db.query(Tag).filter(Tag.id == request.target_tag_id, scope_condition(Tag, current_user.id, tenant)).first()
     if not target:
         raise HTTPException(status_code=404, detail="Target tag not found")
     
     if source.id == target.id:
         raise HTTPException(status_code=400, detail="Cannot merge a tag into itself")
-    
+
     tag_service.merge_tags(db, source.id, target.id)
+    # 租户审计：团队空间的标签合并记流水（个人空间不记）
+    if tenant:
+        _audit(db, tenant.id, current_user, "tag_merge", "tag", target.id,
+               f"{source.name} → {target.name}")
     db.commit()
     db.refresh(target)
     return _build_tag_response(target, db)
@@ -168,14 +189,15 @@ async def get_tag_associations(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    tag = db.query(Tag).filter(Tag.id == tag_id, Tag.user_id == current_user.id).first()
+    tag = content_filter(db.query(Tag).filter(Tag.id == tag_id), Tag, current_user, get_active_tenant(db, current_user)).first()
     if not tag:
         raise HTTPException(status_code=404, detail="Tag not found")
     
-    associations = tag_service.get_tag_associations(db, tag_id, current_user.id)
+    associations = tag_service.get_tag_associations(db, tag_id, current_user.id, tenant=get_active_tenant(db, current_user))
     return {
         "tag_id": tag_id,
         "note": associations.get("note", []),
         "clip": associations.get("clip", []),
         "knowledge": associations.get("knowledge", []),
+        "document": associations.get("document", []),
     }

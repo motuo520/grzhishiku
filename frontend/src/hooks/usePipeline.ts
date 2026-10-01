@@ -23,6 +23,7 @@ export const usePipelineStats = (brainSide: BrainSide = 'both') => {
       const response = await pipelineApi.stats(side);
       return response.data;
     },
+    refetchOnMount: 'always', // 同 usePipelineItems：管线页挂载必拉
   });
   return { stats, isLoading, error, refetch };
 };
@@ -36,6 +37,7 @@ export const usePipelineItems = (stage: string, brainSide: BrainSide = 'both', l
       return response.data;
     },
     enabled: !!stage,
+    refetchOnMount: 'always', // 管线各页强时效：挂载必拉，杜绝"要刷新才显示"
   });
   return { items, isLoading, error, refetch };
 };
@@ -173,3 +175,4 @@ export const useReviewCollision = () => {
     },
   });
 };
+

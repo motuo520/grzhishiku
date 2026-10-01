@@ -15,7 +15,7 @@ import { rssApi } from '@/api/rss';
 import { knowledgeApi } from '@/api/knowledge';
 import type { NoteCreateData } from '@/api/notes';
 import type { ClipCreateData } from '@/api/clips';
-import { getDomainFromUrl, parseBookmarksHtml, parseLocalJson, parseLocalCsv, detectFullExport, FULL_EXPORT_TABLE_LABELS, type FullExportDetection } from '@/utils/importParsers';
+import { parseBookmarksHtml, parseLocalJson, parseLocalCsv, detectFullExport, FULL_EXPORT_TABLE_LABELS, type FullExportDetection } from '@/utils/importParsers';
 import AutoTagHint from '@/components/AutoTagHint';
 
 type ImportTab = 'markdown' | 'jsoncsv' | 'urls' | 'local';
@@ -386,7 +386,7 @@ const BatchImportPage: FC = () => {
           <h1 className="text-2xl font-bold text-text-primary">批量导入中心</h1>
           <p className="text-sm text-text-secondary mt-1">批量导入笔记、剪藏、稍后读、RSS 源和知识单元</p>
         </div>
-        <span className="badge-fusion">Fusion</span>
+        <span className="badge-fusion">整合脑</span>
       </div>
 
       <AnimatePresence>
@@ -633,7 +633,7 @@ const BatchImportPage: FC = () => {
                 <p>• .html / .htm：浏览器书签导出文件 → 导入为剪藏</p>
                 <p>• .md / .txt / .markdown → 导入为笔记</p>
                 <p>• .json：数组、{'{ notes, clips }'} 结构，或「数据导出」产生的完整数据包（自动识别，按 id 合并导入）</p>
-                <p>• .csv：首行 title,content,tags 或 title,url,domain,excerpt</p>
+                <p>• .csv：首行 title,content,tags 或 title,url,domain,excerpt（支持中文表头：标题/内容/标签/网址 等）</p>
               </div>
             </div>
             <input

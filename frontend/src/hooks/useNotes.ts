@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { notesApi, NoteUpdateData, Note } from '@/api/notes';
+import { notesApi, NoteUpdateData } from '@/api/notes';
 import { invalidateContentQueries } from '@/utils/invalidateContent';
 
 export const useNotes = (filters?: { q?: string; tag_ids?: string; brain_side?: string; folder_id?: string; limit?: number }) => {
@@ -8,23 +8,8 @@ export const useNotes = (filters?: { q?: string; tag_ids?: string; brain_side?: 
   const { data: notes, isLoading } = useQuery({
     queryKey: ['notes', filters?.q, filters?.tag_ids, filters?.brain_side, filters?.folder_id, filters?.limit],
     queryFn: async () => {
-      // 后端单页上限 100；请求量超出时自动分页拉取并合并（如进化轨迹要全量笔记）
-      const limit = filters?.limit;
-      if (!limit || limit <= 100) {
-        const response = await notesApi.list(filters);
-        return response.data;
-      }
-      const all: Note[] = [];
-      let skip = 0;
-      while (all.length < limit) {
-        const pageSize = Math.min(100, limit - all.length);
-        const response = await notesApi.list({ ...filters, limit: pageSize, skip });
-        const batch: Note[] = response.data || [];
-        all.push(...batch);
-        if (batch.length < pageSize) break;
-        skip += batch.length;
-      }
-      return all;
+      const response = await notesApi.list(filters);
+      return response.data;
     },
     staleTime: 5 * 60 * 1000,
     gcTime: 10 * 60 * 1000,

@@ -4,8 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   BookOpen, ShieldCheck, AlertTriangle, XCircle, HelpCircle, Clock,
   Search, Filter, ArrowUpDown, Plus, ExternalLink, Layers,
-  BarChart3, Globe, Loader2, Activity, Dumbbell, Zap, Sprout, Sparkles
-} from 'lucide-react';
+  BarChart3, Globe, Loader2, Activity, Dumbbell, Zap, Sprout, Sparkles, type LucideIcon } from 'lucide-react';
 import { useKnowledge } from '@/hooks/useKnowledge';
 import ErrorState from '@/components/ErrorState';
 import type { KnowledgeUnit } from '@/types';
@@ -21,7 +20,7 @@ const evolutionConfig: Record<string, { label: string; badgeClass: string }> = {
   internalized: { label: '已内化', badgeClass: 'bg-network-primary/10 text-network-primary border-network-primary/30' },
 };
 
-const statusConfig: Record<string, { icon: React.ElementType; label: string; colorClass: string; badgeClass: string }> = {
+const statusConfig: Record<string, { icon: LucideIcon; label: string; colorClass: string; badgeClass: string }> = {
   confirmed: {
     icon: ShieldCheck, label: '已验证', colorClass: 'text-success',
     badgeClass: 'bg-success/10 text-success border-success/30',
@@ -94,7 +93,7 @@ const KnowledgeUnitRow = memo<KnowledgeUnitRowProps>(({ unit, brainSide, useMoti
           {status.label}
         </div>
         <div className="flex-1 min-w-0">
-          <div className="text-sm text-text-primary font-medium line-clamp-2 leading-relaxed break-all overflow-hidden max-w-full">{unit.content_raw}</div>
+          <div className="text-sm text-text-primary font-medium line-clamp-2 leading-relaxed break-all overflow-hidden max-w-full">{unit.title || unit.content_raw}</div>
           <div className="flex items-center gap-3 text-xs text-text-muted mt-2 flex-wrap">
             {unit.content_type && <span className="flex items-center gap-1"><Layers className="w-3 h-3" />{unit.content_type}</span>}
             {unit.source_url && <span className="flex items-center gap-1 break-all max-w-full"><ExternalLink className="w-3 h-3 shrink-0" />{unit.source_title || domain}</span>}
